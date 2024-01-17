@@ -1,4 +1,4 @@
-#include "../../include/mimir/datastructures/robin_map.hpp"
+#include "tsl/robin_map.h"
 #include "../../include/mimir/search/breadth_first_search.hpp"
 
 #include <algorithm>
@@ -50,7 +50,7 @@ namespace mimir::planners
             double g_value;
         };
 
-        mimir::tsl::robin_map<mimir::formalism::State, int32_t> state_indices;
+        tsl::robin_map<mimir::formalism::State, int32_t> state_indices;
         std::deque<Frame> frame_list;
         std::deque<int32_t> open_list;
 

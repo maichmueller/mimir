@@ -1,8 +1,8 @@
 #ifndef MIMIR_FORMALISM_DECLARATIONS_HPP_
 #define MIMIR_FORMALISM_DECLARATIONS_HPP_
 
-#include "../datastructures/robin_map.hpp"
-#include "../datastructures/robin_set.hpp"
+#include "tsl/robin_map.h"
+#include "tsl/robin_set.h"
 
 #include <memory>
 #include <string>
@@ -21,7 +21,7 @@ namespace mimir::formalism
     class AtomImpl;
     using Atom = std::shared_ptr<AtomImpl>;
     using AtomList = std::vector<Atom>;
-    using AtomSet = mimir::tsl::robin_set<mimir::formalism::Atom>;
+    using AtomSet = tsl::robin_set<mimir::formalism::Atom>;
 
     class DomainImpl;
     using DomainDescription = std::shared_ptr<DomainImpl>;
@@ -41,12 +41,12 @@ namespace mimir::formalism
     using ObjectList = std::vector<Object>;
     using Parameter = Object;
     using ParameterList = ObjectList;
-    using ParameterAssignment = mimir::tsl::robin_map<Parameter, Object>;
+    using ParameterAssignment = tsl::robin_map<Parameter, Object>;
 
     class PredicateImpl;
     using Predicate = std::shared_ptr<PredicateImpl>;
     using PredicateList = std::vector<Predicate>;
-    using PredicateSet = mimir::tsl::robin_set<mimir::formalism::Predicate>;
+    using PredicateSet = tsl::robin_set<mimir::formalism::Predicate>;
 
     class ProblemImpl;
     using ProblemDescription = std::shared_ptr<ProblemImpl>;

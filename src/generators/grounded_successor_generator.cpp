@@ -15,7 +15,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "../../include/mimir/datastructures/robin_map.hpp"
+#include "tsl/robin_map.h"
 #include "../../include/mimir/generators/grounded_successor_generator.hpp"
 
 #include <algorithm>
@@ -91,7 +91,7 @@ namespace mimir::planners
         const auto& static_predicates = problem->domain->static_predicates;
         const auto& static_atoms = problem->get_static_atoms();
 
-        mimir::tsl::robin_map<mimir::formalism::Atom, uint32_t> atom_occurrances;
+        tsl::robin_map<mimir::formalism::Atom, uint32_t> atom_occurrances;
 
         // Find unique atoms from ground action preconditions
         for (const auto& action : ground_actions)

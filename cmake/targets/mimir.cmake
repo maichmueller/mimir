@@ -19,6 +19,7 @@ if (BUILD_LIBMIMIR)
             project_options
             project_warnings
             boost::boost
+            tsl::robin_map
     )
 
     install(TARGETS

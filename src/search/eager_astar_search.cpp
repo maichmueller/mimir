@@ -1,4 +1,4 @@
-#include "../../include/mimir/datastructures/robin_map.hpp"
+#include "tsl/robin_map.h"
 #include "../../include/mimir/search/eager_astar_search.hpp"
 
 #include <algorithm>
@@ -67,7 +67,7 @@ namespace mimir::planners
             bool closed;
         };
 
-        mimir::tsl::robin_map<mimir::formalism::State, int32_t> state_indices;
+        tsl::robin_map<mimir::formalism::State, int32_t> state_indices;
         std::deque<Frame> frame_list;
 
         {  // Initialize data-structures

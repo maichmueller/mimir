@@ -15,7 +15,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "../include/mimir/datastructures/robin_map.hpp"
+#include "tsl/robin_map.h"
 #include "../include/mimir/generators/complete_state_space.hpp"
 #include "../include/mimir/generators/grounded_successor_generator.hpp"
 #include "../include/mimir/generators/successor_generator_factory.hpp"
@@ -218,7 +218,7 @@ void dijkstra(const mimir::formalism::ProblemDescription& problem, const mimir::
         double f;
     };
 
-    mimir::tsl::robin_map<mimir::formalism::State, uint32_t> state_indices;
+    tsl::robin_map<mimir::formalism::State, uint32_t> state_indices;
     std::deque<Frame> frame_list;
     const auto comparator = [](const std::pair<double, int>& lhs, const std::pair<double, int>& rhs) { return lhs.first > rhs.first; };
     std::priority_queue<std::pair<double, int>, std::vector<std::pair<double, int>>, decltype(comparator)> priority_queue(comparator);

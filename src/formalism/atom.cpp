@@ -218,7 +218,7 @@ namespace mimir::formalism
 
     mimir::formalism::ObjectList get_unique_objects(const mimir::formalism::AtomList& atom_list, int32_t argument_index)
     {
-        mimir::tsl::robin_set<mimir::formalism::Object> object_set;
+        tsl::robin_set<mimir::formalism::Object> object_set;
 
         for (const auto& atom : atom_list)
         {

@@ -68,7 +68,10 @@ include(cmake/settings/cache.cmake)
 # allow for static analysis options
 include(cmake/settings/static_analyzers.cmake)
 
+
 find_package(Boost REQUIRED)
+find_package(tsl-robin-map REQUIRED)
+
 
 include(cmake/targets/mimir.cmake)
 include(cmake/targets/pymimir.cmake)

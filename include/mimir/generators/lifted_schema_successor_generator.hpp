@@ -1,7 +1,7 @@
 #ifndef MIMIR_PLANNERS_LIFTED_SCHEMA_SUCCESSOR_GENERATOR_HPP_
 #define MIMIR_PLANNERS_LIFTED_SCHEMA_SUCCESSOR_GENERATOR_HPP_
 
-#include "../datastructures/robin_map.hpp"
+#include "tsl/robin_map.h"
 #include "../formalism/action.hpp"
 #include "../formalism/action_schema.hpp"
 #include "../formalism/problem.hpp"
@@ -46,7 +46,7 @@ namespace mimir::planners
         mimir::formalism::DomainDescription domain_;
         mimir::formalism::ProblemDescription problem_;
         mimir::planners::FlatActionSchema flat_action_schema_;
-        mimir::tsl::robin_map<uint32_t, std::vector<uint32_t>> objects_by_parameter_type;
+        tsl::robin_map<uint32_t, std::vector<uint32_t>> objects_by_parameter_type;
 
         std::vector<Assignment> to_vertex_assignment;
         std::vector<AssignmentPair> statically_consistent_assignments;

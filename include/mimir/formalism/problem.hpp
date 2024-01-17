@@ -1,7 +1,7 @@
 #ifndef MIMIR_FORMALISM_PROBLEM_HPP_
 #define MIMIR_FORMALISM_PROBLEM_HPP_
 
-#include "../datastructures/robin_map.hpp"
+#include "tsl/robin_map.h"
 #include "action_schema.hpp"
 #include "atom.hpp"
 #include "domain.hpp"
@@ -21,7 +21,7 @@ namespace mimir::formalism
       private:
         mimir::formalism::AtomSet static_atoms_;
         std::vector<bool> predicate_id_to_static_;
-        mutable mimir::tsl::robin_map<mimir::formalism::Atom, uint32_t> atom_ranks_;
+        mutable tsl::robin_map<mimir::formalism::Atom, uint32_t> atom_ranks_;
         mutable mimir::formalism::AtomList rank_to_atom_;
         mutable std::vector<uint32_t> rank_to_predicate_id_;
         mutable std::vector<uint32_t> rank_to_arity_;
