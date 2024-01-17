@@ -5,7 +5,6 @@ if (BUILD_LIBMIMIR)
     add_library(
             mimir
             STATIC
-            lib/mimir.cpp
             ${MIMIR_SRC_FILES}
     )
 

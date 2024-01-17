@@ -36,6 +36,7 @@ set(PYTHON_VENV_EXECUTABLE)
 message(STATUS "Build configuration: ${CMAKE_BUILD_TYPE}")
 
 file(GLOB_RECURSE MIMIR_SRC_FILES "src/*.cpp" "src/**/*.cpp")
+file(GLOB_RECURSE PYMIMIR_SRC_FILES "lib/pymimir/*.cpp" "lib/pymimir/**/*.cpp")
 file(GLOB_RECURSE MIMIR_TEST_FILES "test/*.cpp" "test/**/*.cpp")
 
 

@@ -1,31 +1,32 @@
 if(BUILD_PYMIMIR)
-
-
     find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
     find_package(pybind11 REQUIRED)
-    pybind11_add_module(pymimir lib/pymimir.cpp ${MIMIR_SRC_FILES})
 
-    set_target_properties(pymimir PROPERTIES PREFIX "")
+
+    pybind11_add_module(
+            pymimir
+            ${PYMIMIR_SRC_FILES}
+    )
+    set_target_properties(
+            pymimir
+            PROPERTIES
+            PREFIX ""
+    )
     target_link_libraries(
             pymimir
             PRIVATE
             project_options
             project_warnings
             mimir
-            #${PYTHON_LIBRARIES}
     )
 
-#    if(CMAKE_BUILD_TYPE STREQUAL "Release")
-#        target_compile_definitions(pymimir PRIVATE NDEBUG)
+#    if(MSVC)
+#        # Add MSVC specific library linking here
+#    else()
+#        target_link_libraries(pymimir PRIVATE -lstdc++fs)
+#        # These settings seem to cause issues with torch.
+#        # target_link_libraries(pymimir -static-libstdc++ -static-libgcc)
 #    endif()
-
-    if(MSVC)
-        # Add MSVC specific library linking here
-    else()
-        target_link_libraries(pymimir PRIVATE -lstdc++fs)
-        # These settings seem to cause issues with torch.
-        # target_link_libraries(pymimir -static-libstdc++ -static-libgcc)
-    endif()
 
     if(${PYTHON_VENV_EXE})
         set(_python_exe ${PYTHON_VENV_EXE})
