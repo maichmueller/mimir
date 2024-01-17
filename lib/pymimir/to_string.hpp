@@ -5,7 +5,7 @@
 #include "mimir/formalism/atom.hpp"
 #include "mimir/formalism/action.hpp"
 
-std::string to_string(const mimir::formalism::AtomImpl& state)
+inline std::string to_string(const mimir::formalism::AtomImpl& state)
 {
     std::string repr = state.predicate->name + "(";
 
@@ -22,7 +22,7 @@ std::string to_string(const mimir::formalism::AtomImpl& state)
     return repr + ")";
 }
 
-std::string to_string(const mimir::formalism::ActionImpl& action)
+inline std::string to_string(const mimir::formalism::ActionImpl& action)
 {
     std::string repr = action.schema->name + "(";
     const auto& action_arguments = action.get_arguments();

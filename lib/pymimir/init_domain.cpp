@@ -5,7 +5,7 @@
 
 void init_domain(py::module& m)
 {
-    py::class_<mimir::formalism::DomainImpl, mimir::formalism::DomainDescription> domain(m, "Domain")
+    py::class_<mimir::formalism::DomainImpl, mimir::formalism::DomainDescription> domain(m, "Domain");
 
     domain.def_readonly("name", &mimir::formalism::DomainImpl::name, "Gets the name of the domain.");
     domain.def_readonly("requirements", &mimir::formalism::DomainImpl::requirements, "Gets the requirements of the domain.");
