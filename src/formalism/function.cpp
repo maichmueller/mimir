@@ -1,5 +1,5 @@
-#include "../../include/mimir/formalism/domain.hpp"
-#include "../../include/mimir/formalism/function.hpp"
+#include "mimir/formalism/domain.hpp"
+#include "mimir/formalism/function.hpp"
 
 namespace mimir::formalism
 {

@@ -1,5 +1,5 @@
-#include "../../include/mimir/generators/goal_matcher.hpp"
-#include "../../include/mimir/generators/lifted_schema_successor_generator.hpp"
+#include "mimir/generators/goal_matcher.hpp"
+#include "mimir/generators/lifted_schema_successor_generator.hpp"
 
 #include <algorithm>
 #include <vector>

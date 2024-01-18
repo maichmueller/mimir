@@ -15,7 +15,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "../../include/mimir/pddl/abstract_syntax_tree.hpp"
+#include "mimir/pddl/abstract_syntax_tree.hpp"
 
 #include <boost/fusion/include/at_c.hpp>
 

@@ -1,9 +1,9 @@
-#include "../include/mimir/formalism/domain.hpp"
-#include "../include/mimir/formalism/problem.hpp"
-#include "../include/mimir/generators/complete_state_space.hpp"
-#include "../include/mimir/generators/goal_matcher.hpp"
-#include "../include/mimir/generators/successor_generator_factory.hpp"
-#include "../include/mimir/pddl/parsers.hpp"
+#include "mimir/formalism/domain.hpp"
+#include "mimir/formalism/problem.hpp"
+#include "mimir/generators/complete_state_space.hpp"
+#include "mimir/generators/goal_matcher.hpp"
+#include "mimir/generators/successor_generator_factory.hpp"
+#include "mimir/pddl/parsers.hpp"
 
 // Test instances
 

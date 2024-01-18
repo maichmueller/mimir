@@ -1,5 +1,5 @@
 #include "tsl/robin_map.h"
-#include "../../include/mimir/search/breadth_first_search.hpp"
+#include "mimir/search/breadth_first_search.hpp"
 
 #include <algorithm>
 #include <deque>

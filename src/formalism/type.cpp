@@ -15,7 +15,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "../../include/mimir/formalism/type.hpp"
+#include "mimir/formalism/type.hpp"
 #include "help_functions.hpp"
 
 #include <memory>

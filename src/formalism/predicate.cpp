@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "../../include/mimir/formalism/object.hpp"
-#include "../../include/mimir/formalism/predicate.hpp"
+#include "mimir/formalism/object.hpp"
+#include "mimir/formalism/predicate.hpp"
 #include "help_functions.hpp"
 
 #include <string>

@@ -15,7 +15,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "../../include/mimir/formalism/atom.hpp"
+#include "mimir/formalism/atom.hpp"
 #include "help_functions.hpp"
 
 #include <algorithm>

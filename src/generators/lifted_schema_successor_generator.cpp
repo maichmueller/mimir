@@ -15,10 +15,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "../../include/mimir/algorithms/kpkc.hpp"
-#include "../../include/mimir/formalism/atom.hpp"
-#include "../../include/mimir/formalism/type.hpp"
-#include "../../include/mimir/generators/lifted_schema_successor_generator.hpp"
+#include "mimir/algorithms/kpkc.hpp"
+#include "mimir/formalism/atom.hpp"
+#include "mimir/formalism/type.hpp"
+#include "mimir/generators/lifted_schema_successor_generator.hpp"
 #include "../formalism/help_functions.hpp"
 
 #include <algorithm>

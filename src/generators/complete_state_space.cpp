@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "../../include/mimir/generators/complete_state_space.hpp"
-#include "../../include/mimir/generators/successor_generator_factory.hpp"
+#include "mimir/generators/complete_state_space.hpp"
+#include "mimir/generators/successor_generator_factory.hpp"
 #include "../formalism/help_functions.hpp"
 
 #include <algorithm>

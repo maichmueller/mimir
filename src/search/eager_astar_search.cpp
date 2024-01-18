@@ -1,5 +1,5 @@
 #include "tsl/robin_map.h"
-#include "../../include/mimir/search/eager_astar_search.hpp"
+#include "mimir/search/eager_astar_search.hpp"
 
 #include <algorithm>
 #include <deque>

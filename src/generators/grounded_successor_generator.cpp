@@ -16,7 +16,7 @@
  */
 
 #include "tsl/robin_map.h"
-#include "../../include/mimir/generators/grounded_successor_generator.hpp"
+#include "mimir/generators/grounded_successor_generator.hpp"
 
 #include <algorithm>
 

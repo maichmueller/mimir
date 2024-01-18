@@ -16,15 +16,15 @@
  */
 
 #include "tsl/robin_map.h"
-#include "../include/mimir/generators/complete_state_space.hpp"
-#include "../include/mimir/generators/grounded_successor_generator.hpp"
-#include "../include/mimir/generators/successor_generator_factory.hpp"
-#include "../include/mimir/pddl/parsers.hpp"
-#include "../include/mimir/search/breadth_first_search.hpp"
-#include "../include/mimir/search/eager_astar_search.hpp"
-#include "../include/mimir/search/heuristics/h1_heuristic.hpp"
-#include "../include/mimir/search/heuristics/h2_heuristic.hpp"
-#include "../include/mimir/search/openlists/priority_queue_open_list.hpp"
+#include "mimir/generators/complete_state_space.hpp"
+#include "mimir/generators/grounded_successor_generator.hpp"
+#include "mimir/generators/successor_generator_factory.hpp"
+#include "mimir/pddl/parsers.hpp"
+#include "mimir/search/breadth_first_search.hpp"
+#include "mimir/search/eager_astar_search.hpp"
+#include "mimir/search/heuristics/h1_heuristic.hpp"
+#include "mimir/search/heuristics/h2_heuristic.hpp"
+#include "mimir/search/openlists/priority_queue_open_list.hpp"
 
 #include <algorithm>
 #include <chrono>

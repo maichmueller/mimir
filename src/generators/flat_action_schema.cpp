@@ -1,4 +1,4 @@
-#include "../../include/mimir/generators/flat_action_schema.hpp"
+#include "mimir/generators/flat_action_schema.hpp"
 
 #include <map>
 

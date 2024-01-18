@@ -15,13 +15,13 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "../../include/mimir/formalism/action_schema.hpp"
-#include "../../include/mimir/formalism/domain.hpp"
-#include "../../include/mimir/formalism/object.hpp"
-#include "../../include/mimir/formalism/predicate.hpp"
-#include "../../include/mimir/pddl/abstract_syntax_tree.hpp"
-#include "../../include/mimir/pddl/parser_includes.hpp"
-#include "../../include/mimir/pddl/pddl_parser.hpp"
+#include "mimir/formalism/action_schema.hpp"
+#include "mimir/formalism/domain.hpp"
+#include "mimir/formalism/object.hpp"
+#include "mimir/formalism/predicate.hpp"
+#include "mimir/pddl/abstract_syntax_tree.hpp"
+#include "mimir/pddl/parser_includes.hpp"
+#include "mimir/pddl/pddl_parser.hpp"
 
 #include <fstream>
 #include <iostream>

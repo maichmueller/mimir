@@ -1,10 +1,10 @@
-#include "../include/mimir/formalism/domain.hpp"
-#include "../include/mimir/formalism/problem.hpp"
-#include "../include/mimir/generators/complete_state_space.hpp"
-#include "../include/mimir/generators/successor_generator.hpp"
-#include "../include/mimir/generators/successor_generator_factory.hpp"
-#include "../include/mimir/pddl/parsers.hpp"
-#include "../include/mimir/search/breadth_first_search.hpp"
+#include "mimir/formalism/domain.hpp"
+#include "mimir/formalism/problem.hpp"
+#include "mimir/generators/complete_state_space.hpp"
+#include "mimir/generators/successor_generator.hpp"
+#include "mimir/generators/successor_generator_factory.hpp"
+#include "mimir/pddl/parsers.hpp"
+#include "mimir/search/breadth_first_search.hpp"
 
 // Test instances
 

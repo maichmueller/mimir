@@ -1,4 +1,4 @@
-#include "../../include/mimir/search/search_base.hpp"
+#include "mimir/search/search_base.hpp"
 
 namespace mimir::planners
 {

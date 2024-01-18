@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "../../include/mimir/formalism/problem.hpp"
-#include "../../include/mimir/generators/lifted_successor_generator.hpp"
+#include "mimir/formalism/problem.hpp"
+#include "mimir/generators/lifted_successor_generator.hpp"
 #include "help_functions.hpp"
 
 #include <algorithm>

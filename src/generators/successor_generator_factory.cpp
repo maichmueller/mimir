@@ -15,9 +15,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "../../include/mimir/generators/grounded_successor_generator.hpp"
-#include "../../include/mimir/generators/lifted_successor_generator.hpp"
-#include "../../include/mimir/generators/successor_generator_factory.hpp"
+#include "mimir/generators/grounded_successor_generator.hpp"
+#include "mimir/generators/lifted_successor_generator.hpp"
+#include "mimir/generators/successor_generator_factory.hpp"
 
 namespace mimir::planners
 {
