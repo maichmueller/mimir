@@ -21,6 +21,7 @@
 #include "mimir/common/hash.hpp"
 #include "mimir/common/printers.hpp"
 #include "mimir/formalism/factories.hpp"
+#include "mimir/utils/utils.hpp"
 
 #include <ostream>
 #include <tuple>
@@ -122,6 +123,25 @@ bool State::literals_hold(const GroundLiteralList<P>& literals) const
 
 template bool State::literals_hold(const GroundLiteralList<Fluent>& literals) const;
 template bool State::literals_hold(const GroundLiteralList<Derived>& literals) const;
+
+template<DynamicPredicateCategory P>
+GroundLiteralList<P> State::get_unsatisfied_literals(const GroundLiteralList<P>& literals) const
+{
+    return get_literals_if(literals, std::not_fn(AS_CPTR_LAMBDA(literal_holds<P>)));
+    //    return get_literals_if(literals, [&](const auto& l) { return not literal_holds<P>(l); });
+}
+
+template GroundLiteralList<Fluent> State::get_unsatisfied_literals(const GroundLiteralList<Fluent>& literals) const;
+template GroundLiteralList<Derived> State::get_unsatisfied_literals(const GroundLiteralList<Derived>& literals) const;
+
+template<DynamicPredicateCategory P>
+GroundLiteralList<P> State::get_satisfied_literals(const GroundLiteralList<P>& literals) const
+{
+    return get_literals_if(literals, AS_CPTR_LAMBDA(literal_holds<P>));
+}
+
+template GroundLiteralList<Fluent> State::get_satisfied_literals(const GroundLiteralList<Fluent>& literals) const;
+template GroundLiteralList<Derived> State::get_satisfied_literals(const GroundLiteralList<Derived>& literals) const;
 
 template<DynamicPredicateCategory P>
 const FlatBitset& State::get_atoms() const

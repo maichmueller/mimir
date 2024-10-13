@@ -1136,6 +1136,27 @@ void init_pymimir(py::module_& m)
         .def("literals_hold", py::overload_cast<const GroundLiteralList<Fluent>&>(&State::literals_hold<Fluent>, py::const_), py::arg("literals"))
         .def("literals_hold", py::overload_cast<const GroundLiteralList<Derived>&>(&State::literals_hold<Derived>, py::const_), py::arg("literals"))
         .def(
+            "get_literals_if",
+            [](const State& self, const GroundLiteralList<Fluent>& literals, const py::function& predicate)
+            {
+                return self.get_literals_if<Fluent, bool (*)(const GroundLiteral<Fluent>&)>(literals,
+                                                                                            cast_safe<bool (*)(const GroundLiteral<Fluent>&)>(predicate));
+            },
+            py::arg("literals"),
+            py::arg("condition"))
+        .def("get_unsatisfied_literals",
+             py::overload_cast<const GroundLiteralList<Fluent>&>(&State::get_unsatisfied_literals<Fluent>, py::const_),
+             py::arg("literals"))
+        .def("get_unsatisfied_literals",
+             py::overload_cast<const GroundLiteralList<Derived>&>(&State::get_unsatisfied_literals<Derived>, py::const_),
+             py::arg("literals"))
+        .def("get_satisfied_literals",
+             py::overload_cast<const GroundLiteralList<Fluent>&>(&State::get_satisfied_literals<Fluent>, py::const_),
+             py::arg("literals"))
+        .def("get_satisfied_literals",
+             py::overload_cast<const GroundLiteralList<Derived>&>(&State::get_satisfied_literals<Derived>, py::const_),
+             py::arg("literals"))
+        .def(
             "to_string",
             [](const State& self, Problem problem, const PDDLFactories& pddl_factories)
             {

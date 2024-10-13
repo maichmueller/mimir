@@ -72,12 +72,37 @@ public:
     template<DynamicPredicateCategory P>
     bool literals_hold(const GroundLiteralList<P>& literals) const;
 
+    template<DynamicPredicateCategory P, typename Predicate>
+        requires(std::is_invocable_r_v<bool, Predicate, GroundLiteral<P>>)
+    GroundLiteralList<P> get_literals_if(const GroundLiteralList<P>& literals, Predicate predicate) const;
+
+    template<DynamicPredicateCategory P>
+    GroundLiteralList<P> get_unsatisfied_literals(const GroundLiteralList<P>& literals) const;
+
+    template<DynamicPredicateCategory P>
+    GroundLiteralList<P> get_satisfied_literals(const GroundLiteralList<P>& literals) const;
+
     template<DynamicPredicateCategory P>
     const FlatBitset& get_atoms() const;
 
 private:
     std::reference_wrapper<const FlatState> m_data;
 };
+
+template<DynamicPredicateCategory P, typename Predicate>
+    requires(std::is_invocable_r_v<bool, Predicate, GroundLiteral<P>>)
+GroundLiteralList<P> State::get_literals_if(const GroundLiteralList<P>& literals, Predicate predicate) const
+{
+    GroundLiteralList<P> out_literals;
+    for (const auto& literal : literals)
+    {
+        if (predicate(literal))
+        {
+            out_literals.emplace_back(literal);
+        }
+    }
+    return out_literals;
+}
 
 // Compare the state index, since states returned by the `StateRepository` are already unique by their index.
 extern bool operator==(State lhs, State rhs);
