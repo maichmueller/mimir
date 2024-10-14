@@ -117,6 +117,12 @@ if(fmt_FOUND)
   message(STATUS "Found fmt: ${fmt_DIR} (found version ${fmt_VERSION})")
 endif()
 
+find_package(range-v3 REQUIRED PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
+if(range-v3_FOUND)
+    include_directories(${range-v3_INCLUDE_DIRS})
+    message(STATUS "Found range-v3: ${range-v3_DIR} (found version ${range-v3_VERSION})")
+endif()
+
 ##############################################################
 # Add library and executable targets
 ##############################################################
