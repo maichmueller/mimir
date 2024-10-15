@@ -1664,9 +1664,13 @@ void init_pymimir(py::module_& m)
         .def("get_goal_distances", &StateSpace::get_goal_distances, py::return_value_policy::reference_internal)
         .def("get_max_goal_distance", &StateSpace::get_max_goal_distance)
         .def("sample_state_with_goal_distance",
-             &StateSpace::sample_state_with_goal_distance,
+             [](const StateSpace& self, long goal_distance, uint64_t seed) {
+                 std::mt19937_64 rng{seed};
+                 self.sample_state_with_goal_distance(goal_distance, rng);
+             },
              py::return_value_policy::reference_internal,
-             py::arg("goal_distance"));
+             py::arg("goal_distance"),
+             py::arg("seed") = std::random_device{}());
 
     // Certificate
     py::class_<Certificate, std::shared_ptr<Certificate>>(m, "Certificate")
