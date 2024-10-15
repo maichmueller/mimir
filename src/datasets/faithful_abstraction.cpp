@@ -564,23 +564,23 @@ FaithfulAbstraction::get_adjacent_state_indices<BackwardTraversal>(Index state) 
 
 const StateMap<Index>& FaithfulAbstraction::get_concrete_to_abstract_state() const { return m_concrete_to_abstract_state; }
 
-Index FaithfulAbstraction::get_initial_state() const { return m_initial_state; }
+Index FaithfulAbstraction::get_initial_state_index() const { return m_initial_state; }
 
-const IndexSet& FaithfulAbstraction::get_goal_states() const { return m_goal_states; }
+const IndexSet& FaithfulAbstraction::get_goal_state_indices() const { return m_goal_states; }
 
-const IndexSet& FaithfulAbstraction::get_deadend_states() const { return m_deadend_states; }
+const IndexSet& FaithfulAbstraction::get_deadend_state_indices() const { return m_deadend_states; }
 
 size_t FaithfulAbstraction::get_num_states() const { return m_graph.get_num_vertices(); }
 
-size_t FaithfulAbstraction::get_num_goal_states() const { return get_goal_states().size(); }
+size_t FaithfulAbstraction::get_num_goal_states() const { return get_goal_state_indices().size(); }
 
-size_t FaithfulAbstraction::get_num_deadend_states() const { return get_deadend_states().size(); }
+size_t FaithfulAbstraction::get_num_deadend_states() const { return get_deadend_state_indices().size(); }
 
-bool FaithfulAbstraction::is_goal_state(Index state) const { return get_goal_states().count(state); }
+bool FaithfulAbstraction::is_goal_state(Index state) const { return get_goal_state_indices().count(state); }
 
-bool FaithfulAbstraction::is_deadend_state(Index state) const { return get_deadend_states().count(state); }
+bool FaithfulAbstraction::is_deadend_state(Index state) const { return get_deadend_state_indices().count(state); }
 
-bool FaithfulAbstraction::is_alive_state(Index state) const { return !(get_goal_states().count(state) || get_deadend_states().count(state)); }
+bool FaithfulAbstraction::is_alive_state(Index state) const { return !(get_goal_state_indices().count(state) || get_deadend_state_indices().count(state)); }
 
 /* Transitions */
 
@@ -662,7 +662,7 @@ std::ostream& operator<<(std::ostream& out, const FaithfulAbstraction& abstracti
     // 4. Draw initial state and dangling edge
     out << "Dangling [ label = \"\", style = invis ]\n"
         << "{ rank = same; Dangling }\n"
-        << "Dangling -> s" << abstraction.get_initial_state() << "\n";
+        << "Dangling -> s" << abstraction.get_initial_state_index() << "\n";
 
     // 5. Group states with same distance together
     for (auto it = abstraction.get_states_by_goal_distance().rbegin(); it != abstraction.get_states_by_goal_distance().rend(); ++it)

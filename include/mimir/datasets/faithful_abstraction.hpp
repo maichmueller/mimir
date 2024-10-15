@@ -205,9 +205,9 @@ public:
     template<IsTraversalDirection Direction>
     std::ranges::subrange<AdjacentVertexIndexConstIteratorType<Direction>> get_adjacent_state_indices(Index state) const;
     const StateMap<Index>& get_concrete_to_abstract_state() const;
-    Index get_initial_state() const;
-    const IndexSet& get_goal_states() const;
-    const IndexSet& get_deadend_states() const;
+    Index get_initial_state_index() const;
+    const IndexSet& get_goal_state_indices() const;
+    const IndexSet& get_deadend_state_indices() const;
     size_t get_num_states() const;
     size_t get_num_goal_states() const;
     size_t get_num_deadend_states() const;

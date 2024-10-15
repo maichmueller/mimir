@@ -162,45 +162,63 @@ public:
     const GraphType& get_graph() const;
 
     /* States */
-    State get_state(Index state) const;
-    auto get_states_view() const
+    template<IsTraversalDirection Direction>
+    auto get_adjacent_state_indices(Index state) const
     {
-        return std::views::transform(m_graph.get_vertices(), [&](const auto& vertex) { return mimir::get_state(vertex); });
+        return m_graph.get_adjacent_vertex_indices<Direction>(state);
     }
-    const StateVertexList& get_state_vertices() const;
-    const StateVertex& get_state_vertex(Index state) const;
     template<IsTraversalDirection Direction>
-    std::ranges::subrange<AdjacentVertexConstIteratorType<Direction>> get_adjacent_states(Index state) const;
-    template<IsTraversalDirection Direction>
-    std::ranges::subrange<AdjacentVertexIndexConstIteratorType<Direction>> get_adjacent_state_indices(Index state) const;
-    Index get_state_index(State state) const;
-    Index get_initial_state() const;
-    const IndexSet& get_goal_states() const;
-    const IndexSet& get_deadend_states() const;
+    auto get_adjacent_states(State state) const
+    {
+        return m_graph.get_adjacent_vertex_indices<Direction>(get_index(state))
+               | std::views::transform([&](Index vertex_index) { return mimir::get_state(get_graph().get_vertex(vertex_index)); });
+    }
+    Index get_index(State state) const;
+    State get_state(Index state) const;
+    Index get_initial_state_index() const;
+    State get_initial_state() const;
+    size_t get_num_deadend_states() const;
+    bool is_goal_state(State state) const;
+    bool is_goal_state(Index state) const;
+    bool is_deadend_state(State state) const;
+    bool is_deadend_state(Index state) const;
+    bool is_alive_state(State state) const;
+    bool is_alive_state(Index state) const;
+    const IndexSet& get_goal_state_indices() const;
+    const IndexSet& get_deadend_state_indices() const;
     size_t get_num_states() const;
     size_t get_num_goal_states() const;
-    size_t get_num_deadend_states() const;
-    bool is_goal_state(Index state) const;
-    bool is_deadend_state(Index state) const;
-    bool is_alive_state(Index state) const;
 
     /* Transitions */
     const GroundActionEdgeList& get_transitions() const;
-    template<IsTraversalDirection Direction>
-    std::ranges::subrange<AdjacentEdgeConstIteratorType<Direction>> get_adjacent_transitions(Index state) const;
-    template<IsTraversalDirection Direction>
-    std::ranges::subrange<AdjacentEdgeIndexConstIteratorType<Direction>> get_adjacent_transition_indices(Index state) const;
+    template<IsTraversalDirection Direction, typename StateT>
+        requires std::same_as<StateT, State> or std::same_as<StateT, Index>
+    auto get_adjacent_transitions(StateT state) const;
     ContinuousCost get_transition_cost(Index transition) const;
     size_t get_num_transitions() const;
 
     /* Distances */
     const ContinuousCostList& get_goal_distances() const;
     ContinuousCost get_goal_distance(Index state) const;
+    ContinuousCost get_goal_distance(State state) const;
     ContinuousCost get_max_goal_distance() const;
 
     /* Additional */
-    const std::map<ContinuousCost, IndexList>& get_states_by_goal_distance() const;
-    Index sample_state_with_goal_distance(ContinuousCost goal_distance) const;
+    const std::map<ContinuousCost, IndexList>& get_state_indices_by_goal_distance() const;
+    auto get_states_view_by_goal_distance(ContinuousCost goal_distance) const
+    {
+        return get_state_indices_by_goal_distance().at(goal_distance) | std::views::transform(AS_CPTR_LAMBDA(get_state));
+    }
+    template<typename RNGType>
+    Index sample_state_index_with_goal_distance(ContinuousCost goal_distance, RNGType& rng) const {
+            const auto& states = m_states_by_goal_distance.at(goal_distance);
+            const auto index = std::uniform_int_distribution<size_t> { 0ul, states.size() }(rng);
+            return states.at(index);
+    }
+    template<typename RNGType>
+    State sample_state_with_goal_distance(ContinuousCost goal_distance, RNGType& rng ) const {
+        return get_state(sample_state_index_with_goal_distance(goal_distance, rng));
+    }
 
 private:
     /* Meta data */
@@ -233,6 +251,29 @@ using StateSpaceList = std::vector<StateSpace>;
  */
 
 extern std::ostream& operator<<(std::ostream& out, const StateSpace& state_space);
+
+/**
+ * Implementation
+ */
+
+template<IsTraversalDirection Direction, typename StateT>
+    requires std::same_as<StateT, State> or std::same_as<StateT, Index>
+auto StateSpace::get_adjacent_transitions(StateT state) const
+{
+    return m_graph.get_adjacent_edges<Direction>(std::invoke(overload { [&](State state) { return get_index(state); }, std::identity {} }, state))
+           | std::views::transform(
+               [&](const GraphType::EdgeType& edge)
+               {
+                   if constexpr (std::same_as<StateT, State>)
+                   {
+                       return StateEdgeType { edge.get_index(), get_state(edge.get_source()), get_state(edge.get_target()) };
+                   }
+                   else
+                   {
+                       return edge;
+                   }
+               });
+}
 }
 
 #endif

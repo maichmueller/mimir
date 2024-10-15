@@ -71,9 +71,9 @@ private:
         virtual const std::shared_ptr<StateRepository>& get_ssg() const = 0;
 
         /* States */
-        virtual Index get_initial_state() const = 0;
-        virtual const IndexSet& get_goal_states() const = 0;
-        virtual const IndexSet& get_deadend_states() const = 0;
+        virtual Index get_initial_state_index() const = 0;
+        virtual const IndexSet& get_goal_state_indices() const = 0;
+        virtual const IndexSet& get_deadend_state_indices() const = 0;
         virtual size_t get_num_states() const = 0;
         virtual size_t get_num_goal_states() const = 0;
         virtual size_t get_num_deadend_states() const = 0;
@@ -127,9 +127,9 @@ private:
         const std::shared_ptr<StateRepository>& get_ssg() const override { return m_abstraction.get_ssg(); }
 
         /* States */
-        Index get_initial_state() const override { return m_abstraction.get_initial_state(); }
-        const IndexSet& get_goal_states() const override { return m_abstraction.get_goal_states(); }
-        const IndexSet& get_deadend_states() const override { return m_abstraction.get_deadend_states(); }
+        Index get_initial_state_index() const override { return m_abstraction.get_initial_state_index(); }
+        const IndexSet& get_goal_state_indices() const override { return m_abstraction.get_goal_state_indices(); }
+        const IndexSet& get_deadend_state_indices() const override { return m_abstraction.get_deadend_state_indices(); }
         std::ranges::subrange<StaticAdjacentVertexIndexConstIterator<GroundActionsEdge, ForwardTraversal>>
         get_forward_adjacent_state_indices(Index state) const override
         {
@@ -213,9 +213,9 @@ public:
     const std::shared_ptr<StateRepository>& get_ssg() const { return m_pimpl->get_ssg(); }
 
     /* States */
-    Index get_initial_state() const { return m_pimpl->get_initial_state(); }
-    const IndexSet& get_goal_states() const { return m_pimpl->get_goal_states(); }
-    const IndexSet& get_deadend_states() const { return m_pimpl->get_deadend_states(); }
+    Index get_initial_state_index() const { return m_pimpl->get_initial_state_index(); }
+    const IndexSet& get_goal_state_indices() const { return m_pimpl->get_goal_state_indices(); }
+    const IndexSet& get_deadend_state_indices() const { return m_pimpl->get_deadend_state_indices(); }
     template<IsTraversalDirection Direction>
     std::ranges::subrange<StaticAdjacentVertexIndexConstIterator<GroundActionsEdge, Direction>> get_adjacent_state_indices(Index state) const
     {

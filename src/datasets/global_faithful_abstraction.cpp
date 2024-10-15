@@ -138,7 +138,7 @@ std::vector<GlobalFaithfulAbstraction> GlobalFaithfulAbstraction::create(
     for (auto& faithful_abstraction : faithful_abstractions)
     {
         auto has_zero_non_isomorphic_states = certificate_to_global_state.count(
-            mimir::get_certificate(faithful_abstraction.get_graph().get_vertices().at(faithful_abstraction.get_initial_state())));
+            mimir::get_certificate(faithful_abstraction.get_graph().get_vertices().at(faithful_abstraction.get_initial_state_index())));
 
         if (has_zero_non_isomorphic_states)
         {
@@ -288,23 +288,23 @@ const StateMap<Index>& GlobalFaithfulAbstraction::get_concrete_to_abstract_state
 
 const std::unordered_map<Index, Index>& GlobalFaithfulAbstraction::get_global_state_index_to_state_index() const { return m_global_state_index_to_state_index; }
 
-Index GlobalFaithfulAbstraction::get_initial_state() const { return m_abstractions->at(m_index).get_initial_state(); }
+Index GlobalFaithfulAbstraction::get_initial_state_index() const { return m_abstractions->at(m_index).get_initial_state_index(); }
 
-const IndexSet& GlobalFaithfulAbstraction::get_goal_states() const { return m_abstractions->at(m_index).get_goal_states(); }
+const IndexSet& GlobalFaithfulAbstraction::get_goal_state_indices() const { return m_abstractions->at(m_index).get_goal_state_indices(); }
 
-const IndexSet& GlobalFaithfulAbstraction::get_deadend_states() const { return m_abstractions->at(m_index).get_deadend_states(); }
+const IndexSet& GlobalFaithfulAbstraction::get_deadend_state_indices() const { return m_abstractions->at(m_index).get_deadend_state_indices(); }
 
 size_t GlobalFaithfulAbstraction::get_num_states() const { return get_states().size(); }
 
-size_t GlobalFaithfulAbstraction::get_num_goal_states() const { return get_goal_states().size(); }
+size_t GlobalFaithfulAbstraction::get_num_goal_states() const { return get_goal_state_indices().size(); }
 
-size_t GlobalFaithfulAbstraction::get_num_deadend_states() const { return get_deadend_states().size(); }
+size_t GlobalFaithfulAbstraction::get_num_deadend_states() const { return get_deadend_state_indices().size(); }
 
-bool GlobalFaithfulAbstraction::is_goal_state(Index state) const { return get_goal_states().count(state); }
+bool GlobalFaithfulAbstraction::is_goal_state(Index state) const { return get_goal_state_indices().count(state); }
 
-bool GlobalFaithfulAbstraction::is_deadend_state(Index state) const { return get_deadend_states().count(state); }
+bool GlobalFaithfulAbstraction::is_deadend_state(Index state) const { return get_deadend_state_indices().count(state); }
 
-bool GlobalFaithfulAbstraction::is_alive_state(Index state) const { return !(get_goal_states().count(state) || get_deadend_states().count(state)); }
+bool GlobalFaithfulAbstraction::is_alive_state(Index state) const { return !(get_goal_state_indices().count(state) || get_deadend_state_indices().count(state)); }
 
 size_t GlobalFaithfulAbstraction::get_num_isomorphic_states() const { return m_num_isomorphic_states; }
 
@@ -398,7 +398,7 @@ std::ostream& operator<<(std::ostream& out, const GlobalFaithfulAbstraction& abs
     // 4. Draw initial state and dangling edge
     out << "Dangling [ label = \"\", style = invis ]\n"
         << "{ rank = same; Dangling }\n"
-        << "Dangling -> s" << abstraction.get_initial_state() << "\n";
+        << "Dangling -> s" << abstraction.get_initial_state_index() << "\n";
 
     // 5. Group states with same distance together
     for (auto it = abstraction.get_states_by_goal_distance().rbegin(); it != abstraction.get_states_by_goal_distance().rend(); ++it)

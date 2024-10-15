@@ -125,7 +125,7 @@ TEST(MimirTests, GraphsDijkstraShortestPathTest)
         const auto [predecessor_map, distance_map] = dijkstra_shortest_paths(graph, edge_costs, states.begin(), states.end());
 
         EXPECT_EQ(distance_map.at(state_space.get_initial_state()), 0);
-        for (const auto& goal_state : state_space.get_goal_states())
+        for (const auto& goal_state : state_space.get_goal_state_indices())
         {
             EXPECT_GT(distance_map.at(goal_state), 0);
         }
@@ -140,7 +140,7 @@ TEST(MimirTests, GraphsDijkstraShortestPathTest)
 
         const auto edge_costs = std::vector<double>(state_space.get_num_transitions(), 1);
         const auto [predecessor_map, distance_map] =
-            dijkstra_shortest_paths(graph, edge_costs, state_space.get_goal_states().begin(), state_space.get_goal_states().end());
+            dijkstra_shortest_paths(graph, edge_costs, state_space.get_goal_state_indices().begin(), state_space.get_goal_state_indices().end());
 
         EXPECT_EQ(distance_map.at(state_space.get_initial_state()), 4);
         // There is one deadend state.
@@ -160,7 +160,7 @@ TEST(MimirTests, GraphsBreadthFirstSearchTest)
         const auto [predecessor_map, distance_map] = breadth_first_search(graph, states.begin(), states.end());
 
         EXPECT_EQ(distance_map.at(state_space.get_initial_state()), 0);
-        for (const auto& goal_state : state_space.get_goal_states())
+        for (const auto& goal_state : state_space.get_goal_state_indices())
         {
             EXPECT_GT(distance_map.at(goal_state), 0);
         }
@@ -173,7 +173,7 @@ TEST(MimirTests, GraphsBreadthFirstSearchTest)
         const auto state_space = StateSpace::create(domain_file, problem_file).value();
         auto graph = TraversalDirectionTaggedType(state_space.get_graph(), BackwardTraversal());
 
-        const auto [predecessor_map, distance_map] = breadth_first_search(graph, state_space.get_goal_states().begin(), state_space.get_goal_states().end());
+        const auto [predecessor_map, distance_map] = breadth_first_search(graph, state_space.get_goal_state_indices().begin(), state_space.get_goal_state_indices().end());
 
         EXPECT_EQ(distance_map.at(state_space.get_initial_state()), 4);
         // There is one deadend state.
@@ -193,7 +193,7 @@ TEST(MimirTests, GraphsFloydWarshallAllPairsShortestPathTest)
         const auto distance_matrix = floyd_warshall_all_pairs_shortest_paths(graph, edge_costs);
 
         auto min_goal_distance = std::numeric_limits<ContinuousCost>::infinity();
-        for (const auto& goal_state : state_space.get_goal_states())
+        for (const auto& goal_state : state_space.get_goal_state_indices())
         {
             min_goal_distance = std::min(min_goal_distance, distance_matrix[goal_state][state_space.get_initial_state()]);
         }
@@ -220,7 +220,7 @@ TEST(MimirTests, GraphsFloydWarshallAllPairsShortestPathTest)
         const auto distance_matrix = floyd_warshall_all_pairs_shortest_paths(graph, edge_costs);
 
         auto min_goal_distance = std::numeric_limits<ContinuousCost>::infinity();
-        for (const auto& goal_state : state_space.get_goal_states())
+        for (const auto& goal_state : state_space.get_goal_state_indices())
         {
             min_goal_distance = std::min(min_goal_distance, distance_matrix[goal_state][state_space.get_initial_state()]);
         }
