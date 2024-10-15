@@ -1,6 +1,9 @@
 #include "init_declarations.hpp"
 #include "mimir/formalism/ground_atom.hpp"
 #include "mimir/search/condition_grounders/conjunction_grounder.hpp"
+#include "utils.hpp"
+
+#include <range/v3/all.hpp>
 
 using namespace mimir;
 
@@ -130,48 +133,8 @@ PYBIND11_MAKE_OPAQUE(GroundActionList);
  * Common
  */
 
-inline py::object cast_safe(const auto& obj)
+namespace pymimir
 {
-    auto pyobj = py::cast(obj);
-    if (!pyobj)
-    {
-        throw py::error_already_set();
-    }
-    return pyobj;
-}
-
-inline void insert_into_list(const py::object& self, py::list& lst, const std::ranges::range auto& rng, size_t& counter)
-{
-    for (const auto& elem : rng)
-    {
-        auto pyelem = cast_safe(elem);
-        py::detail::keep_alive_impl(pyelem, self);
-        lst[counter] = std::move(pyelem);
-        ++counter;
-    }
-}
-
-inline void insert_into_list(py::list& lst, const std::ranges::range auto& rng, size_t& counter)
-{
-    for (const auto& elem : rng)
-    {
-        auto pyelem = cast_safe(elem);
-        lst[counter] = std::move(pyelem);
-        ++counter;
-    }
-}
-
-inline void insert_into_list(const py::object& self, py::list& lst, const std::ranges::range auto& rng)
-{
-    size_t counter = 0;
-    insert_into_list(self, lst, rng, counter);
-}
-
-inline void insert_into_list(py::list& lst, const std::ranges::range auto& rng)
-{
-    size_t counter = 0;
-    insert_into_list(lst, rng, counter);
-}
 
 /// @brief Binds a std::span<T> as an unmodifiable python object.
 /// Modifiable std::span are more complicated.
