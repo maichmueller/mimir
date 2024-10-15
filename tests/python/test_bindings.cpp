@@ -54,10 +54,9 @@ TEST_F(PymimirFixture, get_goal_condition)
     EXPECT_GE(py::len(goals), py::len(fluent_goals) + py::len(derived_goals) + py::len(static_goals));
 }
 
-
-TEST_F(PymimirFixture, state_space_state_iter)
+TEST_F(PymimirFixture, state_space_states)
 {
-    py::iterator state_space_iter;
+    py::iterator py_iter;
     // we create a scope to ensure that the state_space_iter actually keeps the c++ object alive during its own lifetime
     auto [states_view, num_states] = [&]
     {
@@ -66,19 +65,19 @@ TEST_F(PymimirFixture, state_space_state_iter)
                 .attr("StateSpace")
                 .attr("create")(std::string(project_dir) + "data/blocks_4/domain.pddl", std::string(project_dir) + "data/blocks_4/test_problem.pddl");
         const auto& state_space_cpp = py::cast<const mimir::StateSpace&>(state_space);
-        state_space_iter = state_space.attr("get_states_iter")();
-        return std::pair{state_space_cpp.get_states_view(), state_space_cpp.get_num_states()};
+        py_iter = state_space.attr("__iter__")();
+        auto b = std::ranges::begin(state_space_cpp);
+        auto e = std::ranges::end(state_space_cpp);
+        return std::pair { std::pair{b,e}, state_space_cpp.get_num_states() };
     }();
-    auto state_view_iter = states_view.begin();
-    auto state_view_end = states_view.end();
+    auto [state_iter, state_end] = states_view;
     size_t count = 0;
     for (; count < num_states; ++count)
     {
-        auto py_state = py::cast<mimir::State>(*state_space_iter);
-        auto cpp_state = *state_view_iter;
-        EXPECT_EQ(py_state, cpp_state);
-        std::ranges::advance(state_space_iter, 1, state_space_iter.end());
-        std::ranges::advance(state_view_iter, 1, state_view_end);
+        auto py_state = py::cast<mimir::State>(*(++py_iter));
+        auto cpp_state = *state_iter;
+        EXPECT_EQ(py_state.get_index(), cpp_state.get_index());
+        std::ranges::advance(state_iter, 1, state_end);
     }
     EXPECT_EQ(count, num_states);
 }

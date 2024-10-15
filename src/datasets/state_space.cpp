@@ -48,7 +48,7 @@ StateSpace::StateSpace(Problem problem,
     m_ssg(std::move(ssg)),
     m_graph(std::move(graph)),
     m_state_to_index(std::move(state_to_index)),
-    m_initial_state(std::move(initial_state)),
+    m_initial_state(initial_state),
     m_goal_states(std::move(goal_states)),
     m_deadend_states(std::move(deadend_states)),
     m_goal_distances(std::move(goal_distances)),
@@ -58,6 +58,13 @@ StateSpace::StateSpace(Problem problem,
     {
         m_states_by_goal_distance[m_goal_distances.at(state_index)].push_back(state_index);
     }
+}
+
+std::optional<StateSpace> StateSpace::create(Problem problem, const std::shared_ptr<PDDLFactories>& factories, StateSpaceOptions options)
+{
+    auto aag = std::make_shared<GroundedApplicableActionGenerator>(problem, factories);
+    auto ssg = std::make_shared<StateRepository>(aag);
+    return StateSpace::create(problem, factories, aag, std::move(ssg), options);
 }
 
 std::optional<StateSpace> StateSpace::create(const fs::path& domain_filepath, const fs::path& problem_filepath, const StateSpaceOptions& options)
@@ -314,77 +321,34 @@ const std::shared_ptr<StateRepository>& StateSpace::get_ssg() const { return m_s
 /* Graph */
 const typename StateSpace::GraphType& StateSpace::get_graph() const { return m_graph; }
 
-/* States */
-const StateVertexList& StateSpace::get_state_vertices() const { return m_graph.get_vertices(); }
+State StateSpace::get_state(Index state) const { return mimir::get_state(m_graph.get_vertices().at(state)); }
 
-const StateVertex& StateSpace::get_state_vertex(Index state) const { return m_graph.get_vertices().at(state); }
+Index StateSpace::get_index(State state) const { return m_state_to_index.at(state); }
 
-template<IsTraversalDirection Direction>
-std::ranges::subrange<StateSpace::AdjacentVertexConstIteratorType<Direction>> StateSpace::get_adjacent_states(Index state) const
-{
-    return m_graph.get_adjacent_vertices<Direction>(state);
-}
+Index StateSpace::get_initial_state_index() const { return m_initial_state; }
+State StateSpace::get_initial_state() const { return get_state(m_initial_state); }
 
-template std::ranges::subrange<StateSpace::AdjacentVertexConstIteratorType<ForwardTraversal>>
-StateSpace::get_adjacent_states<ForwardTraversal>(Index state) const;
-template std::ranges::subrange<StateSpace::AdjacentVertexConstIteratorType<BackwardTraversal>>
-StateSpace::get_adjacent_states<BackwardTraversal>(Index state) const;
+const IndexSet& StateSpace::get_goal_state_indices() const { return m_goal_states; }
 
-template<IsTraversalDirection Direction>
-std::ranges::subrange<StateSpace::AdjacentVertexIndexConstIteratorType<Direction>> StateSpace::get_adjacent_state_indices(Index state) const
-{
-    return m_graph.get_adjacent_vertex_indices<Direction>(state);
-}
-
-template std::ranges::subrange<StateSpace::AdjacentVertexIndexConstIteratorType<ForwardTraversal>>
-StateSpace::get_adjacent_state_indices<ForwardTraversal>(Index state) const;
-template std::ranges::subrange<StateSpace::AdjacentVertexIndexConstIteratorType<BackwardTraversal>>
-StateSpace::get_adjacent_state_indices<BackwardTraversal>(Index state) const;
-
-Index StateSpace::get_state_index(State state) const { return m_state_to_index.at(state); }
-
-Index StateSpace::get_initial_state() const { return m_initial_state; }
-
-const IndexSet& StateSpace::get_goal_states() const { return m_goal_states; }
-
-const IndexSet& StateSpace::get_deadend_states() const { return m_deadend_states; }
+const IndexSet& StateSpace::get_deadend_state_indices() const { return m_deadend_states; }
 
 size_t StateSpace::get_num_states() const { return m_graph.get_num_vertices(); }
 
-size_t StateSpace::get_num_goal_states() const { return get_goal_states().size(); }
+size_t StateSpace::get_num_goal_states() const { return get_goal_state_indices().size(); }
 
-size_t StateSpace::get_num_deadend_states() const { return get_deadend_states().size(); }
+size_t StateSpace::get_num_deadend_states() const { return get_deadend_state_indices().size(); }
 
-bool StateSpace::is_goal_state(Index state) const { return get_goal_states().count(state); }
+bool StateSpace::is_goal_state(Index state) const { return get_goal_state_indices().count(state); }
+bool StateSpace::is_goal_state(State state) const { return is_goal_state(get_index(state)); }
 
-bool StateSpace::is_deadend_state(Index state) const { return get_deadend_states().count(state); }
+bool StateSpace::is_deadend_state(Index state) const { return get_deadend_state_indices().count(state); }
+bool StateSpace::is_deadend_state(State state) const { return is_deadend_state(get_index(state)); }
 
-bool StateSpace::is_alive_state(Index state) const { return !(get_goal_states().count(state) || get_deadend_states().count(state)); }
+bool StateSpace::is_alive_state(Index state) const { return !(get_goal_state_indices().count(state) || get_deadend_state_indices().count(state)); }
+bool StateSpace::is_alive_state(State state) const { return is_alive_state(get_index(state)); }
 
 /* Transitions */
 const GroundActionEdgeList& StateSpace::get_transitions() const { return m_graph.get_edges(); }
-
-template<IsTraversalDirection Direction>
-std::ranges::subrange<StateSpace::AdjacentEdgeConstIteratorType<Direction>> StateSpace::get_adjacent_transitions(Index state) const
-{
-    return m_graph.get_adjacent_edges<Direction>(state);
-}
-
-template std::ranges::subrange<StateSpace::AdjacentEdgeConstIteratorType<ForwardTraversal>>
-StateSpace::get_adjacent_transitions<ForwardTraversal>(Index state) const;
-template std::ranges::subrange<StateSpace::AdjacentEdgeConstIteratorType<BackwardTraversal>>
-StateSpace::get_adjacent_transitions<BackwardTraversal>(Index state) const;
-
-template<IsTraversalDirection Direction>
-std::ranges::subrange<StateSpace::AdjacentEdgeIndexConstIteratorType<Direction>> StateSpace::get_adjacent_transition_indices(Index state) const
-{
-    return m_graph.get_adjacent_edge_indices<Direction>(state);
-}
-
-template std::ranges::subrange<StateSpace::AdjacentEdgeIndexConstIteratorType<ForwardTraversal>>
-StateSpace::get_adjacent_transition_indices<ForwardTraversal>(Index state) const;
-template std::ranges::subrange<StateSpace::AdjacentEdgeIndexConstIteratorType<BackwardTraversal>>
-StateSpace::get_adjacent_transition_indices<BackwardTraversal>(Index state) const;
 
 ContinuousCost StateSpace::get_transition_cost(Index transition) const { return (m_use_unit_cost_one) ? 1 : get_cost(m_graph.get_edges().at(transition)); }
 
@@ -395,22 +359,12 @@ const ContinuousCostList& StateSpace::get_goal_distances() const { return m_goal
 
 ContinuousCost StateSpace::get_goal_distance(Index state) const { return m_goal_distances.at(state); }
 
+ContinuousCost StateSpace::get_goal_distance(State state) const { return get_goal_distance(get_index(state)); }
+
 ContinuousCost StateSpace::get_max_goal_distance() const { return *std::max_element(m_goal_distances.begin(), m_goal_distances.end()); }
 
 /* Additional */
-const std::map<ContinuousCost, IndexList>& StateSpace::get_states_by_goal_distance() const { return m_states_by_goal_distance; }
-
-Index StateSpace::sample_state_with_goal_distance(ContinuousCost goal_distance) const
-{
-    const auto& states = m_states_by_goal_distance.at(goal_distance);
-    const auto index = std::rand() % static_cast<int>(states.size());
-    return states.at(index);
-}
-
-State StateSpace::get_state(Index state) const {
-    return mimir::get_state(m_graph.get_vertices().at(state));
-}
-
+const std::map<ContinuousCost, IndexList>& StateSpace::get_state_indices_by_goal_distance() const { return m_states_by_goal_distance; }
 
 /**
  * Pretty printing
@@ -446,10 +400,10 @@ std::ostream& operator<<(std::ostream& out, const StateSpace& state_space)
     // 4. Draw initial state and dangling edge
     out << "Dangling [ label = \"\", style = invis ]\n"
         << "{ rank = same; Dangling }\n"
-        << "Dangling -> s" << state_space.get_initial_state() << "\n";
+        << "Dangling -> s" << state_space.get_initial_state_index() << "\n";
 
     // 5. Group states with same distance together
-    for (auto it = state_space.get_states_by_goal_distance().rbegin(); it != state_space.get_states_by_goal_distance().rend(); ++it)
+    for (auto it = state_space.get_state_indices_by_goal_distance().rbegin(); it != state_space.get_state_indices_by_goal_distance().rend(); ++it)
     {
         const auto& [goal_distance, state_indices] = *it;
         out << "{ rank = same; ";

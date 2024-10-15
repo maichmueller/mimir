@@ -29,9 +29,11 @@
 #include "mimir/search/declarations.hpp"
 #include "mimir/search/state.hpp"
 #include "mimir/search/state_repository.hpp"
+#include "mimir/utils/utils.hpp"
 
 #include <cstddef>
 #include <optional>
+#include <random>
 #include <thread>
 #include <unordered_map>
 #include <vector>
@@ -80,6 +82,68 @@ public:
     template<IsTraversalDirection Direction>
     using AdjacentEdgeIndexConstIteratorType = typename GraphType::AdjacentEdgeIndexConstIteratorType<Direction>;
 
+    struct StateEdgeType
+    {
+        EdgeIndex index;
+        State source;
+        State target;
+    };
+
+    class StateIterator
+    {
+    public:
+        using iterator_type = GraphType::VertexList::const_iterator;
+        using value_type = State;
+        using difference_type = std::ptrdiff_t;
+        using pointer = value_type*;
+        using reference = const value_type&;
+        using iterator_category = std::forward_iterator_tag;
+
+        explicit StateIterator(const StateSpace& sp, iterator_type current) :
+            m_current_iter(current),
+            m_end_iter(std::ranges::end(sp.get_graph().get_vertices())),
+            m_current_value(make_value())
+        {
+            static_assert(std::sentinel_for<iterator_type, iterator_type>, "The iterator type must be a sentinel for itself.");
+        }
+
+        // Dereference the current element
+        reference operator*() const { return *m_current_value; }
+
+        // pre-increment
+        StateIterator& operator++()
+        {
+            ++m_current_iter;
+            m_current_value = make_value();
+            return *this;
+        }
+
+        // post-increment
+        StateIterator operator++(int)
+        {
+            StateIterator temp = *this;
+            ++(*this);
+            return temp;
+        }
+
+        bool operator==(const StateIterator& other) const { return m_current_iter == other.m_current_iter; }
+        bool operator==(const iterator_type& other) const { return m_current_iter == other; }
+
+    private:
+        iterator_type m_current_iter;
+        iterator_type m_end_iter;
+        std::optional<State> m_current_value;
+
+        [[nodiscard]] std::optional<value_type> make_value() const
+        {
+            if (m_current_iter != m_end_iter)
+            {
+                return mimir::get_state(*m_current_iter);
+            }
+            return std::nullopt;
+        }
+    };
+
 private:
     /// @brief Constructs a `StateSpace` from data.
     /// The create function calls this constructor and ensures that
@@ -110,6 +174,10 @@ public:
                                             std::shared_ptr<IApplicableActionGenerator> aag,
                                             std::shared_ptr<StateRepository> ssg,
                                             const StateSpaceOptions& options = StateSpaceOptions());
+
+    /// @brief Convenience function when sharing parsers, aags, ssgs is not relevant.
+    static std::optional<StateSpace>
+    create(mimir::Problem problem, const std::shared_ptr<PDDLFactories>& factories, StateSpaceOptions options = StateSpaceOptions());
 
     /// @brief Convenience function when sharing parsers, aags, ssgs is not relevant.
     static std::optional<StateSpace>
@@ -185,9 +253,14 @@ public:
     bool is_alive_state(State state) const;
     bool is_alive_state(Index state) const;
     const IndexSet& get_goal_state_indices() const;
+    auto get_goal_states_view() const { return get_goal_state_indices() | std::views::transform(AS_CPTR_LAMBDA(get_state)); }
     const IndexSet& get_deadend_state_indices() const;
+    auto get_deadend_states_view() const { return get_deadend_state_indices() | std::views::transform(AS_CPTR_LAMBDA(get_state)); }
     size_t get_num_states() const;
     size_t get_num_goal_states() const;
+
+    auto begin() const { return StateIterator(*this, std::ranges::begin(get_graph().get_vertices())); }
+    auto end() const { return std::ranges::end(get_graph().get_vertices()); }
 
     /* Transitions */
     const GroundActionEdgeList& get_transitions() const;
