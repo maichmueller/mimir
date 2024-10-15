@@ -100,4 +100,9 @@ template<typename T>
 using dereffed_t = decltype(deref(std::declval<T>()));
 }
 
+template < typename... Ts >
+struct overload: Ts... {
+    using Ts::operator()...;
+};
+
 #endif  // MIMIR_UTILS_UTILS_HPP
