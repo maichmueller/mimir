@@ -353,11 +353,13 @@ auto all_atoms_from_conditions(const Self& self, const py::object& py_factories)
     return lst;
 };
 
+}  // namespace pymimir
 /**
  * Bindings
  */
 void init_pymimir(py::module_& m)
 {
+    using namespace pymimir;
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     // Formalism
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
