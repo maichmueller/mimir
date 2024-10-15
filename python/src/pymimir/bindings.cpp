@@ -853,24 +853,10 @@ void init_pymimir(py::module_& m)
                  const auto& self = py::cast<const DomainImpl&>(py_domain);
                  size_t n_preds = self.get_predicates<Static>().size() + self.get_predicates<Fluent>().size() + self.get_predicates<Derived>().size();
                  py::list all_predicates(n_preds);
-                 int i = 0;
-                 auto append = [&](const auto& preds)
-                 {
-                     for (const auto& pred : preds)
-                     {
-                         auto py_pred = py::cast(pred);
-                         if (!py_pred)
-                         {
-                             throw py::error_already_set();
-                         }
-                         py::detail::keep_alive_impl(py_pred, py_domain);
-                         all_predicates[i] = py_pred;
-                         ++i;
-                     }
-                 };
-                 append(self.get_predicates<Static>());
-                 append(self.get_predicates<Fluent>());
-                 append(self.get_predicates<Derived>());
+                 size_t i = 0;
+                 insert_into_list(py_domain, all_predicates, self.get_predicates<Static>(), i);
+                 insert_into_list(py_domain, all_predicates, self.get_predicates<Fluent>(), i);
+                 insert_into_list(py_domain, all_predicates, self.get_predicates<Derived>(), i);
                  return all_predicates;
              })
         .def(
@@ -947,23 +933,9 @@ void init_pymimir(py::module_& m)
                      self.get_goal_condition<Static>().size() + self.get_goal_condition<Fluent>().size() + self.get_goal_condition<Derived>().size();
                  py::list all_goal_literals(n_goals);
                  int i = 0;
-                 auto append = [&](const auto& goals)
-                 {
-                     for (const auto& goal : goals)
-                     {
-                         auto py_goal = py::cast(goal);
-                         if (!py_goal)
-                         {
-                             throw py::error_already_set();
-                         }
-                         py::detail::keep_alive_impl(py_goal, py_problem);
-                         all_goal_literals[i] = py_goal;
-                         ++i;
-                     }
-                 };
-                 append(self.get_goal_condition<Static>());
-                 append(self.get_goal_condition<Fluent>());
-                 append(self.get_goal_condition<Derived>());
+                 insert_into_list(py_problem, all_goal_literals, self.get_goal_condition<Static>(), i);
+                 insert_into_list(py_problem, all_goal_literals, self.get_goal_condition<Fluent>(), i);
+                 insert_into_list(py_problem, all_goal_literals, self.get_goal_condition<Derived>(), i);
                  return all_goal_literals;
              });
     static_assert(!py::detail::vector_needs_copy<ProblemList>::value);  // Ensure return by reference + keep alive
@@ -983,10 +955,9 @@ void init_pymimir(py::module_& m)
 
                  py::list all_atoms(static_atom_factory.size() + fluent_atom_factory.size() + derived_atom_factory.size());
                  size_t i = 0;
-                 auto append = [&](const auto& atoms) { insert_into_list(py_factory, all_atoms, atoms, i); };
-                 append(static_atom_factory);
-                 append(fluent_atom_factory);
-                 append(derived_atom_factory);
+                 insert_into_list(py_factory, all_atoms, static_atom_factory, i);
+                 insert_into_list(py_factory, all_atoms, fluent_atom_factory, i);
+                 insert_into_list(py_factory, all_atoms, derived_atom_factory, i);
                  return all_atoms;
              })
         .def("get_static_ground_atom", &PDDLFactories::get_ground_atom<Static>, py::return_value_policy::reference_internal)
@@ -1103,7 +1074,7 @@ void init_pymimir(py::module_& m)
             [](const State& self, const GroundLiteralList<Fluent>& literals, const py::function& predicate)
             {
                 return self.get_literals_if<Fluent, bool (*)(const GroundLiteral<Fluent>&)>(literals,
-                                                                                            cast_safe<bool (*)(const GroundLiteral<Fluent>&)>(predicate));
+                                                                                            py::cast<bool (*)(const GroundLiteral<Fluent>&)>(predicate));
             },
             py::arg("literals"),
             py::arg("condition"))
