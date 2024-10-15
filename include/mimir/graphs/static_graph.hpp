@@ -379,7 +379,7 @@ std::ranges::subrange<typename StaticGraph<V, E>::VertexIndexConstIteratorType> 
 {
     auto range = std::ranges::iota_view<VertexIndex, VertexIndex>(0, get_num_vertices());
     static_assert(std::ranges::borrowed_range<decltype(range)>);
-    return std::ranges::subrange<VertexIndexConstIteratorType>(range.begin(), range.end());
+    return range;
 }
 
 template<IsVertex V, IsEdge E>
@@ -387,7 +387,7 @@ std::ranges::subrange<typename StaticGraph<V, E>::EdgeIndexConstIteratorType> St
 {
     auto range = std::ranges::iota_view<EdgeIndex, EdgeIndex>(0, get_num_edges());
     static_assert(std::ranges::borrowed_range<decltype(range)>);
-    return std::ranges::subrange<EdgeIndexConstIteratorType>(range.begin(), range.end());
+    return range;
 }
 
 template<IsVertex V, IsEdge E>
