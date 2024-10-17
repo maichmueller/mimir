@@ -84,19 +84,18 @@ template bool State::contains(GroundAtom<Derived> atom) const;
 template<DynamicPredicateCategory P>
 bool State::superset_of(const GroundAtomList<P>& atoms) const
 {
-    for (const auto& atom : atoms)
-    {
-        if (!contains(atom))
-        {
-            return false;
-        }
-    }
-
-    return true;
+    return std::ranges::all_of(atoms, AS_CPTR_LAMBDA(contains<P>));
 }
 
 template bool State::superset_of(const GroundAtomList<Fluent>& atoms) const;
 template bool State::superset_of(const GroundAtomList<Derived>& atoms) const;
+
+bool State::literal_holds(AnyGroundLiteral literal) const
+{
+    {
+        return std::visit(AS_CPTR_LAMBDA(literal_holds), literal);
+    }
+}
 
 template<DynamicPredicateCategory P>
 bool State::literal_holds(GroundLiteral<P> literal) const
@@ -110,38 +109,11 @@ template bool State::literal_holds(GroundLiteral<Derived> literal) const;
 template<DynamicPredicateCategory P>
 bool State::literals_hold(const GroundLiteralList<P>& literals) const
 {
-    for (const auto& literal : literals)
-    {
-        if (!literal_holds(literal))
-        {
-            return false;
-        }
-    }
-
-    return true;
+    return std::ranges::all_of(literals, AS_CPTR_LAMBDA(literal_holds<P>));
 }
 
 template bool State::literals_hold(const GroundLiteralList<Fluent>& literals) const;
 template bool State::literals_hold(const GroundLiteralList<Derived>& literals) const;
-
-template<DynamicPredicateCategory P>
-GroundLiteralList<P> State::get_unsatisfied_literals(const GroundLiteralList<P>& literals) const
-{
-    return get_literals_if(literals, std::not_fn(AS_CPTR_LAMBDA(literal_holds<P>)));
-    //    return get_literals_if(literals, [&](const auto& l) { return not literal_holds<P>(l); });
-}
-
-template GroundLiteralList<Fluent> State::get_unsatisfied_literals(const GroundLiteralList<Fluent>& literals) const;
-template GroundLiteralList<Derived> State::get_unsatisfied_literals(const GroundLiteralList<Derived>& literals) const;
-
-template<DynamicPredicateCategory P>
-GroundLiteralList<P> State::get_satisfied_literals(const GroundLiteralList<P>& literals) const
-{
-    return get_literals_if(literals, AS_CPTR_LAMBDA(literal_holds<P>));
-}
-
-template GroundLiteralList<Fluent> State::get_satisfied_literals(const GroundLiteralList<Fluent>& literals) const;
-template GroundLiteralList<Derived> State::get_satisfied_literals(const GroundLiteralList<Derived>& literals) const;
 
 template<DynamicPredicateCategory P>
 const FlatBitset& State::get_atoms() const

@@ -22,11 +22,14 @@
 #include "cista/containers/tuple.h"
 #include "cista/serialization.h"
 #include "cista/storage/unordered_set.h"
+#include "mimir/common/concepts.hpp"
 #include "mimir/common/types_cista.hpp"
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/search/declarations.hpp"
+#include "mimir/utils/utils.hpp"
 
 #include <ostream>
+#include <range/v3/range/conversion.hpp>
 #include <tuple>
 #include <unordered_map>
 
@@ -66,21 +69,29 @@ public:
     template<DynamicPredicateCategory P>
     bool superset_of(const GroundAtomList<P>& atoms) const;
 
+    bool literal_holds(AnyGroundLiteral literal) const;
+
+    template<typename LiteralT>
+        requires is_any_v<LiteralT, GroundLiteral<Fluent>, GroundLiteral<Derived>, GroundLiteral<Static>>
+    bool literal_holds(LiteralT literal) const;
+
     template<DynamicPredicateCategory P>
     bool literal_holds(GroundLiteral<P> literal) const;
 
     template<DynamicPredicateCategory P>
     bool literals_hold(const GroundLiteralList<P>& literals) const;
 
-    template<DynamicPredicateCategory P, typename Predicate>
-        requires(std::is_invocable_r_v<bool, Predicate, GroundLiteral<P>>)
-    GroundLiteralList<P> get_literals_if(const GroundLiteralList<P>& literals, Predicate predicate) const;
+    template<std::ranges::range LiteralRange>
+    auto get_unsatisfied_literals(LiteralRange&& literals) const
+    {
+        return literals | std::views::filter(std::not_fn(AS_CPTR_LAMBDA(literal_holds)));
+    }
 
-    template<DynamicPredicateCategory P>
-    GroundLiteralList<P> get_unsatisfied_literals(const GroundLiteralList<P>& literals) const;
-
-    template<DynamicPredicateCategory P>
-    GroundLiteralList<P> get_satisfied_literals(const GroundLiteralList<P>& literals) const;
+    template<std::ranges::range LiteralRange>
+    auto get_satisfied_literals(LiteralRange&& literals) const
+    {
+        return FWD(literals) | std::views::filter(AS_CPTR_LAMBDA(literal_holds));
+    }
 
     template<DynamicPredicateCategory P>
     const FlatBitset& get_atoms() const;
@@ -89,24 +100,31 @@ private:
     std::reference_wrapper<const FlatState> m_data;
 };
 
-template<DynamicPredicateCategory P, typename Predicate>
-    requires(std::is_invocable_r_v<bool, Predicate, GroundLiteral<P>>)
-GroundLiteralList<P> State::get_literals_if(const GroundLiteralList<P>& literals, Predicate predicate) const
-{
-    GroundLiteralList<P> out_literals;
-    for (const auto& literal : literals)
-    {
-        if (predicate(literal))
-        {
-            out_literals.emplace_back(literal);
-        }
-    }
-    return out_literals;
-}
-
 // Compare the state index, since states returned by the `StateRepository` are already unique by their index.
 extern bool operator==(State lhs, State rhs);
 extern bool operator!=(State lhs, State rhs);
+
+template<typename LiteralT>
+    requires is_any_v<LiteralT, GroundLiteral<Fluent>, GroundLiteral<Derived>, GroundLiteral<Static>>
+bool State::literal_holds(LiteralT literal) const
+{
+    if constexpr (std::is_same_v<LiteralT, GroundLiteral<Fluent>>)
+    {
+        return contains<Fluent>(literal);
+    }
+    else if constexpr (std::is_same_v<LiteralT, GroundLiteral<Derived>>)
+    {
+        return literal_holds<Derived>(literal);
+    }
+    else if constexpr (std::is_same_v<LiteralT, GroundLiteral<Static>>)
+    {
+        return true;
+    }
+    else
+    {
+        static_assert(dependent_false<LiteralT>::value, "Missing implementation for LiteralT.");
+    }
+}
 
 }
 

@@ -1,14 +1,14 @@
 #ifndef MIMIR_PYTHON_TEST_FIXTURE_HPP
 #define MIMIR_PYTHON_TEST_FIXTURE_HPP
 
-#include "init_declarations.hpp"
+#include "_bindings/init_declarations.hpp"
 
 #include <gtest/gtest.h>
 #include <pybind11/embed.h>  // embed python interpreter to use from c++
 #include <pybind11/pybind11.h>
 
 // necessary to replicate the module here to use it in-place (verify against python/src/mimir/main.cpp)
-PYBIND11_MODULE(_pymimir, m) { init_pymimir(m); }
+//PYBIND11_MODULE(_pymimir, m) { init_pymimir(m); }
 
 PyMODINIT_FUNC PyInit__pymimir();
 

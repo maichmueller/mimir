@@ -14,6 +14,7 @@
 #include "mimir/formalism/term.hpp"
 #include "mimir/formalism/variable.hpp"
 #include "mimir/utils/utils.hpp"
+#include "opaque_types.hpp"
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
@@ -22,7 +23,6 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>  // Necessary for automatic conversion of e.g. std::vectors
 #include <pybind11/stl_bind.h>
-
 #define STRINGIFY(x) #x
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
 
@@ -60,6 +60,44 @@ inline auto& def_opaque_vector_repr(auto& cls, const std::string& class_name, Re
 //
 // init - declarations:
 //
-void init_pymimir(pybind11::module_& m);
+#ifndef DECLARE_INIT_FUNC
+#define DECLARE_INIT_FUNC(name) void init_##name(pybind11::module_& m)
+#endif
+
+DECLARE_INIT_FUNC(pymimir);
+DECLARE_INIT_FUNC(enums);
+DECLARE_INIT_FUNC(aag);
+DECLARE_INIT_FUNC(atoms);
+DECLARE_INIT_FUNC(ground_atoms);
+DECLARE_INIT_FUNC(certificate);
+DECLARE_INIT_FUNC(conditional_effect);
+DECLARE_INIT_FUNC(algorithms);
+DECLARE_INIT_FUNC(literals);
+DECLARE_INIT_FUNC(axiom);
+DECLARE_INIT_FUNC(predicates);
+DECLARE_INIT_FUNC(numeric_fluent);
+DECLARE_INIT_FUNC(object);
+DECLARE_INIT_FUNC(variable);
+DECLARE_INIT_FUNC(termvariable);
+DECLARE_INIT_FUNC(termvariant);
+DECLARE_INIT_FUNC(termobject);
+DECLARE_INIT_FUNC(requirements);
+DECLARE_INIT_FUNC(function);
+DECLARE_INIT_FUNC(function_expression);
+DECLARE_INIT_FUNC(ground_function_expression);
+DECLARE_INIT_FUNC(optimization_metric);
+DECLARE_INIT_FUNC(effects);
+DECLARE_INIT_FUNC(actions);
+DECLARE_INIT_FUNC(domain);
+DECLARE_INIT_FUNC(problem);
+DECLARE_INIT_FUNC(pddl_factories);
+DECLARE_INIT_FUNC(state);
+DECLARE_INIT_FUNC(state_space);
+DECLARE_INIT_FUNC(strips_action_precondition);
+DECLARE_INIT_FUNC(abstraction);
+DECLARE_INIT_FUNC(tuple_graph);
+DECLARE_INIT_FUNC(static_digraph);
+DECLARE_INIT_FUNC(static_vertexcolored_graph);
+DECLARE_INIT_FUNC(heuristics);
 
 #endif  // MIMIR_INIT_DECLARATIONS_HPP
