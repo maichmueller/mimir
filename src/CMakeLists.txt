@@ -34,6 +34,7 @@ endif ()
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     target_compile_options(core PUBLIC -fconcepts-diagnostics-depth=10)
 endif ()
+target_compile_definitions(core PUBLIC -DDATA_DIR="${DATA_DIR}")
 
 target_link_libraries(core loki::parsers)
 target_link_libraries(core Nauty::Nauty)
@@ -44,7 +45,7 @@ target_link_libraries(core range-v3::range-v3)
 # Use include depending on building or using from installed location
 target_include_directories(core
         PUBLIC
-        "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>"
+        "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
 )
 

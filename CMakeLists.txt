@@ -58,11 +58,9 @@ else()
     set(CMAKE_CXX_FLAGS_DEBUG "-O0 -Wall -g3 -ggdb")
 endif()
 
-# set(CMAKE_BUILD_TYPE "Release")
 message(STATUS "Build configuration: ${CMAKE_BUILD_TYPE}")
 
 set(DATA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/data/")
-add_definitions(-DDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data/")
 message("DATA_DIR: ${DATA_DIR}")
 
 ##############################################################
@@ -93,35 +91,71 @@ configure_ccache()
 # Boost
 # Find Boost headers only according to https://cmake.org/cmake/help/latest/module/FindBoost.html
 configure_boost()
-find_package(Boost ${BOOST_MIN_VERSION} REQUIRED COMPONENTS iostreams PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
-if(Boost_FOUND)
-  include_directories(${Boost_INCLUDE_DIRS})
-  message(STATUS "Found Boost: ${Boost_DIR} (found version ${Boost_VERSION})")
-endif()
+find_package(Boost ${BOOST_MIN_VERSION} REQUIRED COMPONENTS iostreams)
+if (Boost_FOUND)
+    include_directories(${Boost_INCLUDE_DIRS})
+    message(STATUS "Found Boost: ${Boost_DIR} (found version ${Boost_VERSION})")
+endif ()
+include(ExternalProject)
+
+# this is where we expect to find the nauty library if installed already
+list(APPEND CMAKE_PREFIX_PATH
+        ${CMAKE_BINARY_DIR}/deps/install
+)
+find_package(Nauty)
+if (NOT Nauty_FOUND)
+    message(STATUS "Nauty not found. Downloading and configuring from source.")
+    execute_process(
+            COMMAND ${CMAKE_COMMAND} -G ${CMAKE_GENERATOR} -S ${CMAKE_CURRENT_SOURCE_DIR}/dependencies -B ${CMAKE_BINARY_DIR}/deps/build -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/deps/install -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+    )
+    message(STATUS "Building Nauty.")
+    execute_process(
+            COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}/deps/build --parallel
+
+    )
+    message(STATUS "Installing Nauty.")
+    execute_process(
+            COMMAND ${CMAKE_COMMAND} --install ${CMAKE_BINARY_DIR}/deps/build --config Release
+
+    )
+    find_package(Nauty REQUIRED)
+endif ()
+
+include_directories(${Nauty_INCLUDE_DIR})
+message(STATUS "Found Nauty: ${NAUTY_LIBRARY} ${NAUTY_INCLUDE_DIR}")
 
 find_package(ZLIB REQUIRED)
 
-configure_loki()
-find_package(loki ${LOKI_MIN_VERSION} COMPONENTS parsers REQUIRED PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
+include(CPM.cmake)
+CPMAddPackage(
+        NAME loki  # The unique name of the dependency (should be the exported target's name)
+        GIT_TAG 19c18cd # The minimum version of the dependency (optional, defaults to 0)
+        # Configuration options passed to the dependency (optional)
+        CPM_USE_LOCAL_PACKAGES TRUE
+        SYSTEM TRUE
+        DOWNLOAD_ONLY FALSE       # If set, the project is downloaded, but not configured (optional)
+        GITHUB_REPOSITORY maichmueller/Loki
+        OPTIONS "BUILD_TESTS=OFF"
+)
 
-# TODO(Dominik): NO_DEFAULT_PATH does not work
-find_package(Nauty REQUIRED)
-if(Nauty_FOUND)
-  include_directories(${Nauty_INCLUDE_DIR})
-  message(STATUS "Found Nauty: ${NAUTY_LIBRARY} ${NAUTY_INCLUDE_DIR}")
-endif()
+find_package(loki ${LOKI_MIN_VERSION} COMPONENTS parsers REQUIRED)
 
-find_package(fmt REQUIRED PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
-if(fmt_FOUND)
-  include_directories(${fmt_INCLUDE_DIRS})
-  message(STATUS "Found fmt: ${fmt_DIR} (found version ${fmt_VERSION})")
-endif()
+if (nauty_FOUND)
+    include_directories(${nauty_INCLUDE_DIR})
+    message(STATUS "Found Nauty: ${NAUTY_LIBRARY} ${NAUTY_INCLUDE_DIR}")
+endif ()
 
-find_package(range-v3 REQUIRED PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
-if(range-v3_FOUND)
+find_package(fmt REQUIRED)
+if (fmt_FOUND)
+    include_directories(${fmt_INCLUDE_DIRS})
+    message(STATUS "Found fmt: ${fmt_DIR} (found version ${fmt_VERSION})")
+endif ()
+
+find_package(range-v3 REQUIRED)
+if (range-v3_FOUND)
     include_directories(${range-v3_INCLUDE_DIRS})
     message(STATUS "Found range-v3: ${range-v3_DIR} (found version ${range-v3_VERSION})")
-endif()
+endif ()
 
 ##############################################################
 # Add library and executable targets
