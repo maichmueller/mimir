@@ -1,9 +1,6 @@
 name: Build Wheels
 
-on:
-  push:
-    branches:
-      - main
+on: [push]
 
 jobs:
   build_wheels:
@@ -12,16 +9,12 @@ jobs:
       matrix:
         os: [ubuntu-latest]
 
-    if: github.repository_owner == 'simon-stahlberg'
-
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
-      with:
-        ref: main
+      uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: "3.10"
 
@@ -35,8 +28,9 @@ jobs:
       env:
         CIBW_BUILD_VERBOSITY: "1"
 
-    - name: Upload to PyPI
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-      run: twine upload --skip-existing --repository-url https://upload.pypi.org/legacy/ wheelhouse/*
+#    - name: Upload to PyPI
+#      if: github.repository_owner == 'simon-stahlberg'
+#      env:
+#        TWINE_USERNAME: __token__
+#        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+#      run: twine upload --skip-existing --repository-url https://upload.pypi.org/legacy/ wheelhouse/*

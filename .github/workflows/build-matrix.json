@@ -1,0 +1,72 @@
+[
+  {
+    "os": "ubuntu-24.04",
+    "build_type": "Debug",
+    "cc": "gcc",
+    "cxx": "g++",
+    "compiler_version": 14
+  },
+  {
+    "os": "ubuntu-24.04",
+    "build_type": "Release",
+    "cc": "gcc",
+    "cxx": "g++",
+    "compiler_version": 14
+  },
+  {
+    "os": "ubuntu-24.04",
+    "build_type": "Debug",
+    "cc": "gcc",
+    "cxx": "g++",
+    "compiler_version": 13
+  },
+  {
+    "os": "ubuntu-24.04",
+    "build_type": "Release",
+    "cc": "gcc",
+    "cxx": "g++",
+    "compiler_version": 13
+  },
+  {
+    "os": "ubuntu-24.04",
+    "build_type": "Debug",
+    "cc": "gcc",
+    "cxx": "g++",
+    "compiler_version": 12
+  },
+  {
+    "os": "ubuntu-24.04",
+    "build_type": "Release",
+    "cc": "gcc",
+    "cxx": "g++",
+    "compiler_version": 12
+  },
+  {
+    "os": "ubuntu-24.04",
+    "build_type": "Release",
+    "cc": "clang",
+    "cxx": "clang++",
+    "compiler_version": 16
+  },
+  {
+    "os": "ubuntu-24.04",
+    "build_type": "Release",
+    "cc": "clang",
+    "cxx": "clang++",
+    "compiler_version": 17
+  },
+  {
+    "os": "ubuntu-24.04",
+    "build_type": "Release",
+    "cc": "clang",
+    "cxx": "clang++",
+    "compiler_version": 18
+  },
+  {
+    "os": "macos-latest",
+    "build_type": "Release",
+    "cc": "clang",
+    "cxx": "clang++",
+    "compiler_version": 15
+  }
+]

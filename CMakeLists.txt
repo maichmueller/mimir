@@ -37,26 +37,26 @@ option(BUILD_PROFILING "Build" OFF)
 # make cache variables for install destinations
 include(GNUInstallDirs)
 
-if(MSVC)
-    if(NOT CMAKE_BUILD_TYPE)
+if (MSVC)
+    if (NOT CMAKE_BUILD_TYPE)
         set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
-    endif()
+    endif ()
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W1 /EHsc /bigobj /MP")
     string(APPEND CMAKE_EXE_LINKER_FLAGS " /IGNORE:4006,4044,4075")
-else()
-    if(NOT CMAKE_BUILD_TYPE)
+else ()
+    if (NOT CMAKE_BUILD_TYPE)
         set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
-    endif()
+    endif ()
     # TODO: Add -Wextra and fix all warnings
-    if(COMPILER_ID MATCHES "GNU")
+    if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto=auto")
     endif ()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
     set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -DNDEBUG")
     set(CMAKE_CXX_FLAGS_PROFILING "-O3 -Wall -pg")
     set(CMAKE_CXX_FLAGS_DEBUG "-O0 -Wall -g3 -ggdb")
-endif()
+endif ()
 
 message(STATUS "Build configuration: ${CMAKE_BUILD_TYPE}")
 
@@ -68,7 +68,7 @@ message("DATA_DIR: ${DATA_DIR}")
 ##############################################################
 
 list(APPEND CMAKE_MODULE_PATH
-  "${PROJECT_SOURCE_DIR}/cmake"
+        "${PROJECT_SOURCE_DIR}/cmake"
 )
 include("configure_boost")
 include("configure_ccache")
@@ -105,57 +105,79 @@ list(APPEND CMAKE_PREFIX_PATH
 find_package(Nauty)
 if (NOT Nauty_FOUND)
     message(STATUS "Nauty not found. Downloading and configuring from source.")
+    configure_file(
+            ${PROJECT_SOURCE_DIR}/dependencies/nauty/CMakeLists.txt
+            ${CMAKE_BINARY_DIR}/deps/nauty/CMakeLists.txt
+            COPYONLY
+    )
     execute_process(
-            COMMAND ${CMAKE_COMMAND} -G ${CMAKE_GENERATOR} -S ${CMAKE_CURRENT_SOURCE_DIR}/dependencies -B ${CMAKE_BINARY_DIR}/deps/build -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/deps/install -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+            COMMAND ${CMAKE_COMMAND}
+            -S ${CMAKE_BINARY_DIR}/deps/nauty
+            -B ${CMAKE_BINARY_DIR}/deps/build/nauty
+            -G ${CMAKE_GENERATOR}
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/deps/install
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
     )
     message(STATUS "Building Nauty.")
     execute_process(
-            COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}/deps/build --parallel
-
+            COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}/deps/build/nauty --parallel
     )
     message(STATUS "Installing Nauty.")
     execute_process(
-            COMMAND ${CMAKE_COMMAND} --install ${CMAKE_BINARY_DIR}/deps/build --config Release
-
+            COMMAND ${CMAKE_COMMAND} --install ${CMAKE_BINARY_DIR}/deps/build/nauty --config Release
     )
     find_package(Nauty REQUIRED)
 endif ()
 
-include_directories(${Nauty_INCLUDE_DIR})
 message(STATUS "Found Nauty: ${NAUTY_LIBRARY} ${NAUTY_INCLUDE_DIR}")
 
 find_package(ZLIB REQUIRED)
 
-include(CPM.cmake)
-CPMAddPackage(
-        NAME loki  # The unique name of the dependency (should be the exported target's name)
-        GIT_TAG 19c18cd # The minimum version of the dependency (optional, defaults to 0)
-        # Configuration options passed to the dependency (optional)
-        CPM_USE_LOCAL_PACKAGES TRUE
-        SYSTEM TRUE
-        DOWNLOAD_ONLY FALSE       # If set, the project is downloaded, but not configured (optional)
-        GITHUB_REPOSITORY maichmueller/Loki
-        OPTIONS "BUILD_TESTS=OFF"
-)
-
-find_package(loki ${LOKI_MIN_VERSION} COMPONENTS parsers REQUIRED)
-
-if (nauty_FOUND)
-    include_directories(${nauty_INCLUDE_DIR})
-    message(STATUS "Found Nauty: ${NAUTY_LIBRARY} ${NAUTY_INCLUDE_DIR}")
+find_package(loki ${LOKI_MIN_VERSION} QUIET COMPONENTS parsers)
+if (NOT loki_FOUND)
+    configure_file(
+            ${PROJECT_SOURCE_DIR}/dependencies/loki/CMakeLists.txt
+            ${CMAKE_BINARY_DIR}/deps/loki/CMakeLists.txt
+            COPYONLY
+    )
+    configure_file(
+            ${PROJECT_SOURCE_DIR}/dependencies/loki/conanfile.py
+            ${CMAKE_BINARY_DIR}/deps/loki/conanfile.py
+            COPYONLY
+    )
+    message(STATUS "Loki not found. Downloading and configuring from source.")
+    execute_process(
+            COMMAND
+            ${CMAKE_COMMAND}
+            -S ${CMAKE_BINARY_DIR}/deps/loki
+            -B ${CMAKE_BINARY_DIR}/deps/build/loki
+            -G ${CMAKE_GENERATOR}
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/deps/install
+            -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=${PROJECT_SOURCE_DIR}/conan_provider.cmake
+            -DCONAN_PROVIDER_FILE=${PROJECT_SOURCE_DIR}/conan_provider.cmake
+            -DCONAN_COMMAND=${CONAN_COMMAND}
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+    )
+    message(STATUS "Building Loki.")
+    execute_process(
+            COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}/deps/build/loki --parallel
+    )
+    message(STATUS "Installing Loki.")
+    execute_process(
+            COMMAND ${CMAKE_COMMAND} --install ${CMAKE_BINARY_DIR}/deps/build/loki --config Release
+    )
+    find_package(loki ${LOKI_MIN_VERSION} REQUIRED COMPONENTS parsers)
 endif ()
+message(STATUS "Found Loki: ${loki_DIR} (found version ${loki_VERSION})")
 
 find_package(fmt REQUIRED)
-if (fmt_FOUND)
-    include_directories(${fmt_INCLUDE_DIRS})
-    message(STATUS "Found fmt: ${fmt_DIR} (found version ${fmt_VERSION})")
-endif ()
+message(STATUS "Found fmt: ${fmt_DIR} (found version ${fmt_VERSION})")
 
 find_package(range-v3 REQUIRED)
-if (range-v3_FOUND)
-    include_directories(${range-v3_INCLUDE_DIRS})
-    message(STATUS "Found range-v3: ${range-v3_DIR} (found version ${range-v3_VERSION})")
-endif ()
+message(STATUS "Found range-v3: ${range-v3_DIR} (found version ${range-v3_VERSION})")
+
 
 ##############################################################
 # Add library and executable targets
@@ -169,9 +191,9 @@ add_subdirectory(src)
 # -------------------
 # Target Python Mimir
 # -------------------
-if(BUILD_PYMIMIR)
+if (BUILD_PYMIMIR)
     add_subdirectory(python/src)
-endif()
+endif ()
 
 # ----------
 # Target Exe
@@ -181,17 +203,16 @@ add_subdirectory(exe)
 # ----------------
 # Target Profiling
 # ----------------
-if(BUILD_PROFILING)
+if (BUILD_PROFILING)
     add_subdirectory(benchmark)
-endif()
+endif ()
 
 # -----------
 # Target Test
 # -----------
-if(BUILD_TESTS)
+if (BUILD_TESTS)
     add_subdirectory(tests)
-endif()
-
+endif ()
 
 
 ###########
@@ -200,12 +221,12 @@ endif()
 
 # Install header files
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/include/mimir" "${PROJECT_SOURCE_DIR}/include/cista"
-    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 
 # Install cmake scripts
 install(
-    DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/cmake/"
-    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/mimir/cmake"
+        DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/cmake/"
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/mimir/cmake"
 )
 
 
@@ -219,24 +240,24 @@ include(CMakePackageConfigHelpers)
 
 # Generate the version file for the config file
 write_basic_package_version_file(
-    "${CMAKE_CURRENT_BINARY_DIR}/mimirConfigVersion.cmake"
-    VERSION ${mimir_VERSION}
-    COMPATIBILITY ExactVersion
+        "${CMAKE_CURRENT_BINARY_DIR}/mimirConfigVersion.cmake"
+        VERSION ${mimir_VERSION}
+        COMPATIBILITY ExactVersion
 )
 
 # Create config file
 # https://cmake.org/cmake/help/book/mastering-cmake/cmake/Help/guide/importing-exporting/index.html
 # https://cmake.org/cmake/help/latest/module/CMakePackageConfigHelpers.html#generating-a-package-configuration-file
 configure_package_config_file("${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/mimirConfig.cmake"
-    INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/mimir"
-    NO_CHECK_REQUIRED_COMPONENTS_MACRO
+        "${CMAKE_CURRENT_BINARY_DIR}/mimirConfig.cmake"
+        INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/mimir"
+        NO_CHECK_REQUIRED_COMPONENTS_MACRO
 )
 
 # Install config files
 install(
-    FILES
+        FILES
         "${CMAKE_CURRENT_BINARY_DIR}/mimirConfig.cmake"
         "${CMAKE_CURRENT_BINARY_DIR}/mimirConfigVersion.cmake"
-    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/mimir"
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/mimir"
 )

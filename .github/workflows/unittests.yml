@@ -1,42 +1,192 @@
-name: Googletest Unit Tests
+name: Unit And Integration Tests
 
-on: [push, pull_request]
+on: [ push, pull_request ]
 
 jobs:
+  matrix-strategy-setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: set-matrix
+        run: |
+          TASKS=$(echo $(cat .github/workflows/build-matrix.json) | sed 's/ //g')
+          echo "matrix=$TASKS" >> $GITHUB_OUTPUT
+
   build:
+    needs: matrix-strategy-setup
+    name: ${{ matrix.config.os }} • ${{ matrix.config.cc }}-${{ matrix.config.compiler_version }} • ${{ matrix.config.build_type }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config: ${{ fromJson(needs.matrix-strategy-setup.outputs.matrix) }}
+
+    steps:
+      - name: Checkout Mimir
+        uses: actions/checkout@v4
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.28.x'
+
+      - name: Show CMake Version
+        run: cmake --version
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Ninja
+        uses: seanmiddleditch/gha-setup-ninja@master
+
+      - name: Set Environment Variables
+        shell: bash
+        env:
+          CC: ${{ matrix.config.cc }}
+          CXX: ${{ matrix.config.cxx }}
+          BUILD_TYPE: ${{ matrix.config.build_type }}
+          COMPILER_VERSION: ${{ matrix.config.compiler_version }}
+        run: |
+          echo "Using $CC for C compiler and $CXX for C++ compiler"
+          echo "Compiler version selected is $COMPILER_VERSION (ignored on macOS)"
+          echo "Build type is $BUILD_TYPE"
+          conan_home="$HOME/.conan2-${{ runner.os }}-${{ matrix.config.build_type }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}"
+          echo "Conan Home is $conan_home"
+          if [[ "${{ matrix.config.os }}" == "macos-latest" ]]; then
+            echo "CC=$CC" >> $GITHUB_ENV
+            echo "CXX=$CXX" >> $GITHUB_ENV
+          else
+            echo "CC=${CC}-${COMPILER_VERSION}" >> "$GITHUB_ENV"
+            echo "CXX=${CXX}-${COMPILER_VERSION}" >> "$GITHUB_ENV"
+          fi
+          echo "CONAN_HOME=$conan_home" >> "$GITHUB_ENV"
+
+      - name: Install conan
+        id: conan
+        shell: bash
+        run: |
+          python3 -m pip install --upgrade pip setuptools
+          python3 -m pip install conan
+          conan profile detect --name default
+
+      # required to be able to compile the dependencies of mimir (nauty particularly)
+      - name: Conan default profile (MACOS only)
+        if: ${{ matrix.config.os == 'macos-latest' }}
+        run: |
+          profile="$CONAN_HOME/profiles/default"
+          echo "[settings]"                 >  $profile
+          echo "arch=armv8"                 >> $profile
+          echo "build_type=Release"         >> $profile
+          echo "compiler=gcc"               >> $profile
+          echo "compiler.cppstd=gnu17"      >> $profile
+          echo "compiler.libcxx=libstdc++"  >> $profile
+          echo "compiler.version=13"        >> $profile
+          echo "os=Macos"                   >> $profile
+
+      - name: Cache Conan Dependencies Install
+        id: cache-conan-deps
+        uses: actions/cache@v4
+        env:
+          cache-name: cache-conan-deps
+        with:
+          path: "$CONAN_HOME"
+          key: ${{ runner.os }}-${{ env.cache-name }}-${{ matrix.config.build_type }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}-${{ hashFiles('**/conandata.yml') }}-${{ hashFiles('**/conanfile.py') }}
+
+      # Build step
+      - name: Configure Mimir
+        shell: bash
+        run: >
+          ./configure.sh 
+          --source . 
+          --build build 
+          --build_type=${{ matrix.config.build_type }} 
+          -DBUILD_TESTS=ON
+
+      - name: Build Mimir
+        run: |
+          ./build.sh build
+
+      - name: Upload build folder as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}_${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}-${{ matrix.config.build_type }}
+          path: build/
+          retention-days: 1
+
+  unit-test:
+    needs: build
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ ubuntu-latest, macos-latest ]
     runs-on: ${{ matrix.os }}
 
     steps:
-    - name: Checkout Mimir
-      uses: actions/checkout@v2
-      with:
-        ref: main
+      - name: Download release folder
+        uses: actions/download-artifact@v4
+        with:
+          pattern: build_release_${{ matrix.os }}
+          path: build/release
 
-    - name: Configure, Build, and Install Dependencies
-      run: |
-        cd dependencies
-        cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/dependencies/installs
-        cmake --build build
+      - name: Release Test
+        working-directory: build/release/tests/unit
+        run: GTEST_OUTPUT=xml:test-results/ GTEST_COLOR=1 ctest -V
 
-    # Debug
-    - name: Debug, Configure, and Build Mimir
-      run: |
-        cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -S . -B build_debug -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dependencies/installs
-        cmake --build build_debug
+      - name: Install
+        run: |
+          cmake --install build/release --prefix install
 
-    - name: Debug Test
-      working-directory: build_debug/tests/unit
-      run: GTEST_OUTPUT=xml:test-results/ GTEST_COLOR=1 ctest -V
+      - name: Upload installation as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: install_${{ matrix.os }}
+          path: install
+          retention-days: 1
 
-    # Release
-    - name: Release, Configure, and Build Mimir
-      run: |
-        cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -S . -B build_release -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dependencies/installs
-        cmake --build build_release
+  integration-test:
+    needs: unit-test
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
 
-    - name: Release Test
-      working-directory: build_release/tests/unit
-      run: GTEST_OUTPUT=xml:test-results/ GTEST_COLOR=1 ctest -V
+    steps:
+      - name: Checkout Mimir
+        uses: actions/checkout@v4
+
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.28.x'
+
+      - name: Show cmake version
+        run: cmake --version
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Download Installed Mimir
+        uses: actions/download-artifact@v4
+        with:
+          pattern: install_${{ matrix.os }}
+          path: install
+
+      - name: Configure Test Project
+        shell: bash
+        run: >
+          cmake 
+          -S tests/integration 
+          -B tests/integration/build
+          -DCMAKE_PREFIX_PATH=install
+
+      - name: Build Test Project
+        run: |
+          cmake --build tests/integration/build
+
+      - name: Run Test Project
+        run: |
+          cd tests/integration/build
+          GTEST_COLOR=1 ctest -V

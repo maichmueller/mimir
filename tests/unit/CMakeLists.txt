@@ -1,8 +1,6 @@
 enable_testing()
 
-find_package(GTest "1.11.0" REQUIRED COMPONENTS GTest Main PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
-# Set result variables
-find_package(GTest)
+find_package(GTest REQUIRED COMPONENTS GTest Main)
 
 # Helper function to create and register a test executable
 function(add_gtest test_name source_file)

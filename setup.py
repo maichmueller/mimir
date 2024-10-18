@@ -40,24 +40,7 @@ class CMakeBuild(build_ext):
         # Create the temporary build directory, if it does not already exist
         os.makedirs(temp_directory, exist_ok=True)
 
-        # 1. Build and install dependencies and delete the build directory
-        if os.path.exists(f"{ext.sourcedir}/dependencies/installs"):
-            shutil.copytree(f"{ext.sourcedir}/dependencies/installs", temp_directory / "dependencies/installs", dirs_exist_ok=True)
-            for file in glob.glob(f"{temp_directory}/**/CMakeCache.txt", recursive=True):
-                print(f"Removing CMakeCache.txt: ", file)
-                os.remove(file)
-
-        subprocess.run(
-            ["cmake", "-S", f"{ext.sourcedir}/dependencies", "-B", f"{str(temp_directory)}/dependencies/build", f"-DCMAKE_BUILD_TYPE={build_type}", f"-DCMAKE_INSTALL_PREFIX={str(temp_directory)}/dependencies/installs"], cwd=str(temp_directory), check=True
-        )
-
-        subprocess.run(
-            ["cmake", "--build", f"{str(temp_directory)}/dependencies/build", f"-j{multiprocessing.cpu_count()}"]
-        )
-
-        shutil.rmtree(f"{str(temp_directory)}/dependencies/build")
-
-        # 2. Build mimir
+        # Build Pymimir
 
         cmake_args = [
             "-G", "Ninja",
@@ -66,7 +49,8 @@ class CMakeBuild(build_ext):
             f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={output_directory}",
             f"-DPYTHON_EXECUTABLE={sys.executable}",
             f"-DCMAKE_BUILD_TYPE={build_type}",  # not used on MSVC, but no harm
-            f"-DCMAKE_PREFIX_PATH={str(temp_directory)}/dependencies/installs"
+            # for find_package(Boost) behaviour
+            "-DCMAKE_POLICY_DEFAULT_CMP0167=OLD",  # https://cmake.org/cmake/help/latest/policy/CMP0167.html
         ]
         build_args = []
         build_args += ["--target", ext.name]
@@ -78,7 +62,7 @@ class CMakeBuild(build_ext):
             ["cmake", "--build", f"{str(temp_directory)}/build", f"-j{multiprocessing.cpu_count()}"] + build_args, cwd=str(temp_directory), check=True
         )
 
-        # 3. Generate pyi stub files
+        # Generate pyi stub files
 
         # This is safer than adding a custom command in cmake because it will not silently fail.
         subprocess.run(
