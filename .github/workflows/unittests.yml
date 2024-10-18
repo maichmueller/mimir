@@ -62,14 +62,14 @@ jobs:
       - name: Upload build folder as artifact
         uses: actions/upload-artifact@v3
         with:
-          name: build_debug
+          name: build_debug_${{ matrix.os }}
           path: build_debug/
           retention-days: 1
 
       - name: Upload build folder as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build_release
+          name: build_release_${{ matrix.os }}
           path: build_release/
           retention-days: 1
 
@@ -84,18 +84,18 @@ jobs:
       - name: Download debug folder
         uses: actions/download-artifact@v4
         with:
-          pattern: build_debug
+          pattern: build_debug_${{ matrix.os }}
           path: build/debug
 
       - name: Debug Test
         working-directory: build/debug/tests/unit
         run: GTEST_OUTPUT=xml:test-results/ GTEST_COLOR=1 ctest -V
 
-      - name: Download debug folder
+      - name: Download release folder
         uses: actions/download-artifact@v4
         with:
-          pattern: build_debug
-          path: build/debug
+          pattern: build_release_${{ matrix.os }}
+          path: build/release
 
       - name: Release Test
         working-directory: build/release/tests/unit
@@ -108,7 +108,7 @@ jobs:
       - name: Upload installation as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: install
+          name: install_${{ matrix.os }}
           path: install
           retention-days: 1
 
@@ -141,7 +141,7 @@ jobs:
       - name: Download Installed Mimir
         uses: actions/download-artifact@v4
         with:
-          pattern: install
+          pattern: install_${{ matrix.os }}
           path: install
 
       - name: Configure Test Project
