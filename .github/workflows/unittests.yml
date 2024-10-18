@@ -46,8 +46,6 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ matrix.config.os }}" == "macos-latest" ]]; then
-#            echo "CC=${{ matrix.config.cc }}" >> $GITHUB_ENV
-#            echo "CXX=${{ matrix.config.cxx }}" >> $GITHUB_ENV
             echo "Skip for macos."
           else
             echo "CC=${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}" >> "$GITHUB_ENV"
@@ -65,19 +63,6 @@ jobs:
           python3 -m pip install conan
           conan profile detect --name default
 
-#      # required to be able to compile the dependencies of mimir (nauty particularly)
-#      - name: Conan default profile (MACOS only)
-#        if: ${{ matrix.config.os == 'macos-latest' }}
-#        run: |
-#          profile="$CONAN_HOME/profiles/default"
-#          echo "[settings]"                 >  $profile
-#          echo "arch=armv8"                 >> $profile
-#          echo "build_type=Release"         >> $profile
-#          echo "compiler=gcc"               >> $profile
-#          echo "compiler.cppstd=gnu17"      >> $profile
-#          echo "compiler.libcxx=libstdc++"  >> $profile
-#          echo "compiler.version=13"        >> $profile
-#          echo "os=Macos"                   >> $profile
 
       - name: Cache Conan Dependencies Install
         id: cache-conan-deps
