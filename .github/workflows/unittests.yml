@@ -74,6 +74,7 @@ jobs:
           retention-days: 1
 
   unit-test:
+    needs: build
     strategy:
       matrix:
         os: [ ubuntu-latest, macos-latest ]
@@ -112,6 +113,7 @@ jobs:
           retention-days: 1
 
   integration-test:
+    needs: unit-test
     strategy:
       matrix:
         os: [ ubuntu-latest, macos-latest ]
