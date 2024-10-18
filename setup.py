@@ -49,6 +49,8 @@ class CMakeBuild(build_ext):
             f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={output_directory}",
             f"-DPYTHON_EXECUTABLE={sys.executable}",
             f"-DCMAKE_BUILD_TYPE={build_type}",  # not used on MSVC, but no harm
+            # cibuildwheels uses cmake >= 3.30, so CMP0167 takes effect it seems
+            "-DCMAKE_POLICY_DEFAULT_CMP0167=NEW",  # https://cmake.org/cmake/help/latest/policy/CMP0167.html
         ]
         build_args = []
         build_args += ["--target", ext.name]
