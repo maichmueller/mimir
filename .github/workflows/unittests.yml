@@ -59,10 +59,10 @@ jobs:
             echo "CC=$CC" >> $GITHUB_ENV
             echo "CXX=$CXX" >> $GITHUB_ENV
           else
-            echo "CC=${CC}-${COMPILER_VERSION}" >> $GITHUB_ENV
-            echo "CXX=${CXX}-${COMPILER_VERSION}" >> $GITHUB_ENV
+            echo "CC=${CC}-${COMPILER_VERSION}" >> "$GITHUB_ENV"
+            echo "CXX=${CXX}-${COMPILER_VERSION}" >> "$GITHUB_ENV"
           fi
-          echo "CONAN_HOME=$conan_home" >> $GITHUB_ENV
+          echo "CONAN_HOME=$conan_home" >> "$GITHUB_ENV"
 
       - name: Install conan
         id: conan
@@ -92,7 +92,7 @@ jobs:
         env:
           cache-name: cache-conan-deps
         with:
-          path: $CONAN_HOME
+          path: "$CONAN_HOME"
           key: ${{ runner.os }}-${{ env.cache-name }}-${{ matrix.config.build_type }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}-${{ hashFiles('**/conandata.yml') }}-${{ hashFiles('**/conanfile.py') }}
 
       # Build step
