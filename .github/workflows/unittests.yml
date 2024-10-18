@@ -73,12 +73,18 @@ jobs:
           conan profile detect --name default
 
       # required to be able to compile the dependencies of mimir (nauty particularly)
-      - name: Conan use GCC on MACOS
+      - name: Conan default profile (MACOS only)
         if: ${{ matrix.config.os == 'macos-latest' }}
         run: |
-          conan profile update settings.compiler=gcc default
-          conan profile update settings.compiler.version=13 default
-          conan profile update settings.compiler.libcxx=libstdc++11 default
+          profile="$CONAN_HOME/profiles/default"
+          echo "[settings]"                 >  $profile
+          echo "arch=armv8"                 >> $profile
+          echo "build_type=Release"         >> $profile
+          echo "compiler=gcc"               >> $profile
+          echo "compiler.cppstd=gnu17"      >> $profile
+          echo "compiler.libcxx=libstdc++"  >> $profile
+          echo "compiler.version=13"        >> $profile
+          echo "os=Macos"                   >> $profile
 
       - name: Cache Conan Dependencies Install
         id: cache-conan-deps
