@@ -84,12 +84,12 @@ jobs:
       # Build step
       - name: Configure Mimir
         shell: bash
-        run: |
-          ./configure.sh \
-            --source . \
-            --build build \
-            --build_type=${{ matrix.config.build_type }} \
-            -DBUILD_TESTS=ON
+        run: >
+          ./configure.sh 
+          --source . 
+          --build build 
+          --build_type=${{ matrix.config.build_type }} 
+          -DBUILD_TESTS=ON
 
       - name: Build Mimir
         run: |

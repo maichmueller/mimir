@@ -69,7 +69,7 @@ done
 
 
 if [ -e "$cmake_source_folder/conanfile.py" ]; then
-  toolchain_file="$cmake_build_folder/conan/build/$build_type/generators/conan_toolchain.cmake"
+  toolchain_file="$cmake_build_folder/conan/build/Release/generators/conan_toolchain.cmake"
 else
   toolchain_file="$cmake_build_folder/conan/conan_toolchain.cmake"
 fi
