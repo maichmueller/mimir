@@ -39,6 +39,9 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Set up Ninja
+        uses: seanmiddleditch/gha-setup-ninja@master
+
       - name: Set Environment Variables
         shell: bash
         env:
