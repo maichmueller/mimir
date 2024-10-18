@@ -39,8 +39,14 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Conan
-        run: pip install conan
+      - name: Install conan
+        id: conan
+        shell: bash
+        run: |
+          python3 -m pip install --upgrade pip setuptools
+          python3 -m pip install conan
+          echo "CONAN_HOME=$HOME/.conan2-${{ runner.os }}-${{ matrix.config.build_type }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}" >> $GITHUB_OUTPUT
+
 
       - name: Set Environment Variables
         shell: bash
