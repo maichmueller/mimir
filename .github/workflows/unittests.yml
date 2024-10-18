@@ -44,24 +44,17 @@ jobs:
 
       - name: Set Environment Variables
         shell: bash
-        env:
-          CC: ${{ matrix.config.cc }}
-          CXX: ${{ matrix.config.cxx }}
-          BUILD_TYPE: ${{ matrix.config.build_type }}
-          COMPILER_VERSION: ${{ matrix.config.compiler_version }}
         run: |
-          echo "Using $CC for C compiler and $CXX for C++ compiler"
-          echo "Compiler version selected is $COMPILER_VERSION (ignored on macOS)"
-          echo "Build type is $BUILD_TYPE"
+          if [[ "${{ matrix.config.os }}" == "macos-latest" ]]; then
+#            echo "CC=${{ matrix.config.cc }}" >> $GITHUB_ENV
+#            echo "CXX=${{ matrix.config.cxx }}" >> $GITHUB_ENV
+            echo "Skip for macos."
+          else
+            echo "CC=${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}" >> "$GITHUB_ENV"
+            echo "CXX=${{ matrix.config.cxx }}-${{ matrix.config.compiler_version }}" >> "$GITHUB_ENV"
+          fi
           conan_home="$HOME/.conan2-${{ runner.os }}-${{ matrix.config.build_type }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}"
           echo "Conan Home is $conan_home"
-          if [[ "${{ matrix.config.os }}" == "macos-latest" ]]; then
-            echo "CC=$CC" >> $GITHUB_ENV
-            echo "CXX=$CXX" >> $GITHUB_ENV
-          else
-            echo "CC=${CC}-${COMPILER_VERSION}" >> "$GITHUB_ENV"
-            echo "CXX=${CXX}-${COMPILER_VERSION}" >> "$GITHUB_ENV"
-          fi
           echo "CONAN_HOME=$conan_home" >> "$GITHUB_ENV"
 
       - name: Install conan
@@ -72,19 +65,19 @@ jobs:
           python3 -m pip install conan
           conan profile detect --name default
 
-      # required to be able to compile the dependencies of mimir (nauty particularly)
-      - name: Conan default profile (MACOS only)
-        if: ${{ matrix.config.os == 'macos-latest' }}
-        run: |
-          profile="$CONAN_HOME/profiles/default"
-          echo "[settings]"                 >  $profile
-          echo "arch=armv8"                 >> $profile
-          echo "build_type=Release"         >> $profile
-          echo "compiler=gcc"               >> $profile
-          echo "compiler.cppstd=gnu17"      >> $profile
-          echo "compiler.libcxx=libstdc++"  >> $profile
-          echo "compiler.version=13"        >> $profile
-          echo "os=Macos"                   >> $profile
+#      # required to be able to compile the dependencies of mimir (nauty particularly)
+#      - name: Conan default profile (MACOS only)
+#        if: ${{ matrix.config.os == 'macos-latest' }}
+#        run: |
+#          profile="$CONAN_HOME/profiles/default"
+#          echo "[settings]"                 >  $profile
+#          echo "arch=armv8"                 >> $profile
+#          echo "build_type=Release"         >> $profile
+#          echo "compiler=gcc"               >> $profile
+#          echo "compiler.cppstd=gnu17"      >> $profile
+#          echo "compiler.libcxx=libstdc++"  >> $profile
+#          echo "compiler.version=13"        >> $profile
+#          echo "os=Macos"                   >> $profile
 
       - name: Cache Conan Dependencies Install
         id: cache-conan-deps
