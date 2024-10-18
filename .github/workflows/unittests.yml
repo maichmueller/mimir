@@ -49,12 +49,12 @@ jobs:
           CXX: ${{ matrix.config.cxx }}
           BUILD_TYPE: ${{ matrix.config.build_type }}
           COMPILER_VERSION: ${{ matrix.config.compiler_version }}
-          CONAN_HOME: $HOME/.conan2-${{ runner.os }}-${{ matrix.config.build_type }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}
         run: |
           echo "Using $CC for C compiler and $CXX for C++ compiler"
           echo "Compiler version selected is $COMPILER_VERSION (ignored on macOS)"
           echo "Build type is $BUILD_TYPE"
-          echo "Conan Home is $CONAN_HOME"
+          conan_home="$HOME/.conan2-${{ runner.os }}-${{ matrix.config.build_type }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}"
+          echo "Conan Home is $conan_home"
           if [[ "${{ matrix.config.os }}" == "macos-latest" ]]; then
             echo "CC=$CC" >> $GITHUB_ENV
             echo "CXX=$CXX" >> $GITHUB_ENV
@@ -62,7 +62,7 @@ jobs:
             echo "CC=${CC}-${COMPILER_VERSION}" >> $GITHUB_ENV
             echo "CXX=${CXX}-${COMPILER_VERSION}" >> $GITHUB_ENV
           fi
-          echo "CONAN_HOME=$CONAN_HOME" >> $GITHUB_ENV
+          echo "CONAN_HOME=$conan_home" >> $GITHUB_ENV
 
       - name: Install conan
         id: conan
