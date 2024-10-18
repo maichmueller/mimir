@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/bin/bash
 
 use_conan=true
 conan_cmd=conan

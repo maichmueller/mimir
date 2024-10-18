@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/bin/bash
 
 if [[ -n $1 ]]; then
   cmake_build_folder=$1
