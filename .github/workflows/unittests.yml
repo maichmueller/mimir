@@ -3,22 +3,36 @@ name: Unit And Integration Tests
 on: [ push, pull_request ]
 
 jobs:
+  matrix-strategy-setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: set-matrix
+        run: |
+          TASKS=$(echo $(cat .github/workflows/build-matrix.json) | sed 's/ //g')
+          echo "matrix=$TASKS" >> $GITHUB_OUTPUT
+
   build:
+    needs: matrix-strategy-setup
+    name: ${{ matrix.config.os }} • ${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}
+    runs-on: ${{ matrix.config.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ ubuntu-latest, macos-latest ]
-    runs-on: ${{ matrix.os }}
+        config: ${{ fromJson(needs.matrix-strategy-setup.outputs.matrix) }}
 
     steps:
       - name: Checkout Mimir
         uses: actions/checkout@v4
 
-      - name: Setup cmake
+      - name: Setup CMake
         uses: jwlawson/actions-setup-cmake@v2
         with:
           cmake-version: '3.28.x'
 
-      - name: Show cmake version
+      - name: Show CMake Version
         run: cmake --version
 
       - uses: actions/setup-python@v5
@@ -28,26 +42,54 @@ jobs:
       - name: Install Conan
         run: pip install conan
 
-      # Release
-      - name: Release Configure Mimir
+      - name: Set Environment Variables
         shell: bash
-        run: >
-          cmake 
-          -S . 
-          -B build_debug 
-          -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=conan_provider.cmake 
-          -DCMAKE_BUILD_TYPE=Release 
-          -DBUILD_TESTS=ON 
-
-      - name: Release Build Mimir
+        env:
+          CC: ${{ matrix.config.cc }}
+          CXX: ${{ matrix.config.cxx }}
+          BUILD_TYPE: ${{ matrix.config.build_type }}
+          COMPILER_VERSION: ${{ matrix.config.compiler_version }}
         run: |
-          cmake --build build_release
+          echo "Using $CC for C compiler and $CXX for C++ compiler"
+          echo "Compiler version selected is $COMPILER_VERSION (ignored on macOS)"
+          echo "Build type is $BUILD_TYPE"
+          echo "Conan Home is $CONAN_HOME"
+          if [[ "${{ matrix.config.os }}" == "macos-latest" ]]; then
+            echo "CC=$CC" >> $GITHUB_ENV
+            echo "CXX=$CXX" >> $GITHUB_ENV
+          else
+            echo "CC=${CC}-${COMPILER_VERSION}" >> $GITHUB_ENV
+            echo "CXX=${CXX}-${COMPILER_VERSION}" >> $GITHUB_ENV
+          fi
+
+      - name: Cache Conan Dependencies Install
+        id: cache-conan-deps
+        uses: actions/cache@v4
+        env:
+          cache-name: cache-conan-deps
+        with:
+          path: ${{ steps.conan.outputs.CONAN_HOME }}
+          key: ${{ runner.os }}-${{ env.cache-name }}-${{ matrix.config.build_type }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}-${{ hashFiles('**/conandata.yml') }}-${{ hashFiles('**/conanfile.py') }}
+
+      # Build step
+      - name: Configure Mimir
+        shell: bash
+        run: |
+          ./configure.sh \
+            --source . \
+            --build build \
+            --build_type=${{ matrix.config.build_type }} \
+            -DBUILD_TESTS=ON
+
+      - name: Build Mimir
+        run: |
+          ./build.sh build
 
       - name: Upload build folder as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build_release_${{ matrix.os }}
-          path: build_release/
+          name: build-${{ matrix.os }}_${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}-${{ matrix.config.build_type }}
+          path: build/
           retention-days: 1
 
   unit-test:
