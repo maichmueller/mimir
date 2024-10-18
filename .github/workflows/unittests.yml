@@ -47,7 +47,6 @@ jobs:
           python3 -m pip install conan
           echo "CONAN_HOME=$HOME/.conan2-${{ runner.os }}-${{ matrix.config.build_type }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}" >> $GITHUB_OUTPUT
 
-
       - name: Set Environment Variables
         shell: bash
         env:
@@ -150,9 +149,6 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Conan
-        run: pip install conan
-
       - name: Download Installed Mimir
         uses: actions/download-artifact@v4
         with:
@@ -164,8 +160,7 @@ jobs:
         run: >
           cmake 
           -S tests/integration 
-          -B tests/integration/build 
-          -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=conan_provider.cmake
+          -B tests/integration/build
           -DCMAKE_PREFIX_PATH=install
 
       - name: Build Test Project

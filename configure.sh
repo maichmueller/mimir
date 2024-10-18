@@ -1,6 +1,7 @@
 #!/bin/env bash
 
 use_conan=true
+conan_cmd=conan
 cmake_build_folder=build
 cmake_source_folder=.
 build_type=Release
@@ -9,25 +10,26 @@ cmake_extra_args=()
 # Define valid CMake build types
 valid_build_types=("Debug" "Release" "RelWithDebInfo" "MinSizeRel")
 
-if [ -e "$cmake_source_folder/conanfile.py" ]; then
-  toolchain_file="$cmake_build_folder/conan/build/$build_type/generators/conan_toolchain.cmake"
-else
-  toolchain_file="$cmake_build_folder/conan/conan_toolchain.cmake"
-fi
-
 # Loop through all arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
   "--noconan")
     use_conan=false
     ;;
-    "--cmake_cmd="*)
-    cmake_cmd="${1#*=}"
-    ;;
+  "--cmake_cmd="*)
+      cmake_cmd="${1#*=}"
+      ;;
   "--cmake_cmd")
-    cmake_cmd="$2"
-    shift # Move to the next argument
-    ;;
+      cmake_cmd="$2"
+      shift # Move to the next argument
+      ;;
+  "--conan_cmd="*)
+      conan_cmd="${1#*=}"
+      ;;
+  "--conan_cmd")
+      conan_cmd="$2"
+      shift # Move to the next argument
+      ;;
   "--build="*)
     cmake_build_folder="${1#*=}"
     ;;
@@ -64,6 +66,14 @@ while [[ $# -gt 0 ]]; do
   esac
   shift # Move to the next argument
 done
+
+
+if [ -e "$cmake_source_folder/conanfile.py" ]; then
+  toolchain_file="$cmake_build_folder/conan/build/$build_type/generators/conan_toolchain.cmake"
+else
+  toolchain_file="$cmake_build_folder/conan/conan_toolchain.cmake"
+fi
+
 
 # Function to find a near-match in valid build types
 find_near_match() {
@@ -111,6 +121,7 @@ script_dir=$(dirname $0)
 
 echo "Configuration script called with the args..."
 echo "use_conan: $use_conan"
+echo "conan_cmd: $conan_cmd"
 echo "cmake_build_folder: $cmake_build_folder"
 echo "cmake_source_folder: $cmake_source_folder"
 echo "build_type: $build_type"
@@ -120,7 +131,7 @@ echo "Executing cmake configuration."
 
 if [ "$use_conan" = true ]; then
   # install all dependencies defined for conan first
-  conan install . -of="$cmake_build_folder/conan" --profile:host=default --profile:build=default --build=missing -g CMakeDeps
+  "$conan_cmd" install . -of="$cmake_build_folder/conan" --profile:host=default --profile:build=default --build=missing -g CMakeDeps
   # append the necessary cmake configuration to the cmake call
   cmake_extra_args="${cmake_extra_args[*]} \
   -DCMAKE_TOOLCHAIN_FILE=$toolchain_file \
@@ -133,6 +144,7 @@ cmake_run="${cmake_cmd} \
   -B $cmake_build_folder \
   -G Ninja \
   -DCMAKE_BUILD_TYPE=$build_type \
+  -DCONAN_COMMAND=$conan_cmd \
   ${cmake_extra_args[*]}"
 
 echo "Executing command: $cmake_run"

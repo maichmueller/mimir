@@ -56,11 +56,11 @@
     "compiler_version": 17
   },
   {
-    "os": "macos-latest",
+    "os": "ubuntu-24.04",
     "build_type": "Release",
     "cc": "clang",
     "cxx": "clang++",
-    "compiler_version": 15
+    "compiler_version": 18
   },
   {
     "os": "macos-latest",
