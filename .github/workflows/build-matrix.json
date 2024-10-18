@@ -46,13 +46,6 @@
     "build_type": "Release",
     "cc": "clang",
     "cxx": "clang++",
-    "compiler_version": 16
-  },
-  {
-    "os": "ubuntu-24.04",
-    "build_type": "Release",
-    "cc": "clang",
-    "cxx": "clang++",
     "compiler_version": 17
   },
   {
