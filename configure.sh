@@ -1,6 +1,7 @@
 #!/bin/bash
 
 use_conan=true
+only_install=false
 conan_cmd=conan
 cmake_build_folder=build
 cmake_source_folder=.
@@ -15,6 +16,9 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
   "--noconan")
     use_conan=false
+    ;;
+  "--only_install")
+    only_install=true
     ;;
   "--cmake_cmd="*)
       cmake_cmd="${1#*=}"
@@ -139,8 +143,11 @@ if [ "$use_conan" = true ]; then
   -DCMAKE_POLICY_DEFAULT_CMP0091=NEW"
 fi
 
-find $cmake_build_folder
 
+if [ "$only_install" = true ]; then
+  echo "Only installing dependencies. Exiting..."
+  exit 0
+fi
 cmake_run="${cmake_cmd} \
   -S $cmake_source_folder \
   -B $cmake_build_folder \

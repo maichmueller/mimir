@@ -72,6 +72,17 @@ jobs:
           path: "$CONAN_HOME"
           key: ${{ runner.os }}-${{ env.cache-name }}-${{ matrix.config.build_type }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}-${{ hashFiles('github.workspace/conandata.yml') }}-${{ hashFiles('github.workspace/conanfile.py') }}
 
+      - name: Conan install dependencies (MACOS only)
+        if: ${{ matrix.config.os == 'macos-latest' }}
+        env:
+          CC: gcc-14
+          CXX: g++-14
+        run: |
+          ./configure.sh \ 
+          --source .  \
+          --build build \ 
+          --build_type=${{ matrix.config.build_type }} \ 
+          --only_conan
       # Build step
       - name: Configure Mimir
         shell: bash
