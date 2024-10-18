@@ -46,6 +46,7 @@ jobs:
           CXX: ${{ matrix.config.cxx }}
           BUILD_TYPE: ${{ matrix.config.build_type }}
           COMPILER_VERSION: ${{ matrix.config.compiler_version }}
+          CONAN_HOME: $HOME/.conan2-${{ runner.os }}-${{ matrix.config.build_type }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}
         run: |
           echo "Using $CC for C compiler and $CXX for C++ compiler"
           echo "Compiler version selected is $COMPILER_VERSION (ignored on macOS)"
@@ -58,6 +59,7 @@ jobs:
             echo "CC=${CC}-${COMPILER_VERSION}" >> $GITHUB_ENV
             echo "CXX=${CXX}-${COMPILER_VERSION}" >> $GITHUB_ENV
           fi
+          echo "CONAN_HOME=$CONAN_HOME" >> $GITHUB_ENV
 
       - name: Install conan
         id: conan
@@ -65,7 +67,6 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip setuptools
           python3 -m pip install conan
-          echo "CONAN_HOME=$HOME/.conan2-${{ runner.os }}-${{ matrix.config.build_type }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}" >> $GITHUB_ENV
           conan profile detect --name default
 
       - name: Cache Conan Dependencies Install
