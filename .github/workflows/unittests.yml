@@ -1,61 +1,161 @@
-name: Googletest Unit Tests
+name: Unit And Integration Tests
 
-on: [push, pull_request]
+on: [ push, pull_request ]
 
 jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ ubuntu-latest, macos-latest ]
     runs-on: ${{ matrix.os }}
 
     steps:
-    - name: Checkout Mimir
-      uses: actions/checkout@v4
+      - name: Checkout Mimir
+        uses: actions/checkout@v4
 
-    - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@v2
-      with:
-        cmake-version: '3.28.x'
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.28.x'
 
-    - name: Show cmake version
-      run: cmake --version
+      - name: Show cmake version
+        run: cmake --version
 
-      # Debug
-    - name: Debug Configure Mimir
-      shell: bash
-      run: >
-        cmake 
-        -S . 
-        -B build_debug 
-        -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=conan_provider.cmake 
-        -DCMAKE_BUILD_TYPE=Debug 
-        -DBUILD_TESTS=ON 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-      # Debug
-    - name: Debug Build Mimir
-      run: |
-        cmake --build build_debug
+      - name: Install Conan
+        run: pip install conan
 
-    - name: Debug Test
-      working-directory: build_debug/tests/unit
-      run: GTEST_OUTPUT=xml:test-results/ GTEST_COLOR=1 ctest -V
+        # Debug
+      - name: Debug Configure Mimir
+        shell: bash
+        run: >
+          cmake 
+          -S . 
+          -B build_debug 
+          -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=conan_provider.cmake 
+          -DCMAKE_BUILD_TYPE=Debug 
+          -DBUILD_TESTS=ON 
 
-    # Release
-    - name: Release Configure Mimir
-      shell: bash
-      run: >
-        cmake 
-        -S . 
-        -B build_debug 
-        -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=conan_provider.cmake 
-        -DCMAKE_BUILD_TYPE=Release 
-        -DBUILD_TESTS=ON 
+        # Debug
+      - name: Debug Build Mimir
+        run: |
+          cmake --build build_debug
 
-    - name: Release Build Mimir
-      run: |
-        cmake --build build_release
+      # Release
+      - name: Release Configure Mimir
+        shell: bash
+        run: >
+          cmake 
+          -S . 
+          -B build_debug 
+          -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=conan_provider.cmake 
+          -DCMAKE_BUILD_TYPE=Release 
+          -DBUILD_TESTS=ON 
 
-    - name: Release Test
-      working-directory: build_release/tests/unit
-      run: GTEST_OUTPUT=xml:test-results/ GTEST_COLOR=1 ctest -V
+      - name: Release Build Mimir
+        run: |
+          cmake --build build_release
+
+      - name: Upload build folder as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: build_debug
+          path: build_debug/
+          retention-days: 1
+
+      - name: Upload build folder as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build_release
+          path: build_release/
+          retention-days: 1
+
+  unit-test:
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Download debug folder
+        uses: actions/download-artifact@v4
+        with:
+          pattern: build_debug
+          path: build/debug
+
+      - name: Debug Test
+        working-directory: build/debug/tests/unit
+        run: GTEST_OUTPUT=xml:test-results/ GTEST_COLOR=1 ctest -V
+
+      - name: Download debug folder
+        uses: actions/download-artifact@v4
+        with:
+          pattern: build_debug
+          path: build/debug
+
+      - name: Release Test
+        working-directory: build/release/tests/unit
+        run: GTEST_OUTPUT=xml:test-results/ GTEST_COLOR=1 ctest -V
+
+      - name: Install
+        run: |
+          cmake --install build/release --prefix install
+
+      - name: Upload installation as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: install
+          path: install
+          retention-days: 1
+
+  integration-test:
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout Mimir
+        uses: actions/checkout@v4
+
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.28.x'
+
+      - name: Show cmake version
+        run: cmake --version
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Conan
+        run: pip install conan
+
+      - name: Download Installed Mimir
+        uses: actions/download-artifact@v4
+        with:
+          pattern: install
+          path: install
+
+      - name: Configure Test Project
+        shell: bash
+        run: >
+          cmake 
+          -S tests/integration 
+          -B tests/integration/build 
+          -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=conan_provider.cmake
+          -DCMAKE_PREFIX_PATH=install
+
+      - name: Build Test Project
+        run: |
+          cmake --build tests/integration/build
+
+      - name: Run Test Project
+        run: |
+          cd tests/integration/build
+          GTEST_COLOR=1 ctest -V
