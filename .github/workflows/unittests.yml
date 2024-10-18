@@ -15,16 +15,19 @@ jobs:
       with:
         ref: main
 
-    - name: Configure, Build, and Install Dependencies
-      run: |
-        cd dependencies
-        cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/dependencies/installs
-        cmake --build build
+      # Debug
+    - name: Debug Configure Mimir
+      run: >
+        cmake 
+          -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=conan_provider.cmake 
+          -DCMAKE_BUILD_TYPE=Debug 
+          -DBUILD_TESTS=ON 
+          -S . 
+          -B build_debug 
 
-    # Debug
-    - name: Debug, Configure, and Build Mimir
+      # Debug
+    - name: Debug Build Mimir
       run: |
-        cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON -S . -B build_debug -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dependencies/installs
         cmake --build build_debug
 
     - name: Debug Test
@@ -32,9 +35,17 @@ jobs:
       run: GTEST_OUTPUT=xml:test-results/ GTEST_COLOR=1 ctest -V
 
     # Release
-    - name: Release, Configure, and Build Mimir
+    - name: Release Configure Mimir
+      run: >
+        cmake 
+          -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=conan_provider.cmake 
+          -DCMAKE_BUILD_TYPE=Release 
+          -DBUILD_TESTS=ON 
+          -S . 
+          -B build_debug 
+
+    - name: Release Build Mimir
       run: |
-        cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -S . -B build_release -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dependencies/installs
         cmake --build build_release
 
     - name: Release Test

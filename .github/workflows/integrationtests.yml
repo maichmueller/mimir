@@ -15,14 +15,12 @@ jobs:
       with:
         ref: main
 
-    - name: Configure, Build, and Install Dependencies
+    - name: Build Test Project
       run: |
-        cd tests/integration/dependencies
-        cmake -S . -B build -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/tests/integration/dependencies/installs"
-        cmake --build build
+        cmake -S tests/integration -B tests/integration/build -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=conan_provider.cmake
+        cmake --build tests/integration/build
 
-    - name: Build and Test Project
+    - name: Run Test Project
       run: |
-        cd tests/integration
-        cmake -S . -B build -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/tests/integration/dependencies/installs"
-        cmake --build build
+        cd tests/integration/build
+        ctest -V
