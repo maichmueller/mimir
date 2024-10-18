@@ -25,12 +25,20 @@ jobs:
           # get gcc configuration on macos
             if [[ "$OSTYPE" == "darwin"* ]]; then
                 echo "GCC: $(gcc --version)"
+                echo "GCC: $(which gcc)"
+                echo "GCC: $(gcc -print-search-dirs)"
+                echo "G++: $(which g++)"
+                echo "G++: $(g++ --version)"
+                echo "G++: $(g++ -print-search-dirs)"
             fi
           # get installation setup of gcc
             if [[ "$OSTYPE" == "linux-gnu"* ]]; then
                 echo "GCC: $(gcc --version)"
                 echo "GCC: $(which gcc)"
                 echo "GCC: $(gcc -print-search-dirs)"
+                echo "G++: $(which g++)"
+                echo "G++: $(g++ --version)"
+                echo "G++: $(g++ -print-search-dirs)"
             fi
 
     - name: Configure, Build, and Install Dependencies
