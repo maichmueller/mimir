@@ -11,9 +11,27 @@ jobs:
 
     steps:
     - name: Checkout Mimir
-      uses: actions/checkout@v2
-      with:
-        ref: main
+      uses: actions/checkout@v4
+      
+    - name: check compiler paths
+      run: |
+          echo "CXX: $CXX"
+          echo "CC: $CC"
+          echo "CXXFLAGS: $CXXFLAGS"
+          echo "CFLAGS: $CFLAGS"
+          echo "LDFLAGS: $LDFLAGS"
+          echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
+          echo "PATH: $PATH"
+          # get gcc configuration on macos
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                echo "GCC: $(gcc --version)"
+            fi
+          # get installation setup of gcc
+            if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+                echo "GCC: $(gcc --version)"
+                echo "GCC: $(which gcc)"
+                echo "GCC: $(gcc -print-search-dirs)"
+            fi
 
     - name: Configure, Build, and Install Dependencies
       run: |
