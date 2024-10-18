@@ -63,7 +63,6 @@ jobs:
           python3 -m pip install conan
           conan profile detect --name default
 
-
       - name: Cache Conan Dependencies Install
         id: cache-conan-deps
         uses: actions/cache@v4
@@ -77,12 +76,18 @@ jobs:
       # Build step
       - name: Configure Mimir
         shell: bash
-        run: >
-          ./configure.sh 
-          --source . 
-          --build build 
-          --build_type=${{ matrix.config.build_type }} 
-          -DBUILD_TESTS=ON
+        run: |
+          configure_cmd="\
+          ./configure.sh \ 
+          --source .  \
+          --build build \ 
+          --build_type=${{ matrix.config.build_type }} \ 
+          -DBUILD_TESTS=ON"
+          if [[ "${{ matrix.config.os }}" == "macos-latest" ]]; then
+            alias gcc='gcc-14' && alias g++='g++-14' && eval "$configure_cmd"
+          else
+            eval "$configure_cmd"
+          fi
 
       - name: Build Mimir
         run: |
