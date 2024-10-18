@@ -72,6 +72,14 @@ jobs:
           python3 -m pip install conan
           conan profile detect --name default
 
+      # required to be able to compile the dependencies of mimir (nauty particularly)
+      - name: Conan use GCC on MACOS
+        if: ${{ matrix.config.os == 'macos-latest' }}
+        run: |
+          conan profile update settings.compiler=gcc default
+          conan profile update settings.compiler.version=13 default
+          conan profile update settings.compiler.libcxx=libstdc++11 default
+
       - name: Cache Conan Dependencies Install
         id: cache-conan-deps
         uses: actions/cache@v4
