@@ -139,7 +139,7 @@ if [ "$use_conan" = true ]; then
   -DCMAKE_POLICY_DEFAULT_CMP0091=NEW"
 fi
 
-ls $cmake_build_folder/**/*
+find $cmake_build_folder
 
 cmake_run="${cmake_cmd} \
   -S $cmake_source_folder \
