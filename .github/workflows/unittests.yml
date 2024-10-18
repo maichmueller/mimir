@@ -76,22 +76,15 @@ jobs:
       - name: Configure Mimir
         shell: bash
         run: |
-          configure_cmd="\
-          ./configure.sh \ 
-          --source .  \
-          --build build \ 
-          --build_type=${{ matrix.config.build_type }} \ 
-          -DBUILD_TESTS=ON"
           if [[ "${{ matrix.config.os }}" == "macos-latest" ]]; then
             alias gcc='gcc-14'
             alias g++='g++-14'
-          else
-            ./configure.sh \ 
-              --source .  \
-              --build build \ 
-              --build_type=${{ matrix.config.build_type }} \ 
-              -DBUILD_TESTS=ON
           fi
+          ./configure.sh \ 
+            --source .  \
+            --build build \ 
+            --build_type=${{ matrix.config.build_type }} \ 
+            -DBUILD_TESTS=ON
 
       - name: Build Mimir
         run: |
