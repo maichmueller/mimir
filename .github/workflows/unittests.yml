@@ -39,15 +39,6 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install conan
-        id: conan
-        shell: bash
-        run: |
-          python3 -m pip install --upgrade pip setuptools
-          python3 -m pip install conan
-          echo "CONAN_HOME=$HOME/.conan2-${{ runner.os }}-${{ matrix.config.build_type }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}" >> $GITHUB_ENV
-          conan profile detect --name default
-
       - name: Set Environment Variables
         shell: bash
         env:
@@ -67,6 +58,15 @@ jobs:
             echo "CC=${CC}-${COMPILER_VERSION}" >> $GITHUB_ENV
             echo "CXX=${CXX}-${COMPILER_VERSION}" >> $GITHUB_ENV
           fi
+
+      - name: Install conan
+        id: conan
+        shell: bash
+        run: |
+          python3 -m pip install --upgrade pip setuptools
+          python3 -m pip install conan
+          echo "CONAN_HOME=$HOME/.conan2-${{ runner.os }}-${{ matrix.config.build_type }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}" >> $GITHUB_ENV
+          conan profile detect --name default
 
       - name: Cache Conan Dependencies Install
         id: cache-conan-deps
