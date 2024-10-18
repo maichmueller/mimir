@@ -28,22 +28,6 @@ jobs:
       - name: Install Conan
         run: pip install conan
 
-        # Debug
-      - name: Debug Configure Mimir
-        shell: bash
-        run: >
-          cmake 
-          -S . 
-          -B build_debug 
-          -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=conan_provider.cmake 
-          -DCMAKE_BUILD_TYPE=Debug 
-          -DBUILD_TESTS=ON 
-
-        # Debug
-      - name: Debug Build Mimir
-        run: |
-          cmake --build build_debug
-
       # Release
       - name: Release Configure Mimir
         shell: bash
@@ -60,13 +44,6 @@ jobs:
           cmake --build build_release
 
       - name: Upload build folder as artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: build_debug_${{ matrix.os }}
-          path: build_debug/
-          retention-days: 1
-
-      - name: Upload build folder as artifact
         uses: actions/upload-artifact@v4
         with:
           name: build_release_${{ matrix.os }}
@@ -81,16 +58,6 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Download debug folder
-        uses: actions/download-artifact@v4
-        with:
-          pattern: build_debug_${{ matrix.os }}
-          path: build/debug
-
-      - name: Debug Test
-        working-directory: build/debug/tests/unit
-        run: GTEST_OUTPUT=xml:test-results/ GTEST_COLOR=1 ctest -V
-
       - name: Download release folder
         uses: actions/download-artifact@v4
         with:
