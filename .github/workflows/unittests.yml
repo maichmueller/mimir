@@ -45,7 +45,7 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip setuptools
           python3 -m pip install conan
-          echo "CONAN_HOME=$HOME/.conan2-${{ runner.os }}-${{ matrix.config.build_type }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}" >> $GITHUB_OUTPUT
+          echo "CONAN_HOME=$HOME/.conan2-${{ runner.os }}-${{ matrix.config.build_type }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}" >> $GITHUB_ENV
           conan profile detect --name default
 
       - name: Set Environment Variables
