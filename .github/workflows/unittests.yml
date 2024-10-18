@@ -83,11 +83,8 @@ jobs:
           --build_type=${{ matrix.config.build_type }} \ 
           -DBUILD_TESTS=ON"
           if [[ "${{ matrix.config.os }}" == "macos-latest" ]]; then
-            alias gcc='gcc-14' && alias g++='g++-14' && ./configure.sh \ 
-              --source .  \
-              --build build \ 
-              --build_type=${{ matrix.config.build_type }} \ 
-              -DBUILD_TESTS=ON
+            alias gcc='gcc-14'
+            alias g++='g++-14'
           else
             ./configure.sh \ 
               --source .  \
