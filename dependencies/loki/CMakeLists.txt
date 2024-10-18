@@ -28,6 +28,7 @@ if (NOT loki_FOUND)
             GIT_TAG v0.0.6
             PREFIX ${CMAKE_BINARY_DIR}/loki
             CMAKE_ARGS ${CMAKE_ARGS}
+            PATCH_COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/conanfile.py <SOURCE_DIR>/conanfile.py
     )
 else()
     message(STATUS "loki is already installed.")

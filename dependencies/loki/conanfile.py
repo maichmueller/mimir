@@ -11,9 +11,7 @@ class Loki(ConanFile):
 
 
     def requirements(self):
-        requirements = self.conan_data.get("requirements", [])
-        for requirement in requirements:
-            self.requires(requirement)
+        self.requires("boost/1.86.0")
 
     def build(self):
 

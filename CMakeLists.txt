@@ -146,11 +146,6 @@ if (NOT loki_FOUND)
             ${CMAKE_BINARY_DIR}/deps/loki/conanfile.py
             COPYONLY
     )
-    configure_file(
-            ${PROJECT_SOURCE_DIR}/dependencies/loki/conandata.yml
-            ${CMAKE_BINARY_DIR}/deps/loki/conandata.yml
-            COPYONLY
-    )
     message(STATUS "Loki not found. Downloading and configuring from source.")
     execute_process(
             COMMAND
