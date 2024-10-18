@@ -78,7 +78,7 @@ jobs:
         env:
           cache-name: cache-conan-deps
         with:
-          path: ${{ steps.conan.outputs.CONAN_HOME }}
+          path: $CONAN_HOME
           key: ${{ runner.os }}-${{ env.cache-name }}-${{ matrix.config.build_type }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}-${{ hashFiles('**/conandata.yml') }}-${{ hashFiles('**/conanfile.py') }}
 
       # Build step
