@@ -3,11 +3,43 @@ requires = [
     "setuptools>=42",
     "pybind11_stubgen",
     "wheel",
-    "cmake>=3.21",
+    "cmake>=3.24",
     "ninja",
     "conan>=2.1",
 ]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "pymimir"
+dynamic = ["version"]
+authors = [
+    { name = "Simon Stahlberg", email = "simon.stahlberg@gmail.com" },
+    { name = "Dominik Drexler", email = "dominik.drexler@liu.se" },
+    { name = "Michael Aichmüller", email = "m.aichmueller@gmail.com" }
+]
+description = "Mimir planning library"
+license = { file = "LICENSE" }
+readme = "README.md"
+requires-python = ">=3.8"
+
+[tool.setuptools.dynamic]
+version = {file = "__version__"}
+
+[project.urls]
+Source = 'https://github.com/maichmueller/mimir'
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
+
+[tool.setuptools]
+packages = ["pymimir"]  # Modify if needed
+package-dir = { "" = "python/src" }
+include-package-data = false
+
+[tool.setuptools.package-data]
+pymimir = ["*.txt", "*.rst", "*.md"]
 
 
 [tool.cibuildwheel]

@@ -10,9 +10,28 @@ from pathlib import Path
 from setuptools import setup, find_packages, Extension
 from setuptools.command.build_ext import build_ext
 
-__version__ = "0.9.64"
+with open("__version__", "r") as f:
+    __version__ = f.read().strip()
+
 HERE = Path(__file__).resolve().parent
 
+def get_conan_path():
+    try:
+        # Use 'which' to find the conan binary in a POSIX system
+        if sys.platform.startswith("win"):
+            result = subprocess.run(['where', 'conan'], stdout=subprocess.PIPE, check=True)
+        else:
+            result = subprocess.run(['which', 'conan'], stdout=subprocess.PIPE, check=True)
+
+        conan_path = result.stdout.decode().strip()
+        if conan_path:
+            return conan_path
+        else:
+            raise FileNotFoundError("Conan executable not found.")
+    except subprocess.CalledProcessError:
+        raise FileNotFoundError("Conan executable not found.")
+
+conan_binary = get_conan_path()
 
 # A CMakeExtension needs a sourcedir instead of a file list.
 # The name must be the _single_ output extension from the CMake build.
@@ -42,18 +61,23 @@ class CMakeBuild(build_ext):
 
         # Build Pymimir
 
+        # 1. delete build directory cache
+        for file in glob.glob(f"{temp_directory}/**/CMakeCache.txt", recursive=True):
+            print(f"Removing CMakeCache.txt: ", file)
+            os.remove(file)
+
         cmake_args = [
-            "-G", "Ninja",
-            "-DBUILD_PYMIMIR=On",
+            f"-G", "Ninja",
+            f"-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=conan_provider.cmake",
+            f"-DCONAN_COMMAND={conan_binary}",
+            f"-DBUILD_PYMIMIR=On",
             f"-DMIMIR_VERSION_INFO={__version__}",
             f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={output_directory}",
             f"-DPYTHON_EXECUTABLE={sys.executable}",
             f"-DCMAKE_BUILD_TYPE={build_type}",  # not used on MSVC, but no harm
-            # for find_package(Boost) behaviour
-            "-DCMAKE_POLICY_DEFAULT_CMP0167=OLD",  # https://cmake.org/cmake/help/latest/policy/CMP0167.html
         ]
-        build_args = []
-        build_args += ["--target", ext.name]
+
+        build_args = ["--target", ext.name]
 
         subprocess.run(
             ["cmake", "-S", ext.sourcedir, "-B", f"{str(temp_directory)}/build"] + cmake_args, cwd=str(temp_directory), check=True
@@ -78,28 +102,7 @@ class CMakeBuild(build_ext):
         shutil.copy(temp_directory / "_pymimir.pyi", output_directory / "pymimir" / "__init__.pyi")
 
 
-# The information here can also be placed in setup.cfg - better separation of
-# logic and declaration, and simpler if you include description/version in a file.
 setup(
-    name="pymimir",
-    version=__version__,
-    author="Simon Stahlberg, Dominik Drexler",
-    author_email="simon.stahlberg@gmail.com, dominik.drexler@liu.se",
-    url="https://github.com/simon-stahlberg/mimir",
-    description="Mimir planning library",
-    long_description="",
-    install_requires=["cmake>=3.21"],
-    packages=find_packages(where="python/src"),
-    package_dir={"": "python/src"},
-    package_data={
-        "": [],
-    },
     ext_modules=[CMakeExtension("_pymimir")],
     cmdclass={"build_ext": CMakeBuild},
-    zip_safe=False,
-    extras_require={
-        'test': [
-            'pytest',
-        ],
-    }
 )
