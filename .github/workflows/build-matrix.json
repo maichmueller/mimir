@@ -42,6 +42,20 @@
     "compiler_version": 12
   },
   {
+    "os": "ubuntu-22.04",
+    "build_type": "Release",
+    "cc": "gcc",
+    "cxx": "g++",
+    "compiler_version": 11
+  },
+  {
+    "os": "ubuntu-22.04",
+    "build_type": "Debug",
+    "cc": "gcc",
+    "cxx": "g++",
+    "compiler_version": 11
+  },
+  {
     "os": "ubuntu-24.04",
     "build_type": "Release",
     "cc": "clang",
