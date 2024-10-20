@@ -179,6 +179,11 @@ find_package(range-v3 REQUIRED)
 message(STATUS "Found range-v3: ${range-v3_DIR} (found version ${range-v3_VERSION})")
 
 
+# This prints a summary of found dependencies
+include(FeatureSummary)
+feature_summary(WHAT ALL)
+
+
 ##############################################################
 # Add library and executable targets
 ##############################################################
@@ -213,7 +218,6 @@ endif ()
 if (BUILD_TESTS)
     add_subdirectory(tests)
 endif ()
-
 
 ###########
 # Install #

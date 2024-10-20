@@ -71,7 +71,7 @@ inline py::list insert_into_list(const py::object& self, std::ranges::range auto
 {
     if constexpr (std::ranges::sized_range<raw_t<decltype(rng)>>)
     {
-        py::list lst(rng.size());  // alloc memory (auto-filled with None)
+        py::list lst(rng.size());  // alloc memory (autofilled with None)
         size_t counter = 0;
         insert_into_list(self, lst, FWD(rng), counter);
         return lst;
