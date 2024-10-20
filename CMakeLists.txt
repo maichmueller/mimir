@@ -102,7 +102,7 @@ include(ExternalProject)
 list(APPEND CMAKE_PREFIX_PATH
         ${CMAKE_BINARY_DIR}/deps/install
 )
-find_package(Nauty)
+find_package(Nauty PATHS "${CMAKE_BINARY_DIR}/deps/install")
 if (NOT Nauty_FOUND)
     message(STATUS "Nauty not found. Downloading and configuring from source.")
     configure_file(

@@ -1,4 +1,4 @@
-name: Unit Test Library
+name: Integration Test Library
 
 on:
   workflow_run:
@@ -18,7 +18,7 @@ jobs:
           TASKS=$(echo $(cat .github/workflows/build-matrix.json) | sed 's/ //g')
           echo "matrix=$TASKS" >> $GITHUB_OUTPUT
 
-  unit-test:
+  build:
     needs: matrix-strategy-setup
     name: ${{ matrix.config.os }} • ${{ matrix.config.cc }}-${{ matrix.config.compiler_version }} • ${{ matrix.config.build_type }}
     runs-on: ${{ matrix.config.os }}
@@ -28,6 +28,9 @@ jobs:
         config: ${{ fromJson(needs.matrix-strategy-setup.outputs.matrix) }}
 
     steps:
+      - name: Checkout Mimir
+        uses: actions/checkout@v4
+
       - name: Setup CMake
         uses: jwlawson/actions-setup-cmake@v2
         with:
@@ -53,23 +56,25 @@ jobs:
             echo "CXX=${{ matrix.config.cxx }}-${{ matrix.config.compiler_version }}" >> "$GITHUB_ENV"
           fi
 
-      - name: Download build folder
+      - name: Download Installed Mimir
         uses: actions/download-artifact@v4
         with:
-          pattern: build-${{ matrix.os }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}-${{ matrix.config.build_type }}
-          path: build/release
-
-      - name: Test
-        working-directory: build/release/tests/unit
-        run: GTEST_OUTPUT=xml:test-results/ GTEST_COLOR=1 ctest -V
-
-      - name: Install
-        run: |
-          cmake --install build/release --prefix install
-
-      - name: Upload installation as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: install_${{ matrix.os }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}-${{ matrix.config.build_type }}
+          pattern: install_${{ matrix.os }}_${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}-${{ matrix.config.build_type }}
           path: install
-          retention-days: 1
+
+      - name: Configure Test Project
+        shell: bash
+        run: >
+          cmake 
+          -S tests/integration 
+          -B tests/integration/build
+          -DCMAKE_PREFIX_PATH=install
+
+      - name: Build Test Project
+        run: |
+          cmake --build tests/integration/build
+
+      - name: Run Test Project
+        working-directory: tests/integration/build
+        run: |
+          GTEST_COLOR=1 ctest -V

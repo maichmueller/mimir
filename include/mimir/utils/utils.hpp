@@ -103,6 +103,9 @@ struct overload : Ts...
 {
     using Ts::operator()...;
 };
+template < typename... Ts >
+overload(Ts...) -> overload< Ts... >;
+
 
 /// logical XOR of the conditions (using fold expressions and bitwise xor)
 template<typename... Conditions>

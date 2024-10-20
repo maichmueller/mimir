@@ -52,7 +52,7 @@ target_include_directories(core
 # Install the target and create export-set
 install(
         TARGETS core
-        EXPORT mimircoreTargets
+        EXPORT mimirTargets
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -60,15 +60,15 @@ install(
 )
 
 # Generate and install export file
-install(EXPORT mimircoreTargets
+install(EXPORT mimirTargets
         NAMESPACE mimir::
         COMPONENT core
-        FILE "mimircoreTargets.cmake"
+        FILE "mimirTargets.cmake"
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/mimir"
 )
 
 # Generate build tree export file
-export(EXPORT mimircoreTargets
-        FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake/mimircoreTargets.cmake"
+export(EXPORT mimirTargets
+        FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake/mimirTargets.cmake"
         NAMESPACE mimir::
 )
