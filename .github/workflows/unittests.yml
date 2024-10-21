@@ -12,11 +12,8 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
-      - id: set-matrix
-        run: |
-          TASKS=$(echo $(cat .github/workflows/build-matrix.json) | sed 's/ //g')
-          echo "matrix=$TASKS" >> $GITHUB_OUTPUT
+       - uses: ./.github/workflows/read-build-matrix.yml
+
 
   unit-test:
     needs: matrix-strategy-setup
@@ -28,30 +25,15 @@ jobs:
         config: ${{ fromJson(needs.matrix-strategy-setup.outputs.matrix) }}
 
     steps:
-      - name: Setup CMake
-        uses: jwlawson/actions-setup-cmake@v2
+      - uses: ./.github/workflows/setup.yml
         with:
-          cmake-version: '3.28.x'
-
-      - name: Show CMake Version
-        run: cmake --version
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Set up Ninja
-        uses: seanmiddleditch/gha-setup-ninja@master
-
-      - name: Set Environment Variables
-        shell: bash
-        run: |
-          if [[ "${{ matrix.config.os }}" == "macos-latest" ]]; then
-            echo "Skip for macos."
-          else
-            echo "CC=${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}" >> "$GITHUB_ENV"
-            echo "CXX=${{ matrix.config.cxx }}-${{ matrix.config.compiler_version }}" >> "$GITHUB_ENV"
-          fi
+          os: ${{ matrix.config.os }}
+          cc: ${{ matrix.config.cc }}
+          cxx: ${{ matrix.config.cxx }}
+          compiler-version: ${{ matrix.config.compiler_version }}
+          build-type: ${{ matrix.config.build_type }}
+          use-cache: true
+          set-env-vars: true
 
       - name: Download build folder
         uses: actions/download-artifact@v4

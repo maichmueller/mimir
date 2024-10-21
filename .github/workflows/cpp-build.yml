@@ -8,11 +8,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
-      - id: set-matrix
-        run: |
-          TASKS=$(echo $(cat .github/workflows/build-matrix.json) | sed 's/ //g')
-          echo "matrix=$TASKS" >> $GITHUB_OUTPUT
+      - uses: ./.github/workflows/read-build-matrix.yml
 
   build:
     needs: matrix-strategy-setup
@@ -24,60 +20,21 @@ jobs:
         config: ${{ fromJson(needs.matrix-strategy-setup.outputs.matrix) }}
 
     steps:
-      - name: Checkout Mimir
-        uses: actions/checkout@v4
-
-      - name: Setup CMake
-        uses: jwlawson/actions-setup-cmake@v2
+      - uses: ./.github/workflows/setup.yml
         with:
-          cmake-version: '3.28.x'
+          os: ${{ matrix.config.os }}
+          cc: ${{ matrix.config.cc }}
+          cxx: ${{ matrix.config.cxx }}
+          compiler-version: ${{ matrix.config.compiler_version }}
+          build-type: ${{ matrix.config.build_type }}
+          use-cache: true
+          set-env-vars: true
 
-      - name: Show CMake Version
-        run: cmake --version
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Set up Ninja
-        uses: seanmiddleditch/gha-setup-ninja@master
-
-      - name: Install Nauty manually (MACOS only)
-        if: ${{ matrix.config.os == 'macos-latest' }}
+      - name: Install local conanfiles
+        working-directory: dependencies
         run: |
-          cmake -S dependencies/nauty -B build/deps/nauty/build -DCMAKE_INSTALL_PREFIX=build/deps/install
-          cmake --build build/deps/nauty/build
-          cmake --install build/deps/nauty/build --prefix build/deps/install
-
-      - name: Set Environment Variables
-        shell: bash
-        run: |
-          if [[ "${{ matrix.config.os }}" == "macos-latest" ]]; then
-            echo "Skip for macos."
-          else
-            echo "CC=${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}" >> "$GITHUB_ENV"
-            echo "CXX=${{ matrix.config.cxx }}-${{ matrix.config.compiler_version }}" >> "$GITHUB_ENV"
-          fi
-          conan_home="$HOME/.conan2-${{ runner.os }}-${{ matrix.config.build_type }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}"
-          echo "Conan Home is $conan_home"
-          echo "CONAN_HOME=$conan_home" >> "$GITHUB_ENV"
-
-      - name: Install conan
-        id: conan
-        shell: bash
-        run: |
-          python3 -m pip install --upgrade pip setuptools
-          python3 -m pip install conan
-          conan profile detect --name default
-
-      - name: Cache Conan Dependencies Install
-        id: cache-conan-deps
-        uses: actions/cache@v4
-        env:
-          cache-name: cache-conan-deps
-        with:
-          path: ${{ env.CONAN_HOME }}
-          key: ${{ runner.os }}-${{ env.cache-name }}-${{ matrix.config.build_type }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}-${{ hashFiles('conandata.yml') }}-${{ hashFiles('conanfile.py') }}
+          conan create loki --build missing --options='loki:*/fPIC=True'
+          conan create nauty --build missing --options='nauty:*/fPIC=True'
 
       # Build step
       - name: Configure Mimir

@@ -12,11 +12,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
-      - id: set-matrix
-        run: |
-          TASKS=$(echo $(cat .github/workflows/build-matrix.json) | sed 's/ //g')
-          echo "matrix=$TASKS" >> $GITHUB_OUTPUT
+      - uses: ./.github/workflows/read-build-matrix.yml
 
   build:
     needs: matrix-strategy-setup

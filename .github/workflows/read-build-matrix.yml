@@ -1,0 +1,15 @@
+name: Setup Environment
+
+on: [workflow_call]
+
+jobs:
+  matrix-strategy-setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: set-matrix
+        run: |
+          TASKS=$(echo $(cat .github/workflows/build-matrix.json) | sed 's/ //g')
+          echo "matrix=$TASKS" >> $GITHUB_OUTPUT
