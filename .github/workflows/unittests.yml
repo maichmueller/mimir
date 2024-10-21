@@ -12,7 +12,8 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-       - uses: ./.github/workflows/read-build-matrix.yml
+      - uses: actions/checkout@v4
+      - uses: ./.github/workflows/read-build-matrix.yml
 
 
   unit-test:

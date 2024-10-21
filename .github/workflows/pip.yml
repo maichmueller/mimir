@@ -3,22 +3,34 @@ name: pip install and test
 on: [push]
 
 jobs:
+  matrix-strategy-setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/workflows/read-build-matrix.yml
+
   build:
+    needs: matrix-strategy-setup
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        config: ${{ fromJson(needs.matrix-strategy-setup.outputs.matrix) }}
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
-
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
+      - uses: ./.github/workflows/setup.yml
         with:
+          os: ${{ matrix.config.os }}
+          cc: ${{ matrix.config.cc }}
+          cxx: ${{ matrix.config.cxx }}
+          compiler-version: ${{ matrix.config.compiler_version }}
+          build-type: ${{ matrix.config.build_type }}
           python-version: ${{ matrix.python-version }}
+          use-cache: true
+          set-env-vars: true
 
       - name: Install dependencies and requirements
         run: |

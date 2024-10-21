@@ -18,6 +18,10 @@ on:
       build-type:
         required: true
         type: string
+      python-version:
+        required: false
+        type: string
+        default: '3.11'
       use-cache:
         required: false
         type: boolean
@@ -45,7 +49,7 @@ jobs:
   
         - uses: actions/setup-python@v5
           with:
-            python-version: '3.11'
+            python-version: ${{ inputs.python-version }}
   
         - name: Set up Ninja
           uses: seanmiddleditch/gha-setup-ninja@master
