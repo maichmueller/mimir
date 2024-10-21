@@ -45,10 +45,4 @@ class NautyRecipe(ConanFile):
         ac.install()
 
     def package_info(self):
-        pkg_config = PkgConfig(
-            self,
-            "nauty",
-            pkg_config_path=f"{self.package_folder}/libdata/pkgconfig",
-        )
-        pkg_config.fill_cpp_info(self.cpp_info, is_system=False)
-        print(self.cpp_info.libs)
+        self.cpp_info.libs = ["nauty"]

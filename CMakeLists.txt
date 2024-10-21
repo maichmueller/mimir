@@ -98,7 +98,7 @@ feature_summary(WHAT ALL)
 ##############################################################
 # Add library and executable targets
 ##############################################################
-
+message(STATUS "Adding targets from subdirectories.")
 # ------------
 # Target Mimir
 # ------------

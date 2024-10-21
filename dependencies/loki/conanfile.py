@@ -56,4 +56,4 @@ class LokiRecipe(ConanFile):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.libs = ["loki"]
+        self.cpp_info.libs = ["loki_parsers"]
