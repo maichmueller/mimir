@@ -21,7 +21,10 @@ jobs:
     - name: Install dependencies and requirements
       run: |
         python -m pip install --upgrade pip
-        python -m pip install setuptools wheel twine cibuildwheel
+        python -m pip install setuptools wheel twine cibuildwheel conan
+
+    - name: Install Conan Dependencies (no cache allowed!)
+      run: conan install . --build="*"
 
     - name: Build wheels
       run: cibuildwheel --platform linux --output-dir wheelhouse
