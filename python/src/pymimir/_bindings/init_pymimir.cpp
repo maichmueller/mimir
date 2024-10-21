@@ -48,9 +48,9 @@ void init_pymimir(py::module& m)
     init_heuristics(m);
     init_algorithms(m);
     init_state_space(m);
-    init_certificate(m);
     init_abstraction(m);
     init_static_digraph(m);
+    init_nauty_wrappers(m);
     init_static_vertexcolored_graph(m);
     init_tuple_graph(m);
 

@@ -175,25 +175,4 @@ void init_static_vertexcolored_graph(py::module& m)
         .def("get_num_vertices", &StaticVertexColoredDigraph::get_num_vertices)
         .def("get_num_edges", &StaticVertexColoredDigraph::get_num_edges);
 
-    m.def("compute_vertex_colors", &compute_vertex_colors, py::arg("vertex_colored_graph"));
-
-    m.def("compute_sorted_vertex_colors", &compute_sorted_vertex_colors, py::arg("vertex_colored_graph"));
-
-    // DenseNautyGraph
-    py::class_<nauty_wrapper::DenseGraph>(m, "DenseNautyGraph")  //
-        .def(py::init<>())
-        .def(py::init<int>(), py::arg("num_vertices"))
-        .def(py::init<StaticVertexColoredDigraph>(), py::arg("digraph"))
-        .def("add_edge", &nauty_wrapper::DenseGraph::add_edge, py::arg("source"), py::arg("target"))
-        .def("compute_certificate", &nauty_wrapper::DenseGraph::compute_certificate)
-        .def("clear", &nauty_wrapper::DenseGraph::clear, py::arg("num_vertices"));
-
-    // SparseNautyGraph
-    py::class_<nauty_wrapper::SparseGraph>(m, "SparseNautyGraph")  //
-        .def(py::init<>())
-        .def(py::init<int>(), py::arg("num_vertices"))
-        .def(py::init<StaticVertexColoredDigraph>(), py::arg("digraph"))
-        .def("add_edge", &nauty_wrapper::SparseGraph::add_edge, py::arg("source"), py::arg("target"))
-        .def("compute_certificate", &nauty_wrapper::SparseGraph::compute_certificate)
-        .def("clear", &nauty_wrapper::SparseGraph::clear, py::arg("num_vertices"));
 }

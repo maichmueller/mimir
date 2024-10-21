@@ -69,7 +69,7 @@ DECLARE_INIT_FUNC(enums);
 DECLARE_INIT_FUNC(aag);
 DECLARE_INIT_FUNC(atoms);
 DECLARE_INIT_FUNC(ground_atoms);
-DECLARE_INIT_FUNC(certificate);
+DECLARE_INIT_FUNC(nauty_wrappers);
 DECLARE_INIT_FUNC(conditional_effect);
 DECLARE_INIT_FUNC(algorithms);
 DECLARE_INIT_FUNC(literals);
