@@ -41,15 +41,13 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Checkout Mimir
-      uses: actions/checkout@v4
-
     - name: Setup CMake
       uses: jwlawson/actions-setup-cmake@v2
       with:
         cmake-version: '3.28.x'
 
     - name: Show CMake Version
+      shell: bash
       run: cmake --version
 
     - name: Setup Python
