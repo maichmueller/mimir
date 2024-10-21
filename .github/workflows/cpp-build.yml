@@ -31,8 +31,8 @@ jobs:
       - name: Install local conanfiles
         working-directory: dependencies
         run: |
-          conan create loki --build missing --options='loki:*/fPIC=True'
-          conan create nauty --build missing --options='nauty:*/fPIC=True'
+          conan create loki --build missing --options='loki/*:fPIC=True'
+          conan create nauty --build missing --options='nauty/*:fPIC=True'
 
       # Build step
       - name: Configure Mimir
