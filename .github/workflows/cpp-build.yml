@@ -28,12 +28,6 @@ jobs:
           use-cache: true
           set-env-vars: true
 
-      - name: Install local conanfiles
-        working-directory: dependencies
-        run: |
-          conan create loki --build missing --options='loki:*/fPIC=True'
-          conan create nauty --build missing --options='nauty:*/fPIC=True'
-
       # Build step
       - name: Configure Mimir
         shell: bash
@@ -41,7 +35,7 @@ jobs:
           ./configure.sh  
           --source .  
           --build build  
-          --build_type=${{ matrix.config.build_type }}  
+          --config=${{ matrix.config.build_type }}  
           -DBUILD_TESTS=ON
 
       - name: Build Mimir
