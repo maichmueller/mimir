@@ -64,112 +64,23 @@ set(DATA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/data/")
 message("DATA_DIR: ${DATA_DIR}")
 
 ##############################################################
-# CMake modules and macro files
-##############################################################
-
-list(APPEND CMAKE_MODULE_PATH
-        "${PROJECT_SOURCE_DIR}/cmake"
-)
-include("configure_boost")
-include("configure_ccache")
-include("configure_loki")
-
-##############################################################
-# CCache
-##############################################################
-
-# CCache
-configure_ccache()
-
-
-##############################################################
 # Dependency Handling
 ##############################################################
 
 # set(CMAKE_FIND_DEBUG_MODE TRUE)
 
-# Boost
 # Find Boost headers only according to https://cmake.org/cmake/help/latest/module/FindBoost.html
+include("${PROJECT_SOURCE_DIR}/cmake/configure_boost.cmake")
 configure_boost()
 find_package(Boost ${BOOST_MIN_VERSION} REQUIRED COMPONENTS iostreams)
-if (Boost_FOUND)
-    include_directories(${Boost_INCLUDE_DIRS})
-    message(STATUS "Found Boost: ${Boost_DIR} (found version ${Boost_VERSION})")
-endif ()
-include(ExternalProject)
+message(STATUS "Found Boost: ${Boost_DIR} (found version ${Boost_VERSION})")
 
-# this is where we expect to find the nauty library if installed already
-list(APPEND CMAKE_PREFIX_PATH
-        ${CMAKE_BINARY_DIR}/deps/install
-)
-find_package(Nauty PATHS "${CMAKE_BINARY_DIR}/deps/install")
-if (NOT Nauty_FOUND)
-    message(STATUS "Nauty not found. Downloading and configuring from source.")
-    configure_file(
-            ${PROJECT_SOURCE_DIR}/dependencies/nauty/CMakeLists.txt
-            ${CMAKE_BINARY_DIR}/deps/nauty/CMakeLists.txt
-            COPYONLY
-    )
-    execute_process(
-            COMMAND ${CMAKE_COMMAND}
-            -S ${CMAKE_BINARY_DIR}/deps/nauty
-            -B ${CMAKE_BINARY_DIR}/deps/build/nauty
-            -G ${CMAKE_GENERATOR}
-            -DCMAKE_BUILD_TYPE=Release
-            -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/deps/install
-            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-    )
-    message(STATUS "Building Nauty.")
-    execute_process(
-            COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}/deps/build/nauty --parallel
-    )
-    message(STATUS "Installing Nauty.")
-    execute_process(
-            COMMAND ${CMAKE_COMMAND} --install ${CMAKE_BINARY_DIR}/deps/build/nauty --config Release
-    )
-    find_package(Nauty REQUIRED)
-endif ()
-
+find_package(nauty REQUIRED)
 message(STATUS "Found Nauty: ${NAUTY_LIBRARY} ${NAUTY_INCLUDE_DIR}")
 
 find_package(ZLIB REQUIRED)
 
-find_package(loki ${LOKI_MIN_VERSION} QUIET COMPONENTS parsers)
-if (NOT loki_FOUND)
-    configure_file(
-            ${PROJECT_SOURCE_DIR}/dependencies/loki/CMakeLists.txt
-            ${CMAKE_BINARY_DIR}/deps/loki/CMakeLists.txt
-            COPYONLY
-    )
-    configure_file(
-            ${PROJECT_SOURCE_DIR}/dependencies/loki/conanfile.py
-            ${CMAKE_BINARY_DIR}/deps/loki/conanfile.py
-            COPYONLY
-    )
-    message(STATUS "Loki not found. Downloading and configuring from source.")
-    execute_process(
-            COMMAND
-            ${CMAKE_COMMAND}
-            -S ${CMAKE_BINARY_DIR}/deps/loki
-            -B ${CMAKE_BINARY_DIR}/deps/build/loki
-            -G ${CMAKE_GENERATOR}
-            -DCMAKE_BUILD_TYPE=Release
-            -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/deps/install
-            -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=${PROJECT_SOURCE_DIR}/conan_provider.cmake
-            -DCONAN_PROVIDER_FILE=${PROJECT_SOURCE_DIR}/conan_provider.cmake
-            -DCONAN_COMMAND=${CONAN_COMMAND}
-            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-    )
-    message(STATUS "Building Loki.")
-    execute_process(
-            COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}/deps/build/loki --parallel
-    )
-    message(STATUS "Installing Loki.")
-    execute_process(
-            COMMAND ${CMAKE_COMMAND} --install ${CMAKE_BINARY_DIR}/deps/build/loki --config Release
-    )
-    find_package(loki ${LOKI_MIN_VERSION} REQUIRED COMPONENTS parsers)
-endif ()
+find_package(loki ${LOKI_MIN_VERSION} REQUIRED COMPONENTS parsers)
 message(STATUS "Found Loki: ${loki_DIR} (found version ${loki_VERSION})")
 
 find_package(fmt REQUIRED)
