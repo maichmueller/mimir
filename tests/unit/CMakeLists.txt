@@ -5,7 +5,8 @@ find_package(GTest REQUIRED COMPONENTS GTest Main)
 # Helper function to create and register a test executable
 function(add_gtest test_name source_file)
     add_executable(${test_name} ${source_file})
-    target_link_libraries(${test_name} PRIVATE mimir::core GTest::GTest GTest::Main)
+    list(APPEND ALL_TEST_SOURCES ${source_file})
+    target_link_libraries(${test_name} PRIVATE GTest::GTest GTest::Main mimir::core)
     add_test(NAME ${test_name} COMMAND ${test_name})
 endfunction()
 
