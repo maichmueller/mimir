@@ -135,9 +135,9 @@ echo "Executing cmake configuration."
 
 if [ "$use_conan" = true ]; then
   # install all dependencies defined for conan first
-  "$conan_cmd" create dependencies/loki --profile:host=default --profile:build=default --build=missing --options='loki/*:fPIC=True'
-  "$conan_cmd" create dependencies/nauty --profile:host=default --profile:build=default --build=missing --options='nauty/*:fPIC=True'
-  "$conan_cmd" install . -of="$cmake_build_folder/conan" --profile:host=default --profile:build=default --build=missing -g CMakeDeps
+  "$conan_cmd" create dependencies/loki -s build_type="$build_type" --profile:host=default --profile:build=default --build=missing --options='loki/*:fPIC=True'
+  "$conan_cmd" create dependencies/nauty -s build_type="$build_type" --profile:host=default --profile:build=default --build=missing --options='nauty/*:fPIC=True'
+  "$conan_cmd" install . -of="$cmake_build_folder/conan" -s build_type="$build_type" --profile:host=default --profile:build=default --build=missing -g CMakeDeps
   # append the necessary cmake configuration to the cmake call
   cmake_extra_args="${cmake_extra_args[*]} \
   -DCMAKE_TOOLCHAIN_FILE=$toolchain_file \
