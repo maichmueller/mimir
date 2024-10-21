@@ -1,9 +1,14 @@
 name: Setup Environment
 
-on: [workflow_call]
+on:
+  workflow_call:
+    outputs:
+      matrix:
+        description: "The matrix strategy from the build-matrix.json file"
+        value: ${{ jobs.matrix-setup.outputs.matrix }}
 
 jobs:
-  matrix-strategy-setup:
+  matrix-setup:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}

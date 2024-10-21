@@ -1,27 +1,23 @@
-name: Build Library
+name: Build C++ Library
 
 on: [ push, pull_request ]
 
 jobs:
-  matrix-strategy-setup:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/workflows/read-build-matrix.yml
+  matrix_setup:
+    uses: ./.github/workflows/read-build-matrix.yml
 
   build:
-    needs: matrix-strategy-setup
+    needs: matrix_setup
     name: ${{ matrix.config.os }} • ${{ matrix.config.cc }}-${{ matrix.config.compiler_version }} • ${{ matrix.config.build_type }}
     runs-on: ${{ matrix.config.os }}
     strategy:
       fail-fast: false
       matrix:
-        config: ${{ fromJson(needs.matrix-strategy-setup.outputs.matrix) }}
+        config: ${{ fromJson(needs.matrix_setup.outputs.matrix) }}
 
     steps:
-      - uses: ./.github/workflows/setup.yml
+      - name: Setup Environment
+        uses: ./.github/actions/setup-environment
         with:
           os: ${{ matrix.config.os }}
           cc: ${{ matrix.config.cc }}
@@ -30,7 +26,7 @@ jobs:
           build-type: ${{ matrix.config.build_type }}
           use-cache: true
           set-env-vars: true
-
+          
       - name: Install local conanfiles
         working-directory: dependencies
         run: |
@@ -54,6 +50,6 @@ jobs:
       - name: Upload build folder as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build-${{ matrix.os }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}-${{ matrix.config.build_type }}
+          name: build-${{ matrix.config.os }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}-${{ matrix.config.build_type }}
           path: build/
           retention-days: 1
