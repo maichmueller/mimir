@@ -55,7 +55,6 @@ void init_pymimir(py::module& m)
     init_tuple_graph(m);
 
 
-    // ObjectGraphPruningStrategy
     py::class_<ObjectGraphPruningStrategy>(m, "ObjectGraphPruningStrategy");
 
     // ObjectGraph
