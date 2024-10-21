@@ -16,6 +16,7 @@ jobs:
         config: ${{ fromJson(needs.build-matrix-reader.outputs.matrix) }}
 
     steps:
+      - uses: actions/checkout@v4
       - name: Setup Environment
         uses: ./.github/actions/setup-environment
         with:

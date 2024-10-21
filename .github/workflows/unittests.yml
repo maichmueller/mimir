@@ -26,6 +26,7 @@ jobs:
         config: ${{ fromJson(needs.matrix-strategy-setup.outputs.matrix) }}
 
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/workflows/setup.yml
         with:
           os: ${{ matrix.config.os }}
