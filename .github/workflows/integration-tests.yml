@@ -2,7 +2,7 @@ name: Integration Test Library
 
 on:
   workflow_run:
-    workflows: [Build C++ Library]
+    workflows: [Build CPP Library]
     types:
       - completed
 

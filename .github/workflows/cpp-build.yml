@@ -1,4 +1,4 @@
-name: Build C++ Library
+name: Build CPP Library
 
 on: [ push, pull_request ]
 
