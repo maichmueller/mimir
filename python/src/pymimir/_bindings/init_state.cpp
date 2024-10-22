@@ -9,7 +9,6 @@ namespace py = pybind11;
 using namespace mimir;
 using namespace mimir::pymimir;
 
-
 void init_state(py::module& m)
 {
     py::class_<State>(m, "State")  //
@@ -38,14 +37,34 @@ void init_state(py::module& m)
                  auto atoms = self.get_atoms<Derived>();
                  return std::vector<size_t>(atoms.begin(), atoms.end());
              })
-        .def("contains", py::overload_cast<GroundAtom<Fluent>>(&State::contains<Fluent>, py::const_), py::arg("atom"))
-        .def("contains", py::overload_cast<GroundAtom<Derived>>(&State::contains<Derived>, py::const_), py::arg("atom"))
+        .def("contains", &State::contains<Fluent>, py::arg("atom"))
+        .def("contains", &State::contains<Derived>, py::arg("atom"))
+        .def(
+            "contains",
+            [](const State& self, const AnyGroundAtom& atom) { return self.contains(atom); },
+            py::arg("atom"))
         .def("superset_of", py::overload_cast<const GroundAtomList<Fluent>&>(&State::superset_of<Fluent>, py::const_), py::arg("atoms"))
         .def("superset_of", py::overload_cast<const GroundAtomList<Derived>&>(&State::superset_of<Derived>, py::const_), py::arg("atoms"))
+        .def(
+            "superset_of",
+            [](const State& self, const py::iterable& rng)
+            {
+                auto range = as_range(rng.begin(), rng.end());
+                return self.superset_of(range | std::views::transform(AS_LAMBDA(py::cast<AnyGroundAtom>)));
+            },
+            py::arg("atoms"))
         .def("literal_holds", py::overload_cast<GroundLiteral<Fluent>>(&State::literal_holds<Fluent>, py::const_), py::arg("literal"))
         .def("literal_holds", py::overload_cast<GroundLiteral<Derived>>(&State::literal_holds<Derived>, py::const_), py::arg("literal"))
         .def("literals_hold", py::overload_cast<const GroundLiteralList<Fluent>&>(&State::literals_hold<Fluent>, py::const_), py::arg("literals"))
         .def("literals_hold", py::overload_cast<const GroundLiteralList<Derived>&>(&State::literals_hold<Derived>, py::const_), py::arg("literals"))
+        .def(
+            "literals_hold",
+            [](const State& self, const py::iterable& rng)
+            {
+                auto range = as_range(rng.begin(), rng.end());
+                return self.literals_hold(std::views::transform(range, AS_LAMBDA(py::cast<AnyGroundLiteral>)));
+            },
+            py::arg("literals"))
         .def(
             "get_unsatisfied_literals",
             [](const State& self, Problem problem)

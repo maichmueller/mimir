@@ -18,10 +18,8 @@
 #ifndef MIMIR_SEARCH_STATE_HPP_
 #define MIMIR_SEARCH_STATE_HPP_
 
-#include "cista/containers/dynamic_bitset.h"
-#include "cista/containers/tuple.h"
-#include "cista/serialization.h"
-#include "cista/storage/unordered_set.h"
+
+#include "cista.h"
 #include "mimir/common/concepts.hpp"
 #include "mimir/common/printers.hpp"
 #include "mimir/common/types_cista.hpp"
@@ -67,8 +65,16 @@ public:
     template<DynamicPredicateCategory P>
     bool contains(GroundAtom<P> atom) const;
 
+    bool contains(const AnyGroundAtom& atom) const;
+
     template<DynamicPredicateCategory P>
     bool superset_of(const GroundAtomList<P>& atoms) const;
+
+    template<std::ranges::range Range>
+    bool superset_of(Range&& atoms) const
+    {
+        return std::ranges::all_of(atoms, AS_CPTR_LAMBDA(contains));
+    }
 
     bool literal_holds(AnyGroundLiteral literal) const;
 
@@ -77,6 +83,12 @@ public:
 
     template<DynamicPredicateCategory P>
     bool literals_hold(const GroundLiteralList<P>& literals) const;
+
+    template<std::ranges::range Range>
+    bool literals_hold(Range&& literals) const
+    {
+        return std::ranges::all_of(FWD(literals), AS_CPTR_LAMBDA(literal_holds));
+    }
 
     template<std::ranges::range LiteralRange>
     auto get_unsatisfied_literals(LiteralRange&& literals) const
