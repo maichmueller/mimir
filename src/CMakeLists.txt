@@ -36,11 +36,16 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 endif ()
 target_compile_definitions(core PUBLIC -DDATA_DIR="${DATA_DIR}")
 
-target_link_libraries(core loki::loki)
-target_link_libraries(core nauty::nauty)
-target_link_libraries(core Boost::iostreams ZLIB::ZLIB)
-target_link_libraries(core fmt::fmt)
-target_link_libraries(core range-v3::range-v3)
+target_link_libraries(
+        core
+        PUBLIC
+        loki::loki
+        nauty::nauty
+        Boost::iostreams
+        ZLIB::ZLIB
+        fmt::fmt
+        range-v3::range-v3
+)
 
 # Use include depending on building or using from installed location
 target_include_directories(core
