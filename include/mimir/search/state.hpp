@@ -23,6 +23,7 @@
 #include "cista/serialization.h"
 #include "cista/storage/unordered_set.h"
 #include "mimir/common/concepts.hpp"
+#include "mimir/common/printers.hpp"
 #include "mimir/common/types_cista.hpp"
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/search/declarations.hpp"
@@ -164,7 +165,8 @@ using StateSet = std::unordered_set<State>;
  * Pretty printing
  */
 
-extern std::ostream& operator<<(std::ostream& os, const std::tuple<Problem, State, const PDDLFactories&>& data);
+template<>
+std::ostream& operator<<(std::ostream& os, const std::tuple<Problem, State, const PDDLFactories&>& data);
 }
 
 #endif
