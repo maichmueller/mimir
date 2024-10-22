@@ -7,9 +7,7 @@
 namespace py = pybind11;
 #include "mimir/mimir.hpp"
 
-using namespace mimir;
-
-namespace pymimir {
+namespace mimir::pymimir {
 
 /**
  * We cannot expose the variant types directly because they are not default constructible.

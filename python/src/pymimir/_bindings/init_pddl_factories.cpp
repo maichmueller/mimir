@@ -11,7 +11,8 @@
 namespace py = pybind11;
 
 using namespace mimir;
-using namespace pymimir;
+using namespace mimir::pymimir;
+
 
 void init_pddl_factories(py::module& m)
 {

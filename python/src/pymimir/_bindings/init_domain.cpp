@@ -5,11 +5,12 @@
 
 #include <pybind11/pybind11.h>
 namespace py = pybind11;
-using namespace mimir;
 
 void init_domain(py::module& m)
 {
-    using namespace pymimir;
+    using namespace mimir;
+using namespace mimir::pymimir;
+
     py::class_<DomainImpl>(m, "Domain")  //
         .def("__str__", &DomainImpl::str)
         .def("__repr__", &DomainImpl::str)
