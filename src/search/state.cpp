@@ -93,7 +93,10 @@ template bool State::superset_of(const GroundAtomList<Derived>& atoms) const;
 bool State::literal_holds(AnyGroundLiteral literal) const
 {
     {
-        return std::visit(AS_CPTR_LAMBDA(literal_holds), literal);
+        return std::visit(overload { [](GroundLiteral<Static>) -> bool
+                                     { throw std::invalid_argument("No implementation for check whether Static literals hold in State class."); },
+                                     AS_CPTR_LAMBDA(literal_holds) },
+                          literal);
     }
 }
 

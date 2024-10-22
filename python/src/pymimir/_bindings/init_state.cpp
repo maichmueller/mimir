@@ -49,8 +49,9 @@ void init_state(py::module& m)
             "get_unsatisfied_literals",
             [](const State& self, Problem problem)
             {
-                return insert_into_list(insert_into_list(self.get_unsatisfied_literals(problem->get_goal_condition<Fluent>())),
-                                        self.get_unsatisfied_literals(problem->get_goal_condition<Derived>()));
+                const auto& fluent_literals = problem->get_goal_condition<Fluent>();
+                const auto& derived_literals = problem->get_goal_condition<Derived>();
+                return insert_into_list(insert_into_list(self.get_unsatisfied_literals(fluent_literals)), self.get_unsatisfied_literals(derived_literals));
             },
             py::arg("problem"))
         .def(
@@ -58,7 +59,7 @@ void init_state(py::module& m)
             [](const State& self, const py::iterable& iter)
             {
                 auto rng = as_range(iter.begin(), iter.end());
-                return self.get_unsatisfied_literals(std::views::transform(rng, [](const py::handle& literal) { return py::cast<AnyGroundLiteral>(literal); }));
+                return self.get_unsatisfied_literals(std::views::transform(rng, AS_LAMBDA(py::cast<AnyGroundLiteral>)));
             },
             py::arg("iterable"))
         .def(
@@ -75,8 +76,9 @@ void init_state(py::module& m)
             "get_satisfied_literals",
             [](const State& self, Problem problem)
             {
-                return insert_into_list(insert_into_list(self.get_satisfied_literals(problem->get_goal_condition<Fluent>())),
-                                        self.get_satisfied_literals(problem->get_goal_condition<Derived>()));
+                const auto& fluent_literals = problem->get_goal_condition<Fluent>();
+                const auto& derived_literals = problem->get_goal_condition<Derived>();
+                return insert_into_list(insert_into_list(self.get_satisfied_literals(fluent_literals)), self.get_satisfied_literals(derived_literals));
             },
             py::arg("problem"))
         .def(
@@ -84,7 +86,7 @@ void init_state(py::module& m)
             [](const State& self, const py::iterable& iter)
             {
                 auto rng = as_range(iter.begin(), iter.end());
-                return self.get_satisfied_literals(std::views::transform(rng, [](const py::handle& literal) { return py::cast<AnyGroundLiteral>(literal); }));
+                return self.get_satisfied_literals(std::views::transform(rng, AS_LAMBDA(py::cast<AnyGroundLiteral>)));
             },
             py::arg("iterable"))
         .def(

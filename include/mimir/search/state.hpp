@@ -72,10 +72,6 @@ public:
 
     bool literal_holds(AnyGroundLiteral literal) const;
 
-    template<typename LiteralT>
-        requires is_any_v<LiteralT, GroundLiteral<Fluent>, GroundLiteral<Derived>, GroundLiteral<Static>>
-    bool literal_holds(LiteralT literal) const;
-
     template<DynamicPredicateCategory P>
     bool literal_holds(GroundLiteral<P> literal) const;
 
@@ -104,28 +100,6 @@ private:
 // Compare the state index, since states returned by the `StateRepository` are already unique by their index.
 extern bool operator==(State lhs, State rhs);
 extern bool operator!=(State lhs, State rhs);
-
-template<typename LiteralT>
-    requires is_any_v<LiteralT, GroundLiteral<Fluent>, GroundLiteral<Derived>, GroundLiteral<Static>>
-bool State::literal_holds(LiteralT literal) const
-{
-    if constexpr (std::is_same_v<LiteralT, GroundLiteral<Fluent>>)
-    {
-        return contains<Fluent>(literal);
-    }
-    else if constexpr (std::is_same_v<LiteralT, GroundLiteral<Derived>>)
-    {
-        return literal_holds<Derived>(literal);
-    }
-    else if constexpr (std::is_same_v<LiteralT, GroundLiteral<Static>>)
-    {
-        return true;
-    }
-    else
-    {
-        static_assert(dependent_false<LiteralT>::value, "Missing implementation for LiteralT.");
-    }
-}
 
 }
 
