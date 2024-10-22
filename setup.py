@@ -7,11 +7,13 @@ import shutil
 
 from pathlib import Path
 
-from setuptools import setup, find_packages, Extension
+from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 
 with open("__version__", "r") as f:
-    __version = f.read().strip()
+    version = f.read().strip()
+    print(version)
+
 
 HERE = Path(__file__).resolve().parent
 
@@ -51,6 +53,7 @@ class CMakeExtension(Extension):
 
 class CMakeBuild(build_ext):
     def build_extension(self, ext):
+        global version
         # Must be in this form due to bug in .resolve() only fixed in Python 3.10+
         ext_fullpath = Path.cwd() / self.get_ext_fullpath(ext.name)
         output_directory = ext_fullpath.parent.resolve()
@@ -79,7 +82,7 @@ class CMakeBuild(build_ext):
             f"-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=conan_provider.cmake",
             f"-DCONAN_COMMAND={conan_binary}",
             f"-DBUILD_PYMIMIR=On",
-            f"-DMIMIR_VERSION_INFO={__version}",
+            f"-DMIMIR_VERSION_INFO={version}",
             f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={output_directory}",
             f"-DPYTHON_EXECUTABLE={sys.executable}",
             f"-DCMAKE_BUILD_TYPE={build_type}",  # not used on MSVC, but no harm

@@ -22,9 +22,6 @@ license = { file = "LICENSE" }
 readme = "README.md"
 requires-python = ">=3.8"
 
-[tool.setuptools.dynamic]
-version = {file = "__version__"}
-
 [project.urls]
 Source = 'https://github.com/maichmueller/mimir'
 
@@ -37,6 +34,9 @@ test = [
 packages = ["pymimir"]  # Modify if needed
 package-dir = { "" = "python/src" }
 include-package-data = false
+
+[tool.setuptools.dynamic]
+version = { file = ["__version__"] }
 
 [tool.setuptools.package-data]
 pymimir = ["*.txt", "*.rst", "*.md"]
