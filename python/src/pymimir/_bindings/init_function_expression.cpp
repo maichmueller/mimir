@@ -7,11 +7,11 @@
 
 namespace py = pybind11;
 using namespace mimir;
+using namespace mimir::pymimir;
+
 
 void init_function_expression(py::module& m)
 {
-    using namespace pymimir;
-
     py::class_<FunctionExpressionNumberImpl>(m, "FunctionExpressionNumber")  //
         .def("__str__", &FunctionExpressionNumberImpl::str)
         .def("__repr__", &FunctionExpressionNumberImpl::str)

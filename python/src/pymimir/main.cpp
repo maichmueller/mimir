@@ -8,7 +8,8 @@
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
 
 using namespace mimir;
-using namespace pymimir;
+using namespace mimir::pymimir;
+
 
 namespace py = pybind11;
 

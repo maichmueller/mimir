@@ -5,7 +5,8 @@
 #include <pybind11/pybind11.h>
 namespace py = pybind11;
 using namespace mimir;
-using namespace pymimir;
+using namespace mimir::pymimir;
+
 
 void init_static_vertexcolored_graph(py::module& m)
 {
