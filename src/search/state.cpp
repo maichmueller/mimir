@@ -80,6 +80,14 @@ bool State::contains(GroundAtom<P> atom) const
 template bool State::contains(GroundAtom<Fluent> atom) const;
 template bool State::contains(GroundAtom<Derived> atom) const;
 
+bool State::contains(const AnyGroundAtom& atom) const
+{
+    return std::visit(overload { [](GroundAtom<Static>) -> bool
+                                 { throw std::invalid_argument("No implementation in State class for check whether Static atoms are contained."); },
+                                 AS_CPTR_LAMBDA(contains) },
+                      atom);
+}
+
 template<DynamicPredicateCategory P>
 bool State::superset_of(const GroundAtomList<P>& atoms) const
 {
@@ -91,12 +99,10 @@ template bool State::superset_of(const GroundAtomList<Derived>& atoms) const;
 
 bool State::literal_holds(AnyGroundLiteral literal) const
 {
-    {
-        return std::visit(overload { [](GroundLiteral<Static>) -> bool
-                                     { throw std::invalid_argument("No implementation for check whether Static literals hold in State class."); },
-                                     AS_CPTR_LAMBDA(literal_holds) },
-                          literal);
-    }
+    return std::visit(overload { [](GroundLiteral<Static>) -> bool
+                                 { throw std::invalid_argument("No implementation in State class for check whether Static literals hold."); },
+                                 AS_CPTR_LAMBDA(literal_holds) },
+                      literal);
 }
 
 template<DynamicPredicateCategory P>
