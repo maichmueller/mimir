@@ -1,12 +1,12 @@
 #pragma once
 
-#include "cista/bit_counting.h"
-#include "cista/containers/vector.h"
-#include "cista/hash.h"
-
 #include <bit>
 #include <cassert>
 #include <cinttypes>
+#include <cista/bit_counting.h>
+#include <cista/containers/vector.h>
+#include <cista/hash.h>
+#include <cista/serialization.h>
 #include <iosfwd>
 #include <iostream>
 #include <limits>
@@ -551,5 +551,28 @@ namespace offset
 template<typename Block>
 using dynamic_bitset = basic_dynamic_bitset<Block, ptr>;
 }
+
+/// Macro taken form cista/serialization.h (since it is #undef'ed there at the end)
+/// Verify if this macro changes in future versions of cista and adapt this code accordingly
+#ifndef cista_member_offset
+#define cista_member_offset(Type, Member)                            \
+  ([]() {                                                            \
+    if constexpr (std::is_standard_layout_v<Type>) {                 \
+      return static_cast<::cista::offset_t>(offsetof(Type, Member)); \
+    } else {                                                         \
+      return ::cista::member_offset(null<Type>(), &Type::Member);    \
+    }                                                                \
+  }())
+#endif
+
+template<typename Ctx, typename Block, template<typename> typename Ptr>
+void serialize(Ctx& c, basic_dynamic_bitset<Block, Ptr> const* origin, offset_t const pos)
+{
+    using Type = basic_dynamic_bitset<Block, Ptr>;
+    serialize(c, &origin->default_bit_value_, pos);
+    serialize(c, &origin->blocks_, pos + cista_member_offset(Type, blocks_));
+}
+
+#undef cista_member_offset
 
 }  // namespace cista

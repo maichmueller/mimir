@@ -18,14 +18,14 @@
 #ifndef MIMIR_SEARCH_ACTION_HPP_
 #define MIMIR_SEARCH_ACTION_HPP_
 
-#include "cista/containers/tuple.h"
-#include "cista/storage/unordered_set.h"
-#include "cista/storage/vector.h"
+#include "mimir/cista/storage/unordered_set.h"
+#include "mimir/cista/storage/vector.h"
 #include "mimir/common/printers.hpp"
 #include "mimir/common/types_cista.hpp"
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/search/state.hpp"
 
+#include <cista/containers/tuple.h>
 #include <ostream>
 #include <tuple>
 

@@ -89,7 +89,10 @@ message(STATUS "Found fmt: ${fmt_DIR} (found version ${fmt_VERSION})")
 find_package(range-v3 REQUIRED)
 message(STATUS "Found range-v3: ${range-v3_DIR} (found version ${range-v3_VERSION})")
 
+find_package(cista REQUIRED)
+message(STATUS "Found cista: ${cista_DIR} (found version ${cista_VERSION})")
 find_package(Threads REQUIRED)
+
 
 # This prints a summary of found dependencies
 include(FeatureSummary)
@@ -142,7 +145,7 @@ add_subdirectory(sandbox)
 ###########
 
 # Install header files
-install(DIRECTORY "${PROJECT_SOURCE_DIR}/include/mimir" "${PROJECT_SOURCE_DIR}/include/cista"
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/include/mimir"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 
 # Install cmake scripts

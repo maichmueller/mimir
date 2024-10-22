@@ -18,10 +18,11 @@
 #ifndef MIMIR_COMMON_HASH_CISTA_HPP_
 #define MIMIR_COMMON_HASH_CISTA_HPP_
 
-#include "cista/containers/dynamic_bitset.h"
-#include "cista/containers/tuple.h"
-#include "cista/containers/vector.h"
+#include "mimir/cista/containers/dynamic_bitset.h"
 #include "mimir/common/hash.hpp"
+
+#include <cista/containers/tuple.h>
+#include <cista/containers/vector.h>
 
 /* DynamicBitset */
 

@@ -20,10 +20,7 @@ class MimirRecipe(ConanFile):
         "fPIC": [True, False],
     }
 
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-    }
+    default_options = {"shared": False, "fPIC": True, "cista/*:with_fmt": True}
 
     def requirements(self):
         requirements = self.conan_data.get("requirements", [])

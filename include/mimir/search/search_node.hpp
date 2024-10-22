@@ -24,6 +24,9 @@
 #include "mimir/common/types.hpp"
 #include "mimir/search/action.hpp"
 
+#include <cista/containers/tuple.h>
+#include <cista/serialization.h>
+
 namespace mimir
 {
 
