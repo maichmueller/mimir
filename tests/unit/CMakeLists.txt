@@ -2,10 +2,12 @@ enable_testing()
 
 find_package(GTest REQUIRED COMPONENTS GTest Main)
 
+set(ALL_TEST_SOURCES)
 # Helper function to create and register a test executable
 function(add_gtest test_name source_file)
     add_executable(${test_name} ${source_file})
-    target_link_libraries(${test_name} PRIVATE mimir::core GTest::GTest GTest::Main)
+    set(ALL_TEST_SOURCES "${ALL_TEST_SOURCES};${source_file}" PARENT_SCOPE)
+    target_link_libraries(${test_name} PRIVATE GTest::GTest GTest::Main mimir::core)
     add_test(NAME ${test_name} COMMAND ${test_name})
 endfunction()
 
@@ -48,3 +50,7 @@ add_gtest(search_priority_queue_test                       "search/openlists/pri
 add_gtest(search_single_test                               "search/planners/single.cpp")
 add_gtest(search_search_node_test                          "search/search_node.cpp")
 add_gtest(search_state_repository_test                     "search/state_repository.cpp")
+
+message(STATUS "All test sources: ${ALL_TEST_SOURCES}")
+add_executable(all_tests ${ALL_TEST_SOURCES})
+target_link_libraries(all_tests PRIVATE GTest::GTest GTest::Main mimir::core)
