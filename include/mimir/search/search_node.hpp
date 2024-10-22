@@ -18,11 +18,12 @@
 #ifndef MIMIR_SEARCH_SEARCH_NODE_HPP_
 #define MIMIR_SEARCH_SEARCH_NODE_HPP_
 
-#include "cista/containers/tuple.h"
-#include "cista/serialization.h"
-#include "cista/storage/vector.h"
+#include "mimir/cista/storage/vector.h"
 #include "mimir/search/action.hpp"
 #include "mimir/search/state.hpp"
+
+#include <cista/containers/tuple.h>
+#include <cista/serialization.h>
 
 namespace mimir
 {

@@ -8,5 +8,6 @@ requirements:
   - "gtest/1.15.0"
   - "pybind11/2.13.6"
   - "benchmark/1.9.0"
+  - "cista/2024.10.22"
   - "nauty/2.8.8"
   - "loki/0.0.6"

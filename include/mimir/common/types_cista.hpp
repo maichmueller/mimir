@@ -18,12 +18,12 @@
 #ifndef MIMIR_COMMON_TYPES_CISTA_HPP_
 #define MIMIR_COMMON_TYPES_CISTA_HPP_
 
-#include "cista/containers/dynamic_bitset.h"
-#include "cista/containers/vector.h"
+#include "mimir/cista/containers/dynamic_bitset.h"
 #include "mimir/common/types.hpp"
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/formalism/predicate_category.hpp"
 
+#include <cista/containers/vector.h>
 #include <ostream>
 
 namespace mimir

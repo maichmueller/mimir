@@ -41,6 +41,7 @@ target_compile_definitions(core PUBLIC -DDATA_DIR="${DATA_DIR}")
 target_link_libraries(
         core
         PUBLIC
+        cista::cista
         loki::loki
         nauty::nauty
         Boost::iostreams

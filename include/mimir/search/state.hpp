@@ -18,8 +18,8 @@
 #ifndef MIMIR_SEARCH_STATE_HPP_
 #define MIMIR_SEARCH_STATE_HPP_
 
-
-#include "cista.h"
+#include "mimir/cista/containers/dynamic_bitset.h"
+#include "mimir/cista/storage/unordered_set.h"
 #include "mimir/common/concepts.hpp"
 #include "mimir/common/printers.hpp"
 #include "mimir/common/types_cista.hpp"
@@ -27,6 +27,8 @@
 #include "mimir/search/declarations.hpp"
 #include "mimir/utils/utils.hpp"
 
+#include <cista/containers/tuple.h>
+#include <cista/serialization.h>
 #include <ostream>
 #include <range/v3/range/conversion.hpp>
 #include <tuple>

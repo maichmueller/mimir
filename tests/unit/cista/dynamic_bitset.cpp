@@ -15,7 +15,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "cista/containers/dynamic_bitset.h"
+#include "mimir/cista/containers/dynamic_bitset.h"
 
 #include "cista/serialization.h"
 #include "mimir/common/hash_cista.hpp"
