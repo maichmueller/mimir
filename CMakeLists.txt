@@ -89,6 +89,7 @@ message(STATUS "Found fmt: ${fmt_DIR} (found version ${fmt_VERSION})")
 find_package(range-v3 REQUIRED)
 message(STATUS "Found range-v3: ${range-v3_DIR} (found version ${range-v3_VERSION})")
 
+find_package(Threads REQUIRED)
 
 # This prints a summary of found dependencies
 include(FeatureSummary)

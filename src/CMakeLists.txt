@@ -47,6 +47,7 @@ target_link_libraries(
         ZLIB::ZLIB
         fmt::fmt
         range-v3::range-v3
+        Threads::Threads
 )
 
 # Use include depending on building or using from installed location
