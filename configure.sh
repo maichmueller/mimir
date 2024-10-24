@@ -143,10 +143,16 @@ echo "Executing cmake config."
 
 if [ "$use_conan" = true ]; then
   # install all dependencies defined for conan first
-  conan_args="-s build_type=Release --profile:host=default --profile:build=default --build=\"$deps_policy\""
+  conan_args="\
+  -s build_type=Release \
+  --profile:host=default \
+  --profile:build=default \
+  --build=\"$deps_policy\""
   action="$conan_cmd create dependencies/loki $conan_args  --options=\"loki/*:fPIC=True\""
+#  action="$conan_cmd graph info dependencies/loki $conan_args  --options=\"loki/*:fPIC=True\""
   eval "$action"
   action="$conan_cmd create dependencies/nauty $conan_args --options=\"nauty/*:fPIC=True\""
+#  action="$conan_cmd graph info dependencies/nauty $conan_args --options=\"nauty/*:fPIC=True\""
   eval "$action"
   action="$conan_cmd create dependencies/cista --version=2024.10.22 $conan_args"
   eval "$action"
