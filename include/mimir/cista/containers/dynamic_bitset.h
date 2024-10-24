@@ -552,8 +552,9 @@ template<typename Block>
 using dynamic_bitset = basic_dynamic_bitset<Block, ptr>;
 }
 
-/// Macro taken form cista/serialization.h (since it is #undef'ed there at the end)
-/// Verify if this macro changes in future versions of cista and adapt this code accordingly
+/// TODO:
+///  Macro taken form cista/serialization.h (since it is #undef'ed there at the end)
+///  Verify if this macro changes in future versions of cista and adapt this code accordingly
 #ifndef cista_member_offset
 #define cista_member_offset(Type, Member)                            \
   ([]() {                                                            \

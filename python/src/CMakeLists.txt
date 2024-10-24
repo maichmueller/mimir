@@ -17,6 +17,7 @@ target_link_libraries(_pymimir_objects
         PUBLIC
         mimir::core
         pybind11::module
+        pybind11::lto
 )
 
 pybind11_add_module(_pymimir MODULE)
