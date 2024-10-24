@@ -23,7 +23,7 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install setuptools wheel twine cibuildwheel conan
 
-    - name: Install Conan Dependencies (no cache allowed!)
+    - name: Configure Conan
       run: |
         conan profile detect --name default
         

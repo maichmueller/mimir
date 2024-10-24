@@ -7,22 +7,27 @@ on:
       - completed
 
 jobs:
-  matrix-strategy-setup:
+  checkout:
     runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: ./.github/workflows/read-build-matrix.yml
+      - uses: actions/checkout@v4
+        with:
+          # ensure the repo is checked out at the same commit as the triggering workflow
+          ref: ${{ github.event.workflow_run.head_sha }}
+        
+  build-matrix-reader:
+    needs: checkout
+    uses: ./.github/workflows/read-build-matrix.yml
 
 
   unit-test:
-    needs: matrix-strategy-setup
+    needs: build-matrix-reader
     name: ${{ matrix.config.os }} • ${{ matrix.config.cc }}-${{ matrix.config.compiler_version }} • ${{ matrix.config.build_type }}
     runs-on: ${{ matrix.config.os }}
     strategy:
       fail-fast: false
       matrix:
-        config: ${{ fromJson(needs.matrix-strategy-setup.outputs.matrix) }}
+        config: ${{ fromJson(needs.build-matrix-reader.outputs.matrix) }}
 
     steps:
       - uses: actions/checkout@v4
