@@ -26,6 +26,7 @@ void init_pymimir(py::module& m)
     init_axiom(m);
     init_numeric_fluent(m);
     init_effects(m);
+    init_flatbitset(m);
     init_function(m);
     init_function_expression(m);
     init_ground_function_expression(m);
@@ -53,7 +54,6 @@ void init_pymimir(py::module& m)
     init_nauty_wrappers(m);
     init_static_vertexcolored_graph(m);
     init_tuple_graph(m);
-
 
     py::class_<ObjectGraphPruningStrategy>(m, "ObjectGraphPruningStrategy");
 
