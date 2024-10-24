@@ -29,9 +29,7 @@ jobs:
         
         # replace any cppstd=(gnu)XX entry in the compiler.cppstd line with cppstd=20
         profile=$(conan profile path default)
-        awk '{ sub(/compiler\.cppstd=gnu?[0-9]+/, "compiler.cppstd=20"); print }' "$profile" > tmpfile && mv tmpfile "$profile"
-        
-        ./configure.sh --only_install --deps_policy="*"
+        awk '{ sub(/compiler\.cppstd=gnu?[0-9]+/, "compiler.cppstd=gnu20"); print }' "$profile" > tmpfile && mv tmpfile "$profile"
 
     - name: Build wheels
       run: cibuildwheel --platform linux --output-dir wheelhouse
