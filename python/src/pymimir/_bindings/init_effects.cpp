@@ -9,7 +9,6 @@ namespace py = pybind11;
 using namespace mimir;
 using namespace mimir::pymimir;
 
-
 void init_effects(py::module& m)
 {
     py::class_<EffectSimpleImpl>(m, "EffectSimple")  //
@@ -52,7 +51,9 @@ void init_effects(py::module& m)
              { return factories.get_ground_atoms_from_indices<mimir::Fluent>(self.get_negative_effects()); })
         .def("get_positive_effects",
              [](const StripsActionEffect& self, const PDDLFactories& factories)
-             { return factories.get_ground_atoms_from_indices<mimir::Fluent>(self.get_positive_effects()); });
+             { return factories.get_ground_atoms_from_indices<mimir::Fluent>(self.get_positive_effects()); })
+        .def("get_negative_effect_indices", &StripsActionEffect::get_negative_effects, py::return_value_policy::copy)
+        .def("get_negative_effect_indices", &StripsActionEffect::get_positive_effects, py::return_value_policy::copy);
 
     py::class_<FlatSimpleEffect>(m, "FlatSimpleEffect")
         .def_readonly("is_negated", &FlatSimpleEffect::is_negated)

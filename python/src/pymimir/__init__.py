@@ -106,6 +106,7 @@ from _pymimir import (
     BrFSAlgorithm,
     BrFSAlgorithmStatistics,
     ConditionalEffect,
+    ConditionalEffectList,
     DebugAStarAlgorithmEventHandler,
     DebugBrFSAlgorithmEventHandler,
     DebugGroundedApplicableActionGeneratorEventHandler,
