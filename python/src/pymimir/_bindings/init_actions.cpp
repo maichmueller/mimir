@@ -9,7 +9,6 @@ namespace py = pybind11;
 using namespace mimir;
 using namespace mimir::pymimir;
 
-
 void init_actions(py::module& m)
 {
     /* Action */
@@ -70,16 +69,10 @@ void init_actions(py::module& m)
         .def("get_object_indices", &GroundAction::get_object_indices, py::return_value_policy::copy)
         .def("get_strips_precondition", [](const GroundAction& self) { return StripsActionPrecondition(self.get_strips_precondition()); })
         .def("get_strips_effect", [](const GroundAction& self) { return StripsActionEffect(self.get_strips_effect()); })
-        .def("get_conditional_effects",
-             [](const GroundAction& self)
-             {
-                 auto conditional_effects = std::vector<ConditionalEffect> {};
-                 for (const auto& flat_conditional_effect : self.get_conditional_effects())
-                 {
-                     conditional_effects.emplace_back(flat_conditional_effect);
-                 }
-                 return conditional_effects;
-             });
+        .def(
+            "get_conditional_effects",
+            [](const GroundAction& self) { return ConditionalEffectList(self.get_conditional_effects().begin(), self.get_conditional_effects().end()); },
+            py::keep_alive<0, 1>());
     static_assert(!py::detail::vector_needs_copy<GroundActionList>::value);  // Ensure return by reference + keep alive
     list_class = py::bind_vector<GroundActionList>(m, "GroundActionList");
     def_opaque_vector_repr<GroundActionList>(list_class, "GroundActionList");
