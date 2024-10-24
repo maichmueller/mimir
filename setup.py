@@ -41,6 +41,13 @@ def get_conan_path():
 
 conan_binary = get_conan_path()
 
+CIBUILDWHEEL = os.getenv("CIBUILDWHEEL") == "1"
+
+conan_build_policy = "missing"
+if CIBUILDWHEEL:
+    print("Running inside cibuildwheel")
+    conan_build_policy = "*"
+
 
 # A CMakeExtension needs a sourcedir instead of a file list.
 # The name must be the _single_ output extension from the CMake build.
@@ -49,6 +56,32 @@ class CMakeExtension(Extension):
     def __init__(self, name, sourcedir=""):
         Extension.__init__(self, name, sources=[])
         self.sourcedir = os.path.abspath(sourcedir)
+
+
+def configure_conan():
+    subprocess.run(
+        [conan_binary, "profile", "detect", "--name", "default"], check=False
+    )
+    profile_path = (
+        subprocess.run(
+            [conan_binary, "profile", "path", "default"],
+            capture_output=True,
+            check=True,
+        )
+        .stdout.decode()
+        .strip()
+    )
+    # Read the profile file
+    with open(profile_path, "r") as file:
+        lines = file.readlines()
+
+    # Modify the cppstd line
+    with open(profile_path, "w") as file:
+        for line in lines:
+            if line.startswith("compiler.cppstd"):
+                file.write("compiler.cppstd = gnu20\n")
+            else:
+                file.write(line)
 
 
 class CMakeBuild(build_ext):
@@ -69,6 +102,10 @@ class CMakeBuild(build_ext):
         # Create the temporary build directory, if it does not already exist
         os.makedirs(temp_directory, exist_ok=True)
 
+        # create the conan default profile it does not exist already
+        if CIBUILDWHEEL:
+            configure_conan()
+
         # Build Pymimir
 
         # 1. delete build directory cache
@@ -76,25 +113,30 @@ class CMakeBuild(build_ext):
             print(f"Removing CMakeCache.txt: ", file)
             os.remove(file)
 
-        cmake_args = [
-            f"-G",
-            "Ninja",
-            f"-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=conan_provider.cmake",
-            f"-DCONAN_COMMAND={conan_binary}",
-            f"-DBUILD_PYMIMIR=On",
+        build_folder = f"{temp_directory / 'build'}"
+
+        configure_cmd = [
+            "./configure.sh",
+            "--source",
+            ext.sourcedir,
+            "--build",
+            build_folder,
+            "--config",
+            build_type,
+            "--conan_cmd",
+            conan_binary,
+            "--deps_policy",
+            conan_build_policy,
+            f"-DBUILD_PYMIMIR=ON",
             f"-DMIMIR_VERSION_INFO={version}",
             f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={output_directory}",
             f"-DPYTHON_EXECUTABLE={sys.executable}",
-            f"-DCMAKE_BUILD_TYPE={build_type}",  # not used on MSVC, but no harm
         ]
-
-        build_args = ["--target", ext.name]
-        build_folder = f"{temp_directory / 'build'}"
-        subprocess.run(
-            ["cmake", "-S", ext.sourcedir, "-B", build_folder] + cmake_args,
-            cwd=str(temp_directory),
-            check=True,
+        subprocess.check_call(
+            configure_cmd,
+            cwd=HERE,
         )
+        build_args = ["--target", ext.name]
         subprocess.run(
             [
                 "cmake",
