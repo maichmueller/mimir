@@ -148,7 +148,7 @@ if [ "$use_conan" = true ]; then
   eval "$action"
   action="$conan_cmd create dependencies/nauty $conan_args --options=\"nauty/*:fPIC=True\""
   eval "$action"
-  action="conan create dependencies/cista --version=2024.10.22 $conan_args"
+  action="$conan_cmd create dependencies/cista --version=2024.10.22 $conan_args"
   eval "$action"
   action="$conan_cmd install . -of=$cmake_build_folder/conan -g CMakeDeps -s \"&\":build_type=$config $conan_args"
   eval "$action"

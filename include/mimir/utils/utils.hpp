@@ -103,9 +103,8 @@ struct overload : Ts...
 {
     using Ts::operator()...;
 };
-template < typename... Ts >
-overload(Ts...) -> overload< Ts... >;
-
+template<typename... Ts>
+overload(Ts...) -> overload<Ts...>;
 
 /// logical XOR of the conditions (using fold expressions and bitwise xor)
 template<typename... Conditions>
@@ -179,9 +178,15 @@ private:
 };
 
 template<typename Iter, typename Sent>
-RangeWrapper<Iter, Sent> as_range(Iter begin, Sent end)
+auto as_range(Iter begin, Sent end)
 {
     return RangeWrapper { begin, end };
+}
+
+template<typename RangeLike>
+auto as_range(RangeLike& range)
+{
+    return RangeWrapper { std::ranges::begin(range), std::ranges::end(range) };
 }
 
 }
