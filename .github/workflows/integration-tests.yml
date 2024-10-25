@@ -1,26 +1,13 @@
 name: Integration Test Library
 
-on:
-  workflow_run:
-    workflows: [Build CPP Library]
-    types:
-      - completed
+on: [ push, pull_request ]
 
 jobs:
-  checkout:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          # ensure the repo is checked out at the same commit as the triggering workflow
-          ref: ${{ github.event.workflow_run.head_sha }}
-
-  build-matrix-reader:
-    needs: checkout
+  config-reader:
     uses: ./.github/workflows/read-build-matrix.yml
 
   build:
-    needs: build-matrix-reader
+    needs: config-reader
     name: ${{ matrix.config.os }} • ${{ matrix.config.cc }}-${{ matrix.config.compiler_version }} • ${{ matrix.config.build_type }}
     runs-on: ${{ matrix.config.os }}
     strategy:
@@ -29,38 +16,27 @@ jobs:
         config: ${{ fromJson(needs.build-matrix-reader.outputs.matrix) }}
 
     steps:
-      - name: Checkout Mimir
-        uses: actions/checkout@v4
-
-      - uses: ./.github/actions/setup-environment
+      - uses: actions/checkout@v4
+      - name: Run Composite Action for Build
+        uses: ./.github/.actions/cpp-build
         with:
           os: ${{ matrix.config.os }}
           cc: ${{ matrix.config.cc }}
           cxx: ${{ matrix.config.cxx }}
-          compiler-version: ${{ matrix.config.compiler_version }}
-          build-type: ${{ matrix.config.build_type }}
-          use-cache: true
-          set-env-vars: true
+          compiler_version: ${{ matrix.config.compiler_version }}
+          build_type: ${{ matrix.config.build_type }}
 
-      - name: Download Installed Mimir
-        uses: actions/download-artifact@v4
-        with:
-          pattern: install_${{ matrix.os }}_${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}-${{ matrix.config.build_type }}
-          path: install
 
-      - name: Configure Test Project
-        shell: bash
-        run: >
-          cmake 
-          -S tests/integration 
-          -B tests/integration/build
-          -DCMAKE_PREFIX_PATH=install
+  unit-test:
+    needs: build
+    name: ${{ matrix.config.os }} • ${{ matrix.config.cc }}-${{ matrix.config.compiler_version }} • ${{ matrix.config.build_type }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config: ${{ fromJson(needs.build-matrix-reader.outputs.matrix) }}
 
-      - name: Build Test Project
-        run: |
-          cmake --build tests/integration/build
-
-      - name: Run Test Project
-        working-directory: tests/integration/build
-        run: |
-          GTEST_COLOR=1 ctest -V
+    steps:
+      - - name: Install
+      - run: |
+      - cmake --install build/release --prefix install

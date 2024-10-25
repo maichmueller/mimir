@@ -1,0 +1,56 @@
+name: "Build Mimir C++ Library"
+description: "Composite action to build Mimir C++ library with individual configuration inputs"
+
+inputs:
+  os:
+    description: "Operating system"
+    required: true
+  cc:
+    description: "C compiler"
+    required: true
+  cxx:
+    description: "C++ compiler"
+    required: true
+  compiler_version:
+    description: "Compiler version"
+    required: true
+  build_type:
+    description: "Build type (e.g., Release, Debug)"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup Environment
+      uses: ./.github/.actions/setup-environment
+      with:
+        os: ${{ inputs.os }}
+        cc: ${{ inputs.cc }}
+        cxx: ${{ inputs.cxx }}
+        compiler-version: ${{ inputs.compiler_version }}
+        build-type: ${{ inputs.build_type }}
+        use-cache: true
+        set-env-vars: true
+
+    - name: Configure Mimir
+      shell: bash
+      run: |
+        ./configure.sh \
+          --source . \
+          --build build \
+          --config=${{ inputs.build_type }} \
+          -DBUILD_TESTS=ON
+
+    - name: Build Mimir
+      run: cmake --build build --target all
+
+    # uncomment this section to enable artifact upload
+    # - name: Upload Build Folder as Artifact
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: build-${{ inputs.os }}-${{ inputs.cc }}-${{ inputs.compiler_version }}-${{ inputs.build_type }}
+    #     path: build/
+    #     retention-days: 1

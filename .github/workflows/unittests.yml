@@ -1,27 +1,13 @@
-name: Unit Test Library
+name: Test CPP Library
 
-on:
-  workflow_run:
-    workflows: [Build CPP Library]
-    types:
-      - completed
+on: [ push, pull_request ]
 
 jobs:
-  checkout:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          # ensure the repo is checked out at the same commit as the triggering workflow
-          ref: ${{ github.event.workflow_run.head_sha }}
-        
-  build-matrix-reader:
-    needs: checkout
+  config-reader:
     uses: ./.github/workflows/read-build-matrix.yml
 
-
-  unit-test:
-    needs: build-matrix-reader
+  build:
+    needs: config-reader
     name: ${{ matrix.config.os }} • ${{ matrix.config.cc }}-${{ matrix.config.compiler_version }} • ${{ matrix.config.build_type }}
     runs-on: ${{ matrix.config.os }}
     strategy:
@@ -31,22 +17,26 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-environment
+      - name: Run Composite Action for Build
+        uses: ./.github/.actions/cpp-build
         with:
           os: ${{ matrix.config.os }}
           cc: ${{ matrix.config.cc }}
           cxx: ${{ matrix.config.cxx }}
-          compiler-version: ${{ matrix.config.compiler_version }}
-          build-type: ${{ matrix.config.build_type }}
-          use-cache: true
-          set-env-vars: true
+          compiler_version: ${{ matrix.config.compiler_version }}
+          build_type: ${{ matrix.config.build_type }}
 
-      - name: Download build folder
-        uses: actions/download-artifact@v4
-        with:
-          pattern: build-${{ matrix.os }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}-${{ matrix.config.build_type }}
-          path: build/release
 
+  test:
+    needs: build
+    name: ${{ matrix.config.os }} • ${{ matrix.config.cc }}-${{ matrix.config.compiler_version }} • ${{ matrix.config.build_type }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config: ${{ fromJson(needs.build-matrix-reader.outputs.matrix) }}
+
+    steps:
       - name: Test
         working-directory: build/release/tests/unit
         run: GTEST_OUTPUT=xml:test-results/ GTEST_COLOR=1 ctest -V
@@ -55,9 +45,19 @@ jobs:
         run: |
           cmake --install build/release --prefix install
 
-      - name: Upload installation as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: install_${{ matrix.os }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}-${{ matrix.config.build_type }}
-          path: install
-          retention-days: 1
+      - name: Configure Integration Project
+        shell: bash
+        run: >
+          cmake 
+          -S tests/integration 
+          -B tests/integration/build
+          -DCMAKE_PREFIX_PATH=install
+
+      - name: Build Integration Project
+        run: |
+          cmake --build tests/integration/build
+
+      - name: Test Integration Project
+        working-directory: tests/integration/build
+        run: |
+          GTEST_COLOR=1 ctest -V
