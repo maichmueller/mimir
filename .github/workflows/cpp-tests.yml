@@ -1,4 +1,4 @@
-name: Integration Test Library
+name: Test CPP Library
 
 on: [ push, pull_request ]
 
@@ -27,7 +27,7 @@ jobs:
           build_type: ${{ matrix.config.build_type }}
 
 
-  unit-test:
+  test:
     needs: build
     name: ${{ matrix.config.os }} • ${{ matrix.config.cc }}-${{ matrix.config.compiler_version }} • ${{ matrix.config.build_type }}
     runs-on: ${{ matrix.config.os }}
@@ -37,6 +37,27 @@ jobs:
         config: ${{ fromJson(needs.confige-reader.outputs.matrix) }}
 
     steps:
-      - - name: Install
-      - run: |
-      - cmake --install build/release --prefix install
+      - name: Run Unit Tests
+        working-directory: build/release/tests/unit
+        run: GTEST_OUTPUT=xml:test-results/ GTEST_COLOR=1 ctest -V
+
+      - name: Install Mimir
+        run: |
+          cmake --install build/release --prefix install
+
+      - name: Configure Integration Tests
+        shell: bash
+        run: >
+          cmake 
+          -S tests/integration 
+          -B tests/integration/build
+          -DCMAKE_PREFIX_PATH=install
+
+      - name: Build Integration Tests
+        run: |
+          cmake --build tests/integration/build
+
+      - name: Run Integration Tests
+        working-directory: tests/integration/build
+        run: |
+          GTEST_COLOR=1 ctest -V
