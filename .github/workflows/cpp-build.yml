@@ -17,34 +17,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Environment
-        uses: ./.github/.actions/setup-environment
+      - name: Run Composite Action for Build
+        uses: ./.github/.actions/build-cpp-library
         with:
           os: ${{ matrix.config.os }}
           cc: ${{ matrix.config.cc }}
           cxx: ${{ matrix.config.cxx }}
-          compiler-version: ${{ matrix.config.compiler_version }}
-          build-type: ${{ matrix.config.build_type }}
-          use-cache: true
-          set-env-vars: true
-
-      # Build step
-      - name: Configure Mimir
-        shell: bash
-        run: >
-          ./configure.sh  
-          --source .  
-          --build build  
-          --config=${{ matrix.config.build_type }}  
-          -DBUILD_TESTS=ON
-
-      - name: Build Mimir
-        run: |
-          cmake --build build --target all
-
-      - name: Upload build folder as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-${{ matrix.config.os }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}-${{ matrix.config.build_type }}
-          path: build/
-          retention-days: 1
+          compiler_version: ${{ matrix.config.compiler_version }}
+          build_type: ${{ matrix.config.build_type }}
