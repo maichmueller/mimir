@@ -4,10 +4,12 @@ on: [push]
 
 jobs:
   build_wheels:
+    name: Build wheels • ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        # macos-13 is an intel runner, macos-latest is apple silicon
+        os: [ubuntu-latest, macos-13, macos-latest]
 
     steps:
     - name: Checkout repository
@@ -21,7 +23,7 @@ jobs:
     - name: Install dependencies and requirements
       run: |
         python -m pip install --upgrade pip
-        python -m pip install setuptools wheel twine cibuildwheel conan
+        python -m pip install setuptools wheel twine conan
 
     - name: Configure Conan
       run: |
@@ -32,9 +34,27 @@ jobs:
         awk '{ sub(/compiler\.cppstd=gnu?[0-9]+/, "compiler.cppstd=gnu20"); print }' "$profile" > tmpfile && mv tmpfile "$profile"
 
     - name: Build wheels
-      run: cibuildwheel --platform linux --output-dir wheelhouse
+      uses: pypa/cibuildwheel@v2.21.3
       env:
-        CIBW_BUILD_VERBOSITY: "1"
+         CIBW_BUILD_VERBOSITY: "1"
+        #    ...
+      with:
+         package-dir: .
+         output-dir: wheelhouse
+         config-file: "{package}/pyproject.toml"
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
+        path: ./wheelhouse/*.whl
+
+#    - name: Build wheels
+#      env:
+#        CIBW_BUILD_VERBOSITY: "1"
+#      run: |
+#        cibuildwheel --platform linux --output-dir wheelhouse
+#        conan remove "*"
+#        conan cache clean
 
 #    - name: Upload to PyPI
 #      if: github.repository_owner == 'simon-stahlberg'
