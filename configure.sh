@@ -147,12 +147,14 @@ if [ "$use_conan" = true ]; then
   -s build_type=Release \
   --profile:host=default \
   --profile:build=default \
+  --options=\"loki/*:fPIC=True\" \
+  --options=\"nauty/*:fPIC=True\" \
   --build=\"$deps_policy\""
-  action="$conan_cmd create dependencies/loki $conan_args  --options=\"loki/*:fPIC=True\""
+  action="$conan_cmd export dependencies/loki --version=x.y.z"
   eval "$action"
-  action="$conan_cmd create dependencies/nauty $conan_args --options=\"nauty/*:fPIC=True\""
+  action="$conan_cmd export dependencies/nauty --version=x.y.z"
   eval "$action"
-  action="$conan_cmd create dependencies/cista --version=2024.10.22 $conan_args"
+  action="$conan_cmd export dependencies/cista --version=x.y.z"
   eval "$action"
   action="$conan_cmd install . -of=$cmake_build_folder/conan -g CMakeDeps -s \"&\":build_type=$config $conan_args"
   eval "$action"
