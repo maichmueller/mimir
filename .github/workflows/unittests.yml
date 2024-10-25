@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config: ${{ fromJson(needs.build-matrix-reader.outputs.matrix) }}
+        config: ${{ fromJson(needs.confige-reader.outputs.matrix) }}
 
     steps:
       - uses: actions/checkout@v4
@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config: ${{ fromJson(needs.build-matrix-reader.outputs.matrix) }}
+        config: ${{ fromJson(needs.confige-reader.outputs.matrix) }}
 
     steps:
       - name: Test
