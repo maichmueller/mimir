@@ -28,14 +28,9 @@
 #include "mimir/graphs/graph_traversal_interface.hpp"
 #include "mimir/graphs/graph_vertices.hpp"
 
-#include <map>
-#include <set>
-#include <unordered_map>
-#include <vector>
-
 namespace mimir::kfwl
 {
-/// @brief `Certificate` encapsulates the final tuple colorings and the decoding tables.
+/// @brief `Certificate` encapsulates the final tuple colorings and the decoding table.
 /// @tparam K is the dimensionality.
 template<size_t K>
 class Certificate
@@ -59,10 +54,10 @@ public:
 
     using CanonicalColoring = std::set<Color>;
 
-    Certificate(IsomorphicTypeCompressionFunction f, TupleColorCompressionFunction<K> g, ConfigurationCompressionFunction<K> h, ColorList tuple_to_color);
+    Certificate(IsomorphicTypeCompressionFunction f, TupleColorCompressionFunction<K> g, ConfigurationCompressionFunction<K> h, IndexMap<Color> tuple_to_color);
 
 private:
-    ColorList m_tuple_to_color;
+    IndexMap<Color> m_tuple_to_color;
 
     CanonicalIsomorphicTypeCompressionFunction m_f;
     CanonicalTupleColorCompressionFunction<K> m_g;
@@ -70,36 +65,36 @@ private:
     CanonicalColoring m_coloring;
 };
 
+/// @brief `TuplePerfectHashFunction` implements a perfect hash function for k-tuples.
+/// @tparam K is the dimensionality.
+template<size_t K>
+class TuplePerfectHashFunction
+{
+    /// @brief Compute the perfect hash of the given k-tuple.
+    /// @param tuple is the k-tuple.
+    /// @param num_vertices is the number of vertices in the graph.
+    /// @return the perfect hash of the k-tuple.
+    static size_t hash(const std::array<Index, K>& tuple, size_t num_vertices) const;
+
+    /// @brief Compute the k-tuple of the perfect hash.
+    /// This operation takes O(k) time.
+    /// @param hash is the perfect hash.
+    /// @param num_vertices is the number of vertices in the graph.
+    /// @return the k-tuple of the perfect hash.
+    static std::array<Index, K> tuple(size_t hash, size_t num_vertices) const;
+
+    /// @brief Compute the perfect hash of the J-neighbor of the given tuple by replacing J-th entry by `y`.
+    /// This operation takes O(1) time.
+    /// @param tuple is the k-tuple
+    /// @param j is the index.
+    /// @param y is the replacement value
+    /// @param num_vertices is the number of vertices in the graph.
+    /// @return the perfect hash of the J-neighbour of the given tuple.
+    static size_t hash_neighbor(const std::array<Index, K>& tuple, Index j, Index y, size_t num_vertices);
+};
+
 template<size_t K>
 bool operator==(const Certificate<K>& lhs, const Certificate<K>& rhs);
-
-/// @brief Compute the perfect hash of the given k-tuple.
-/// @tparam K is the dimensionality.
-/// @param tuple is the k-tuple.
-/// @param num_vertices is the number of vertices in the graph.
-/// @return the perfect hash of the k-tuple.
-template<size_t K>
-size_t tuple_to_hash(const std::array<Index, K>& tuple, size_t num_vertices);
-
-/// @brief Compute the k-tuple of the perfect hash.
-/// This operation takes O(k) time.
-/// @tparam K is the dimensionality.
-/// @param hash is the perfect hash.
-/// @param num_vertices is the number of vertices in the graph.
-/// @return the k-tuple of the perfect hash.
-template<size_t K>
-std::array<Index, K> hash_to_tuple(size_t hash, size_t num_vertices);
-
-/// @brief Compute the perfect hash of the J-neighbor of the given tuple by replacing J-th entry by `y`.
-/// This operation takes O(1) time.
-/// @tparam K is the dimensionality.
-/// @param tuple is the k-tuple
-/// @param j is the index.
-/// @param y is the replacement value
-/// @param num_vertices is the number of vertices in the graph.
-/// @return the perfect hash of the J-neighbour of the given tuple.
-template<size_t K>
-size_t tuple_to_neighbor_hash(const std::array<Index, K>& tuple, Index j, Index y, size_t num_vertices);
 
 /// @brief `compute_certificate` implements the k-dimensional Folklore Weisfeiler-Leman algorithm.
 /// Source: https://arxiv.org/pdf/1907.09582
@@ -107,10 +102,7 @@ size_t tuple_to_neighbor_hash(const std::array<Index, K>& tuple, Index j, Index 
 /// @tparam K is the dimensionality.
 /// @return
 template<size_t K, typename G>
-requires IsVertexListGraph<G> && IsIncidenceGraph<G> && IsVertexColoredGraph<G> Certificate<K> compute_certificate(const G& graph)
-{
-    /* Fetch some data. */
-    const auto num_vertices = graph.get_num_vertices<ForwardTraversal>();
+requires IsVertexListGraph<G> && IsIncidenceGraph<G> && IsVertexColoredGraph<G> Certificate<K> compute_certificate(const G& graph) {}
 
     /* Bookkeeping to support dynamic graphs. */
     auto vertex_to_v = IndexMap<Index>();
