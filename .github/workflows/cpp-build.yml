@@ -3,25 +3,26 @@ name: Build CPP Library
 on: [ push, pull_request ]
 
 jobs:
-  confige-reader:
+  config_reader:
     uses: ./.github/workflows/read-build-matrix.yml
 
   build:
-    needs: confige-reader
+    needs: config_reader
     name: ${{ matrix.config.os }} • ${{ matrix.config.cc }}-${{ matrix.config.compiler_version }} • ${{ matrix.config.build_type }}
     runs-on: ${{ matrix.config.os }}
     strategy:
       fail-fast: false
       matrix:
-        config: ${{ fromJson(needs.confige-reader.outputs.matrix) }}
+        config: ${{ fromJson(needs.config_reader.outputs.matrix) }}
 
     steps:
       - uses: actions/checkout@v4
       - name: Run Composite Action for Build
-        uses: ./.github/.actions/build-cpp-library
+        uses: ./.github/.actions/cpp-build
         with:
           os: ${{ matrix.config.os }}
           cc: ${{ matrix.config.cc }}
           cxx: ${{ matrix.config.cxx }}
           compiler_version: ${{ matrix.config.compiler_version }}
           build_type: ${{ matrix.config.build_type }}
+          with_tests: 'ON'

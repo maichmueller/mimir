@@ -17,6 +17,14 @@ inputs:
   build_type:
     description: "Build type (e.g., Release, Debug)"
     required: true
+  with_tests:
+    description: "Whether to build with tests"
+    required: false
+    default: "OFF"
+  with_pymimir:
+    description: "Whether to build with Python bindings"
+    required: false
+    default: "OFF"
 
 runs:
   using: "composite"
@@ -42,15 +50,12 @@ runs:
           --source . \
           --build build \
           --config=${{ inputs.build_type }} \
-          -DBUILD_TESTS=ON
+          -DBUILD_TESTS=${{ inputs.with_tests }} \
+          -DBUILD_PYMIMIR=${{ inputs.with_pymimir }}
 
     - name: Build Mimir
-      run: cmake --build build --target all
-
-    # uncomment this section to enable artifact upload
-    # - name: Upload Build Folder as Artifact
-    #   uses: actions/upload-artifact@v4
-    #   with:
-    #     name: build-${{ inputs.os }}-${{ inputs.cc }}-${{ inputs.compiler_version }}-${{ inputs.build_type }}
-    #     path: build/
-    #     retention-days: 1
+      shell: bash
+      run: >
+        cmake 
+        --build build 
+        --target all

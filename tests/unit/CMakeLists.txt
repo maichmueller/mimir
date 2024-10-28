@@ -55,3 +55,4 @@ add_gtest(search_state_repository_test                     "search/state_reposit
 message(STATUS "All test sources: ${ALL_TEST_SOURCES}")
 add_executable(all_tests ${ALL_TEST_SOURCES})
 target_link_libraries(all_tests PRIVATE GTest::GTest GTest::Main mimir::core)
+set_target_properties(all_tests PROPERTIES EXCLUDE_FROM_ALL True)
