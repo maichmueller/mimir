@@ -1,4 +1,5 @@
 import glob
+import json
 import os
 import sys
 import subprocess
@@ -35,18 +36,13 @@ def get_conan_path():
             return conan_path
         else:
             raise FileNotFoundError("Conan executable not found.")
-    except subprocess.CalledProcessError:
-        raise FileNotFoundError("Conan executable not found.")
+    except subprocess.CalledProcessError as e:
+        print("Subprocess error.")
+        raise e
 
 
-conan_binary = get_conan_path()
-
-CIBUILDWHEEL = os.getenv("CIBUILDWHEEL") == "1"
-
-conan_build_policy = "missing"
-if CIBUILDWHEEL:
-    print("Running inside cibuildwheel")
-    conan_build_policy = "*"
+conan_cmd = get_conan_path()
+conan_extra_args = "--build=missing"
 
 
 # A CMakeExtension needs a sourcedir instead of a file list.
@@ -56,32 +52,6 @@ class CMakeExtension(Extension):
     def __init__(self, name, sourcedir=""):
         Extension.__init__(self, name, sources=[])
         self.sourcedir = os.path.abspath(sourcedir)
-
-
-def configure_conan():
-    subprocess.run(
-        [conan_binary, "profile", "detect", "--name", "default"], check=False
-    )
-    profile_path = (
-        subprocess.run(
-            [conan_binary, "profile", "path", "default"],
-            capture_output=True,
-            check=True,
-        )
-        .stdout.decode()
-        .strip()
-    )
-    # Read the profile file
-    with open(profile_path, "r") as file:
-        lines = file.readlines()
-
-    # Modify the cppstd line
-    with open(profile_path, "w") as file:
-        for line in lines:
-            if line.startswith("compiler.cppstd"):
-                file.write("compiler.cppstd = gnu20\n")
-            else:
-                file.write(line)
 
 
 class CMakeBuild(build_ext):
@@ -96,15 +66,19 @@ class CMakeBuild(build_ext):
         print("output_directory", output_directory)
         print("temp_directory", temp_directory)
 
-        build_type = "Debug" if os.environ.get("PYMIMIR_DEBUG_BUILD") else "Release"
-        print("Pymimir build type:", build_type)
+        config = "Debug" if os.environ.get("PYMIMIR_DEBUG_BUILD") else "Release"
+        print("Pymimir build type:", config)
 
         # Create the temporary build directory, if it does not already exist
         os.makedirs(temp_directory, exist_ok=True)
 
-        # create the conan default profile it does not exist already
-        if CIBUILDWHEEL:
-            configure_conan()
+        if os.getenv("CIBUILDWHEEL") == "1":
+            sys.path.append(str(HERE))  # needed to find conan_ci.py
+            import conan_ci
+
+            conan_ci.main(conan_cmd, conan_extra_args=conan_extra_args)
+
+        print("CONAN_HOME:", os.getenv("CONAN_HOME"))
 
         # Build Pymimir
 
@@ -122,12 +96,13 @@ class CMakeBuild(build_ext):
             "--build",
             build_folder,
             "--config",
-            build_type,
+            config,
             "--conan_cmd",
-            conan_binary,
-            "--deps_policy",
-            conan_build_policy,
+            conan_cmd,
+            "--conan_extra_args",
+            conan_extra_args,
             f"-DBUILD_PYMIMIR=ON",
+            f"-DBUILD_TESTS=OFF",
             f"-DMIMIR_VERSION_INFO={version}",
             f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={output_directory}",
             f"-DPYTHON_EXECUTABLE={sys.executable}",

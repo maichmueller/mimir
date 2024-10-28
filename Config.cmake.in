@@ -9,86 +9,11 @@ include(CMakeFindDependencyMacro)
 
 message("CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
 
-
-##############################################################
-# CMake modules and macro files
-##############################################################
-
-include("configure_boost")
-
 ##############################################################
 # Dependency Handling
 ##############################################################
 
-# -----
-# Boost
-# -----
-
-# Find Boost headers only according to https://cmake.org/cmake/help/latest/module/FindBoost.html
-configure_boost()
-find_dependency(Boost ${BOOST_MIN_VERSION} REQUIRED COMPONENTS iostreams)
-if(Boost_FOUND)
-  include_directories(${Boost_INCLUDE_DIRS})
-  message(STATUS "Found Boost: ${Boost_DIR} (found version ${Boost_VERSION})")
-endif()
-
-
-# -----
-# Fmt
-# -----
-
-find_dependency(fmt REQUIRED)
-if(fmt_FOUND)
-  include_directories(${fmt_INCLUDE_DIRS})
-  message(STATUS "Found fmt: ${fmt_DIR} (found version ${fmt_VERSION})")
-endif()
-
-
-# ---
-# Zlib
-# ---
-
-find_dependency(ZLIB REQUIRED)
-if(fmt_FOUND)
-  include_directories(${fmt_INCLUDE_DIRS})
-  message(STATUS "Found fmt: ${fmt_DIR} (found version ${fmt_VERSION})")
-endif()
-
-# ---------
-# Range-v3
-# --------
-find_dependency(range-v3 REQUIRED)
-if(range-v3_FOUND)
-  include_directories(${range-v3_INCLUDE_DIRS})
-  message(STATUS "Found range-v3: ${range-v3_DIR} (found version ${range-v3_VERSION})")
-endif()
-
-# -----
-# Cista
-# -----
-find_dependency(cista REQUIRED)
-if(cista_FOUND)
-  include_directories(${cista_INCLUDE_DIRS})
-  message(STATUS "Found fmt: ${cista_DIR} (found version ${cista_VERSION})")
-endif()
-
-# ----
-# Loki
-# ----
-
-find_dependency(loki ${LOKI_MIN_VERSION} COMPONENTS parsers REQUIRED)
-
-
-# -----------
-# Nauty
-# -----------
-
-find_dependency(Nauty REQUIRED)
-if(Nauty_FOUND)
-  include_directories(${Nauty_INCLUDE_DIR})
-  message(STATUS "Found Nauty: ${NAUTY_LIBRARY} ${NAUTY_INCLUDE_DIR}")
-endif()
-
+include(cmake/dependencies.cmake)
 
 ############
 # Components

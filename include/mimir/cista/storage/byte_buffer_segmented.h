@@ -24,6 +24,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <vector>
+#include <string>
 
 namespace cista::storage
 {

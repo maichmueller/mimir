@@ -3,16 +3,16 @@ name: PIP Install & Test
 on: [push]
 
 jobs:
-  confige-reader:
+  config_reader:
     uses: ./.github/workflows/read-build-matrix.yml
 
   build:
-    needs: confige-reader
+    needs: config_reader
     name: ${{ matrix.config.os }} • Py-${{ matrix.python-version }} • ${{ matrix.config.cc }}-${{ matrix.config.compiler_version }} • ${{ matrix.config.build_type }}
     strategy:
       fail-fast: false
       matrix:
-        config: ${{ fromJson(needs.confige-reader.outputs.matrix) }}
+        config: ${{ fromJson(needs.config_reader.outputs.matrix) }}
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     runs-on: ${{ matrix.config.os }}
 

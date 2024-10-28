@@ -8,6 +8,47 @@ def get_version():
         return f.read().strip()
 
 
+# Boost components from its conanfile recipe
+# https://github.com/conan-io/conan-center-index/blob/master/recipes/boost/all/conanfile.py
+BOOST_COMPS = (
+    "atomic",
+    "charconv",
+    "chrono",
+    "cobalt",
+    "container",
+    "context",
+    "contract",
+    "coroutine",
+    "date_time",
+    "exception",
+    "fiber",
+    "filesystem",
+    "graph",
+    "graph_parallel",
+    "iostreams",
+    "json",
+    "locale",
+    "log",
+    "math",
+    "mpi",
+    "nowide",
+    "process",
+    "program_options",
+    "python",
+    "random",
+    "regex",
+    "serialization",
+    "stacktrace",
+    "system",
+    "test",
+    "thread",
+    "timer",
+    "type_erasure",
+    "url",
+    "wave",
+)
+
+
 class MimirRecipe(ConanFile):
     name = "mimir"
     version = get_version()
@@ -20,7 +61,14 @@ class MimirRecipe(ConanFile):
         "fPIC": [True, False],
     }
 
-    default_options = {"shared": False, "fPIC": True, "cista/*:with_fmt": True}
+    default_options = {
+        "shared": False,
+        "fPIC": True,
+        "cista/*:with_fmt": True,
+    }
+    default_options.update({f"boost/*:without_{comp}": True for comp in BOOST_COMPS})
+    for comp in ("iostreams", "random", "regex", "system"):
+        default_options.update({f"boost/*:without_{comp}": False})
 
     def requirements(self):
         requirements = self.conan_data.get("requirements", [])

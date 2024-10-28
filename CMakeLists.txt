@@ -1,5 +1,22 @@
 cmake_minimum_required(VERSION 3.21)
-project(mimir VERSION 0.1.1)
+set(VERSION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/__version__")
+file(READ "${VERSION_FILE}" version)
+
+# Match major, minor, and patch from a version string like "0.1.0" or "0.1.0.dev"
+string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)" _ ${version})
+
+# Check if the matches were successful
+if(CMAKE_MATCH_COUNT EQUAL 3)
+    set(version_major "${CMAKE_MATCH_1}")
+    set(version_minor "${CMAKE_MATCH_2}")
+    set(version_patch "${CMAKE_MATCH_3}")
+    message("Mimir Version: ${version_major}.${version_minor}.${version_patch}")
+else()
+    message(FATAL_ERROR "Failed to parse version from ${VERSION_FILE}")
+endif()
+
+# Use parsed version components in the project
+project(mimir VERSION "${version_major}.${version_minor}.${version_patch}" LANGUAGES C CXX)
 
 
 ##############################################################
@@ -67,37 +84,7 @@ message("DATA_DIR: ${DATA_DIR}")
 # Dependency Handling
 ##############################################################
 
-# set(CMAKE_FIND_DEBUG_MODE TRUE)
-
-# Find Boost headers only according to https://cmake.org/cmake/help/latest/module/FindBoost.html
-include("${PROJECT_SOURCE_DIR}/cmake/configure_boost.cmake")
-configure_boost()
-find_package(Boost ${BOOST_MIN_VERSION} REQUIRED COMPONENTS iostreams)
-message(STATUS "Found Boost: ${Boost_DIR} (found version ${Boost_VERSION})")
-
-find_package(nauty REQUIRED)
-message(STATUS "Found Nauty: ${NAUTY_LIBRARY} ${NAUTY_INCLUDE_DIR}")
-
-find_package(ZLIB REQUIRED)
-
-find_package(loki ${LOKI_MIN_VERSION} REQUIRED COMPONENTS parsers)
-message(STATUS "Found Loki: ${loki_DIR} (found version ${loki_VERSION})")
-
-find_package(fmt REQUIRED)
-message(STATUS "Found fmt: ${fmt_DIR} (found version ${fmt_VERSION})")
-
-find_package(range-v3 REQUIRED)
-message(STATUS "Found range-v3: ${range-v3_DIR} (found version ${range-v3_VERSION})")
-
-find_package(cista REQUIRED)
-message(STATUS "Found cista: ${cista_DIR} (found version ${cista_VERSION})")
-find_package(Threads REQUIRED)
-
-
-# This prints a summary of found dependencies
-include(FeatureSummary)
-feature_summary(WHAT ALL)
-
+include(cmake/dependencies.cmake)
 
 ##############################################################
 # Add library and executable targets

@@ -68,7 +68,7 @@ runs:
           echo "CC=${{ inputs.cc }}-${{ inputs.compiler-version }}" >> "$GITHUB_ENV"
           echo "CXX=${{ inputs.cxx }}-${{ inputs.compiler-version }}" >> "$GITHUB_ENV"
         fi
-        conan_home="$HOME/.conan2-${{ runner.os }}-${{ inputs.build-type }}-${{ inputs.cc }}-${{ inputs.compiler-version }}"
+        conan_home="$HOME/.conan2"
         echo "Conan Home is $conan_home"
         echo "CONAN_HOME=$conan_home" >> "$GITHUB_ENV"
 
@@ -78,9 +78,6 @@ runs:
         python3 -m pip install --upgrade pip setuptools
         python3 -m pip install 'conan==2.8.1'
         conan profile detect --name default
-        
-        profile=$(conan profile path default)
-        awk '{ sub(/compiler\.cppstd=gnu?[0-9]+/, "compiler.cppstd=gnu20"); print }' "$profile" > tmpfile && mv tmpfile "$profile"
 
     - name: Cache Conan Dependencies
       if: ${{ inputs.use-cache == 'true' }}

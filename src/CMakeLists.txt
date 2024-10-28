@@ -28,6 +28,7 @@ set_target_properties(core PROPERTIES OUTPUT_NAME mimir_core)
 
 # Create an alias for simpler reference
 add_library(mimir::core ALIAS core)
+add_library(mimir::mimir ALIAS core)
 
 # Apply the compile definition based on the selected representation
 if (STATE_REPR STREQUAL "Dense")

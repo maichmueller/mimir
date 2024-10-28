@@ -3,17 +3,19 @@ name: Test CPP Library
 on: [ push, pull_request ]
 
 jobs:
-  config-reader:
+  config_reader:
     uses: ./.github/workflows/read-build-matrix.yml
 
-  build:
-    needs: config-reader
-    name: ${{ matrix.config.os }} • ${{ matrix.config.cc }}-${{ matrix.config.compiler_version }} • ${{ matrix.config.build_type }}
+  test:
+    needs: config_reader
+    name: Test • ${{ matrix.config.os }} • ${{ matrix.config.cc }}-${{ matrix.config.compiler_version }} • ${{ matrix.config.build_type }}
     runs-on: ${{ matrix.config.os }}
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     strategy:
       fail-fast: false
       matrix:
-        config: ${{ fromJson(needs.confige-reader.outputs.matrix) }}
+        config: ${{ fromJson(needs.config_reader.outputs.matrix) }}
 
     steps:
       - uses: actions/checkout@v4
@@ -25,25 +27,25 @@ jobs:
           cxx: ${{ matrix.config.cxx }}
           compiler_version: ${{ matrix.config.compiler_version }}
           build_type: ${{ matrix.config.build_type }}
+          with_tests: 'ON'
 
-
-  test:
-    needs: build
-    name: ${{ matrix.config.os }} • ${{ matrix.config.cc }}-${{ matrix.config.compiler_version }} • ${{ matrix.config.build_type }}
-    runs-on: ${{ matrix.config.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        config: ${{ fromJson(needs.confige-reader.outputs.matrix) }}
-
-    steps:
       - name: Run Unit Tests
-        working-directory: build/release/tests/unit
-        run: GTEST_OUTPUT=xml:test-results/ GTEST_COLOR=1 ctest -V
+        working-directory: build/tests/unit
+        run: GTEST_OUTPUT=xml:test-results GTEST_COLOR=1 ctest -V
+
+      - name: Upload lib test result artifacts
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: gtest-results-${{ matrix.config.os }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}
+          path: ./build/**/test-results.xml
+          retention-days: 1
 
       - name: Install Mimir
-        run: |
-          cmake --install build/release --prefix install
+        run: >
+          cmake 
+          --install build 
+          --prefix $(pwd)/install 
 
       - name: Configure Integration Tests
         shell: bash
@@ -51,7 +53,7 @@ jobs:
           cmake 
           -S tests/integration 
           -B tests/integration/build
-          -DCMAKE_PREFIX_PATH=install
+          -DCMAKE_PREFIX_PATH="$(pwd)/install"
 
       - name: Build Integration Tests
         run: |
@@ -61,3 +63,36 @@ jobs:
         working-directory: tests/integration/build
         run: |
           GTEST_COLOR=1 ctest -V
+
+  publish-gtest-results:
+    name: "Publish GTest Results"
+    needs: test
+    runs-on: ubuntu-latest
+    if: always()
+    permissions:
+      checks: write
+      pull-requests: write
+
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: gtest-results-*
+          path: ./artifacts/gtest-results_downloaded
+          merge-multiple: true
+
+      - name: Display structure of downloaded files
+        shell: bash
+        run: ls ./artifacts/gtest-results_downloaded
+
+      - name: Publish Unit Test Results
+        if: ${{ startsWith(matrix.config.os, 'ubuntu') }}
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: ./artifacts/**/*.xml
+
+      - name: Publish Unit Test Results
+        if: ${{ startsWith(matrix.config.os, 'macos') }}
+        uses: EnricoMi/publish-unit-test-result-action/macos@v2
+        with:
+          files: ./artifacts/**/*.xml

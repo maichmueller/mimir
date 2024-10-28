@@ -9,6 +9,7 @@ cmake_source_folder=.
 config=Release
 cmake_cmd=cmake
 cmake_extra_args=()
+conan_extra_args=()
 # Define valid CMake build types
 valid_build_types=("Debug" "Release" "RelWithDebInfo" "MinSizeRel")
 
@@ -42,6 +43,13 @@ while [[ $# -gt 0 ]]; do
       conan_cmd="$2"
       shift # Move to the next argument
       ;;
+  "--conan_extra_args="*)
+    conan_extra_args+=("${1#*=}")
+    ;;
+  "--conan_extra_args")
+    conan_extra_args+=("$2")
+    shift # Move to the next argument
+    ;;
   "--build="*)
     cmake_build_folder="${1#*=}"
     ;;
@@ -78,6 +86,11 @@ while [[ $# -gt 0 ]]; do
   esac
   shift # Move to the next argument
 done
+
+# if conan_extra_args is empty add --build=missing
+if [ ${#conan_extra_args[@]} -eq 0 ]; then
+  conan_extra_args+=("--build=missing")
+fi
 
 
 if [ -e "$cmake_source_folder/conanfile.py" ]; then
@@ -139,29 +152,32 @@ echo "cmake_source_folder: $cmake_source_folder"
 echo "config: $config"
 echo "toolchain_file: $toolchain_file"
 echo "cmake_extra_args: ${cmake_extra_args[*]}"
+echo "conan_extra_args: ${conan_extra_args[*]}"
 echo "Executing cmake config."
 
 if [ "$use_conan" = true ]; then
   # install all dependencies defined for conan first
   conan_args="\
   -s build_type=Release \
+  -s:h compiler.cppstd=gnu20 \
+  -s:b compiler.cppstd=gnu20 \
   --profile:host=default \
   --profile:build=default \
-  --options=\"loki/*:fPIC=True\" \
-  --options=\"nauty/*:fPIC=True\" \
-  --build=\"$deps_policy\""
-  action="$conan_cmd export dependencies/loki --version=x.y.z"
+  --options=loki/*:fPIC=True \
+  --options=nauty/*:fPIC=True \
+  ${conan_extra_args[*]}"
+
+  action="$conan_cmd export dependencies/loki --version=0.0.6"
   eval "$action"
-  action="$conan_cmd export dependencies/nauty --version=x.y.z"
+  action="$conan_cmd export dependencies/nauty --version=2.8.8"
   eval "$action"
-  action="$conan_cmd export dependencies/cista --version=x.y.z"
+  action="$conan_cmd export dependencies/cista --version=2024.10.22"
   eval "$action"
   action="$conan_cmd install . -of=$cmake_build_folder/conan -g CMakeDeps -s \"&\":build_type=$config $conan_args"
   eval "$action"
   # append the necessary cmake config to the cmake call
   cmake_extra_args=("${cmake_extra_args[@]}" \
-  -DCMAKE_TOOLCHAIN_FILE="$toolchain_file" \
-  -DCMAKE_POLICY_DEFAULT_CMP0091=NEW)
+  -DCMAKE_TOOLCHAIN_FILE="$toolchain_file")
 fi
 
 
@@ -174,7 +190,6 @@ cmake_run="${cmake_cmd} \
   -B $cmake_build_folder \
   -G Ninja \
   -DCMAKE_BUILD_TYPE=$config \
-  -DCONAN_COMMAND=$conan_cmd \
   ${cmake_extra_args[*]}"
 
 echo "Executing command: $cmake_run"

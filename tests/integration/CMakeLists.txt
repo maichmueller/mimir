@@ -21,7 +21,7 @@ project(integration_example VERSION "0.0.1" LANGUAGES C CXX)
 # CMake modules and macro files
 ##############################################################
 
-find_package(mimir COMPONENTS core REQUIRED PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
+find_package(mimir REQUIRED PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
 
 
 ##############################################################
@@ -29,4 +29,4 @@ find_package(mimir COMPONENTS core REQUIRED PATHS ${CMAKE_PREFIX_PATH} NO_DEFAUL
 ##############################################################
 
 add_executable(integration_standalone "main.cpp")
-target_link_libraries(integration_standalone mimir::core)
+target_link_libraries(integration_standalone mimir::mimir)

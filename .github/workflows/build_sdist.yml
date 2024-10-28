@@ -21,13 +21,9 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install setuptools twine 'conan==2.8.1'
 
-    - name: Configure Conan
-      run: |
-          conan profile detect --name default
-          
-          # replace any cppstd=(gnu)XX entry in the compiler.cppstd line with cppstd=20
-          profile=$(conan profile path default)
-          awk '{ sub(/compiler\.cppstd=gnu?[0-9]+/, "compiler.cppstd=gnu20"); print }' "$profile" > tmpfile && mv tmpfile "$profile"
+#    - name: Configure Conan
+#      run: |
+#          conan profile detect --name default
 
     - name: Build source distribution
       run: python setup.py sdist
