@@ -83,6 +83,7 @@ using FunctionExpressionMultiOperator = const FunctionExpressionMultiOperatorImp
 class FunctionExpressionMinusImpl;
 using FunctionExpressionMinus = const FunctionExpressionMinusImpl*;
 class FunctionExpressionFunctionImpl;
+using FunctionExpressionFunction = const FunctionExpressionFunctionImpl*;
 using FunctionExpressionImpl = std::variant<FunctionExpressionNumberImpl,
                                             FunctionExpressionBinaryOperatorImpl,
                                             FunctionExpressionMultiOperatorImpl,
@@ -122,6 +123,7 @@ using GroundFunctionExpressionMultiOperator = const GroundFunctionExpressionMult
 class GroundFunctionExpressionMinusImpl;
 using GroundFunctionExpressionMinus = const GroundFunctionExpressionMinusImpl*;
 class GroundFunctionExpressionFunctionImpl;
+using GroundFunctionExpressionFunction = const GroundFunctionExpressionFunctionImpl*;
 using GroundFunctionExpressionImpl = std::variant<GroundFunctionExpressionNumberImpl,
                                                   GroundFunctionExpressionBinaryOperatorImpl,
                                                   GroundFunctionExpressionMultiOperatorImpl,
