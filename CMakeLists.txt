@@ -153,7 +153,7 @@ include(CMakePackageConfigHelpers)
 # Generate the version file for the config file
 write_basic_package_version_file(
         "${CMAKE_CURRENT_BINARY_DIR}/mimirConfigVersion.cmake"
-        VERSION ${mimir_VERSION}
+        VERSION ${PROJECT_VERSION}
         COMPATIBILITY ExactVersion
 )
 

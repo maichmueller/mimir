@@ -103,7 +103,6 @@ class CMakeBuild(build_ext):
             conan_extra_args,
             f"-DBUILD_PYMIMIR=ON",
             f"-DBUILD_TESTS=OFF",
-            f"-DMIMIR_VERSION_INFO={version}",
             f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={output_directory}",
             f"-DPYTHON_EXECUTABLE={sys.executable}",
         ]
