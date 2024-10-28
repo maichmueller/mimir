@@ -69,54 +69,48 @@ void init_state_space(py::module& m)
                  ss << self;
                  return ss.str();
              })
+        .def_static("create",
+                    py::overload_cast<const fs::path&, const fs::path&, const StateSpaceOptions&>(&StateSpace::create),
+                    py::arg("domain_filepath"),
+                    py::arg("problem_filepath"),
+                    py::arg("options") = StateSpaceOptions())
+        .def_static("create",
+                    py::overload_cast<Problem,
+                                      std::shared_ptr<PDDLFactories>,
+                                      std::shared_ptr<IApplicableActionGenerator>,
+                                      std::shared_ptr<StateRepository>,
+                                      const StateSpaceOptions&>(&StateSpace::create),
+                    py::arg("problem"),
+                    py::arg("factories"),
+                    py::arg("aag"),
+                    py::arg("ssg"),
+                    py::arg("options") = StateSpaceOptions())
+        .def_static("create",
+                    py::overload_cast<Problem, const std::shared_ptr<PDDLFactories>&, StateSpaceOptions>(&StateSpace::create),
+                    py::arg("problem"),
+                    py::arg("factories"),
+                    py::arg("options") = StateSpaceOptions())
+        .def_static("create",
+                    py::overload_cast<const fs::path&, const std::vector<fs::path>&, const StateSpacesOptions&>(&StateSpace::create),
+                    py::arg("domain_filepath"),
+                    py::arg("problem_filepaths"),
+                    py::arg("options") = StateSpacesOptions())
         .def_static(
             "create",
-            [](const std::string& domain_filepath, const std::string& problem_filepath, const StateSpaceOptions& options)
-            { return StateSpace::create(domain_filepath, problem_filepath, options); },
-            py::arg("domain_filepath"),
-            py::arg("problem_filepaths"),
-            py::arg("options") = StateSpaceOptions())
-        .def_static(
-            "create",
-            [](Problem problem,
-               std::shared_ptr<PDDLFactories> factories,
-               std::shared_ptr<IApplicableActionGenerator> aag,
-               std::shared_ptr<StateRepository> ssg,
-               const StateSpaceOptions& options) { return StateSpace::create(problem, std::move(factories), std::move(aag), std::move(ssg), options); },
-            py::arg("problem"),
-            py::arg("factories"),
-            py::arg("aag"),
-            py::arg("ssg"),
-            py::arg("options") = StateSpaceOptions())
-        .def_static(
-            "create",
-            [](Problem problem, const std::shared_ptr<PDDLFactories>& factories, const StateSpaceOptions& options)
-            { return StateSpace::create(problem, factories, options); },
-            py::arg("problem"),
-            py::arg("factories"),
-            py::arg("options") = StateSpaceOptions())
-        .def_static(
-            "create",
-            [](const std::string& domain_filepath, const std::vector<std::string>& problem_filepaths, const StateSpacesOptions& options)
-            {
-                auto problem_filepaths_ = std::vector<fs::path>(problem_filepaths.begin(), problem_filepaths.end());
-                return StateSpace::create(domain_filepath, problem_filepaths_, options);
-            },
-            py::arg("domain_filepath"),
-            py::arg("problem_filepaths"),
-            py::arg("options") = StateSpacesOptions())
-        .def_static(
-            "create",
-            [](const std::vector<
-                   std::tuple<Problem, std::shared_ptr<PDDLFactories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>&
-                   memories,
-               const StateSpacesOptions& options) { return StateSpace::create(memories, options); },
+            py::overload_cast<
+                const std::vector<
+                    std::tuple<Problem, std::shared_ptr<PDDLFactories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>&,
+                const StateSpacesOptions&>(&StateSpace::create),
             py::arg("memories"),
             py::arg("options") = StateSpacesOptions())
         .def(
             "__iter__",
             [](const StateSpace& self) { return py::make_iterator(self.begin(), self.end()); },
             py::keep_alive<0, 1>())
+        .def("get_aag", &StateSpace::get_aag)
+        .def("get_ssg", &StateSpace::get_ssg)
+        .def("get_problem", &StateSpace::get_problem)
+        .def("get_pddl_factories", &StateSpace::get_pddl_factories)
         .def("compute_shortest_forward_distances_from_states", &StateSpace::compute_shortest_distances_from_states<ForwardTraversal>, py::arg("state_indices"))
         .def("compute_shortest_backward_distances_from_states",
              &StateSpace::compute_shortest_distances_from_states<BackwardTraversal>,
@@ -214,12 +208,12 @@ void init_state_space(py::module& m)
         .def("get_max_goal_distance", &StateSpace::get_max_goal_distance)
         .def(
             "sample_state_with_goal_distance",
-            [](const StateSpace& self, double goal_distance, uint64_t seed)
+            [](const StateSpace& self, double goal_distance, std::optional<uint64_t> seed)
             {
-                std::mt19937_64 rng { seed };
+                std::mt19937_64 rng { seed.value_or(std::random_device {}()) };
                 self.sample_state_with_goal_distance(goal_distance, rng);
             },
             py::return_value_policy::reference_internal,
             py::arg("goal_distance"),
-            py::arg("seed") = std::random_device {}());
+            py::arg("seed") = py::none());
 }
