@@ -20,6 +20,7 @@
 
 #include <array>
 #include <cstdint>
+#include <cstddef>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
