@@ -50,23 +50,22 @@ public:
         std::unordered_map<std::pair<Color, std::vector<ColorArray<K>>>, Color, Hash<std::pair<Color, std::vector<ColorArray<K>>>>>;
     using CanonicalConfigurationCompressionFunction = std::map<std::pair<Color, std::vector<ColorArray<K>>>, Color>;
 
-    using CanonicalColoring = std::set<Color>;
-
     Certificate(ConfigurationCompressionFunction f, ColorList hash_to_color) :
         m_hash_to_color(std::move(hash_to_color)),
         m_f(f.begin(), f.end()),
         m_coloring_coloring(m_hash_to_color.begin(), m_hash_to_color.end())
     {
+        std::sort(m_coloring_coloring.begin(), m_coloring_coloring.end());
     }
 
     const CanonicalConfigurationCompressionFunction& get_canonical_configuration_compression_function() const { return m_f; }
-    const CanonicalColoring& get_canonical_coloring() const { return m_coloring_coloring; }
+    const ColorList& get_canonical_coloring() const { return m_coloring_coloring; }
 
 private:
     ColorList m_hash_to_color;
 
     CanonicalConfigurationCompressionFunction m_f;
-    CanonicalColoring m_coloring_coloring;
+    ColorList m_coloring_coloring;
 };
 
 template<size_t K>
