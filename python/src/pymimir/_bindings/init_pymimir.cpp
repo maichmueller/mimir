@@ -68,4 +68,72 @@ void init_pymimir(py::module& m)
           py::arg("mark_true_goal_literals") = false,
           py::arg("pruning_strategy") = ObjectGraphPruningStrategy(),
           "Creates an object graph based on the provided parameters");
+
+    // Color Refinement
+    py::class_<color_refinement::Certificate>(m, "CertificateColorRefinement")
+        .def("__eq__", [](const color_refinement::Certificate& lhs, const color_refinement::Certificate& rhs) { return lhs == rhs; })
+        .def("__hash__", [](const color_refinement::Certificate& self) { return std::hash<color_refinement::Certificate>()(self); })
+        .def("__str__",
+             [](const color_refinement::Certificate& self)
+             {
+                 auto os = std::stringstream();
+                 os << self;
+                 return os.str();
+             })
+        // Returning canonical compression functions does not work due to unhashable type list.
+        //.def("get_canonical_configuration_compression_function", &color_refinement::Certificate::get_canonical_compression_function)
+        .def("get_canonical_coloring", &color_refinement::Certificate::get_canonical_coloring);
+
+    m.def("compute_certificate_color_refinement",
+          &color_refinement::compute_certificate<StaticVertexColoredDigraph>,
+          py::arg("graph"),
+          "Creates color refinement certificate");
+
+    // K-FWL
+    auto bind_kfwl_certificate = [&]<size_t K>(const std::string& class_name, std::integral_constant<size_t, K>)
+    {
+        using CertificateK = kfwl::Certificate<K>;
+
+        py::class_<CertificateK>(m, class_name.c_str())
+            .def("__eq__", [](const CertificateK& lhs, const CertificateK& rhs) { return lhs == rhs; })
+            .def("__hash__", [](const CertificateK& self) { return std::hash<CertificateK>()(self); })
+            .def("__str__",
+                 [](const CertificateK& self)
+                 {
+                     auto os = std::stringstream();
+                     os << self;
+                     return os.str();
+                 })
+            // Returning canonical compression functions does not work due to unhashable type list.
+            //.def("get_canonical_isomorphic_type_compression_function", &CertificateK::get_canonical_isomorphic_type_compression_function)
+            //.def("get_canonical_configuration_compression_function", &CertificateK::get_canonical_configuration_compression_function)
+            .def("get_canonical_coloring", &CertificateK::get_canonical_coloring);
+    };
+    bind_kfwl_certificate("Certificate2FWL", std::integral_constant<size_t, 2> {});
+    bind_kfwl_certificate("Certificate3FWL", std::integral_constant<size_t, 3> {});
+    bind_kfwl_certificate("Certificate4FWL", std::integral_constant<size_t, 4> {});
+
+    auto bind_kfwl_iso_type_function = [&]<size_t K>(const std::string& class_name, std::integral_constant<size_t, K>)
+    {
+        using IsomorphismTypeFunctionK = kfwl::IsomorphismTypeFunction<K>;
+
+        py::class_<IsomorphismTypeFunctionK>(m, class_name.c_str())  //
+            .def(py::init<>());
+    };
+    bind_kfwl_iso_type_function("IsomorphismTypeFunction2FWL", std::integral_constant<size_t, 2> {});
+    bind_kfwl_iso_type_function("IsomorphismTypeFunction3FWL", std::integral_constant<size_t, 3> {});
+    bind_kfwl_iso_type_function("IsomorphismTypeFunction4FWL", std::integral_constant<size_t, 4> {});
+
+    auto bind_compute_kfwl_certificate = [&]<size_t K>(const std::string& function_name, std::integral_constant<size_t, K>)
+    {
+        m.def(
+            function_name.c_str(),
+            [](const StaticVertexColoredDigraph& graph, kfwl::IsomorphismTypeFunction<K>& iso_type_function)
+            { return kfwl::compute_certificate<K>(graph, iso_type_function); },
+            py::arg("static_vertex_colored_digraph"),
+            py::arg("isomorphism_type_function"));
+    };
+    bind_compute_kfwl_certificate("compute_certificate_2fwl", std::integral_constant<size_t, 2> {});
+    bind_compute_kfwl_certificate("compute_certificate_3fwl", std::integral_constant<size_t, 3> {});
+    bind_compute_kfwl_certificate("compute_certificate_4fwl", std::integral_constant<size_t, 4> {});
 }
