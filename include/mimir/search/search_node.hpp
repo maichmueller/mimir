@@ -20,7 +20,7 @@
 
 #include "cista/containers/tuple.h"
 #include "cista/serialization.h"
-#include "cista/storage/vector.h"
+#include "mimir/cista/storage/vector.h"
 #include "mimir/common/types.hpp"
 #include "mimir/search/action.hpp"
 

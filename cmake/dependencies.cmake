@@ -23,6 +23,9 @@ message(STATUS "Found range-v3: ${range-v3_DIR} (found version ${range-v3_VERSIO
 find_package(cista REQUIRED)
 message(STATUS "Found cista: ${cista_DIR} (found version ${cista_VERSION})")
 
+find_package(Threads REQUIRED)
+message(STATUS "Found Threads: ${Threads_DIR} (found version ${Threads_VERSION})")
+
 
 # This prints a summary of found dependencies
 include(FeatureSummary)
