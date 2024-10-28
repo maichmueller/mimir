@@ -289,7 +289,7 @@ std::optional<FaithfulAbstraction> FaithfulAbstraction::create(Problem problem,
 
     // Ensure that each abstract state and abstract transition contain a single representative.
     assert(options.compute_complete_abstraction_mapping
-           || std::all_of(abstract_states.begin(), abstract_states.end(), [](const auto& state) { return get_states(state).size() == 1; }));
+           || std::all_of(abstract_states.begin(), abstract_states.end(), [](const auto& state) { return mimir::get_states(state).size() == 1; }));
 
     /* Sort concrete transitions by source and target state. */
     std::sort(transitions.begin(),

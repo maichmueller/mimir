@@ -137,18 +137,18 @@ TEST(MimirTests, GraphsAlgorithmsColorRefinementBlocks3opsTest)
 
         const auto color_function = ProblemColorFunction(abstraction.get_problem());
 
-        const auto& state_1 = get_representative_state(abstraction.get_vertices().at(0));
-        const auto& state_2 = get_representative_state(abstraction.get_vertices().at(49));
+        const auto& state_1 = get_representative_state(abstraction.get_graph().get_vertices().at(0));
+        const auto& state_2 = get_representative_state(abstraction.get_graph().get_vertices().at(49));
 
         // std::cout << std::make_tuple(abstraction.get_problem(), state_1, std::cref(*abstraction.get_pddl_factories())) << std::endl;
         // std::cout << std::make_tuple(abstraction.get_problem(), state_2, std::cref(*abstraction.get_pddl_factories())) << std::endl;
 
         // 14, 58
-        for (size_t i = 0; i < abstraction.get_num_vertices(); ++i)
+        for (size_t i = 0; i < abstraction.get_graph().get_num_vertices(); ++i)
         {
             std::cout << i << " "
                       << std::make_tuple(abstraction.get_problem(),
-                                         get_representative_state(abstraction.get_vertices().at(i)),
+                                         get_representative_state(abstraction.get_graph().get_vertices().at(i)),
                                          std::cref(*abstraction.get_pddl_factories()))
                       << std::endl;
         }
@@ -162,8 +162,8 @@ TEST(MimirTests, GraphsAlgorithmsColorRefinementBlocks3opsTest)
 
         EXPECT_EQ(certificate_1, certificate_2);
 
-        const auto& state_3 = get_representative_state(abstraction.get_vertices().at(53));
-        const auto& state_4 = get_representative_state(abstraction.get_vertices().at(58));
+        const auto& state_3 = get_representative_state(abstraction.get_graph().get_vertices().at(53));
+        const auto& state_4 = get_representative_state(abstraction.get_graph().get_vertices().at(58));
 
         std::cout << std::make_tuple(abstraction.get_problem(), state_3, std::cref(*abstraction.get_pddl_factories())) << std::endl;
         std::cout << std::make_tuple(abstraction.get_problem(), state_4, std::cref(*abstraction.get_pddl_factories())) << std::endl;

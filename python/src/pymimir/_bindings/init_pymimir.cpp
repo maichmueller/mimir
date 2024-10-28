@@ -68,7 +68,6 @@ void init_pymimir(py::module& m)
           py::arg("mark_true_goal_literals") = false,
           py::arg("pruning_strategy") = ObjectGraphPruningStrategy(),
           "Creates an object graph based on the provided parameters");
-
     // Color Refinement
     py::class_<color_refinement::Certificate>(m, "CertificateColorRefinement")
         .def("__eq__", [](const color_refinement::Certificate& lhs, const color_refinement::Certificate& rhs) { return lhs == rhs; })
