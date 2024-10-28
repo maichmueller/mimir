@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_TRANSLATORS_TO_MIMIR_STRUCTURES_HPP_
-#define MIMIR_FORMALISM_TRANSLATORS_TO_MIMIR_STRUCTURES_HPP_
+#pragma once
+
 
 #include "mimir/formalism/factories.hpp"
 
@@ -181,4 +181,3 @@ public:
 
 }
 
-#endif

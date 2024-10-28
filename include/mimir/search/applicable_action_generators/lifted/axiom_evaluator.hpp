@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_LIFTED_AXIOM_EVALUATOR_HPP_
-#define MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_LIFTED_AXIOM_EVALUATOR_HPP_
+#pragma once
+
 
 #include "mimir/common/printers.hpp"
 #include "mimir/common/types_cista.hpp"
@@ -84,4 +84,4 @@ public:
 
 }  // namespace mimir
 
-#endif
+

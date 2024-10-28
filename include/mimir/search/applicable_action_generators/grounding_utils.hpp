@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_GROUNDING_UTILS_HPP_
-#define MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_GROUNDING_UTILS_HPP_
+#pragma once
+
 
 #include "mimir/formalism/factories.hpp"
 #include "mimir/formalism/predicate_category.hpp"
@@ -60,4 +60,4 @@ bool ground_and_test_nullary_literals(const LiteralList<P>& literals, const Flat
 }
 
 }
-#endif
+

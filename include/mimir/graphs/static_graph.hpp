@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_GRAPHS_STATIC_GRAPH_HPP_
-#define MIMIR_GRAPHS_STATIC_GRAPH_HPP_
+#pragma once
+
 
 #include "mimir/common/concepts.hpp"
 #include "mimir/common/grouped_vector.hpp"
@@ -932,4 +932,4 @@ Degree StaticBidirectionalGraph<G>::get_degree(VertexIndex vertex) const
 }
 
 }
-#endif
+

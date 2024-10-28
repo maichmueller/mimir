@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_CONDITION_GROUNDERS_EVENT_HANDLERS_DEFAULT_HPP_
-#define MIMIR_SEARCH_CONDITION_GROUNDERS_EVENT_HANDLERS_DEFAULT_HPP_
+#pragma once
+
 
 #include "mimir/formalism/factories.hpp"
 #include "mimir/formalism/object.hpp"
@@ -35,4 +35,4 @@ public:
 
 }
 
-#endif
+

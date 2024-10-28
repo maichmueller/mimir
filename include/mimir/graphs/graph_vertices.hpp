@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_GRAPHS_GRAPH_VERTICES_HPP_
-#define MIMIR_GRAPHS_GRAPH_VERTICES_HPP_
+#pragma once
+
 
 #include "mimir/common/equal_to.hpp"
 #include "mimir/common/hash.hpp"
@@ -122,4 +122,4 @@ concept IsVertexColoredGraph = requires(T::VertexType vertex)
 
 }
 
-#endif
+

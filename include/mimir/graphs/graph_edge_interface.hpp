@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_GRAPHS_GRAPH_EDGE_INTERFACE_HPP_
-#define MIMIR_GRAPHS_GRAPH_EDGE_INTERFACE_HPP_
+#pragma once
+
 
 #include "mimir/graphs/declarations.hpp"
 
@@ -47,4 +47,4 @@ concept HasEdgeProperties = IsEdge<T> && std::is_same_v<typename T::EdgeProperti
 
 }
 
-#endif
+

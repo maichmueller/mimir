@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_DATASETS_STATE_SPACE_HPP_
-#define MIMIR_DATASETS_STATE_SPACE_HPP_
+#pragma once
+
 
 #include "mimir/common/grouped_vector.hpp"
 #include "mimir/datasets/ground_action_edge.hpp"
@@ -348,5 +348,3 @@ auto StateSpace::get_adjacent_transitions(StateT state) const
                });
 }
 }
-
-#endif

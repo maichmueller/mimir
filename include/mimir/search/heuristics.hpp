@@ -15,10 +15,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_HEURISTICS_HPP_
-#define MIMIR_SEARCH_HEURISTICS_HPP_
+#pragma once
+
 
 #include "mimir/search/heuristics/blind.hpp"
 #include "mimir/search/heuristics/hstar.hpp"
 
-#endif
+

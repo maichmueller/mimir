@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_DATASETS_ABSTRACTION_HPP_
-#define MIMIR_DATASETS_ABSTRACTION_HPP_
+#pragma once
+
 
 #include "mimir/common/concepts.hpp"
 #include "mimir/datasets/ground_actions_edge.hpp"
@@ -288,5 +288,3 @@ static_assert(IsAbstraction<Abstraction>);
 using AbstractionList = std::vector<Abstraction>;
 
 }
-
-#endif

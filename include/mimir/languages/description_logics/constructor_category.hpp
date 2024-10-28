@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_LANGUAGES_DESCRIPTION_LOGICS_CONSTRUCTOR_IDS_HPP_
-#define MIMIR_LANGUAGES_DESCRIPTION_LOGICS_CONSTRUCTOR_IDS_HPP_
+#pragma once
+
 
 #include <concepts>
 
@@ -45,4 +45,4 @@ concept IsConceptOrRole = std::is_same<T, Concept>::value || std::is_same<T, Rol
 
 }
 
-#endif
+

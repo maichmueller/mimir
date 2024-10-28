@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_EFFECTS_HPP_
-#define MIMIR_FORMALISM_EFFECTS_HPP_
+#pragma once
+
 
 #include "mimir/formalism/declarations.hpp"
 
@@ -105,4 +105,3 @@ extern std::ostream& operator<<(std::ostream& out, EffectComplex element);
 
 }
 
-#endif

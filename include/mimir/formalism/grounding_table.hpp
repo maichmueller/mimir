@@ -1,5 +1,5 @@
-#ifndef MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_LIFTED_GROUNDING_TABLE_HPP_
-#define MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_LIFTED_GROUNDING_TABLE_HPP_
+#pragma once
+
 
 #include "mimir/common/hash.hpp"
 #include "mimir/formalism/object.hpp"
@@ -54,5 +54,3 @@ public:
 };
 
 }
-
-#endif

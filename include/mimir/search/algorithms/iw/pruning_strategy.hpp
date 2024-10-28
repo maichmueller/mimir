@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_ALGORITHMS_IW_PRUNING_STRATEGY_HPP_
-#define MIMIR_SEARCH_ALGORITHMS_IW_PRUNING_STRATEGY_HPP_
+#pragma once
+
 
 #include "mimir/search/algorithms/iw/dynamic_novelty_table.hpp"
 #include "mimir/search/algorithms/iw/tuple_index_mapper.hpp"
@@ -55,4 +55,3 @@ public:
 };
 }
 
-#endif

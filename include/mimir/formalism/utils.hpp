@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_HPP_
-#define MIMIR_FORMALISM_HPP_
+#pragma once
+
 
 #include "mimir/formalism/declarations.hpp"
 
@@ -32,5 +32,3 @@ template<PredicateCategory P>
 extern GroundAtomList<P> to_ground_atoms(const GroundLiteralList<P>& literals);
 
 }
-
-#endif

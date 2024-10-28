@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_TRANSLATIONS_HPP_
-#define MIMIR_FORMALISM_TRANSLATIONS_HPP_
+#pragma once
+
 
 #include "mimir/formalism/translators/move_existential_quantifiers.hpp"
 #include "mimir/formalism/translators/remove_types.hpp"
@@ -28,5 +28,3 @@
 #include "mimir/formalism/translators/to_effect_normal_form.hpp"
 #include "mimir/formalism/translators/to_mimir_structures.hpp"
 #include "mimir/formalism/translators/to_negation_normal_form.hpp"
-
-#endif

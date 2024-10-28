@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_LANGUAGES_DESCRIPTION_LOGICS_HPP_
-#define MIMIR_LANGUAGES_DESCRIPTION_LOGICS_HPP_
+#pragma once
+
 
 #include "mimir/languages/description_logics/constructor_interface.hpp"
 #include "mimir/languages/description_logics/constructors.hpp"
@@ -29,4 +29,4 @@
 #include "mimir/languages/description_logics/grammar_visitors.hpp"
 #include "mimir/languages/description_logics/grammar_visitors_interface.hpp"
 
-#endif
+

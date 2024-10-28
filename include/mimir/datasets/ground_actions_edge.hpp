@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_DATASETS_GROUND_ACTIONS_EDGE_HPP_
-#define MIMIR_DATASETS_GROUND_ACTIONS_EDGE_HPP_
+#pragma once
+
 
 #include "mimir/datasets/declarations.hpp"
 #include "mimir/graphs/graph_edges.hpp"
@@ -60,4 +60,3 @@ inline GroundAction get_representative_action(const GroundActionsEdge& edge)
 
 }
 
-#endif

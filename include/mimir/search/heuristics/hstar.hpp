@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_HEURISTICS_HSTAR_HPP_
-#define MIMIR_SEARCH_HEURISTICS_HSTAR_HPP_
+#pragma once
+
 
 #include "mimir/search/declarations.hpp"
 #include "mimir/search/heuristics/interface.hpp"
@@ -41,4 +41,4 @@ private:
 
 }
 
-#endif
+

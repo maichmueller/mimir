@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_ALGORITHMS_ASTAR_HPP_
-#define MIMIR_SEARCH_ALGORITHMS_ASTAR_HPP_
+#pragma once
+
 
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/search/algorithms/interface.hpp"
@@ -67,4 +67,4 @@ private:
 
 }
 
-#endif
+

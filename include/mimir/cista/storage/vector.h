@@ -15,8 +15,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef CISTA_STORAGE_VECTOR_HPP_
-#define CISTA_STORAGE_VECTOR_HPP_
+#pragma once
 
 #include "mimir/cista/storage/byte_buffer_segmented.h"
 #include <cista/serialization.h>
@@ -125,5 +124,3 @@ public:
 };
 
 }
-
-#endif

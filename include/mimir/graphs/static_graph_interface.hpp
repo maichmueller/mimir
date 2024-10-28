@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_GRAPHS_STATIC_GRAPH_INTERFACE_HPP_
-#define MIMIR_GRAPHS_STATIC_GRAPH_INTERFACE_HPP_
+#pragma once
+
 
 #include "mimir/graphs/graph_interface.hpp"
 
@@ -45,4 +45,4 @@ concept IsStaticGraph = requires(T a)
 
 }
 
-#endif
+

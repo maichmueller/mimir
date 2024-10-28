@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_TRANSLATORS_UTILS_HPP_
-#define MIMIR_FORMALISM_TRANSLATORS_UTILS_HPP_
+#pragma once
+
 
 #include "mimir/formalism/declarations.hpp"
 
@@ -86,4 +86,4 @@ extern std::string create_unique_axiom_name(uint64_t& next_axiom_id, std::unorde
 
 }
 
-#endif
+

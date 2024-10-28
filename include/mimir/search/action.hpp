@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_ACTION_HPP_
-#define MIMIR_SEARCH_ACTION_HPP_
+#pragma once
+
 
 #include "mimir/cista/storage/unordered_set.h"
 #include "mimir/cista/storage/vector.h"
@@ -322,5 +322,3 @@ template<>
 std::ostream& operator<<(std::ostream& os, const std::tuple<const PDDLFactories&, GroundAction>& data);
 
 }
-
-#endif

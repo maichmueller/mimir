@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_LANGUAGES_DESCRIPTION_LOGICS_DECLARATIONS_HPP_
-#define MIMIR_LANGUAGES_DESCRIPTION_LOGICS_DECLARATIONS_HPP_
+#pragma once
+
 
 #include "mimir/formalism/predicate_category.hpp"
 #include "mimir/languages/description_logics/constructor_category.hpp"
@@ -139,4 +139,3 @@ class Visitor;
 }
 }
 
-#endif

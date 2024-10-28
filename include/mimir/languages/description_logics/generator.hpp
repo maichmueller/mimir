@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_LANGUAGES_DESCRIPTION_LOGICS_GENERATOR_HPP_
-#define MIMIR_LANGUAGES_DESCRIPTION_LOGICS_GENERATOR_HPP_
+#pragma once
+
 
 #include "mimir/languages/description_logics/constructors.hpp"
 #include "mimir/languages/description_logics/equal_to.hpp"
@@ -75,4 +75,4 @@ public:
 };
 }
 
-#endif
+

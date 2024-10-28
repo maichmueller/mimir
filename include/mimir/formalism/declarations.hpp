@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_DECLARATIONS_HPP_
-#define MIMIR_FORMALISM_DECLARATIONS_HPP_
+#pragma once
+
 
 // Do not include headers with transitive dependencies.
 #include "mimir/common/types.hpp"
@@ -215,4 +215,3 @@ using VariableSet = std::unordered_set<Variable>;
 
 }
 
-#endif

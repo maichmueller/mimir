@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_ALGORITHMS_IW_EVENT_HANDLERS_MINIMAL_HPP_
-#define MIMIR_SEARCH_ALGORITHMS_IW_EVENT_HANDLERS_MINIMAL_HPP_
+#pragma once
+
 
 #include "mimir/search/algorithms/iw/event_handlers/interface.hpp"
 
@@ -52,4 +52,4 @@ public:
 
 }
 
-#endif
+

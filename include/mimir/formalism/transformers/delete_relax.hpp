@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_TRANSFORMERS_DELETE_RELAX_HPP_
-#define MIMIR_FORMALISM_TRANSFORMERS_DELETE_RELAX_HPP_
+#pragma once
+
 
 #include "mimir/formalism/transformers/base_cached_recurse.hpp"
 
@@ -103,5 +103,3 @@ Literal<P> DeleteRelaxTransformer::transform_impl(const LiteralImpl<P>& literal)
 }
 
 }
-
-#endif

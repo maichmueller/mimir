@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_COMMON_TYPES_HPP_
-#define MIMIR_COMMON_TYPES_HPP_
+#pragma once
+
 
 #include <array>
 #include <cstdint>
@@ -45,4 +45,3 @@ using DiscreteCostList = std::vector<DiscreteCost>;
 using DiscreteCostMatrix = std::vector<ContinuousCostList>;
 }
 
-#endif

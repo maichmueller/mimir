@@ -15,8 +15,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef CISTA_STORAGE_BYTE_BUFFER_SEGMENTED_HPP_
-#define CISTA_STORAGE_BYTE_BUFFER_SEGMENTED_HPP_
+#pragma once
 
 #include <cassert>
 #include <cstddef>
@@ -119,4 +118,3 @@ public:
 };
 }
 
-#endif

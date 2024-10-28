@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_TRANSLATORS_RENAME_QUANTIFIED_VARIABLES_HPP_
-#define MIMIR_FORMALISM_TRANSLATORS_RENAME_QUANTIFIED_VARIABLES_HPP_
+#pragma once
+
 
 #include "mimir/formalism/translators/base_recurse.hpp"
 
@@ -129,4 +129,3 @@ public:
 };
 }
 
-#endif

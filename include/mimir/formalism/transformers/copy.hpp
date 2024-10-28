@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_TRANSFORMERS_COPY_HPP_
-#define MIMIR_FORMALISM_TRANSFORMERS_COPY_HPP_
+#pragma once
+
 
 #include "mimir/formalism/transformers/base_cached_recurse.hpp"
 
@@ -40,5 +40,3 @@ public:
     explicit CopyTransformer(PDDLFactories& pddl_factories) : BaseCachedRecurseTransformer<CopyTransformer>(pddl_factories) {}
 };
 }
-
-#endif

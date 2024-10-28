@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_GRAPHS_COLOR_FUNCTION_HPP_
-#define MIMIR_GRAPHS_COLOR_FUNCTION_HPP_
+#pragma once
+
 
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/graphs/declarations.hpp"
@@ -75,4 +75,3 @@ public:
 };
 
 }
-#endif

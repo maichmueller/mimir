@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_HEURISTICS_BLIND_HPP_
-#define MIMIR_SEARCH_HEURISTICS_BLIND_HPP_
+#pragma once
+
 
 #include "mimir/search/heuristics/interface.hpp"
 
@@ -31,4 +31,4 @@ public:
 
 }
 
-#endif
+

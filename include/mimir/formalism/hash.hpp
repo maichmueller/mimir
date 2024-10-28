@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_HASH_HPP_
-#define MIMIR_FORMALISM_HASH_HPP_
+#pragma once
+
 
 #include "mimir/formalism/declarations.hpp"
 
@@ -290,4 +290,3 @@ struct UniquePDDLHasher<const VariableImpl*>
 
 }
 
-#endif

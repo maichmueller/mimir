@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_LANGUAGES_DESCRIPTION_LOGICS_CONSTRUCTORS_PARSER_ERROR_HANDLER_HPP_
-#define MIMIR_LANGUAGES_DESCRIPTION_LOGICS_CONSTRUCTORS_PARSER_ERROR_HANDLER_HPP_
+#pragma once
+
 
 #include "mimir/languages/description_logics/parser/config.hpp"
 
@@ -62,4 +62,4 @@ struct error_handler_base
 };
 }
 
-#endif
+

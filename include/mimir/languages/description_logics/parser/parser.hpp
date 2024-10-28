@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_LANGUAGES_DESCRIPTION_LOGICS_CONSTRUCTORS_PARSER_PARSER_HPP_
-#define MIMIR_LANGUAGES_DESCRIPTION_LOGICS_CONSTRUCTORS_PARSER_PARSER_HPP_
+#pragma once
+
 
 #include "mimir/languages/description_logics/parser/ast.hpp"
 
@@ -42,4 +42,4 @@ parser::grammar_type const& grammar_parser();
 
 }
 
-#endif
+

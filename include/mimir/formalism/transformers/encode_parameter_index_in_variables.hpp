@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_TRANSFORMERS_ENCODE_PARAMETER_INDEX_IN_VARIABLES_HPP_
-#define MIMIR_FORMALISM_TRANSFORMERS_ENCODE_PARAMETER_INDEX_IN_VARIABLES_HPP_
+#pragma once
+
 
 #include "mimir/formalism/transformers/base_recurse.hpp"
 
@@ -59,5 +59,3 @@ public:
     EncodeParameterIndexInVariables(PDDLFactories& pddl_factories);
 };
 }
-
-#endif

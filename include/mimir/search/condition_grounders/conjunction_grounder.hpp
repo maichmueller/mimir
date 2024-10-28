@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_LIFTED_CONJUNCTION_GROUNDERS_HPP_
-#define MIMIR_SEARCH_LIFTED_CONJUNCTION_GROUNDERS_HPP_
+#pragma once
+
 
 #include "mimir/search/condition_grounders.hpp"
 #include "mimir/search/declarations.hpp"
@@ -46,4 +46,4 @@ public:
 
 }
 
-#endif
+

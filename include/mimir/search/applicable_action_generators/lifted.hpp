@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_LIFTED_HPP_
-#define MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_LIFTED_HPP_
+#pragma once
+
 
 #include "mimir/formalism/action.hpp"
 #include "mimir/search/action.hpp"
@@ -118,4 +118,4 @@ std::ostream& operator<<(std::ostream& out, const LiftedApplicableActionGenerato
 
 }  // namespace mimir
 
-#endif
+

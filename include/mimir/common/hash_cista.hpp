@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_COMMON_HASH_CISTA_HPP_
-#define MIMIR_COMMON_HASH_CISTA_HPP_
+#pragma once
+
 
 #include "mimir/cista/containers/dynamic_bitset.h"
 #include "mimir/common/hash.hpp"
@@ -87,4 +87,3 @@ struct std::hash<cista::basic_vector<T, Ptr, IndexPointers, TemplateSizeType, Al
     }
 };
 
-#endif

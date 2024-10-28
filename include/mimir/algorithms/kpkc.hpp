@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_ALGORITHMS_KPKC_HPP_
-#define MIMIR_ALGORITHMS_KPKC_HPP_
+#pragma once
+
 
 #include <boost/dynamic_bitset.hpp>
 #include <vector>
@@ -28,5 +28,3 @@ void find_all_k_cliques_in_k_partite_graph(const std::vector<boost::dynamic_bits
                                            const std::vector<std::vector<size_t>>& partitions,
                                            std::vector<std::vector<std::size_t>>& out_cliques);
 }
-
-#endif  // MIMIR_ALGORITHMS_KPKC_HPP_

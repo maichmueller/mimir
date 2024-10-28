@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_ALGORITHMS_NAUTY_HPP_
-#define MIMIR_ALGORITHMS_NAUTY_HPP_
+#pragma once
+
 
 #include "mimir/common/printers.hpp"
 #include "mimir/graphs/declarations.hpp"
@@ -169,5 +169,3 @@ struct std::hash<nauty_wrapper::Certificate>
 {
     size_t operator()(const nauty_wrapper::Certificate& element) const;
 };
-
-#endif

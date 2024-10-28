@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_LANGUAGES_DESCRIPTION_LOGICS_EVALUATION_CONTEXT_HPP_
-#define MIMIR_LANGUAGES_DESCRIPTION_LOGICS_EVALUATION_CONTEXT_HPP_
+#pragma once
+
 
 #include "mimir/common/concepts.hpp"
 #include "mimir/formalism/declarations.hpp"
@@ -96,4 +96,4 @@ public:
 };
 }
 
-#endif
+

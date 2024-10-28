@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_COMMON_FACTORIES_HPP_
-#define MIMIR_COMMON_FACTORIES_HPP_
+#pragma once
+
 
 #include "mimir/formalism/action.hpp"
 #include "mimir/formalism/atom.hpp"
@@ -385,5 +385,3 @@ ObjectList PDDLFactories::get_objects_from_indices(const Iterable& object_ids) c
 }
 
 }
-
-#endif

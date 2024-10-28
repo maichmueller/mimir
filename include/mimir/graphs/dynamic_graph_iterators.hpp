@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_GRAPHS_DYNAMIC_GRAPH_ITERATORS_HPP_
-#define MIMIR_GRAPHS_DYNAMIC_GRAPH_ITERATORS_HPP_
+#pragma once
+
 
 #include "mimir/common/concepts.hpp"
 #include "mimir/graphs/declarations.hpp"
@@ -559,4 +559,4 @@ bool DynamicAdjacentEdgeIndexConstIterator<Edge, Direction>::operator!=(const Dy
 
 }
 
-#endif
+

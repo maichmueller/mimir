@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_SEARCH_NODE_HPP_
-#define MIMIR_SEARCH_SEARCH_NODE_HPP_
+#pragma once
+
 
 #include "cista/containers/tuple.h"
 #include "cista/serialization.h"
@@ -140,5 +140,3 @@ void set_plan(const cista::storage::Vector<SearchNodeImpl<SearchNodeProperties..
 }
 
 }
-
-#endif

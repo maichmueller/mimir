@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_ALGORITHMS_IW_TUPLE_INDEX_GENERATORS_HPP_
-#define MIMIR_SEARCH_ALGORITHMS_IW_TUPLE_INDEX_GENERATORS_HPP_
+#pragma once
+
 
 #include "mimir/search/algorithms/iw/tuple_index_mapper.hpp"
 #include "mimir/search/algorithms/iw/types.hpp"
@@ -172,4 +172,3 @@ public:
 
 }
 
-#endif

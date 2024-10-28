@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_GROUNDED_HPP_
-#define MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_GROUNDED_HPP_
+#pragma once
+
 
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/search/applicable_action_generators/grounded/event_handlers.hpp"
@@ -89,4 +89,3 @@ public:
 
 }
 
-#endif

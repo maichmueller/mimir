@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_PLAN_HPP_
-#define MIMIR_SEARCH_PLAN_HPP_
+#pragma once
+
 
 #include "mimir/search/action.hpp"
 
@@ -50,4 +50,4 @@ extern std::ostream& operator<<(std::ostream& os, const Plan& plan);
 
 }
 
-#endif
+

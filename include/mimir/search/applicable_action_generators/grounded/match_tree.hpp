@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_GROUNDED_MATCH_TREE_HPP_
-#define MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_GROUNDED_MATCH_TREE_HPP_
+#pragma once
+
 
 #include "mimir/common/types_cista.hpp"
 
@@ -323,4 +323,4 @@ void MatchTree<T>::get_applicable_elements(const FlatBitset& fluent_ground_atoms
 }
 }
 
-#endif
+

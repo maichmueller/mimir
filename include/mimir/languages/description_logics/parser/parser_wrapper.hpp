@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_LANGUAGES_DESCRIPTION_LOGICS_CONSTRUCTORS_PARSER_PARSER_WRAPPER_HPP_
-#define MIMIR_LANGUAGES_DESCRIPTION_LOGICS_CONSTRUCTORS_PARSER_PARSER_WRAPPER_HPP_
+#pragma once
+
 
 #include "mimir/languages/description_logics/parser/config.hpp"
 
@@ -58,4 +58,4 @@ void parse_ast(const std::string& source, const Parser& parser, Node& out)
 
 }
 
-#endif
+

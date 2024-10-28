@@ -15,12 +15,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_OPENLISTS_HPP_
-#define MIMIR_SEARCH_OPENLISTS_HPP_
+#pragma once
+
 
 /**
  * Include all specializations here
  */
 #include "mimir/search/openlists/priority_queue.hpp"
 
-#endif
+

@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_TRANSLATORS_TO_NEGATION_NORMAL_FORM_HPP_
-#define MIMIR_FORMALISM_TRANSLATORS_TO_NEGATION_NORMAL_FORM_HPP_
+#pragma once
+
 
 #include "mimir/formalism/translators/base_cached_recurse.hpp"
 
@@ -105,4 +105,4 @@ public:
 
 }
 
-#endif
+

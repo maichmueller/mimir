@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_GROUNDED_EVENT_HANDLERS_STATISTICS_HPP_
-#define MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_GROUNDED_EVENT_HANDLERS_STATISTICS_HPP_
+#pragma once
+
 
 #include <cstdint>
 #include <ostream>
@@ -77,4 +77,4 @@ public:
 
 }
 
-#endif
+

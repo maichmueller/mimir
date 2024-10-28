@@ -194,4 +194,3 @@ private:
     std::chrono::duration<double> elapsed_time = std::chrono::duration<double>::zero();
 };  // class timer
 }  // namespace BS
-#endif

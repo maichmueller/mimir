@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_GRAPHS_DYNAMIC_GRAPH_HPP_
-#define MIMIR_GRAPHS_DYNAMIC_GRAPH_HPP_
+#pragma once
+
 
 #include "mimir/common/concepts.hpp"
 #include "mimir/graphs/dynamic_graph_interface.hpp"
@@ -535,4 +535,4 @@ void DynamicGraph<V, E>::edge_index_check(EdgeIndex edge, const std::string& err
 
 }
 
-#endif
+

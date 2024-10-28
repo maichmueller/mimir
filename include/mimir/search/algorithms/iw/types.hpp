@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_ALGORITHMS_IW_TYPES_HPP_
-#define MIMIR_SEARCH_ALGORITHMS_IW_TYPES_HPP_
+#pragma once
+
 
 #include <unordered_set>
 #include <vector>
@@ -50,4 +50,3 @@ using TupleIndexSet = std::unordered_set<TupleIndex>;
 
 }
 
-#endif

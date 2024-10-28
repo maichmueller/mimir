@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_GRAPHS_BOOST_ADAPTER_HPP_
-#define MIMIR_GRAPHS_BOOST_ADAPTER_HPP_
+#pragma once
+
 
 #include "mimir/common/concepts.hpp"
 
@@ -225,4 +225,4 @@ inline void put(UnorderedMapReadWritePropertyMap<Key, Value>& m, Key key, Value 
 
 }
 
-#endif
+

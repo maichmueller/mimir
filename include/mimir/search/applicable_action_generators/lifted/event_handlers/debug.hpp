@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_LIFTED_EVENT_HANDLERS_DEBUG_HPP_
-#define MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_LIFTED_EVENT_HANDLERS_DEBUG_HPP_
+#pragma once
+
 
 #include "mimir/search/applicable_action_generators/lifted/event_handlers/interface.hpp"
 
@@ -63,4 +63,4 @@ public:
 
 }
 
-#endif
+

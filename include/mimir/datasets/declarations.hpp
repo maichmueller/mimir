@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_DATASETS_DECLARATIONS_HPP_
-#define MIMIR_DATASETS_DECLARATIONS_HPP_
+#pragma once
+
 
 // Do not include headers with transitive dependencies.
 #include "mimir/common/types.hpp"
@@ -39,4 +39,3 @@ class GlobalFaithfulAbstraction;
 
 }
 
-#endif

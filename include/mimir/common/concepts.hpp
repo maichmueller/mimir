@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_COMMON_CONCEPTS_HPP_
-#define MIMIR_COMMON_CONCEPTS_HPP_
+#pragma once
+
 
 #include <concepts>
 #include <cstddef>
@@ -47,4 +47,3 @@ concept IsRangeOver = std::ranges::range<T> && std::same_as<std::ranges::range_v
 
 }
 
-#endif

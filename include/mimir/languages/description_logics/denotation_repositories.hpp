@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_LANGUAGES_DESCRIPTION_LOGICS_DENOTATION_REPOSITORIES_HPP_
-#define MIMIR_LANGUAGES_DESCRIPTION_LOGICS_DENOTATION_REPOSITORIES_HPP_
+#pragma once
+
 
 #include "mimir/cista/storage/unordered_set.h"
 #include "mimir/languages/description_logics/declarations.hpp"
@@ -65,4 +65,4 @@ public:
 
 }
 
-#endif
+

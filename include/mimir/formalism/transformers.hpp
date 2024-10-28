@@ -15,11 +15,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_TRANSFORMERS_HPP_
-#define MIMIR_FORMALISM_TRANSFORMERS_HPP_
+#pragma once
+
 
 #include "mimir/formalism/transformers/delete_relax.hpp"
 #include "mimir/formalism/transformers/encode_parameter_index_in_variables.hpp"
 #include "mimir/formalism/transformers/to_positive_normal_form.hpp"
-
-#endif

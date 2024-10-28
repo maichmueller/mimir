@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_GRAPHS_GRAPH_EDGES_HPP_
-#define MIMIR_GRAPHS_GRAPH_EDGES_HPP_
+#pragma once
+
 
 #include "mimir/common/equal_to.hpp"
 #include "mimir/common/hash.hpp"
@@ -126,4 +126,4 @@ inline Color get_color(const ColoredEdge& edge) { return edge.get_property<0>();
 
 }
 
-#endif
+

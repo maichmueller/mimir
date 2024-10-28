@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_PROBLEM_HPP_
-#define MIMIR_FORMALISM_PROBLEM_HPP_
+#pragma once
+
 
 #include "mimir/common/types_cista.hpp"
 #include "mimir/formalism/declarations.hpp"
@@ -102,4 +102,3 @@ extern std::ostream& operator<<(std::ostream& out, Problem element);
 
 }
 
-#endif

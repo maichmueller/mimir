@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_GRAPHS_DIGRAPH_HPP_
-#define MIMIR_GRAPHS_DIGRAPH_HPP_
+#pragma once
+
 
 #include "mimir/graphs/dynamic_graph.hpp"
 #include "mimir/graphs/graph_edge_interface.hpp"
@@ -58,4 +58,4 @@ static_assert(IsDynamicGraph<DynamicDigraph>);
 extern std::ostream& operator<<(std::ostream& out, const StaticDigraph& digraph);
 
 }
-#endif
+

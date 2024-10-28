@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_PARSER_HPP_
-#define MIMIR_FORMALISM_PARSER_HPP_
+#pragma once
+
 
 #include "mimir/formalism/declarations.hpp"
 
@@ -57,5 +57,3 @@ public:
 };
 
 }
-
-#endif

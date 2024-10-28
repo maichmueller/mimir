@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_LANGUAGES_DESCRIPTION_LOGICS_DENOTATIONS_HPP_
-#define MIMIR_LANGUAGES_DESCRIPTION_LOGICS_DENOTATIONS_HPP_
+#pragma once
+
 
 #include "mimir/common/hash_cista.hpp"
 #include "mimir/common/types_cista.hpp"
@@ -118,4 +118,4 @@ public:
 
 }
 
-#endif
+

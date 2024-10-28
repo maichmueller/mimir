@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_DATASETS_GLOBAL_FAITHFUL_ABSTRACTION_HPP_
-#define MIMIR_DATASETS_GLOBAL_FAITHFUL_ABSTRACTION_HPP_
+#pragma once
+
 
 #include "mimir/datasets/abstraction.hpp"
 #include "mimir/datasets/faithful_abstraction.hpp"
@@ -221,4 +221,3 @@ struct std::hash<mimir::GlobalFaithfulAbstractState>
     size_t operator()(const mimir::GlobalFaithfulAbstractState& element) const;
 };
 
-#endif

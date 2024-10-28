@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_TRANSLATORS_BASE_RECURSE_HPP_
-#define MIMIR_FORMALISM_TRANSLATORS_BASE_RECURSE_HPP_
+#pragma once
+
 
 #include "mimir/formalism/translators/interface.hpp"
 
@@ -494,5 +494,3 @@ protected:
     }
 };
 }
-
-#endif

@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_TRANSFORMERS_BASE_CACHED_RECURSE_HPP_
-#define MIMIR_FORMALISM_TRANSFORMERS_BASE_CACHED_RECURSE_HPP_
+#pragma once
+
 
 #include "mimir/formalism/factories.hpp"
 #include "mimir/formalism/transformers/interface.hpp"
@@ -675,4 +675,3 @@ protected:
 };
 }
 
-#endif

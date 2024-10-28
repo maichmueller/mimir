@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_TRANSFORMERS_TO_POSITIVE_NORMAL_FORM_HPP_
-#define MIMIR_FORMALISM_TRANSFORMERS_TO_POSITIVE_NORMAL_FORM_HPP_
+#pragma once
+
 
 #include "mimir/common/concepts.hpp"
 #include "mimir/common/printers.hpp"
@@ -204,4 +204,3 @@ void ToPositiveNormalFormTransformer::introduce_axiom_for_dual(const std::unorde
 
 }
 
-#endif

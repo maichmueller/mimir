@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_ALGORITHMS_ASTAR_EVENT_HANDLERS_STATISTICS_HPP_
-#define MIMIR_SEARCH_ALGORITHMS_ASTAR_EVENT_HANDLERS_STATISTICS_HPP_
+#pragma once
+
 
 #include <chrono>
 #include <cstdint>
@@ -122,4 +122,4 @@ inline std::ostream& operator<<(std::ostream& os, const AStarAlgorithmStatistics
 
 }
 
-#endif
+

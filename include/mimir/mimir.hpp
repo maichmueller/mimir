@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_MIMIR_HPP_
-#define MIMIR_MIMIR_HPP_
+#pragma once
+
 
 /**
  * Include all specializations here
@@ -96,4 +96,4 @@
 
 #include "mimir/algorithms/nauty.hpp"
 
-#endif  // MIMIR_MIMIR_HPP_
+  // MIMIR_MIMIR_HPP_

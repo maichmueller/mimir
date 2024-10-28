@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_COMMON_HASH_HPP_
-#define MIMIR_COMMON_HASH_HPP_
+#pragma once
+
 
 #include "mimir/common/concepts.hpp"
 
@@ -111,4 +111,3 @@ inline size_t hash_combine(const Ts&... rest)
 
 }
 
-#endif

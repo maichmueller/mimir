@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_STATE_HPP_
-#define MIMIR_SEARCH_STATE_HPP_
+#pragma once
+
 
 #include "mimir/cista/containers/dynamic_bitset.h"
 #include "mimir/cista/storage/unordered_set.h"
@@ -157,4 +157,4 @@ template<>
 std::ostream& operator<<(std::ostream& os, const std::tuple<Problem, State, const PDDLFactories&>& data);
 }
 
-#endif
+

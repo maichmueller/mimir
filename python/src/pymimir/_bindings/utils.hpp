@@ -1,6 +1,5 @@
 
-#ifndef PYMIMIR_UTILS_HPP
-#define PYMIMIR_UTILS_HPP
+#pragma once
 
 #include <pybind11/pybind11.h>
 
@@ -236,5 +235,3 @@ py::class_<IndexGroupedVector, holder_type> bind_const_index_grouped_vector(py::
 }
 
 }  // namespace mimir::pymimir
-
-#endif  // PYMIMIR_UTILS_HPP

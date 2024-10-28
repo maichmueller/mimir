@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_ALGORITHMS_IW_HPP_
-#define MIMIR_SEARCH_ALGORITHMS_IW_HPP_
+#pragma once
+
 
 #include "mimir/search/algorithms/brfs.hpp"
 #include "mimir/search/algorithms/iw/event_handlers/interface.hpp"
@@ -63,4 +63,3 @@ private:
 using IWAlgorithm = IterativeWidthAlgorithm;
 }
 
-#endif

@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_GRAPHS_DIGRAPH_VERTEX_COLORED_HPP_
-#define MIMIR_GRAPHS_DIGRAPH_VERTEX_COLORED_HPP_
+#pragma once
+
 
 #include "mimir/graphs/color_function.hpp"
 #include "mimir/graphs/dynamic_graph.hpp"
@@ -69,4 +69,4 @@ extern std::ostream& operator<<(std::ostream& out, const std::tuple<const Static
 
 }
 
-#endif
+

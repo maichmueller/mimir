@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_COMMON_EQUAL_TO_HPP_
-#define MIMIR_COMMON_EQUAL_TO_HPP_
+#pragma once
+
 
 #include "mimir/common/concepts.hpp"
 
@@ -39,4 +39,3 @@ bool operator==(const R1& lhs, const R2& rhs)
 
 }
 
-#endif

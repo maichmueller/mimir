@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_COMMON_TYPES_CISTA_HPP_
-#define MIMIR_COMMON_TYPES_CISTA_HPP_
+#pragma once
+
 
 #include "mimir/cista/containers/dynamic_bitset.h"
 #include "mimir/common/types.hpp"
@@ -77,4 +77,3 @@ inline bool is_superseteq(const FlatBitset& bitset, const FlatIndexList& list)
 
 }
 
-#endif

@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_LANGUAGES_DESCRIPTION_LOGICS_CONSTRUCTORS_PARSER_ERROR_REPORTING_HPP_
-#define MIMIR_LANGUAGES_DESCRIPTION_LOGICS_CONSTRUCTORS_PARSER_ERROR_REPORTING_HPP_
+#pragma once
+
 
 #include "mimir/languages/description_logics/parser/config.hpp"
 
@@ -51,4 +51,4 @@ public:
 };
 }
 
-#endif
+

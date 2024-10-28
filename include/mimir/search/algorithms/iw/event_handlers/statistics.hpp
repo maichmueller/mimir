@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_ALGORITHMS_IW_EVENT_HANDLERS_STATISTICS_HPP_
-#define MIMIR_SEARCH_ALGORITHMS_IW_EVENT_HANDLERS_STATISTICS_HPP_
+#pragma once
+
 
 #include "mimir/search/algorithms/brfs/event_handlers/statistics.hpp"
 
@@ -92,4 +92,4 @@ inline std::ostream& operator<<(std::ostream& os, const IWAlgorithmStatistics& s
 
 }
 
-#endif
+

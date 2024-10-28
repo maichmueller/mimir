@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_TRANSLATORS_REMOVE_UNIVERSAL_QUANTIFIERS_HPP_
-#define MIMIR_FORMALISM_TRANSLATORS_REMOVE_UNIVERSAL_QUANTIFIERS_HPP_
+#pragma once
+
 
 #include "mimir/formalism/translators/base_cached_recurse.hpp"
 #include "mimir/formalism/translators/to_negation_normal_form.hpp"
@@ -98,4 +98,3 @@ public:
 };
 }
 
-#endif

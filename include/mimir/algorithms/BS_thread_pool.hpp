@@ -1,4 +1,4 @@
-#ifndef BS_THREAD_POOL_HPP
+#pragma once
 #define BS_THREAD_POOL_HPP
 /**
  * @file BS_thread_pool.hpp
@@ -1202,4 +1202,3 @@ private:
     bool workers_running = false;
 };  // class thread_pool
 }  // namespace BS
-#endif

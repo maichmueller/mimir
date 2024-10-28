@@ -15,12 +15,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_PLANNERS_HPP_
-#define MIMIR_SEARCH_PLANNERS_HPP_
+#pragma once
+
 
 /**
  * Include all specializations here
  */
 #include "mimir/search/planners/single.hpp"
 
-#endif
+

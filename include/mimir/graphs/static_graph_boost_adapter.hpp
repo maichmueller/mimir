@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_GRAPHS_STATIC_GRAPH_BOOST_ADAPTER_HPP_
-#define MIMIR_GRAPHS_STATIC_GRAPH_BOOST_ADAPTER_HPP_
+#pragma once
+
 
 #include "mimir/common/concepts.hpp"
 #include "mimir/graphs/boost_adapter_utils.hpp"
@@ -400,4 +400,4 @@ floyd_warshall_all_pairs_shortest_paths(const TraversalDirectionTaggedType<Graph
 }
 }
 
-#endif
+

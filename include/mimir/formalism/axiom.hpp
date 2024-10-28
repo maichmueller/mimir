@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_AXIOM_HPP_
-#define MIMIR_FORMALISM_AXIOM_HPP_
+#pragma once
+
 
 #include "mimir/formalism/declarations.hpp"
 
@@ -66,5 +66,3 @@ extern std::ostream& operator<<(std::ostream& out, const AxiomImpl& element);
 extern std::ostream& operator<<(std::ostream& out, Axiom element);
 
 }
-
-#endif

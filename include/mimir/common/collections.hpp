@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_COMMON_COLLECTIONS_HPP_
-#define MIMIR_COMMON_COLLECTIONS_HPP_
+#pragma once
+
 
 #include <boost/container/small_vector.hpp>
 #include <unordered_set>
@@ -96,4 +96,3 @@ extern std::vector<T> uniquify_elements(const std::vector<T>& vec)
 
 }
 
-#endif

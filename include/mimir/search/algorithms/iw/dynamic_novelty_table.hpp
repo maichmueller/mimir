@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_ALGORITHMS_IW_DYNAMIC_NOVELTY_TABLE_HPP_
-#define MIMIR_SEARCH_ALGORITHMS_IW_DYNAMIC_NOVELTY_TABLE_HPP_
+#pragma once
+
 
 #include "mimir/search/algorithms/iw/tuple_index_generators.hpp"
 #include "mimir/search/algorithms/iw/tuple_index_mapper.hpp"
@@ -57,4 +57,3 @@ public:
 
 }
 
-#endif

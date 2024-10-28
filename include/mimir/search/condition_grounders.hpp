@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_CONDITION_GROUNDERS_HPP_
-#define MIMIR_SEARCH_CONDITION_GROUNDERS_HPP_
+#pragma once
+
 
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/search/applicable_action_generators/lifted/assignment_set.hpp"
@@ -117,4 +117,4 @@ std::ostream& operator<<(std::ostream& out, const ConditionGrounder& condition_g
 
 }
 
-#endif
+

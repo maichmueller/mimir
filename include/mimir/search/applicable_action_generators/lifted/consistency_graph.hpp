@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_LIFTED_CONSISTENCY_GRAPH_HPP_
-#define MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_LIFTED_CONSISTENCY_GRAPH_HPP_
+#pragma once
+
 
 #include "mimir/common/printers.hpp"
 #include "mimir/formalism/declarations.hpp"
@@ -151,4 +151,4 @@ template<>
 std::ostream& operator<<(std::ostream& out, const std::tuple<const consistency_graph::StaticConsistencyGraph&, const PDDLFactories&>& data);
 }
 
-#endif
+

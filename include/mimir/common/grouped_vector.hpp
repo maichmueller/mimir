@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_COMMON_INDEX_GROUPED_VECTOR_HPP_
-#define MIMIR_COMMON_INDEX_GROUPED_VECTOR_HPP_
+#pragma once
+
 
 #include <algorithm>
 #include <cassert>
@@ -500,4 +500,3 @@ const std::vector<std::remove_const_t<T>>& IndexGroupedVectorBuilder<T>::data() 
 }
 }
 
-#endif

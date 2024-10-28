@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_FORMATTER_HPP_
-#define MIMIR_FORMALISM_FORMATTER_HPP_
+#pragma once
+
 
 #include "mimir/formalism/action.hpp"
 #include "mimir/formalism/atom.hpp"
@@ -101,5 +101,3 @@ public:
 };
 
 }
-
-#endif

@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_COMMON_ITERTOOLS_HPP_
-#define MIMIR_COMMON_ITERTOOLS_HPP_
+#pragma once
+
 
 #include <iostream>
 #include <unordered_set>
@@ -131,4 +131,3 @@ public:
 
 }
 
-#endif

@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_DATASETS_GROUND_ACTION_EDGE_HPP_
-#define MIMIR_DATASETS_GROUND_ACTION_EDGE_HPP_
+#pragma once
+
 
 #include "mimir/datasets/declarations.hpp"
 #include "mimir/graphs/graph_edges.hpp"
@@ -42,4 +42,3 @@ inline ContinuousCost get_cost(const GroundActionEdge& edge) { return get_creati
 
 }
 
-#endif

@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_PREDICATE_CATEGORY_HPP_
-#define MIMIR_FORMALISM_PREDICATE_CATEGORY_HPP_
+#pragma once
+
 
 #include <concepts>
 #include <type_traits>
@@ -46,4 +46,3 @@ concept DynamicPredicateCategory = std::is_same_v<T, Fluent> || std::is_same_v<T
 
 }
 
-#endif

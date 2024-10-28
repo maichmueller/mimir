@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_LIFTED_ASSIGNMENT_SET_HPP_
-#define MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_LIFTED_ASSIGNMENT_SET_HPP_
+#pragma once
+
 
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/formalism/literal.hpp"
@@ -299,4 +299,4 @@ bool AssignmentSet<P>::consistent_literals(const LiteralList<P>& literals, const
 
 }
 
-#endif
+

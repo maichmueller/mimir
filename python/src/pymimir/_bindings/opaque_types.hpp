@@ -1,6 +1,6 @@
 
-#ifndef MIMIR_OPAQUE_TYPES_HPP
-#define MIMIR_OPAQUE_TYPES_HPP
+#pragma once
+
 
 #include "mimir/mimir.hpp"
 #include "variants.hpp"
@@ -46,4 +46,3 @@ PYBIND11_MAKE_OPAQUE(mimir::VariableList);
 PYBIND11_MAKE_OPAQUE(mimir::StateList);
 PYBIND11_MAKE_OPAQUE(mimir::GroundActionList);
 
-#endif  // MIMIR_OPAQUE_TYPES_HPP

@@ -1,6 +1,6 @@
 
-#ifndef MIMIR_INIT_DECLARATIONS_HPP
-#define MIMIR_INIT_DECLARATIONS_HPP
+#pragma once
+
 
 #include "mimir/datasets/state_space.hpp"
 #include "mimir/formalism/atom.hpp"
@@ -101,4 +101,3 @@ DECLARE_INIT_FUNC(static_digraph);
 DECLARE_INIT_FUNC(static_vertexcolored_graph);
 DECLARE_INIT_FUNC(heuristics);
 
-#endif  // MIMIR_INIT_DECLARATIONS_HPP

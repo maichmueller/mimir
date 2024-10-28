@@ -15,10 +15,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_HPP_
-#define MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_HPP_
+#pragma once
+
 
 #include "mimir/search/applicable_action_generators/grounded.hpp"
 #include "mimir/search/applicable_action_generators/lifted.hpp"
 
-#endif
+

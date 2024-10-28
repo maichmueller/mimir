@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_OPENLISTS_PRIORITY_QUEUE_HPP_
-#define MIMIR_SEARCH_OPENLISTS_PRIORITY_QUEUE_HPP_
+#pragma once
+
 
 #include "mimir/search/openlists/interface.hpp"
 
@@ -69,4 +69,4 @@ private:
 
 }  // namespace mimir
 
-#endif
+

@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_LIFTED_AXIOM_STRATIFICATION_HPP_
-#define MIMIR_SEARCH_APPLICABLE_ACTION_GENERATORS_LIFTED_AXIOM_STRATIFICATION_HPP_
+#pragma once
+
 
 #include "mimir/formalism/declarations.hpp"
 
@@ -52,4 +52,4 @@ extern std::vector<AxiomPartition> compute_axiom_partitioning(const AxiomList& a
 
 }
 
-#endif
+

@@ -15,8 +15,8 @@
 * along with this program. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef MIMIR_GRAPHS_ALGORITHMS_COLOR_REFINEMENT_HPP_
-#define MIMIR_GRAPHS_ALGORITHMS_COLOR_REFINEMENT_HPP_
+#pragma once
+
 
 #include "mimir/common/equal_to.hpp"
 #include "mimir/common/hash.hpp"
@@ -275,4 +275,3 @@ struct std::hash<mimir::color_refinement::Certificate>
    size_t operator()(const mimir::color_refinement::Certificate& element) const;
 };
 
-#endif

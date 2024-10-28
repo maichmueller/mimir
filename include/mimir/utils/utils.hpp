@@ -1,6 +1,6 @@
 
-#ifndef MIMIR_UTILS_UTILS_HPP
-#define MIMIR_UTILS_UTILS_HPP
+#pragma once
+
 
 #include <memory>
 #include <optional>
@@ -191,4 +191,3 @@ auto as_range(RangeLike& range)
 
 }
 
-#endif  // MIMIR_UTILS_UTILS_HPP

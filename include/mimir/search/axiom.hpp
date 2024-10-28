@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_SEARCH_AXIOM_HPP_
-#define MIMIR_SEARCH_AXIOM_HPP_
+#pragma once
+
 
 #include "mimir/common/printers.hpp"
 #include "mimir/common/types.hpp"
@@ -150,4 +150,4 @@ template<>
 std::ostream& operator<<(std::ostream& os, const std::tuple<GroundAxiom, const PDDLFactories&>& data);
 }
 
-#endif
+

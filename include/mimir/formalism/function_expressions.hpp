@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_FORMALISM_FUNCTION_EXPRESSIONS_HPP_
-#define MIMIR_FORMALISM_FUNCTION_EXPRESSIONS_HPP_
+#pragma once
+
 
 #include "mimir/formalism/declarations.hpp"
 
@@ -232,4 +232,3 @@ extern std::ostream& operator<<(std::ostream& out, const FunctionExpressionImpl&
 extern std::ostream& operator<<(std::ostream& out, FunctionExpression element);
 }
 
-#endif

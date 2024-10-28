@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_GRAPHS_OBJECT_GRAPH_PRUNING_STRATEGY_HPP_
-#define MIMIR_GRAPHS_OBJECT_GRAPH_PRUNING_STRATEGY_HPP_
+#pragma once
+
 
 #include "mimir/common/types_cista.hpp"
 #include "mimir/datasets/state_space.hpp"
@@ -111,4 +111,4 @@ extern std::ostream& operator<<(std::ostream& out,
 
 }
 
-#endif
+

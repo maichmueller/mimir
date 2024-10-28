@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_GRAPHS_DECLARATIONS_HPP_
-#define MIMIR_GRAPHS_DECLARATIONS_HPP_
+#pragma once
+
 
 // Do not include headers with transitive dependencies.
 #include "mimir/common/types.hpp"
@@ -53,4 +53,4 @@ using ColorMap = std::unordered_map<Color, T>;
 
 }
 
-#endif
+

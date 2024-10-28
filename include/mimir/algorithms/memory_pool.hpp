@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_ALGORITHMS_MEMORY_POOL_HPP_
-#define MIMIR_ALGORITHMS_MEMORY_POOL_HPP_
+#pragma once
+
 
 #include <cassert>
 #include <memory>
@@ -98,5 +98,3 @@ public:
 };
 
 }
-
-#endif  // MIMIR_ALLOCATORS_MEMORY_POOL_HPP_

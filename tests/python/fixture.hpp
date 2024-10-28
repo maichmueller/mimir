@@ -1,5 +1,5 @@
-#ifndef MIMIR_PYTHON_TEST_FIXTURE_HPP
-#define MIMIR_PYTHON_TEST_FIXTURE_HPP
+#pragma once
+
 
 #include "_bindings/init_declarations.hpp"
 
@@ -29,4 +29,3 @@ private:
     std::unique_ptr<pybind11::module> m_pymimir = nullptr;
 };
 
-#endif  // MIMIR_PYTHON_TEST_FIXTURE_HPP

@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MIMIR_DATASETS_STATE_VERTEX_HPP_
-#define MIMIR_DATASETS_STATE_VERTEX_HPP_
+#pragma once
+
 
 #include "mimir/graphs/graph_vertices.hpp"
 #include "mimir/search/state.hpp"
@@ -35,4 +35,3 @@ inline State get_state(const StateVertex& vertex) { return vertex.get_property<0
 
 }
 
-#endif
