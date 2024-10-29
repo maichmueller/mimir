@@ -39,16 +39,18 @@ namespace mimir::kfwl
 {
 using mimir::operator<<;
 
+template<size_t K>
+using Signature = std::pair<std::vector<ColorArray<K>>, std::vector<ColorArray<K>>>;
+
 /// @brief `Certificate` encapsulates the final tuple colorings and the decoding tables.
 /// @tparam K is the dimensionality.
 template<size_t K>
 class Certificate
 {
 public:
-   /* Compression of new color to map (C(bar{v}), {{(c_1^1, ...,c_k^1), ..., (c_1^r, ...,c_k^r)}}) to an integer color for bar{v} in V^k */
-   using ConfigurationCompressionFunction =
-       std::unordered_map<std::pair<Color, std::vector<ColorArray<K>>>, Color, Hash<std::pair<Color, std::vector<ColorArray<K>>>>>;
-   using CanonicalConfigurationCompressionFunction = std::map<std::pair<Color, std::vector<ColorArray<K>>>, Color>;
+    /* Compression of new color to map (C(bar{v}), {{(c_1^1, ...,c_k^1), ..., (c_1^r, ...,c_k^r)}}) to an integer color for bar{v} in V^k */
+    using ConfigurationCompressionFunction = std::unordered_map<std::pair<Color, Signature<K>>, Color, Hash<std::pair<Color, Signature<K>>>>;
+    using CanonicalConfigurationCompressionFunction = std::map<std::pair<Color, Signature<K>>, Color>;
 
    Certificate(ConfigurationCompressionFunction f, ColorList hash_to_color) :
        m_hash_to_color(std::move(hash_to_color)),
@@ -140,11 +142,13 @@ IndexArray<K> hash_to_tuple(size_t hash, size_t num_vertices)
 }
 
 template<size_t K, typename G>
-   requires IsVertexListGraph<G> && IsIncidenceGraph<G> && IsVertexColoredGraph<G>  //
-std::pair<ColorList, ColorMap<IndexList>> compute_ordered_isomorphism_types(const G& graph, IsomorphismTypeFunction<K>& iso_type_function)
+requires IsVertexListGraph<G> && IsIncidenceGraph<G> && IsVertexColoredGraph<G>  //
+    std::tuple<ColorList, ColorList, ColorMap<IndexList>, ColorMap<IndexList>> compute_ordered_isomorphism_types(const G& graph,
+                                                                                                                 IsomorphismTypeFunction<K>& iso_type_function)
 {
-   const auto num_vertices = graph.get_num_vertices();
-   const auto num_hashes = std::pow(num_vertices, K);
+    const auto num_vertices = graph.get_num_vertices();
+    const auto is_undirected = is_undirected_graph(graph);
+    const auto num_hashes = std::pow(num_vertices, K);
 
    /* Temporary bookkeeping to support dynamic graphs. */
    auto vertex_to_v = IndexMap<Index>();
@@ -156,63 +160,81 @@ std::pair<ColorList, ColorMap<IndexList>> compute_ordered_isomorphism_types(cons
        v_to_vertex.emplace(v, vertex);
    }
 
-   // Create adj matrix for fast creation of subgraph induced by k-tuple.
-   auto adj_matrix = std::vector<std::vector<bool>>(num_vertices, std::vector<bool>(num_vertices, false));
-   for (const auto& vertex1 : graph.get_vertex_indices())
-   {
-       for (const auto& vertex2 : graph.template get_adjacent_vertex_indices<ForwardTraversal>(vertex1))
-       {
-           adj_matrix.at(vertex_to_v.at(vertex1)).at(vertex_to_v.at(vertex2)) = true;
-       }
-   }
+    auto compute_iso_types =
+        [&graph, &iso_type_function, &vertex_to_v, &v_to_vertex, num_vertices, num_hashes](const std::vector<std::vector<bool>>& adj_matrix,
+                                                                                           ColorList& out_hash_to_color,
+                                                                                           ColorMap<IndexList>& out_color_to_hashes)
+    {
+        auto subgraph = nauty_wrapper::SparseGraph(K);
+        auto subgraph_coloring = ColorList();
 
-   auto hash_to_color = ColorList(num_hashes);
-   auto color_to_hashes = ColorMap<IndexList>();
+        auto v_to_i = IndexMap<Index>();
+        for (size_t hash = 0; hash < num_hashes; ++hash)
+        {
+            // Compress indexing of subgraph.
+            v_to_i.clear();
+            auto t = hash_to_tuple<K>(hash, num_vertices);
+            for (size_t i = 0; i < K; ++i)
+            {
+                v_to_i.emplace(t[i], v_to_i.size());
+            }
 
-    auto subgraph = nauty_wrapper::SparseGraph(K);
-    auto subgraph_coloring = ColorList();
+            // Initialize empty subgraph and coloring
+            const auto subgraph_num_vertices = v_to_i.size();
+            subgraph.clear(subgraph_num_vertices);
+            subgraph_coloring.resize(subgraph_num_vertices);
 
-   // Subroutine to compute (ordered) isomorphic types of all k-tuples of vertices.
-   auto v_to_i = IndexMap<Index>();
-   for (size_t hash = 0; hash < num_hashes; ++hash)
-   {
-       // Compress indexing of subgraph.
-       v_to_i.clear();
-       auto t = hash_to_tuple<K>(hash, num_vertices);
-       for (size_t i = 0; i < K; ++i)
-       {
-           v_to_i.emplace(t[i], v_to_i.size());
-       }
+            // Instantiate vertex-colored subgraph.
+            for (const auto [v1, i1] : v_to_i)
+            {
+                for (const auto [v2, i2] : v_to_i)
+                {
+                    if (adj_matrix[v1][v2])
+                    {
+                        subgraph.add_edge(i1, i2);
+                    }
+                }
+                subgraph_coloring[i1] = get_color(graph.get_vertex(v_to_vertex.at(v1)));
+            }
+            subgraph.add_vertex_coloring(subgraph_coloring);
 
-       // Initialize empty subgraph and coloring
-       const auto subgraph_num_vertices = v_to_i.size();
-       subgraph.clear(subgraph_num_vertices);
-       subgraph_coloring.resize(subgraph_num_vertices);
+            // Isomorphism function is shared among several runs to ensure canonical form for different runs.
+            auto result =
+                iso_type_function.get_isomorphic_type_compression_function().emplace(subgraph.compute_certificate(),
+                                                                                     iso_type_function.get_isomorphic_type_compression_function().size());
 
-       // Instantiate vertex-colored subgraph.
-       for (const auto [v1, i1] : v_to_i)
-       {
-           for (const auto [v2, i2] : v_to_i)
-           {
-               if (adj_matrix[v1][v2])
-               {
-                   subgraph.add_edge(i1, i2);
-               }
-           }
-           subgraph_coloring[i1] = get_color(graph.get_vertex(v_to_vertex.at(v1)));
-       }
-       subgraph.add_vertex_coloring(subgraph_coloring);
+            const auto color = result.first->second;
+            out_hash_to_color.at(hash) = color;
+            out_color_to_hashes[color].push_back(hash);
+        }
+    };
 
-        // Isomorphism function is shared among several runs to ensure canonical form for different runs.
-        auto result = iso_type_function.get_isomorphic_type_compression_function().emplace(subgraph.compute_certificate(),
-                                                                                           iso_type_function.get_isomorphic_type_compression_function().size());
-
-        const auto color = result.first->second;
-        hash_to_color.at(hash) = color;
-        color_to_hashes[color].push_back(hash);
+    // Create adj matrix for fast creation of subgraph induced by k-tuple.
+    auto adj_matrix_outgoing = std::vector<std::vector<bool>>(num_vertices, std::vector<bool>(num_vertices, false));
+    for (const auto& edge : graph.get_edges())
+    {
+        adj_matrix_outgoing.at(vertex_to_v.at(edge.get_source())).at(vertex_to_v.at(edge.get_target())) = true;
     }
 
-   return std::make_pair(hash_to_color, color_to_hashes);
+    auto hash_to_color_outgoing = ColorList(num_hashes);
+    auto color_to_hashes_outgoing = ColorMap<IndexList>();
+    auto hash_to_color_ingoing = ColorList(num_hashes);
+    auto color_to_hashes_ingoing = ColorMap<IndexList>();
+
+    compute_iso_types(adj_matrix_outgoing, hash_to_color_outgoing, color_to_hashes_outgoing);
+
+    if (!is_undirected)
+    {
+        auto adj_matrix_ingoing = std::vector<std::vector<bool>>(num_vertices, std::vector<bool>(num_vertices, false));
+        for (const auto& edge : graph.get_edges())
+        {
+            adj_matrix_ingoing.at(vertex_to_v.at(edge.get_target())).at(vertex_to_v.at(edge.get_source())) = true;
+        }
+
+        compute_iso_types(adj_matrix_ingoing, hash_to_color_ingoing, color_to_hashes_ingoing);
+    }
+
+    return std::make_tuple(hash_to_color_outgoing, hash_to_color_ingoing, color_to_hashes_outgoing, color_to_hashes_ingoing);
 }
 
 /// @brief `compute_certificate` implements the k-dimensional Folklore Weisfeiler-Leman algorithm.
@@ -227,15 +249,15 @@ Certificate<K> compute_certificate(const G& graph, IsomorphismTypeFunction<K>& i
    // Toggle verbosity
    const bool debug = false;
 
-   /* Fetch some data. */
-   const auto num_vertices = graph.get_num_vertices();
-   const auto num_hashes = std::pow(num_vertices, K);
+    /* Fetch some data. */
+    const auto num_vertices = graph.get_num_vertices();
+    const auto is_undirected = is_undirected_graph(graph);
+    const auto num_hashes = std::pow(num_vertices, K);
 
-   if (debug)
-   {
-       std::cout << "num_vertices=" << num_vertices << std::endl  //
-                 << "num_hashes=" << num_hashes << std::endl;
-   }
+    if (debug)
+        std::cout << "num_vertices=" << num_vertices << std::endl    //
+                  << "is_undirected=" << is_undirected << std::endl  //
+                  << "num_hashes=" << num_hashes << std::endl;
 
    /* Compute max color used in graph. */
    auto max_color = Color();
@@ -244,38 +266,48 @@ Certificate<K> compute_certificate(const G& graph, IsomorphismTypeFunction<K>& i
        max_color = std::max(max_color, get_color(graph.get_vertex(vertex)));
    }
 
-   /* Compute isomorphism types. */
-   auto hash_to_color = ColorList();
-   auto color_to_hashes = ColorMap<IndexList>();
+    /* Compute isomorphism types. */
+    auto hash_to_color_outgoing = ColorList();
+    auto hash_to_color_ingoing = ColorList();
+    auto color_to_hashes_outgoing = ColorMap<IndexList>();
+    auto color_to_hashes_ingoing = ColorMap<IndexList>();
 
-   const auto [hash_to_color_, color_to_hashes_] = compute_ordered_isomorphism_types<K>(graph, iso_type_function);
+    const auto [hash_to_color_outgoing_, hash_to_color_ingoing_, color_to_hashes_outgoing_, color_to_hashes_ingoing_] =
+        compute_ordered_isomorphism_types<K>(graph, iso_type_function);
 
-   hash_to_color = std::move(hash_to_color_);
-   color_to_hashes = std::move(color_to_hashes_);
+    hash_to_color_outgoing = std::move(hash_to_color_outgoing_);
+    hash_to_color_ingoing = std::move(hash_to_color_ingoing_);
+    color_to_hashes_outgoing = std::move(color_to_hashes_outgoing_);
+    color_to_hashes_ingoing = std::move(color_to_hashes_ingoing_);
 
-   /* Initialize work list of color. */
-   auto L = ColorSet(hash_to_color.begin(), hash_to_color.end());
+    /* Initialize work list of color. */
+    auto L = ColorSet(hash_to_color_outgoing.begin(), hash_to_color_outgoing.end());
 
-   /* Refine colors of k-tuples. */
-   auto f = typename Certificate<K>::ConfigurationCompressionFunction();
-   auto M = std::vector<std::pair<Index, ColorArray<K>>>();
-   auto M_replaced = std::vector<std::tuple<Color, std::vector<ColorArray<K>>, Index>>();
-   // (line 3-18): subroutine to find stable coloring
+    /* Refine colors of k-tuples. */
+    auto f = typename Certificate<K>::ConfigurationCompressionFunction();
+    auto M_outgoing = std::vector<std::pair<Index, ColorArray<K>>>();
+    auto M_ingoing = std::vector<std::pair<Index, ColorArray<K>>>();
+    auto M_combined_replaced = std::vector<std::tuple<Color, Signature<K>, Index>>();
+    // (line 3-18): subroutine to find stable coloring
 
    while (!L.empty())
    {
        if (debug)
            std::cout << "L: " << L << std::endl;
 
-       // Clear data structures that are reused.
-       M.clear();
-       M_replaced.clear();
+        // Clear data structures that are reused.
+        M_outgoing.clear();
+        M_outgoing.clear();
+        M_combined_replaced.clear();
 
         {
-            // (lines 4-14): Subroutine to fill multiset
-            for (const auto& c : L)
+            const auto fill_multiset = [num_vertices, num_hashes](const ColorSet& L,
+                                                                  const ColorList& hash_to_color,
+                                                                  const ColorMap<IndexList>& color_to_hashes,
+                                                                  std::vector<std::pair<Index, ColorArray<K>>>& out_M)
             {
-                for (const auto& h : color_to_hashes.at(c))
+                // (lines 4-14): Subroutine to fill multiset
+                for (size_t h = 0; h < num_hashes; ++h)
                 {
                     const auto w = hash_to_tuple<K>(h, num_vertices);
 
@@ -295,43 +327,51 @@ Certificate<K> compute_certificate(const G& graph, IsomorphismTypeFunction<K>& i
                                k_coloring.at(i) = hash_to_color.at(x_hash);
                            }
 
-                           M.emplace_back(h, std::move(k_coloring));
-                       }
-                   }
-               }
-           }
-       }
+                            out_M.emplace_back(h, std::move(k_coloring));
+                        }
+                    }
+                }
+            };
 
-       // (line 15): Perform radix sort of M
-       std::sort(M.begin(), M.end());
+            fill_multiset(L, hash_to_color_outgoing, color_to_hashes_outgoing, M_outgoing);
 
-       if (debug)
-           std::cout << "M: " << M << std::endl;
+            if (!is_undirected)
+            {
+                fill_multiset(L, hash_to_color_ingoing, color_to_hashes_ingoing, M_ingoing);
+            }
+        }
 
-       // (line 16): Scan M and replace tuples (vec{v},c_1^1,...,c_k^1,...,vec{v},c_1^r,...,c_k^r) with single tuple
-       // (C(vec{v}),(c_1^1,...,c_k^1),...,(c_1^r,...,c_k^r))
-       color_refinement::replace_tuples(M, hash_to_color, M_replaced);
+        // (line 15): Perform radix sort of M
+        std::sort(M_outgoing.begin(), M_outgoing.end());
+        std::sort(M_ingoing.begin(), M_ingoing.end());
 
-       // (line 17): Perform radix sort of M
-       std::sort(M_replaced.begin(), M_replaced.end());
+        if (debug)
+            std::cout << "M_outgoing: " << M_outgoing << std::endl  //
+                      << "M_ingoing: " << M_ingoing << std::endl;
 
-       if (debug)
-           std::cout << "M_replaced: " << M_replaced << std::endl;
+        // (line 16): Scan M and replace tuples (vec{v},c_1^1,...,c_k^1,...,vec{v},c_1^r,...,c_k^r) with single tuple
+        // (C(vec{v}),(c_1^1,...,c_k^1),...,(c_1^r,...,c_k^r))
+        color_refinement::replace_tuples(M_outgoing, M_ingoing, hash_to_color_outgoing, M_combined_replaced);
 
-       // (line 18): Split color classes
-       color_refinement::split_color_classes(M_replaced, f, max_color, hash_to_color, color_to_hashes, L);
-   }
+        // (line 17): Perform radix sort of M
+        std::sort(M_combined_replaced.begin(), M_combined_replaced.end());
 
-   /* Report final neighborhood structures in the decoding table. */
-   for (const auto& [old_color, signature, hash] : M_replaced)
-   {
-       f.emplace(std::make_pair(old_color, signature), old_color);
-   }
+        if (debug)
+            std::cout << "M_combined_replaced: " << M_combined_replaced << std::endl;
 
-   /* Return the certificate */
-   return Certificate(std::move(f), std::move(hash_to_color));
+        // (line 18): Split color classes
+        color_refinement::split_color_classes(M_combined_replaced, f, max_color, hash_to_color_outgoing, color_to_hashes_outgoing, L);
+    }
+
+    /* Report final neighborhood structures in the decoding table. */
+    for (const auto& [old_color, signature, hash] : M_combined_replaced)
+    {
+        f.emplace(std::make_pair(old_color, signature), old_color);
+    }
+
+    /* Return the certificate */
+    return Certificate(std::move(f), std::move(hash_to_color_outgoing));
 }
-
 }
 
 template<size_t K>
