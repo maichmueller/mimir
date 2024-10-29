@@ -37,7 +37,7 @@ jobs:
       - name: Build and install
         run: python -m pip install --verbose .[test]
         env:
-          PYMIMIR_DEBUG_BUILD: 1
+          PYMIMIR_BUILD_TYPE: ${{ matrix.config.build_type }}
 
       - name: Test
         run: pytest python/tests

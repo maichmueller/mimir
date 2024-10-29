@@ -66,8 +66,10 @@ class CMakeBuild(build_ext):
         print("output_directory", output_directory)
         print("temp_directory", temp_directory)
 
-        config = "Debug" if os.environ.get("PYMIMIR_DEBUG_BUILD") else "Release"
-        print("Pymimir build type:", config)
+        config = os.environ.get("PYMIMIR_BUILD_TYPE")
+        if config is None:
+            config = "Release"
+        print("Pymimir build type:", config, flush=True)
 
         # Create the temporary build directory, if it does not already exist
         os.makedirs(temp_directory, exist_ok=True)
@@ -78,13 +80,13 @@ class CMakeBuild(build_ext):
 
             conan_ci.main(conan_cmd, conan_extra_args=conan_extra_args)
 
-        print("CONAN_HOME:", os.getenv("CONAN_HOME"))
+        print("CONAN_HOME:", os.getenv("CONAN_HOME"), flush=True)
 
         # Build Pymimir
 
         # 1. delete build directory cache
         for file in glob.glob(f"{temp_directory}/**/CMakeCache.txt", recursive=True):
-            print(f"Removing CMakeCache.txt: ", file)
+            print(f"Removing CMakeCache.txt: ", file, flush=True)
             os.remove(file)
 
         build_folder = f"{temp_directory / 'build'}"

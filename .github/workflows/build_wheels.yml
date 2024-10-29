@@ -27,8 +27,12 @@ jobs:
         uses: actions/checkout@v4
 
       # Python 3.8 is a necessary workaround for macos with arm64, otherwise arch errors occur
+      # revisit once support for python 3.8 is dropped and wheels are built from 3.9 onwards
       - name: Set up Python
         uses: actions/setup-python@v5
+        # see https://github.com/actions/setup-python/issues/862
+        env:
+          PIP_DISABLE_PIP_VERSION_CHECK: 1
         with:
           python-version: "3.8"
 
