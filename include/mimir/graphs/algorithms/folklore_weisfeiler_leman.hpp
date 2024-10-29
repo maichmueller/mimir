@@ -169,9 +169,8 @@ std::pair<ColorList, ColorMap<IndexList>> compute_ordered_isomorphism_types(cons
    auto hash_to_color = ColorList(num_hashes);
    auto color_to_hashes = ColorMap<IndexList>();
 
-   auto subgraph = nauty_wrapper::SparseGraph(K);
-   auto subgraph_coloring = ColorList();
-   auto iso_types = std::vector<std::pair<nauty_wrapper::Certificate, Index>>();
+    auto subgraph = nauty_wrapper::SparseGraph(K);
+    auto subgraph_coloring = ColorList();
 
    // Subroutine to compute (ordered) isomorphic types of all k-tuples of vertices.
    auto v_to_i = IndexMap<Index>();
@@ -204,20 +203,14 @@ std::pair<ColorList, ColorMap<IndexList>> compute_ordered_isomorphism_types(cons
        }
        subgraph.add_vertex_coloring(subgraph_coloring);
 
-       // Compute certificate for k-tuple hash.
-       iso_types.emplace_back(subgraph.compute_certificate(), hash);
-   }
+        // Isomorphism function is shared among several runs to ensure canonical form for different runs.
+        auto result = iso_type_function.get_isomorphic_type_compression_function().emplace(subgraph.compute_certificate(),
+                                                                                           iso_type_function.get_isomorphic_type_compression_function().size());
 
-   // Create ordered iso-types.
-   std::sort(iso_types.begin(), iso_types.end());
-   for (const auto& [certificate, hash] : iso_types)
-   {
-       auto num_iso_types = iso_type_function.get_isomorphic_type_compression_function().size();
-       auto result = iso_type_function.get_isomorphic_type_compression_function().insert(std::make_pair(certificate, num_iso_types));
-       const auto color = result.first->second;
-       hash_to_color.at(hash) = color;
-       color_to_hashes[color].push_back(hash);
-   }
+        const auto color = result.first->second;
+        hash_to_color.at(hash) = color;
+        color_to_hashes[color].push_back(hash);
+    }
 
    return std::make_pair(hash_to_color, color_to_hashes);
 }

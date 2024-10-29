@@ -136,21 +136,24 @@ void split_color_classes(const std::vector<std::tuple<Color, std::vector<ColorTy
            }
        }
 
-       if (!has_split)
-       {
-           /* Move to next old color class or the end. */
-           it = it2;
-       }
-       else
-       {
-           /* Split old_color class. */
-           {
-               // Subroutine to split color class
-               while (it != M_replaced.end() && old_color == std::get<0>(*it))
-               {
-                   // Determine new color for (old_color, signature)
-                   const auto& signature = std::get<1>(*it);
-                   const auto new_color = ++ref_max_color;
+        if (!has_split)
+        {
+            /* Move to next old color class or the end. */
+            it = it2;
+        }
+        else
+        {
+            /* Split old_color class. */
+            {
+                // Keep track of largest color class to stop refining it.
+                auto largest_color_class_size = size_t(0);
+                auto largest_color_class = Color(0);
+                while (it != M_replaced.end() && old_color == std::get<0>(*it))
+                {
+                    auto current_color_class_size = size_t(1);
+                    // Determine new color for (old_color, signature)
+                    const auto& signature = std::get<1>(*it);
+                    const auto new_color = ++ref_max_color;
 
                    // Add new color to work list.
                    out_L.insert(new_color);
@@ -160,20 +163,28 @@ void split_color_classes(const std::vector<std::tuple<Color, std::vector<ColorTy
                    // Ensure that we are not overwritting table entries.
                    assert(result.second);
 
-                   {
-                       // Subroutine to assign new color to vertices with same signature.
-                       while (it != M_replaced.end() && old_color == std::get<0>(*it) && signature == std::get<1>(*it))
-                       {
-                           auto hash = std::get<2>(*it);
-                           ref_hash_to_color[hash] = new_color;
-                           out_color_to_hashes[new_color].push_back(hash);
-                           ++it;
-                       }
-                   }
-               }
-           }
-       }
-   }
+                    {
+                        // Subroutine to assign new color to vertices with same signature.
+                        while (it != M_replaced.end() && old_color == std::get<0>(*it) && signature == std::get<1>(*it))
+                        {
+                            ++current_color_class_size;
+                            auto hash = std::get<2>(*it);
+                            ref_hash_to_color[hash] = new_color;
+                            out_color_to_hashes[new_color].push_back(hash);
+                            ++it;
+                        }
+                    }
+                    if (current_color_class_size > largest_color_class_size)
+                    {
+                        largest_color_class_size = current_color_class_size;
+                        largest_color_class = new_color;
+                    }
+                }
+                // dont need to keep refining largest color class
+                out_L.erase(largest_color_class);
+            }
+        }
+    }
 }
 
 /// @brief `compute_certificate` implements the color refinement algorithm.
