@@ -1,10 +1,16 @@
+import os
+from pathlib import Path
+
 from conan import ConanFile
 from conan.tools.build import check_min_cppstd
 from conan.tools.cmake import CMake, cmake_layout, CMakeToolchain
 
 
+HERE = Path(__file__).resolve().parent
+
+
 def get_version():
-    with open("__version__", "r") as f:
+    with open(os.path.join(HERE, "__version__"), "r") as f:
         return f.read().strip()
 
 
