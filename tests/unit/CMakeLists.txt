@@ -3,12 +3,22 @@ enable_testing()
 find_package(GTest REQUIRED COMPONENTS GTest Main)
 
 set(ALL_TEST_SOURCES)
+set(TEST_OBJECT_LIBS)
 # Helper function to create and register a test executable
-function(add_gtest test_name source_file)
-    add_executable(${test_name} ${source_file})
-    set(ALL_TEST_SOURCES "${ALL_TEST_SOURCES};${source_file}" PARENT_SCOPE)
-    target_link_libraries(${test_name} PRIVATE GTest::GTest GTest::Main mimir::core)
+function(configure_test_target test_name)
+    target_compile_definitions(${test_name} PUBLIC -DDATA_DIR="${DATA_DIR}")
+    target_link_libraries(${test_name} PUBLIC GTest::GTest GTest::Main mimir::mimir)
     add_test(NAME ${test_name} COMMAND ${test_name})
+endfunction()
+
+function(add_gtest test_name source_file)
+    add_library(${test_name}_objects OBJECT ${source_file})
+    add_executable(${test_name} $<TARGET_OBJECTS:${test_name}_objects>)
+    configure_test_target(${test_name}_objects)
+    target_link_libraries(${test_name} PRIVATE ${test_name}_objects)
+
+    set(ALL_TEST_SOURCES "${ALL_TEST_SOURCES};${source_file}" PARENT_SCOPE)
+    set(TEST_OBJECT_LIBS "${TEST_OBJECT_LIBS};${test_name}_objects" PARENT_SCOPE)
 endfunction()
 
 # Add each test source file as a separate test executable
@@ -54,6 +64,10 @@ add_gtest(search_search_node_test                          "search/search_node.c
 add_gtest(search_state_repository_test                     "search/state_repository.cpp")
 
 message(STATUS "All test sources: ${ALL_TEST_SOURCES}")
-add_executable(all_tests ${ALL_TEST_SOURCES})
-target_link_libraries(all_tests PRIVATE GTest::GTest GTest::Main mimir::core)
+add_executable(all_tests)
+foreach(obj_lib ${TEST_OBJECT_LIBS})
+    target_sources(all_tests PRIVATE $<TARGET_OBJECTS:${obj_lib}>)
+endforeach()
+configure_test_target(all_tests)
+
 set_target_properties(all_tests PROPERTIES EXCLUDE_FROM_ALL True)

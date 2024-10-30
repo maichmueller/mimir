@@ -8,39 +8,53 @@ set(MIMIR_PUBLIC_HEADER_FILES "")
 
 # Loop over the subdirectories for source files
 foreach (subdir ${SUBDIRECTORIES})
-    file(GLOB_RECURSE TMP_SRC_FILES "${subdir}/*.cpp" "${subdir}/**/*.cpp")
-    list(APPEND MIMIR_SRC_FILES ${TMP_SRC_FILES})
+    file(
+            GLOB_RECURSE
+            _tmp_src_files
+            "${subdir}/*.cpp"
+            "${subdir}/**/*.cpp"
+    )
+    list(APPEND MIMIR_SRC_FILES ${_tmp_src_files})
 
-    file(GLOB_RECURSE TMP_PRIVATE_HEADER_FILES "${subdir}/*.hpp" "${subdir}/**/*.hpp")
-    list(APPEND MIMIR_PRIVATE_HEADER_FILES ${TMP_PRIVATE_HEADER_FILES})
+    file(
+            GLOB_RECURSE
+            _tmp_private_header_files
+            "${subdir}/*.hpp"
+            "${subdir}/**/*.hpp"
+    )
+    list(APPEND MIMIR_PRIVATE_HEADER_FILES ${_tmp_private_header_files})
 
-    file(GLOB_RECURSE TMP_PUBLIC_HEADER_FILES "../include/mimir/${subdir}/*.hpp" "../include/mimir/${subdir}/**/*.hpp")
-    list(APPEND MIMIR_PUBLIC_HEADER_FILES ${TMP_PUBLIC_HEADER_FILES})
-
-    file(GLOB_RECURSE TMP_PUBLIC_HEADER_FILES "../include/cista/*.h" "../include/cista/**/*.h")
-    list(APPEND MIMIR_PUBLIC_HEADER_FILES ${TMP_PUBLIC_HEADER_FILES})
+    file(
+            GLOB_RECURSE
+            _tmp_public_header_files
+            "${PROJECT_SOURCE_DIR}/include/mimir/${subdir}/*.hpp"
+            "${PROJECT_SOURCE_DIR}/include/mimir/${subdir}/**/*.hpp"
+    )
+    list(APPEND MIMIR_PUBLIC_HEADER_FILES ${_tmp_public_header_files})
 endforeach ()
 
 list(APPEND MIMIR_PUBLIC_HEADER_FILES "../include/mimir/mimir.hpp")
 
-add_library(core STATIC ${MIMIR_SRC_FILES} ${MIMIR_PRIVATE_HEADER_FILES} ${MIMIR_PUBLIC_HEADER_FILES})
-set_target_properties(core PROPERTIES OUTPUT_NAME mimir_core)
+add_library(
+        mimir STATIC
+        ${MIMIR_SRC_FILES}
+        ${MIMIR_PRIVATE_HEADER_FILES}
+        ${MIMIR_PUBLIC_HEADER_FILES}
+)
 
 # Create an alias for simpler reference
-add_library(mimir::core ALIAS core)
-add_library(mimir::mimir ALIAS core)
+add_library(mimir::mimir ALIAS mimir)
 
 # Apply the compile definition based on the selected representation
 if (STATE_REPR STREQUAL "Dense")
-    target_compile_definitions(core PUBLIC STATE_REPR_DENSE=1)
+    target_compile_definitions(mimir PUBLIC STATE_REPR_DENSE=1)
 endif ()
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    target_compile_options(core PUBLIC -fconcepts-diagnostics-depth=10)
+    target_compile_options(mimir PUBLIC "$<BUILD_INTERFACE:-fconcepts-diagnostics-depth=10>")
 endif ()
-target_compile_definitions(core PUBLIC -DDATA_DIR="${DATA_DIR}")
 
 target_link_libraries(
-        core
+        mimir
         PUBLIC
         cista::cista
         loki::loki
@@ -53,7 +67,7 @@ target_link_libraries(
 )
 
 # Use include depending on building or using from installed location
-target_include_directories(core
+target_include_directories(mimir
         PUBLIC
         "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
@@ -61,7 +75,7 @@ target_include_directories(core
 
 # Install the target and create export-set
 install(
-        TARGETS core
+        TARGETS mimir
         EXPORT mimirTargets
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -72,13 +86,6 @@ install(
 # Generate and install export file
 install(EXPORT mimirTargets
         NAMESPACE mimir::
-        COMPONENT core
         FILE "mimirTargets.cmake"
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/mimir"
-)
-
-# Generate build tree export file
-export(EXPORT mimirTargets
-        FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake/mimirTargets.cmake"
-        NAMESPACE mimir::
 )

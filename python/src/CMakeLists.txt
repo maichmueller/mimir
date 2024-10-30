@@ -8,6 +8,7 @@ add_library(_pymimir_objects
         OBJECT
         ${PYTHON_MODULE_SOURCES}
 )
+
 target_include_directories(_pymimir_objects
         PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/pymimir
@@ -15,7 +16,7 @@ target_include_directories(_pymimir_objects
 
 target_link_libraries(_pymimir_objects
         PUBLIC
-        mimir::core
+        mimir::mimir
         pybind11::module
         pybind11::lto
 )

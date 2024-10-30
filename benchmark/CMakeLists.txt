@@ -4,6 +4,6 @@ find_package(benchmark)
 
 #add_executable(mimir-profile "profiling.cpp")
 
-#target_link_libraries(mimir-profile PRIVATE mimir::core benchmark::benchmark)
+#target_link_libraries(mimir-profile PRIVATE mimir::mimir benchmark::benchmark)
 
 #set_property(TARGET mimir-profile PROPERTY CXX_STANDARD 17)

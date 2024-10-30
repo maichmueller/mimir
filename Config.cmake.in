@@ -15,19 +15,6 @@ message("CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
 
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/dependencies.cmake")
 
-############
-# Components
-############
+include("${CMAKE_CURRENT_LIST_DIR}/mimirTargets.cmake")
 
-set(_mimir_supported_components core)
-
-foreach(_comp ${mimir_FIND_COMPONENTS})
-  if (NOT _comp IN_LIST _mimir_supported_components)
-    set(mimir_FOUND False)
-    set(mimir_NOT_FOUND_MESSAGE "Unsupported component: ${_comp}")
-  endif()
-  include("${CMAKE_CURRENT_LIST_DIR}/mimir${_comp}Targets.cmake")
-endforeach()
-
-get_filename_component(MIMIR_CONFIG_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
 message(STATUS "Found mimir: ${MIMIR_CONFIG_DIR} (found version ${mimir_VERSION})")
