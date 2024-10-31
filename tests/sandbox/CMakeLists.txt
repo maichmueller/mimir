@@ -2,7 +2,7 @@
 # A mere test-bed executable (hence sandbox)
 # ######################################################################################################################
 
-file(GLOB SANDBOX_TEST_SOURCES "${PROJECT_SOURCE_DIR}/sandbox/*.cpp" )
+file(GLOB SANDBOX_TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp" )
 
 add_executable(sandbox ${SANDBOX_TEST_SOURCES})
 

@@ -1,4 +1,5 @@
 add_subdirectory(unit)
+add_subdirectory(sandbox)
 if (BUILD_PYMIMIR)
     add_subdirectory(python)
 endif ()

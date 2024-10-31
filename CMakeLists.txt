@@ -122,11 +122,6 @@ if (BUILD_TESTS)
 endif ()
 
 
-# -------
-# Sandbox
-# -------
-add_subdirectory(sandbox)
-
 ###########
 # Install #
 ###########
