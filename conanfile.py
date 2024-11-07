@@ -4,14 +4,7 @@ from pathlib import Path
 from conan import ConanFile
 from conan.tools.build import check_min_cppstd
 from conan.tools.cmake import CMake, cmake_layout, CMakeToolchain
-
-
-HERE = Path(__file__).resolve().parent
-
-
-def get_version():
-    with open(os.path.join(HERE, "__version__"), "r") as f:
-        return f.read().strip()
+from conan.tools.files import load
 
 
 # Boost components from its conanfile recipe
@@ -57,8 +50,7 @@ BOOST_COMPS = (
 
 class MimirRecipe(ConanFile):
     name = "mimir"
-    version = get_version()
-    package_type = "static-library"
+    package_type = "library"
     settings = "os", "compiler", "build_type", "arch"
     generators = "CMakeDeps"
 
@@ -75,6 +67,11 @@ class MimirRecipe(ConanFile):
     default_options.update({f"boost/*:without_{comp}": True for comp in BOOST_COMPS})
     for comp in ("iostreams", "random", "regex", "system"):
         default_options.update({f"boost/*:without_{comp}": False})
+
+    def set_version(self):
+        self.version = load(
+            self, os.path.join(Path(__file__).resolve().parent, "__version__")
+        )
 
     def requirements(self):
         requirements = self.conan_data.get("requirements", [])
