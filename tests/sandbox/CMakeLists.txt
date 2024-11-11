@@ -19,8 +19,7 @@ target_include_directories(
 target_link_libraries(
         sandbox
         PRIVATE
-        ${reinforce_lib}
-        mimir::mimir
+        mimir::headers
 )
 if(BUILD_PYMIMIR)
     find_package(pybind11 CONFIG REQUIRED)

@@ -33,16 +33,26 @@ foreach (subdir ${SUBDIRECTORIES})
     list(APPEND MIMIR_PUBLIC_HEADER_FILES ${_tmp_public_header_files})
 endforeach ()
 
-list(APPEND MIMIR_PUBLIC_HEADER_FILES "../include/mimir/mimir.hpp")
+list(APPEND MIMIR_PUBLIC_HEADER_FILES "${PROJECT_SOURCE_DIR}/include/mimir/mimir.hpp")
 
-add_library(
-        mimir STATIC
-        ${MIMIR_SRC_FILES}
-        ${MIMIR_PRIVATE_HEADER_FILES}
-        ${MIMIR_PUBLIC_HEADER_FILES}
+add_library(mimir-headers INTERFACE)
+
+target_include_directories(
+        mimir-headers
+        INTERFACE
+        "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
 )
 
-# Create an alias for simpler reference
+add_library(
+        mimir
+        STATIC
+        ${MIMIR_SRC_FILES}
+        ${MIMIR_PRIVATE_HEADER_FILES}
+)
+target_link_libraries(mimir PUBLIC mimir-headers)
+
+add_library(mimir::headers ALIAS mimir-headers)
 add_library(mimir::mimir ALIAS mimir)
 
 # Apply the compile definition based on the selected representation
@@ -53,9 +63,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     target_compile_options(mimir PUBLIC "$<BUILD_INTERFACE:-fconcepts-diagnostics-depth=10>")
 endif ()
 
-target_link_libraries(
-        mimir
-        PUBLIC
+set(_link_libs
         cista::cista
         loki::loki
         nauty::nauty
@@ -64,6 +72,16 @@ target_link_libraries(
         fmt::fmt
         range-v3::range-v3
         Threads::Threads
+)
+target_link_libraries(
+        mimir
+        PUBLIC
+        ${_link_libs}
+)
+target_link_libraries(
+        mimir-headers
+        INTERFACE
+        ${_link_libs}
 )
 
 # Use include depending on building or using from installed location
@@ -75,7 +93,7 @@ target_include_directories(mimir
 
 # Install the target and create export-set
 install(
-        TARGETS mimir
+        TARGETS mimir mimir-headers
         EXPORT mimirTargets
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
