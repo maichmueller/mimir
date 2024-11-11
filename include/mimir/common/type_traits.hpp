@@ -1,8 +1,10 @@
 #pragma once
 
+#include <cista/containers/tuple.h>
 #include <type_traits>
 
-namespace mimir {
+namespace mimir
+{
 
 /// is_specialization checks whether T is a specialized template class of 'Template'
 /// This has the limitation of
@@ -38,7 +40,6 @@ using raw = std::remove_cvref<T>;
 
 template<typename T>
 using raw_t = typename raw<T>::type;
-
 
 /// logical XOR of the conditions (using fold expressions and bitwise xor)
 template<typename... Conditions>
@@ -97,5 +98,10 @@ struct all_same : ::std::conjunction<::std::is_same<T, Ts>...>
 template<class T, class... Ts>
 inline constexpr bool all_same_v = all_same<T, Ts...>::value;
 
+template<typename T, typename U>
+concept pointer_like_to = requires(T t) {
+    *t;
+    requires std::same_as<U, raw_t<decltype(*t)>>;
+};
 
 }

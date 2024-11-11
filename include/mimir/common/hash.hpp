@@ -17,8 +17,10 @@
 
 #pragma once
 
-
+#include "deref.hpp"
+#include "hof.hpp"
 #include "mimir/common/concepts.hpp"
+#include "type_traits.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -85,9 +87,6 @@ struct Hash<std::tuple<Ts...>>
     }
 };
 
-/**
- * Definitions
- */
 
 template<typename T>
 inline void hash_combine(size_t& seed, const T& value)
@@ -109,5 +108,67 @@ inline size_t hash_combine(const Ts&... rest)
     return seed;
 }
 
-}
+struct hash_combiner
+{
+    hash_combiner() = default;
+    explicit hash_combiner(size_t seed_) : seed(seed_) {}
 
+    size_t seed = 0;
+    size_t operator()(auto&&... args) const noexcept { return mimir::hash_combine(seed, FWD(args)...); }
+};
+
+/// @brief class to hash the value of a pointer-like object (pointer, reference_wrapper, optional, shared_ptr, unique_ptr, etc...)
+template<typename T, typename Hasher = Hash<raw_t<T>>>
+using value_hasher = hof::compose<Hasher, dereffer>;
+
+/// @brief class which imports the operator() overload of each given type to call the actual hasher
+template<template<typename> class ActualHasher, typename T, typename... Ts>
+struct multi_hasher : public multi_hasher<ActualHasher, Ts...>, public multi_hasher<ActualHasher, T>
+{
+    using multi_hasher<ActualHasher, T>::operator();
+    using multi_hasher<ActualHasher, Ts...>::operator();
+};
+
+template<template<typename> class ActualHasher, typename T>
+struct multi_hasher<ActualHasher, T> : ActualHasher<T>
+{
+    using ActualHasher<T>::operator();
+};
+
+/// @brief class which imports the operator() overload of each given type to call their std hash
+template<typename... Ts>
+using hasher = multi_hasher<Hash, Ts...>;
+
+template<template<class> class Hasher, typename T>
+struct variant_hasher;
+
+/// @brief A helper class to enable heterogenous hashing of variant types
+///
+/// Each individual type T is hashable by their own Hasher< T > class without prior conversion to
+/// the variant type. However, this does necessiate a disambiguation for types that are implicitly
+/// convertible to a T of the variant type. E.g. the call
+///     variant_hasher< std::hash, std::variant< int, std::string >>{}("Char String")
+/// would be ambiguous now and would have to be disambiguated by wrapping the character string in
+/// std::string("Char String") or variant_type("Char String")
+///
+/// \tparam Hasher, the hash function (template functor) to be used
+/// \tparam Ts, the variant types
+template<template<class> class Hasher, typename... Ts>
+struct variant_hasher<Hasher, std::variant<Ts...>> : public multi_hasher<Hasher, Ts...>
+{
+    // allow for heterogenous lookup
+    using is_transparent = std::true_type;
+
+    // hashing of the actual variant type
+    auto operator()(const std::variant<Ts...>& variant) const noexcept
+    {
+        return std::visit([]<typename VarType>(const VarType& var_element) noexcept { return Hasher<VarType> {}(var_element); }, variant);
+    }
+    // hashing of the individual variant types by their respective hash functions
+    using multi_hasher<Hasher, Ts...>::operator();
+};
+
+template<typename T, typename Hasher = std::hash<T>>
+using variant_std_hasher = variant_hasher<std::hash, T>;
+
+}
