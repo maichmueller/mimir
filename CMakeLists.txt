@@ -67,7 +67,7 @@ else ()
     endif ()
     # TODO: Add -Wextra and fix all warnings
     if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto=auto")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto=auto -ftemplate-backtrace-limit=0")
     endif ()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
     set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -DNDEBUG")
