@@ -40,14 +40,15 @@ struct SimpleDerivedEffect
 /**
  * GroundAxiom
  */
-struct GroundAxiomImpl
+class GroundAxiomImpl
 {
+private:
     Index m_index;
     Index m_axiom_index;
     FlatIndexList m_objects;
     StripsActionPrecondition m_strips_precondition;
     SimpleDerivedEffect m_effect;
-
+public:
     Index& get_index();
     Index get_index() const;
 

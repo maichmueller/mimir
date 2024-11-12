@@ -17,16 +17,15 @@
 
 #pragma once
 
-
 #include "mimir/cista/containers/dynamic_bitset.h"
 #include "mimir/cista/storage/unordered_set.h"
 #include "mimir/common/concepts.hpp"
+#include "mimir/common/macros.hpp"
 #include "mimir/common/printers.hpp"
 #include "mimir/common/types_cista.hpp"
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/search/declarations.hpp"
 #include "mimir/utils/utils.hpp"
-#include "mimir/common/macros.hpp"
 
 #include <cista/containers/tuple.h>
 #include <cista/serialization.h>
@@ -41,12 +40,14 @@ namespace mimir
 /// @brief `StateImpl` encapsulates the fluent and derived atoms of a planning state.
 /// We refer to the fluent atoms as the non-extended state
 /// and the fluent and derived atoms as the extended state.
-struct StateImpl
+class StateImpl
 {
+private:
     Index m_index;
     FlatBitset m_fluent_atoms;
     FlatBitset m_derived_atoms;
 
+public:
     template<DynamicPredicateCategory P>
     bool contains(GroundAtom<P> atom) const;
 
@@ -138,5 +139,3 @@ using StateSet = std::unordered_set<State>;
 template<>
 std::ostream& operator<<(std::ostream& os, const std::tuple<Problem, State, const PDDLFactories&>& data);
 }
-
-

@@ -32,15 +32,15 @@ namespace mimir
 class StateRepository;
 
 // GroundACtion
-struct GroundActionImpl;
+class GroundActionImpl;
 using GroundAction = const GroundActionImpl*;
 
 // Axiom
-struct GroundAxiomImpl;
+class GroundAxiomImpl;
 using GroundAxiom = const GroundAxiomImpl*;
 
 // State
-struct StateImpl;
+class StateImpl;
 using State = const StateImpl*;
 
 /* ApplicableActionGenerators */
