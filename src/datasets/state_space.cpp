@@ -107,8 +107,8 @@ std::optional<StateSpace> StateSpace::create(Problem problem,
         const auto state = lifo_queue.back();
         const auto state_index = state.get_index();
         lifo_queue.pop_back();
-        if (mimir::get_state(state).literals_hold(problem->get_goal_condition<Fluent>())
-            && mimir::get_state(state).literals_hold(problem->get_goal_condition<Derived>()))
+        if (mimir::get_state(state)->literals_hold(problem->get_goal_condition<Fluent>())
+            && mimir::get_state(state)->literals_hold(problem->get_goal_condition<Derived>()))
         {
             goal_states.insert(state_index);
         }
