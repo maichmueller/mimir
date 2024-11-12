@@ -26,6 +26,7 @@
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/search/declarations.hpp"
 #include "mimir/utils/utils.hpp"
+#include "mimir/common/macros.hpp"
 
 #include <cista/containers/tuple.h>
 #include <cista/serialization.h>
