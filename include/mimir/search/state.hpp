@@ -43,9 +43,9 @@ namespace mimir
 class StateImpl
 {
 private:
-    Index m_index;
-    FlatBitset m_fluent_atoms;
-    FlatBitset m_derived_atoms;
+    Index m_index = Index(0);
+    FlatBitset m_fluent_atoms = FlatBitset();
+    FlatBitset m_derived_atoms = FlatBitset();
 
 public:
     template<DynamicPredicateCategory P>
