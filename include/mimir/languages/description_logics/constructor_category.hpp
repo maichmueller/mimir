@@ -17,8 +17,6 @@
 
 #pragma once
 
-#include "mimir/common/types_cista.hpp"
-
 #include <concepts>
 
 namespace mimir::dl
@@ -32,12 +30,10 @@ namespace mimir::dl
 
 struct Concept
 {
-    using DenotationType = FlatBitset;
 };
 
 struct Role
 {
-    using DenotationType = cista::offset::vector<FlatBitset>;
 };
 
 /**
