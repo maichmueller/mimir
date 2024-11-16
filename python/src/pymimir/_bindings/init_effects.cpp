@@ -52,11 +52,10 @@ void init_effects(py::module& m)
         .def("get_positive_effects",
              [](const StripsActionEffect& self, const PDDLFactories& factories)
              { return factories.get_ground_atoms_from_indices<mimir::Fluent>(self.get_positive_effects()); })
-        .def("get_negative_effect_indices", &StripsActionEffect::get_negative_effects, py::return_value_policy::copy)
-        .def("get_negative_effect_indices", &StripsActionEffect::get_positive_effects, py::return_value_policy::copy);
+        .def("get_negative_effect_indices", CONST_OVERLOAD(StripsActionEffect::get_negative_effects), py::return_value_policy::copy)
+        .def("get_negative_effect_indices", CONST_OVERLOAD(StripsActionEffect::get_positive_effects), py::return_value_policy::copy);
 
-    py::class_<FlatSimpleEffect>(m, "FlatSimpleEffect")
-        .def_readonly("is_negated", &FlatSimpleEffect::is_negated)
-        .def_readonly("atom_index", &FlatSimpleEffect::atom_index)
-        .def("__eq__", &FlatSimpleEffect::operator==);
+    py::class_<SimpleFluentEffect>(m, "SimpleFluentEffect")
+        .def_readonly("is_negated", &SimpleFluentEffect::is_negated)
+        .def_readonly("atom_index", &SimpleFluentEffect::atom_index);
 }

@@ -18,6 +18,7 @@
 #pragma once
 
 
+#include "mimir/formalism/declarations.hpp"
 #include "mimir/search/declarations.hpp"
 #include "mimir/search/heuristics/interface.hpp"
 

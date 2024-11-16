@@ -92,20 +92,20 @@ bool StateImpl::literals_hold(const GroundLiteralList<P>& literals) const
 template bool StateImpl::literals_hold(const GroundLiteralList<Fluent>& literals) const;
 template bool StateImpl::literals_hold(const GroundLiteralList<Derived>& literals) const;
 
-Index& StateImpl::get_index() { return m_index; }
+Index& StateImpl::get_index() { return index; }
 
-Index StateImpl::get_index() const { return m_index; }
+Index StateImpl::get_index() const { return index; }
 
 template<DynamicPredicateCategory P>
 FlatBitset& StateImpl::get_atoms()
 {
     if constexpr (std::is_same_v<P, Fluent>)
     {
-        return m_fluent_atoms;
+        return fluent_atoms;
     }
     else if constexpr (std::is_same_v<P, Derived>)
     {
-        return m_derived_atoms;
+        return derived_atoms;
     }
     else
     {
@@ -121,11 +121,11 @@ const FlatBitset& StateImpl::get_atoms() const
 {
     if constexpr (std::is_same_v<P, Fluent>)
     {
-        return m_fluent_atoms;
+        return fluent_atoms;
     }
     else if constexpr (std::is_same_v<P, Derived>)
     {
-        return m_derived_atoms;
+        return derived_atoms;
     }
     else
     {

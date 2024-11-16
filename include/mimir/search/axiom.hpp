@@ -40,18 +40,14 @@ struct SimpleDerivedEffect
 /**
  * GroundAxiom
  */
-class GroundAxiomImpl
+struct GroundAxiomImpl
 {
-private:
-    Index m_index = Index(0);
-    Index m_axiom_index = Index(0);
-    FlatIndexList m_objects = FlatIndexList();
-    StripsActionPrecondition m_strips_precondition = StripsActionPrecondition();
-    SimpleDerivedEffect m_effect = SimpleDerivedEffect();
+    Index index = Index(0);
+    Index axiom_index = Index(0);
+    FlatIndexList objects = FlatIndexList();
+    StripsActionPrecondition strips_precondition = StripsActionPrecondition();
+    SimpleDerivedEffect effect = SimpleDerivedEffect();
 
-    auto cista_members() { return std::tie(m_index, m_axiom_index, m_objects, m_strips_precondition, m_effect); }
-
-public:
     Index& get_index();
     Index get_index() const;
 
@@ -69,7 +65,7 @@ public:
     SimpleDerivedEffect& get_derived_effect();
     const SimpleDerivedEffect& get_derived_effect() const;
 
-    // TODO: pass state instead of separated fluent and derived atoms
+    // TODO: pass state instead of separated fluent and derived atoms?
     bool is_applicable(const FlatBitset& state_fluent_atoms, const FlatBitset& state_derived_atoms, const FlatBitset& static_positive_atoms) const;
 
     bool is_statically_applicable(const FlatBitset& static_positive_bitset) const;
@@ -98,10 +94,7 @@ namespace mimir
  * Mimir types
  */
 
-using FlatAxiomSet = cista::storage::UnorderedSet<GroundAxiomImpl>;
-
-using GroundAxiomList = std::vector<GroundAxiom>;
-using GroundAxiomSet = std::unordered_set<GroundAxiom>;
+using GroundAxiomImplSet = cista::storage::UnorderedSet<GroundAxiomImpl>;
 
 /**
  * Pretty printing

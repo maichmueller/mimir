@@ -44,25 +44,25 @@ namespace mimir
 
 /* GroundAxiom */
 
-Index& GroundAxiomImpl::get_index() { return m_index; }
+Index& GroundAxiomImpl::get_index() { return index; }
 
-Index GroundAxiomImpl::get_index() const { return m_index; }
+Index GroundAxiomImpl::get_index() const { return index; }
 
-Index& GroundAxiomImpl::get_axiom() { return m_axiom_index; }
+Index& GroundAxiomImpl::get_axiom() { return axiom_index; }
 
-Index GroundAxiomImpl::get_axiom_index() const { return m_axiom_index; }
+Index GroundAxiomImpl::get_axiom_index() const { return axiom_index; }
 
-FlatIndexList& GroundAxiomImpl::get_objects() { return m_objects; }
+FlatIndexList& GroundAxiomImpl::get_objects() { return objects; }
 
-const FlatIndexList& GroundAxiomImpl::get_objects() const { return m_objects; }
+const FlatIndexList& GroundAxiomImpl::get_objects() const { return objects; }
 
-StripsActionPrecondition& GroundAxiomImpl::get_strips_precondition() { return m_strips_precondition; }
+StripsActionPrecondition& GroundAxiomImpl::get_strips_precondition() { return strips_precondition; }
 
-const StripsActionPrecondition& GroundAxiomImpl::get_strips_precondition() const { return m_strips_precondition; }
+const StripsActionPrecondition& GroundAxiomImpl::get_strips_precondition() const { return strips_precondition; }
 
-SimpleDerivedEffect& GroundAxiomImpl::get_derived_effect() { return m_effect; }
+SimpleDerivedEffect& GroundAxiomImpl::get_derived_effect() { return effect; }
 
-const SimpleDerivedEffect& GroundAxiomImpl::get_derived_effect() const { return m_effect; }
+const SimpleDerivedEffect& GroundAxiomImpl::get_derived_effect() const { return effect; }
 
 bool GroundAxiomImpl::is_applicable(const FlatBitset& state_fluent_atoms, const FlatBitset& state_derived_atoms, const FlatBitset& static_positive_atoms) const
 {  //

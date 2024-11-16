@@ -18,8 +18,7 @@
 #pragma once
 
 
-#include "mimir/formalism/factories.hpp"
-#include "mimir/formalism/object.hpp"
+#include "mimir/formalism/declarations.hpp"
 
 namespace mimir
 {

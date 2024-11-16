@@ -25,6 +25,11 @@ public:
     auto begin() const { return m_begin; }
     auto end() const { return m_end; }
 
+    size_t size() const
+    {
+        return std::ranges::distance(m_begin, m_end);
+    }
+
 private:
     Iter m_begin;
     Sent m_end;

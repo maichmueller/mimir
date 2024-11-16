@@ -18,7 +18,7 @@
 #pragma once
 
 
-#include "mimir/search/state.hpp"
+#include "mimir/search/declarations.hpp"
 
 namespace mimir
 {

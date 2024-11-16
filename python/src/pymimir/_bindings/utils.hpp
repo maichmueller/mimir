@@ -97,7 +97,7 @@ inline py::list insert_into_list(std::ranges::range auto&& rng)
 }
 
 template<bool positive, PredicateCategory P, typename Self>
-auto atoms_from_conditions(const Self& self, const PDDLFactories& factories)
+GroundAtomList<P> atoms_from_conditions(const Self& self, const PDDLFactories& factories)
 {
     if constexpr (positive)
         return factories.get_ground_atoms_from_indices<P>(self.template get_positive_precondition<P>());
@@ -106,7 +106,7 @@ auto atoms_from_conditions(const Self& self, const PDDLFactories& factories)
 };
 
 template<bool positive, typename Self>
-auto all_atoms_from_conditions(const Self& self, const py::object& py_factories)
+py::list all_atoms_from_conditions(const Self& self, const py::object& py_factories)
 {
     const auto& factories = py::cast<const PDDLFactories&>(py_factories);
 

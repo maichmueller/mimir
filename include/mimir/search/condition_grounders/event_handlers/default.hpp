@@ -18,8 +18,7 @@
 #pragma once
 
 
-#include "mimir/formalism/factories.hpp"
-#include "mimir/formalism/object.hpp"
+#include "mimir/formalism/declarations.hpp"
 #include "mimir/search/condition_grounders/event_handlers/interface.hpp"
 
 namespace mimir

@@ -40,14 +40,12 @@ namespace mimir
 /// @brief `StateImpl` encapsulates the fluent and derived atoms of a planning state.
 /// We refer to the fluent atoms as the non-extended state
 /// and the fluent and derived atoms as the extended state.
-class StateImpl
+struct StateImpl
 {
-private:
-    Index m_index = Index(0);
-    FlatBitset m_fluent_atoms = FlatBitset();
-    FlatBitset m_derived_atoms = FlatBitset();
+    Index index = Index(0);
+    FlatBitset fluent_atoms = FlatBitset();
+    FlatBitset derived_atoms = FlatBitset();
 
-public:
     template<DynamicPredicateCategory P>
     bool contains(GroundAtom<P> atom) const;
 
@@ -125,12 +123,6 @@ namespace mimir
 {
 
 using StateImplSet = cista::storage::UnorderedSet<StateImpl>;
-
-using StateList = std::vector<State>;
-
-template<typename T>
-using StateMap = std::unordered_map<State, T>;
-using StateSet = std::unordered_set<State>;
 
 /**
  * Pretty printing

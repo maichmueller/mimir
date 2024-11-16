@@ -18,7 +18,8 @@
 #pragma once
 
 
-#include "mimir/search/action.hpp"
+#include "mimir/formalism/declarations.hpp"
+#include "mimir/search/declarations.hpp"
 
 #include <cstdint>
 #include <ostream>

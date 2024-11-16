@@ -26,6 +26,10 @@
 #define STRINGIFY(x) #x
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
 
+#ifndef CONST_OVERLOAD
+#define CONST_OVERLOAD(func, ...) py::overload_cast<__VA_ARGS__>(&func, py::const_)
+#endif
+
 #include "mimir/mimir.hpp"
 
 //
