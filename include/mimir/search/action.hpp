@@ -170,8 +170,6 @@ struct GroundActionImpl
     bool is_applicable(Problem problem, State state) const;
 };
 
-extern bool operator==(const GroundActionImpl& lhs, const GroundActionImpl& rhs);
-
 }
 
 template<>

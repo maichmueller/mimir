@@ -99,10 +99,6 @@ struct StateImpl
     const FlatBitset& get_atoms() const;
 };
 
-// Compare the state index, since states returned by the `StateRepository` are already unique by their index.
-extern bool operator==(const StateImpl& lhs, const StateImpl& rhs);
-extern bool operator!=(const StateImpl& lhs, const StateImpl& rhs);
-
 }
 
 // Only hash/compare the non-extended portion of a state, and the problem.
