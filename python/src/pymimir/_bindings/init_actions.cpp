@@ -48,7 +48,7 @@ void init_actions(py::module& m)
 
     py::class_<GroundActionImpl>(m, "GroundAction")  //
         .def("__hash__", [](const GroundActionImpl& obj) { return obj.get_index(); })
-        .def("__eq__", [](const GroundActionImpl& a, const GroundActionImpl& b) { return std::equal_to<>()(a, b); })
+        .def("__eq__", [](const GroundActionImpl& a, const GroundActionImpl& b) { return a.get_index() == b.get_index(); })
         .def("to_string",
              [](const GroundActionImpl& self, PDDLFactories& pddl_factories)
              {

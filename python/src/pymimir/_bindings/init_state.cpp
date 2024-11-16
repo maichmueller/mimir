@@ -9,7 +9,7 @@ namespace py = pybind11;
 using namespace mimir;
 using namespace mimir::pymimir;
 
-void init_StateImpl(py::module& m)
+void init_state(py::module& m)
 {
     py::class_<StateImpl>(m, "State")  //
         .def("__hash__", CONST_OVERLOAD(StateImpl::get_index))
@@ -20,10 +20,7 @@ void init_StateImpl(py::module& m)
         .def("get_derived_atom_indices", CONST_OVERLOAD(StateImpl::get_atoms<Derived>))
         .def("contains", &StateImpl::contains<Fluent>, py::arg("atom"))
         .def("contains", &StateImpl::contains<Derived>, py::arg("atom"))
-        .def(
-            "contains",
-            [](const StateImpl& self, const AnyGroundAtom& atom) { return self.contains(atom); },
-            py::arg("atom"))
+        .def("contains", static_cast<bool (StateImpl::*)(const AnyGroundAtom&) const>(&StateImpl::contains), py::arg("atom"))
         .def("superset_of", py::overload_cast<const GroundAtomList<Fluent>&>(&StateImpl::superset_of<Fluent>, py::const_), py::arg("atoms"))
         .def("superset_of", py::overload_cast<const GroundAtomList<Derived>&>(&StateImpl::superset_of<Derived>, py::const_), py::arg("atoms"))
         .def(

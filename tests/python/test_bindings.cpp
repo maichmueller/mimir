@@ -76,7 +76,7 @@ TEST_F(PymimirFixture, state_space_states)
     {
         auto py_state = py::cast<mimir::State>(*(++py_iter));
         auto cpp_state = *state_iter;
-        EXPECT_EQ(py_state.get_index(), cpp_state.get_index());
+        EXPECT_EQ(py_state->get_index(), cpp_state->get_index());
         std::ranges::advance(state_iter, 1, state_end);
     }
     EXPECT_EQ(count, num_states);
