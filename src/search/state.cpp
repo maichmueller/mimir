@@ -43,7 +43,7 @@ namespace mimir
 template<DynamicPredicateCategory P>
 bool StateImpl::contains(GroundAtom<P> atom) const
 {
-    return get_atoms<P>().get(atom->get_index());   
+    return get_atoms<P>().get(atom->get_index());
 }
 
 template bool StateImpl::contains(GroundAtom<Fluent> atom) const;
@@ -95,6 +95,11 @@ template bool StateImpl::literals_hold(const GroundLiteralList<Derived>& literal
 Index& StateImpl::get_index() { return index; }
 
 Index StateImpl::get_index() const { return index; }
+
+bool StateImpl::operator==(const StateImpl& other) const
+{
+    return fluent_atoms == other.fluent_atoms and derived_atoms == other.derived_atoms;
+}
 
 template<DynamicPredicateCategory P>
 FlatBitset& StateImpl::get_atoms()

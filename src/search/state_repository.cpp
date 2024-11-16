@@ -39,19 +39,16 @@ StateRepository::StateRepository(std::shared_ptr<IApplicableActionGenerator> aag
 
 State StateRepository::get_or_create_initial_state()
 {
-    auto ground_atoms = GroundAtomList<Fluent> {};
-
-    for (const auto& literal : m_aag->get_problem()->get_fluent_initial_literals())
-    {
-        if (literal->is_negated())
-        {
-            throw std::runtime_error("negative literals in the initial state are not supported");
-        }
-
-        ground_atoms.push_back(literal->get_atom());
-    }
-
-    return get_or_create_state(ground_atoms);
+    return get_or_create_state(ranges::to<GroundAtomList<Fluent>>(std::views::transform(m_aag->get_problem()->get_fluent_initial_literals(),
+                                                                                        [&](const auto& literal)
+                                                                                        {
+                                                                                            if (literal->is_negated())
+                                                                                            {
+                                                                                                throw std::runtime_error(
+                                                                                                    "negated literals in the initial state are not supported");
+                                                                                            }
+                                                                                            return literal->get_atom();
+                                                                                        })));
 }
 
 State StateRepository::get_or_create_state(const GroundAtomList<Fluent>& atoms)

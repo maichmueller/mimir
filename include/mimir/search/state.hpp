@@ -97,6 +97,8 @@ struct StateImpl
 
     template<DynamicPredicateCategory P>
     const FlatBitset& get_atoms() const;
+
+    bool operator==(const StateImpl& other) const;
 };
 
 }
