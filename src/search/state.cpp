@@ -52,7 +52,7 @@ template bool StateImpl::contains(GroundAtom<Derived> atom) const;
 bool StateImpl::contains(const AnyGroundAtom& atom) const
 {
     return std::visit(overload { [](GroundAtom<Static>) -> bool
-                                 { throw std::invalid_argument("No implementation in State class for check whether Static atoms are contained."); },
+                                 { throw std::invalid_argument("No implementation in class `StateImpl` for check whether Static atoms are contained."); },
                                  AS_CPTR_LAMBDA(contains) },
                       atom);
 }
@@ -69,7 +69,7 @@ template bool StateImpl::superset_of(const GroundAtomList<Derived>& atoms) const
 bool StateImpl::literal_holds(AnyGroundLiteral literal) const
 {
     return std::visit(overload { [](GroundLiteral<Static>) -> bool
-                                 { throw std::invalid_argument("No implementation in State class for check whether Static literals hold."); },
+                                 { throw std::invalid_argument("No implementation in class `StateImpl` for check whether Static literals hold."); },
                                  AS_CPTR_LAMBDA(literal_holds) },
                       literal);
 }
