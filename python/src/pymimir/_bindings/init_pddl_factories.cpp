@@ -47,7 +47,7 @@ void init_pddl_factories(py::module& m)
              py::keep_alive<0, 1>())
         .def("get_object", &PDDLFactories::get_object, py::return_value_policy::reference_internal);
 
-    auto bind_ground_atoms_range = [&]<typename Tag>(std::string_view func_name, Tag)
+    auto bind_ground_atoms_range = [&]<typename Tag>(std::string func_name, Tag)
     {
         pddl_factories.def(
             func_name.data(),
