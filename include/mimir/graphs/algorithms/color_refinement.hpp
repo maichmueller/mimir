@@ -88,5 +88,3 @@ struct std::hash<mimir::color_refinement::Certificate>
 };
 
 #include "mimir/graphs/algorithms/color_refinement_impl.hpp"
-
-#endif

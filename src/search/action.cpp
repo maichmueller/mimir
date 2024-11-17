@@ -49,25 +49,7 @@ namespace mimir
 template<PredicateCategory P>
 FlatBitset& StripsActionPrecondition::get_positive_precondition()
 {
-    if constexpr (std::is_same_v<P, Static>)
-    {
-        std::cout << "m_positive_static_atoms.default_bit_value_: " << positive_static_atoms.default_bit_value_ << std::endl;
-        return positive_static_atoms;
-    }
-    else if constexpr (std::is_same_v<P, Fluent>)
-    {
-        std::cout << "m_positive_fluent_atoms.default_bit_value_: " << positive_fluent_atoms.default_bit_value_ << std::endl;
-        return positive_fluent_atoms;
-    }
-    else if constexpr (std::is_same_v<P, Derived>)
-    {
-        std::cout << "m_positive_derived_atoms.default_bit_value_: " << positive_derived_atoms.default_bit_value_ << std::endl;
-        return positive_derived_atoms;
-    }
-    else
-    {
-        static_assert(dependent_false<P>::value, "Missing implementation for PredicateCategory.");
-    }
+    return as_mutable(std::as_const(*this).get_positive_precondition<P>());
 }
 
 template FlatBitset& StripsActionPrecondition::get_positive_precondition<Static>();
@@ -102,22 +84,7 @@ template const FlatBitset& StripsActionPrecondition::get_positive_precondition<D
 template<PredicateCategory P>
 FlatBitset& StripsActionPrecondition::get_negative_precondition()
 {
-    if constexpr (std::is_same_v<P, Static>)
-    {
-        return negative_static_atoms;
-    }
-    else if constexpr (std::is_same_v<P, Fluent>)
-    {
-        return negative_fluent_atoms;
-    }
-    else if constexpr (std::is_same_v<P, Derived>)
-    {
-        return negative_derived_atoms;
-    }
-    else
-    {
-        static_assert(dependent_false<P>::value, "Missing implementation for PredicateCategory.");
-    }
+    return as_mutable(std::as_const(*this).get_negative_precondition<P>());
 }
 
 template FlatBitset& StripsActionPrecondition::get_negative_precondition<Static>();
@@ -194,13 +161,11 @@ FlatBitset& StripsActionEffect::get_positive_effects() { return positive_effects
 
 const FlatBitset& StripsActionEffect::get_positive_effects() const
 {
-    std::cout << "m_positive_effects.default_bit_value_: " << positive_effects.default_bit_value_ << std::endl;
     return positive_effects;
 }
 
 FlatBitset& StripsActionEffect::get_negative_effects()
 {
-    std::cout << "m_negative_effects.default_bit_value_: " << negative_effects.default_bit_value_ << std::endl;
     return negative_effects;
 }
 
@@ -211,22 +176,7 @@ const FlatBitset& StripsActionEffect::get_negative_effects() const { return nega
 template<PredicateCategory P>
 FlatIndexList& ConditionalEffect::get_positive_precondition()
 {
-    if constexpr (std::is_same_v<P, Static>)
-    {
-        return positive_static_atoms;
-    }
-    else if constexpr (std::is_same_v<P, Fluent>)
-    {
-        return positive_fluent_atoms;
-    }
-    else if constexpr (std::is_same_v<P, Derived>)
-    {
-        return positive_derived_atoms;
-    }
-    else
-    {
-        static_assert(dependent_false<P>::value, "Missing implementation for PredicateCategory.");
-    }
+    return as_mutable(std::as_const(*this).get_positive_precondition<P>());
 }
 
 template FlatIndexList& ConditionalEffect::get_positive_precondition<Static>();
@@ -261,22 +211,7 @@ template const FlatIndexList& ConditionalEffect::get_positive_precondition<Deriv
 template<PredicateCategory P>
 FlatIndexList& ConditionalEffect::get_negative_precondition()
 {
-    if constexpr (std::is_same_v<P, Static>)
-    {
-        return negative_static_atoms;
-    }
-    else if constexpr (std::is_same_v<P, Fluent>)
-    {
-        return negative_fluent_atoms;
-    }
-    else if constexpr (std::is_same_v<P, Derived>)
-    {
-        return negative_derived_atoms;
-    }
-    else
-    {
-        static_assert(dependent_false<P>::value, "Missing implementation for PredicateCategory.");
-    }
+    return as_mutable(std::as_const(*this).get_negative_precondition<P>());
 }
 
 template FlatIndexList& ConditionalEffect::get_negative_precondition<Static>();

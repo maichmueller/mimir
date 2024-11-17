@@ -47,4 +47,22 @@ auto as_range(RangeLike& range)
     return RangeWrapper { std::ranges::begin(range), std::ranges::end(range) };
 }
 
+/// const_cast for avoiding code duplication
+/// only use this if you are sure that the constness is actually a lie!
+template<typename T>
+constexpr T & as_mutable(T const & value) noexcept {
+    return const_cast<T &>(value);
+}
+template<typename T>
+constexpr T * as_mutable(T const * value) noexcept {
+    return const_cast<T *>(value);
+}
+template<typename T>
+constexpr T * as_mutable(T * value) noexcept {
+    return value;
+}
+template<typename T>
+void as_mutable(T const &&) = delete;
+
+
 }
