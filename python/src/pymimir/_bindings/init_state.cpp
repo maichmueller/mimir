@@ -120,6 +120,6 @@ void init_state(py::module& m)
              py::arg("state"),
              py::arg("action"))
         .def("get_state_count", &StateRepository::get_state_count)
-        .def("get_reached_fluent_ground_atoms", &StateRepository::get_reached_fluent_ground_atoms)
-        .def("get_reached_derived_ground_atoms", &StateRepository::get_reached_derived_ground_atoms);
+        .def("get_reached_fluent_ground_atoms_bitset", &StateRepository::get_reached_fluent_ground_atoms_bitset)
+        .def("get_reached_derived_ground_atoms_bitset", &StateRepository::get_reached_derived_ground_atoms_bitset);
 }
