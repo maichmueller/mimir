@@ -57,7 +57,7 @@ void init_state(py::module& m)
             [](const StateImpl& self, const py::iterable& iter)
             {
                 auto rng = as_range(iter.begin(), iter.end());
-                return self.get_unsatisfied_literals(std::views::transform(rng, AS_LAMBDA(py::cast<AnyGroundLiteral>)));
+                return insert_into_list(self.get_unsatisfied_literals(std::views::transform(rng, AS_LAMBDA(py::cast<AnyGroundLiteral>))));
             },
             py::arg("iterable"))
         .def(
@@ -84,7 +84,7 @@ void init_state(py::module& m)
             [](const StateImpl& self, const py::iterable& iter)
             {
                 auto rng = as_range(iter.begin(), iter.end());
-                return self.get_satisfied_literals(std::views::transform(rng, AS_LAMBDA(py::cast<AnyGroundLiteral>)));
+                return insert_into_list(self.get_satisfied_literals(std::views::transform(rng, AS_LAMBDA(py::cast<AnyGroundLiteral>))));
             },
             py::arg("iterable"))
         .def(
