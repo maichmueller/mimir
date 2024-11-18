@@ -52,14 +52,14 @@ void init_actions(py::module& m)
              [](const GroundActionImpl& self, PDDLRepositories& pddl_repositories)
              {
                  std::stringstream ss;
-                 ss << std::make_tuple(&self, std::cref(pddl_repositories));
+                 ss << std::make_tuple(&self, std::cref(pddl_repositories), FullActionFormatterTag{});
                  return ss.str();
              })
         .def("to_string_for_plan",
              [](const GroundActionImpl& self, PDDLRepositories& pddl_repositories)
              {
                  std::stringstream ss;
-                 ss << std::make_tuple(std::cref(pddl_repositories), &self);
+                 ss << std::make_tuple(&self, std::cref(pddl_repositories), PlanActionFormatterTag{});
                  return ss.str();
              })
         .def("get_index", CONST_OVERLOAD(GroundActionImpl::get_index))
