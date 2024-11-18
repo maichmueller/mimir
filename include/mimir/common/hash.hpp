@@ -20,6 +20,7 @@
 #include "deref.hpp"
 #include "hof.hpp"
 #include "mimir/common/concepts.hpp"
+#include "mimir/utils/utils.hpp"
 #include "type_traits.hpp"
 
 #include <cstddef>
@@ -86,7 +87,6 @@ struct Hash<std::tuple<Ts...>>
         return aggregated_hash;
     }
 };
-
 
 template<typename T>
 inline void hash_combine(size_t& seed, const T& value)
@@ -171,4 +171,66 @@ struct variant_hasher<Hasher, std::variant<Ts...>> : public multi_hasher<Hasher,
 template<typename T, typename Hasher = std::hash<T>>
 using variant_std_hasher = variant_hasher<std::hash, T>;
 
-}
+#include <string>
+#include <string_view>
+#include <functional>
+
+// Struct for transparent hashing
+struct StringHashTransparent {
+    using is_transparent = std::true_type;  // Enable heterogeneous lookup
+
+    std::size_t operator()(const std::string& key) const {
+        return std::hash<std::string>{}(key);
+    }
+
+    std::size_t operator()(const char* key) const {
+        return std::hash<std::string_view>{}(key);
+    }
+
+    std::size_t operator()(std::string_view key) const {
+        return std::hash<std::string_view>{}(key);
+    }
+};
+
+// Struct for transparent equality comparison
+struct StringEqualTransparent {
+    using is_transparent = std::true_type;  // Enable heterogeneous lookup
+
+    bool operator()(const std::string& lhs, const std::string& rhs) const {
+        return lhs == rhs;
+    }
+
+    bool operator()(const std::string& lhs, std::string_view rhs) const {
+        return lhs == rhs;
+    }
+
+    bool operator()(std::string_view lhs, const std::string& rhs) const {
+        return lhs == rhs;
+    }
+
+    bool operator()(std::string_view lhs, std::string_view rhs) const {
+        return lhs == rhs;
+    }
+
+    bool operator()(const char* lhs, const std::string& rhs) const {
+        return std::string_view(lhs) == rhs;
+    }
+
+    bool operator()(const char* lhs, std::string_view rhs) const {
+        return std::string_view(lhs) == rhs;
+    }
+
+    bool operator()(const std::string& lhs, const char* rhs) const {
+        return lhs == std::string_view(rhs);
+    }
+
+    bool operator()(std::string_view lhs, const char* rhs) const {
+        return lhs == std::string_view(rhs);
+    }
+
+    bool operator()(const char* lhs, const char* rhs) const {
+        return std::string_view(lhs) == std::string_view(rhs);
+    }
+};
+
+}  // namespace mimir
