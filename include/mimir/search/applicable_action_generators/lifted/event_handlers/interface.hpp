@@ -19,11 +19,8 @@
 
 
 #include "mimir/formalism/declarations.hpp"
-#include "mimir/search/action.hpp"
 #include "mimir/search/applicable_action_generators/lifted/event_handlers/statistics.hpp"
-#include "mimir/search/axiom.hpp"
 #include "mimir/search/condition_grounders/event_handlers/interface.hpp"
-#include "mimir/search/state.hpp"
 
 namespace mimir
 {
