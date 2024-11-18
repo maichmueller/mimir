@@ -16,6 +16,14 @@ struct overload : Ts...
 template<typename... Ts>
 overload(Ts...) -> overload<Ts...>;
 
+template < typename... Ts >
+struct transparent_overload : Ts... {
+    using is_transparent = std::true_type;
+    using Ts::operator()...;
+};
+template < typename... Ts >
+transparent_overload(Ts...) -> transparent_overload< Ts... >;
+
 template<typename Iter, typename Sent>
 class RangeWrapper
 {
