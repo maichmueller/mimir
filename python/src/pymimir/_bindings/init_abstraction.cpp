@@ -10,7 +10,7 @@ void init_abstraction(py::module& m)
 {
 
     // FaithfulAbstraction
-    py::class_<FaithfulAbstractionOptions>(m, "FaithfulAbstractionOptions")
+    class_<FaithfulAbstractionOptions>("FaithfulAbstractionOptions")
         .def(py::init<bool, bool, bool, bool, uint32_t, uint32_t, uint32_t, ObjectGraphPruningStrategyEnum>(),
              py::arg("mark_true_goal_literals") = false,
              py::arg("use_unit_cost_one") = true,
@@ -29,7 +29,7 @@ void init_abstraction(py::module& m)
         .def_readwrite("timeout_ms", &FaithfulAbstractionOptions::timeout_ms)
         .def_readwrite("pruning_strategy", &FaithfulAbstractionOptions::pruning_strategy);
 
-    py::class_<FaithfulAbstractionsOptions>(m, "FaithfulAbstractionsOptions")
+    class_<FaithfulAbstractionsOptions>("FaithfulAbstractionsOptions")
         .def(py::init<FaithfulAbstractionOptions, bool, uint32_t>(),
              py::arg("fa_options") = FaithfulAbstractionOptions(),
              py::arg("sort_ascending_by_num_states") = true,
@@ -38,7 +38,7 @@ void init_abstraction(py::module& m)
         .def_readwrite("sort_ascending_by_num_states", &FaithfulAbstractionsOptions::sort_ascending_by_num_states)
         .def_readwrite("num_threads", &FaithfulAbstractionsOptions::num_threads);
 
-    py::class_<FaithfulAbstractStateVertex>(m, "FaithfulAbstractStateVertex")
+    class_<FaithfulAbstractStateVertex>("FaithfulAbstractStateVertex")
         .def("get_index", &FaithfulAbstractStateVertex::get_index)
         .def(
             "get_state_vertices",
@@ -50,7 +50,7 @@ void init_abstraction(py::module& m)
             py::keep_alive<0, 1>())
         .def("get_certificate", [](const FaithfulAbstractStateVertex& self) { return get_certificate(self); }, py::return_value_policy::reference_internal);
 
-    py::class_<FaithfulAbstraction, std::shared_ptr<FaithfulAbstraction>>(m, "FaithfulAbstraction")
+    class_<FaithfulAbstraction, std::shared_ptr<FaithfulAbstraction>>("FaithfulAbstraction")
         .def("__str__",
              [](const FaithfulAbstraction& self)
              {
@@ -198,7 +198,7 @@ void init_abstraction(py::module& m)
 
     // GlobalFaithfulAbstraction
 
-    py::class_<GlobalFaithfulAbstractState>(m, "GlobalFaithfulAbstractState")
+    class_<GlobalFaithfulAbstractState>("GlobalFaithfulAbstractState")
         .def("__eq__", &GlobalFaithfulAbstractState::operator==)
         .def("__hash__", [](const GlobalFaithfulAbstractState& self) { return std::hash<GlobalFaithfulAbstractState>()(self); })
         .def("get_index", &GlobalFaithfulAbstractState::get_index)
@@ -206,7 +206,7 @@ void init_abstraction(py::module& m)
         .def("get_faithful_abstraction_index", &GlobalFaithfulAbstractState::get_faithful_abstraction_index)
         .def("get_faithful_abstract_state_index", &GlobalFaithfulAbstractState::get_faithful_abstract_state_index);
 
-    py::class_<GlobalFaithfulAbstraction, std::shared_ptr<GlobalFaithfulAbstraction>>(m, "GlobalFaithfulAbstraction")
+    class_<GlobalFaithfulAbstraction, std::shared_ptr<GlobalFaithfulAbstraction>>("GlobalFaithfulAbstraction")
         .def("__str__",
              [](const GlobalFaithfulAbstraction& self)
              {
@@ -343,7 +343,7 @@ void init_abstraction(py::module& m)
 
 
     // Abstraction
-    py::class_<Abstraction, std::shared_ptr<Abstraction>>(m, "Abstraction")  //
+    class_<Abstraction, std::shared_ptr<Abstraction>>("Abstraction")  //
         .def(py::init<FaithfulAbstraction>(), py::arg("faithful_abstraction"))
         .def(py::init<GlobalFaithfulAbstraction>(), py::arg("global_faithful_abstraction"))
         .def("get_problem", &Abstraction::get_problem, py::return_value_policy::reference_internal)

@@ -14,7 +14,7 @@ using namespace mimir::pymimir;
 
 void init_termvariable(py::module& m)
 {
-    py::class_<TermVariableImpl>(m, "TermVariable")  //
+    class_<TermVariableImpl>("TermVariable")  //
         .def("__str__", &TermVariableImpl::str)
         .def("__repr__", &TermVariableImpl::str)
         .def("get_index", &TermVariableImpl::get_index)

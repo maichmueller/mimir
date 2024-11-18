@@ -14,7 +14,7 @@ using namespace mimir::pymimir;
 
 void init_variable(py::module& m)
 {
-    py::class_<VariableImpl>(m, "Variable")  //
+    class_<VariableImpl>("Variable")  //
         .def("__str__", &VariableImpl::str)
         .def("__repr__", &VariableImpl::str)
         .def("get_index", &VariableImpl::get_index)

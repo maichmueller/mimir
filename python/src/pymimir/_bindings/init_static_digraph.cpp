@@ -12,13 +12,13 @@ void init_static_digraph(py::module& m)
 {
 
      // EmptyVertex (used in StaticDigraph)
-     py::class_<EmptyVertex>(m, "EmptyVertex")
+     class_<EmptyVertex>("EmptyVertex")
          .def("__eq__", &EmptyVertex::operator==)
          .def("__hash__", [](const EmptyVertex& self) { return std::hash<EmptyVertex>()(self); })
          .def_property_readonly("index", &EmptyVertex::get_index);
 
      // EmptyEdge (used in StaticDigraph)
-     py::class_<EmptyEdge>(m, "EmptyEdge")
+     class_<EmptyEdge>("EmptyEdge")
          .def("__eq__", &EmptyEdge::operator==)
          .def("__hash__", [](const EmptyEdge& self) { return std::hash<EmptyEdge>()(self); })
          .def_property_readonly("index", &EmptyEdge::get_index)
@@ -26,7 +26,7 @@ void init_static_digraph(py::module& m)
          .def_property_readonly("target", &EmptyEdge::get_target);
 
      // StaticDigraph
-     py::class_<StaticDigraph>(m, "StaticDigraph")  //
+     class_<StaticDigraph>("StaticDigraph")  //
          .def(py::init<>())
          .def("__str__",
               [](const StaticDigraph& self)

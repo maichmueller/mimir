@@ -12,14 +12,14 @@ using namespace mimir;
 void init_state_space(py::module& m)
 {
     // StateVertex
-    py::class_<StateVertex>(m, "StateVertex")  //
+    class_<StateVertex>("StateVertex")  //
         .def("__eq__", &StateVertex::operator==)
         .def("__hash__", [](const StateVertex& self) { return std::hash<StateVertex>()(self); })
         .def_property_readonly("index", &StateVertex::get_index)
         .def_property_readonly("state", [](const StateVertex& self) { return get_state(self); }, py::keep_alive<0, 1>());
 
     // GroundActionEdge
-    py::class_<GroundActionEdge>(m, "GroundActionEdge")  //
+    class_<GroundActionEdge>("GroundActionEdge")  //
         .def("__eq__", &GroundActionEdge::operator==)
         .def("__hash__", [](const GroundActionEdge& self) { return std::hash<GroundActionEdge>()(self); })
         .def_property_readonly("index", &GroundActionEdge::get_index)
@@ -29,7 +29,7 @@ void init_state_space(py::module& m)
         .def_property_readonly("creating_action", [](const GroundActionEdge& self) { return get_creating_action(self); }, py::keep_alive<0, 1>());
 
     // GroundActionsEdge
-    py::class_<GroundActionsEdge>(m, "GroundActionsEdge")  //
+    class_<GroundActionsEdge>("GroundActionsEdge")  //
         .def("__eq__", &GroundActionsEdge::operator==)
         .def("__hash__", [](const GroundActionsEdge& self) { return std::hash<GroundActionsEdge>()(self); })
         .def_property_readonly("index", &GroundActionsEdge::get_index)
@@ -43,7 +43,7 @@ void init_state_space(py::module& m)
         .def_property_readonly("representative_action", [](const GroundActionsEdge& self) { return get_representative_action(self); }, py::keep_alive<0, 1>());
 
     // StateSpace
-    py::class_<StateSpaceOptions>(m, "StateSpaceOptions")
+    class_<StateSpaceOptions>("StateSpaceOptions")
         .def(py::init<bool, bool, uint32_t, uint32_t>(),
              py::arg("use_unit_cost_one") = true,
              py::arg("remove_if_unsolvable") = true,
@@ -54,7 +54,7 @@ void init_state_space(py::module& m)
         .def_readwrite("max_num_states", &StateSpaceOptions::max_num_states)
         .def_readwrite("timeout_ms", &StateSpaceOptions::timeout_ms);
 
-    py::class_<StateSpacesOptions>(m, "StateSpacesOptions")
+    class_<StateSpacesOptions>("StateSpacesOptions")
         .def(py::init<StateSpaceOptions, bool, uint32_t>(),
              py::arg("state_space_options") = StateSpaceOptions(),
              py::arg("sort_ascending_by_num_states") = true,
@@ -63,7 +63,7 @@ void init_state_space(py::module& m)
         .def_readwrite("sort_ascending_by_num_states", &StateSpacesOptions::sort_ascending_by_num_states)
         .def_readwrite("num_threads", &StateSpacesOptions::num_threads);
 
-    py::class_<StateSpace, std::shared_ptr<StateSpace>>(m, "StateSpace")  //
+    class_<StateSpace, std::shared_ptr<StateSpace>>("StateSpace")  //
         .def("__str__",
              [](const StateSpace& self)
              {

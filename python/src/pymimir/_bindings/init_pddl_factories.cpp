@@ -16,7 +16,8 @@ using namespace mimir::pymimir;
 
 void init_pddl_factories(py::module& m)
 {
-    py::class_<PDDLFactories, std::shared_ptr<PDDLFactories>> pddl_factories(m, "PDDLFactories");  //
+
+    auto& pddl_factories = class_<PDDLFactories, std::shared_ptr<PDDLFactories>>("PDDLFactories");  //
     pddl_factories
         .def("get_ground_atoms",
              [](const py::object& py_factory)  // we need an object handle to keep the factory alive for each atom in the list

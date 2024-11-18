@@ -12,7 +12,9 @@ void init_function(py::module& m)
 {
     using namespace pymimir;
 
-    py::class_<FunctionSkeletonImpl>(m, "FunctionSkeleton")  //
+
+
+    class_<FunctionSkeletonImpl>("FunctionSkeleton")  //
         .def("__str__", &FunctionSkeletonImpl::str)
         .def("__repr__", &FunctionSkeletonImpl::str)
         .def("get_index", &FunctionSkeletonImpl::get_index)
@@ -22,7 +24,7 @@ void init_function(py::module& m)
     auto list_class = py::bind_vector<FunctionSkeletonList>(m, "FunctionSkeletonList");
     def_opaque_vector_repr<FunctionSkeletonList>(list_class, "FunctionSkeletonList");
 
-    py::class_<FunctionImpl>(m, "Function")  //
+    class_<FunctionImpl>("Function")  //
         .def("__str__", &FunctionImpl::str)
         .def("__repr__", &FunctionImpl::str)
         .def("get_index", &FunctionImpl::get_index)
@@ -32,7 +34,7 @@ void init_function(py::module& m)
     list_class = py::bind_vector<FunctionList>(m, "FunctionList");
     def_opaque_vector_repr<FunctionSkeletonList>(list_class, "FunctionList");
 
-    py::class_<GroundFunctionImpl>(m, "GroundFunction")  //
+    class_<GroundFunctionImpl>("GroundFunction")  //
         .def("__str__", &GroundFunctionImpl::str)
         .def("__repr__", &GroundFunctionImpl::str)
         .def("get_index", &GroundFunctionImpl::get_index)

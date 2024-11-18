@@ -11,7 +11,7 @@ using namespace mimir::pymimir;
 void init_tuple_graph(py::module& m)
 {
     // TupleGraphVertex
-    py::class_<TupleGraphVertex>(m, "TupleGraphVertex")  //
+    class_<TupleGraphVertex>("TupleGraphVertex")  //
         .def_property_readonly("index", &TupleGraphVertex::get_index)
         .def_property_readonly("tuple_index", &TupleGraphVertex::get_tuple_index)
         .def_property_readonly("state_vertices", [](const TupleGraphVertex& self) { return self.get_states(); }, py::keep_alive<0, 1>());
@@ -19,7 +19,7 @@ void init_tuple_graph(py::module& m)
     bind_const_index_grouped_vector<IndexGroupedVector<const TupleGraphVertex>>(m, "TupleGraphVertexIndexGroupedVector");
 
     // TupleGraph
-    py::class_<TupleGraph>(m, "TupleGraph")  //
+    class_<TupleGraph>("TupleGraph")  //
         .def("__str__",
              [](const TupleGraph& self)
              {
@@ -37,7 +37,7 @@ void init_tuple_graph(py::module& m)
         .def("get_states_grouped_by_distance", &TupleGraph::get_states_grouped_by_distance, py::return_value_policy::reference_internal);
 
     // TupleGraphFactory
-    py::class_<TupleGraphFactory>(m, "TupleGraphFactory")  //
+    class_<TupleGraphFactory>("TupleGraphFactory")  //
         .def(py::init<std::shared_ptr<StateSpace>, int, bool>(), py::arg("state_space"), py::arg("arity"), py::arg("prune_dominated_tuples") = false)
         .def("create", &TupleGraphFactory::create)
         .def("get_state_space", &TupleGraphFactory::get_state_space)

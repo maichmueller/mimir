@@ -13,14 +13,14 @@ using namespace mimir::pymimir;
 void init_nauty_wrappers(py::module& m)
 {
     // NautyCertificate
-    py::class_<nauty_wrapper::Certificate, std::shared_ptr<nauty_wrapper::Certificate>>(m, "NautyCertificate")
+    class_<nauty_wrapper::Certificate, std::shared_ptr<nauty_wrapper::Certificate>>("NautyCertificate")
         .def("__eq__", [](const nauty_wrapper::Certificate& lhs, const nauty_wrapper::Certificate& rhs) { return lhs == rhs; })
         .def("__hash__", [](const nauty_wrapper::Certificate& self) { return std::hash<nauty_wrapper::Certificate>()(self); })
         .def("get_canonical_graph", &nauty_wrapper::Certificate::get_canonical_graph, py::return_value_policy::reference_internal)
         .def("get_canonical_coloring", &nauty_wrapper::Certificate::get_canonical_coloring, py::return_value_policy::reference_internal);
 
     // NautyDenseGraph
-    py::class_<nauty_wrapper::DenseGraph>(m, "NautyDenseGraph")  //
+    class_<nauty_wrapper::DenseGraph>("NautyDenseGraph")  //
         .def(py::init<>())
         .def(py::init<int>(), py::arg("num_vertices"))
         .def(py::init<StaticVertexColoredDigraph>(), py::arg("digraph"))
@@ -29,7 +29,7 @@ void init_nauty_wrappers(py::module& m)
         .def("clear", &nauty_wrapper::DenseGraph::clear, py::arg("num_vertices"));
 
     // NautySparseGraph
-    py::class_<nauty_wrapper::SparseGraph>(m, "NautySparseGraph")  //
+    class_<nauty_wrapper::SparseGraph>("NautySparseGraph")  //
         .def(py::init<>())
         .def(py::init<int>(), py::arg("num_vertices"))
         .def(py::init<StaticVertexColoredDigraph>(), py::arg("digraph"))

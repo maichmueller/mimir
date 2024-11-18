@@ -14,7 +14,8 @@ using namespace mimir::pymimir;
 
 void init_object(py::module& m)
 {
-    py::class_<ObjectImpl>(m, "Object")  //
+
+    class_<ObjectImpl>("Object")  //
         .def("__str__", &ObjectImpl::str)
         .def("__repr__", &ObjectImpl::str)
         .def("get_index", &ObjectImpl::get_index)

@@ -10,11 +10,10 @@ namespace py = pybind11;
 using namespace mimir;
 using namespace mimir::pymimir;
 
-
 void init_algorithms(py::module_& m)
 {
     /* Algorithms */
-    py::class_<IAlgorithm, std::shared_ptr<IAlgorithm>>(m, "IAlgorithm")  //
+    class_<IAlgorithm, std::shared_ptr<IAlgorithm>>("IAlgorithm")  //
         .def("find_solution",
              [](IAlgorithm& algorithm)
              {
@@ -24,7 +23,7 @@ void init_algorithms(py::module_& m)
              });
 
     // AStar
-    py::class_<AStarAlgorithmStatistics>(m, "AStarAlgorithmStatistics")  //
+    class_<AStarAlgorithmStatistics>("AStarAlgorithmStatistics")  //
         .def("get_num_generated", &AStarAlgorithmStatistics::get_num_generated)
         .def("get_num_expanded", &AStarAlgorithmStatistics::get_num_expanded)
         .def("get_num_deadends", &AStarAlgorithmStatistics::get_num_deadends)
@@ -33,24 +32,21 @@ void init_algorithms(py::module_& m)
         .def("get_num_expanded_until_f_value", &AStarAlgorithmStatistics::get_num_expanded_until_f_value)
         .def("get_num_deadends_until_f_value", &AStarAlgorithmStatistics::get_num_deadends_until_f_value)
         .def("get_num_pruned_until_f_value", &AStarAlgorithmStatistics::get_num_pruned_until_f_value);
-    py::class_<IAStarAlgorithmEventHandler, std::shared_ptr<IAStarAlgorithmEventHandler>>(m,
+    class_<IAStarAlgorithmEventHandler, std::shared_ptr<IAStarAlgorithmEventHandler>>(
                                                                                           "IAStarAlgorithmEventHandler")  //
         .def("get_statistics", &IAStarAlgorithmEventHandler::get_statistics);
-    py::class_<DefaultAStarAlgorithmEventHandler, IAStarAlgorithmEventHandler, std::shared_ptr<DefaultAStarAlgorithmEventHandler>>(
-        m,
+    class_<DefaultAStarAlgorithmEventHandler, IAStarAlgorithmEventHandler, std::shared_ptr<DefaultAStarAlgorithmEventHandler>>(
         "DefaultAStarAlgorithmEventHandler")  //
         .def(py::init<bool>(), py::arg("quiet") = true);
-    py::class_<DebugAStarAlgorithmEventHandler, IAStarAlgorithmEventHandler, std::shared_ptr<DebugAStarAlgorithmEventHandler>>(
-        m,
+    class_<DebugAStarAlgorithmEventHandler, IAStarAlgorithmEventHandler, std::shared_ptr<DebugAStarAlgorithmEventHandler>>(
         "DebugAStarAlgorithmEventHandler")  //
         .def(py::init<bool>(), py::arg("quiet") = true);
-    py::class_<DynamicAStarAlgorithmEventHandlerBase,
-               IAStarAlgorithmEventHandler,
-               IPyDynamicAStarAlgorithmEventHandlerBase,
-               std::shared_ptr<DynamicAStarAlgorithmEventHandlerBase>>(m,
-                                                                       "AStarAlgorithmEventHandlerBase")  //
+    class_<DynamicAStarAlgorithmEventHandlerBase,
+           IAStarAlgorithmEventHandler,
+           IPyDynamicAStarAlgorithmEventHandlerBase,
+           std::shared_ptr<DynamicAStarAlgorithmEventHandlerBase>>("AStarAlgorithmEventHandlerBase")  //
         .def(py::init<bool>(), py::arg("quiet") = true);
-    py::class_<AStarAlgorithm, IAlgorithm, std::shared_ptr<AStarAlgorithm>>(m, "AStarAlgorithm")  //
+    class_<AStarAlgorithm, IAlgorithm, std::shared_ptr<AStarAlgorithm>>("AStarAlgorithm")  //
         .def(py::init<std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<IHeuristic>>(), py::arg("applicable_action_generator"), py::arg("heuristic"))
         .def(py::init<std::shared_ptr<IApplicableActionGenerator>,
                       std::shared_ptr<StateRepository>,
@@ -62,7 +58,7 @@ void init_algorithms(py::module_& m)
              py::arg("event_handler"));
 
     // BrFS
-    py::class_<BrFSAlgorithmStatistics>(m, "BrFSAlgorithmStatistics")  //
+    class_<BrFSAlgorithmStatistics>("BrFSAlgorithmStatistics")  //
         .def("get_num_generated", &BrFSAlgorithmStatistics::get_num_generated)
         .def("get_num_expanded", &BrFSAlgorithmStatistics::get_num_expanded)
         .def("get_num_deadends", &BrFSAlgorithmStatistics::get_num_deadends)
@@ -71,17 +67,14 @@ void init_algorithms(py::module_& m)
         .def("get_num_expanded_until_g_value", &BrFSAlgorithmStatistics::get_num_expanded_until_g_value)
         .def("get_num_deadends_until_g_value", &BrFSAlgorithmStatistics::get_num_deadends_until_g_value)
         .def("get_num_pruned_until_g_value", &BrFSAlgorithmStatistics::get_num_pruned_until_g_value);
-    py::class_<IBrFSAlgorithmEventHandler, std::shared_ptr<IBrFSAlgorithmEventHandler>>(m, "IBrFSAlgorithmEventHandler")
+    class_<IBrFSAlgorithmEventHandler, std::shared_ptr<IBrFSAlgorithmEventHandler>>("IBrFSAlgorithmEventHandler")
         .def("get_statistics", &IBrFSAlgorithmEventHandler::get_statistics);
-    py::class_<DefaultBrFSAlgorithmEventHandler, IBrFSAlgorithmEventHandler, std::shared_ptr<DefaultBrFSAlgorithmEventHandler>>(
-        m,
+    class_<DefaultBrFSAlgorithmEventHandler, IBrFSAlgorithmEventHandler, std::shared_ptr<DefaultBrFSAlgorithmEventHandler>>(
         "DefaultBrFSAlgorithmEventHandler")  //
         .def(py::init<>());
-    py::class_<DebugBrFSAlgorithmEventHandler, IBrFSAlgorithmEventHandler, std::shared_ptr<DebugBrFSAlgorithmEventHandler>>(
-        m,
-        "DebugBrFSAlgorithmEventHandler")  //
+    class_<DebugBrFSAlgorithmEventHandler, IBrFSAlgorithmEventHandler, std::shared_ptr<DebugBrFSAlgorithmEventHandler>>("DebugBrFSAlgorithmEventHandler")  //
         .def(py::init<>());
-    py::class_<BrFSAlgorithm, IAlgorithm, std::shared_ptr<BrFSAlgorithm>>(m, "BrFSAlgorithm")
+    class_<BrFSAlgorithm, IAlgorithm, std::shared_ptr<BrFSAlgorithm>>("BrFSAlgorithm")
         .def(py::init<std::shared_ptr<IApplicableActionGenerator>>(), py::arg("applicable_action_generator"))
         .def(py::init<std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>, std::shared_ptr<IBrFSAlgorithmEventHandler>>(),
              py::arg("applicable_action_generator"),
@@ -89,7 +82,7 @@ void init_algorithms(py::module_& m)
              py::arg("event_handler"));
 
     // IW
-    py::class_<TupleIndexMapper, std::shared_ptr<TupleIndexMapper>>(m, "TupleIndexMapper")  //
+    class_<TupleIndexMapper, std::shared_ptr<TupleIndexMapper>>("TupleIndexMapper")  //
         .def("to_tuple_index", &TupleIndexMapper::to_tuple_index, py::arg("atom_indices"))
         .def(
             "to_atom_indices",
@@ -107,14 +100,14 @@ void init_algorithms(py::module_& m)
         .def("get_max_tuple_index", &TupleIndexMapper::get_max_tuple_index)
         .def("get_empty_tuple_index", &TupleIndexMapper::get_empty_tuple_index);
 
-    py::class_<IWAlgorithmStatistics>(m, "IWAlgorithmStatistics")  //
+    class_<IWAlgorithmStatistics>("IWAlgorithmStatistics")  //
         .def("get_effective_width", &IWAlgorithmStatistics::get_effective_width)
         .def("get_brfs_statistics_by_arity", &IWAlgorithmStatistics::get_brfs_statistics_by_arity);
-    py::class_<IIWAlgorithmEventHandler, std::shared_ptr<IIWAlgorithmEventHandler>>(m, "IIWAlgorithmEventHandler")
+    class_<IIWAlgorithmEventHandler, std::shared_ptr<IIWAlgorithmEventHandler>>("IIWAlgorithmEventHandler")
         .def("get_statistics", &IIWAlgorithmEventHandler::get_statistics);
-    py::class_<DefaultIWAlgorithmEventHandler, IIWAlgorithmEventHandler, std::shared_ptr<DefaultIWAlgorithmEventHandler>>(m, "DefaultIWAlgorithmEventHandler")
+    class_<DefaultIWAlgorithmEventHandler, IIWAlgorithmEventHandler, std::shared_ptr<DefaultIWAlgorithmEventHandler>>("DefaultIWAlgorithmEventHandler")
         .def(py::init<>());
-    py::class_<IWAlgorithm, IAlgorithm, std::shared_ptr<IWAlgorithm>>(m, "IWAlgorithm")
+    class_<IWAlgorithm, IAlgorithm, std::shared_ptr<IWAlgorithm>>("IWAlgorithm")
         .def(py::init<std::shared_ptr<IApplicableActionGenerator>, size_t>(), py::arg("applicable_action_generator"), py::arg("max_arity"))
         .def(py::init<std::shared_ptr<IApplicableActionGenerator>,
                       size_t,
@@ -128,16 +121,15 @@ void init_algorithms(py::module_& m)
              py::arg("iw_event_handler"));
 
     // SIW
-    py::class_<SIWAlgorithmStatistics>(m, "SIWAlgorithmStatistics")  //
+    class_<SIWAlgorithmStatistics>("SIWAlgorithmStatistics")  //
         .def("get_maximum_effective_width", &SIWAlgorithmStatistics::get_maximum_effective_width)
         .def("get_average_effective_width", &SIWAlgorithmStatistics::get_average_effective_width)
         .def("get_iw_statistics_by_subproblem", &SIWAlgorithmStatistics::get_iw_statistics_by_subproblem);
-    py::class_<ISIWAlgorithmEventHandler, std::shared_ptr<ISIWAlgorithmEventHandler>>(m, "ISIWAlgorithmEventHandler")
+    class_<ISIWAlgorithmEventHandler, std::shared_ptr<ISIWAlgorithmEventHandler>>("ISIWAlgorithmEventHandler")
         .def("get_statistics", &ISIWAlgorithmEventHandler::get_statistics);
-    py::class_<DefaultSIWAlgorithmEventHandler, ISIWAlgorithmEventHandler, std::shared_ptr<DefaultSIWAlgorithmEventHandler>>(m,
-                                                                                                                             "DefaultSIWAlgorithmEventHandler")
+    class_<DefaultSIWAlgorithmEventHandler, ISIWAlgorithmEventHandler, std::shared_ptr<DefaultSIWAlgorithmEventHandler>>("DefaultSIWAlgorithmEventHandler")
         .def(py::init<>());
-    py::class_<SIWAlgorithm, IAlgorithm, std::shared_ptr<SIWAlgorithm>>(m, "SIWAlgorithm")
+    class_<SIWAlgorithm, IAlgorithm, std::shared_ptr<SIWAlgorithm>>("SIWAlgorithm")
         .def(py::init<std::shared_ptr<IApplicableActionGenerator>, size_t>(), py::arg("applicable_action_generator"), py::arg("max_arity"))
         .def(py::init<std::shared_ptr<IApplicableActionGenerator>,
                       size_t,

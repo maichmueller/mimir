@@ -9,7 +9,7 @@ void init_predicates(py::module& m)
 {
     auto bind_predicate = [&]<typename Tag>(const std::string& class_name, Tag)
     {
-        py::class_<PredicateImpl<Tag>>(m, class_name.c_str())
+        class_<PredicateImpl<Tag>>(class_name)
             .def("__str__", &PredicateImpl<Tag>::str)
             .def("__repr__", &PredicateImpl<Tag>::str)
             .def("get_index", &PredicateImpl<Tag>::get_index)

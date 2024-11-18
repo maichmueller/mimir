@@ -12,7 +12,8 @@ void init_ground_function_expression(py::module& m)
 {
     using namespace pymimir;
 
-    py::class_<GroundFunctionExpressionVariant>(m, "GroundFunctionExpression")  //
+
+    class_<GroundFunctionExpressionVariant>("GroundFunctionExpression")  //
         .def(
             "get",
             [](const GroundFunctionExpressionVariant& arg) -> py::object { return std::visit(cast_visitor, *arg.function_expression); },
@@ -22,13 +23,13 @@ void init_ground_function_expression(py::module& m)
     auto list_class = py::bind_vector<GroundFunctionExpressionVariantList>(m, "GroundFunctionExpressionVariantList");
     def_opaque_vector_repr<GroundFunctionExpressionVariantList>(list_class, "GroundFunctionExpressionVariantList");
 
-    py::class_<GroundFunctionExpressionNumberImpl>(m, "GroundFunctionExpressionNumber")  //
+    class_<GroundFunctionExpressionNumberImpl>("GroundFunctionExpressionNumber")  //
         .def("__str__", &GroundFunctionExpressionNumberImpl::str)
         .def("__repr__", &GroundFunctionExpressionNumberImpl::str)
         .def("get_index", &GroundFunctionExpressionNumberImpl::get_index)
         .def("get_number", &GroundFunctionExpressionNumberImpl::get_number);
 
-    py::class_<GroundFunctionExpressionBinaryOperatorImpl>(m, "GroundFunctionExpressionBinaryOperator")  //
+    class_<GroundFunctionExpressionBinaryOperatorImpl>("GroundFunctionExpressionBinaryOperator")  //
         .def("__str__", &GroundFunctionExpressionBinaryOperatorImpl::str)
         .def("__repr__", &GroundFunctionExpressionBinaryOperatorImpl::str)
         .def("get_index", &GroundFunctionExpressionBinaryOperatorImpl::get_index)
@@ -44,7 +45,7 @@ void init_ground_function_expression(py::module& m)
             { return GroundFunctionExpressionVariant(function_expression.get_right_function_expression()); },
             py::keep_alive<0, 1>());
 
-    py::class_<GroundFunctionExpressionMultiOperatorImpl>(m, "GroundFunctionExpressionMultiOperator")  //
+    class_<GroundFunctionExpressionMultiOperatorImpl>("GroundFunctionExpressionMultiOperator")  //
         .def("__str__", &GroundFunctionExpressionMultiOperatorImpl::str)
         .def("__repr__", &GroundFunctionExpressionMultiOperatorImpl::str)
         .def("get_index", &GroundFunctionExpressionMultiOperatorImpl::get_index)
@@ -55,7 +56,7 @@ void init_ground_function_expression(py::module& m)
             { return to_ground_function_expression_variant_list(function_expression.get_function_expressions()); },
             py::keep_alive<0, 1>());
 
-    py::class_<GroundFunctionExpressionMinusImpl>(m, "GroundFunctionExpressionMinus")  //
+    class_<GroundFunctionExpressionMinusImpl>("GroundFunctionExpressionMinus")  //
         .def("__str__", &GroundFunctionExpressionMinusImpl::str)
         .def("__repr__", &GroundFunctionExpressionMinusImpl::str)
         .def("get_index", &GroundFunctionExpressionMinusImpl::get_index)
@@ -65,7 +66,7 @@ void init_ground_function_expression(py::module& m)
             { return GroundFunctionExpressionVariant(function_expression.get_function_expression()); },
             py::keep_alive<0, 1>());
 
-    py::class_<GroundFunctionExpressionFunctionImpl>(m, "GroundFunctionExpressionFunction")  //
+    class_<GroundFunctionExpressionFunctionImpl>("GroundFunctionExpressionFunction")  //
         .def("__str__", &GroundFunctionExpressionFunctionImpl::str)
         .def("__repr__", &GroundFunctionExpressionFunctionImpl::str)
         .def("get_index", &GroundFunctionExpressionFunctionImpl::get_index)

@@ -11,8 +11,9 @@ void init_optimization_metric(py::module& m)
 {
     using namespace pymimir;
 
+
     // dependent on ground function expression bindings!
-    py::class_<OptimizationMetricImpl>(m, "OptimizationMetric")  //
+    class_<OptimizationMetricImpl>("OptimizationMetric")  //
         .def("__str__", &OptimizationMetricImpl::str)
         .def("__repr__", &OptimizationMetricImpl::str)
         .def("get_index", &OptimizationMetricImpl::get_index)

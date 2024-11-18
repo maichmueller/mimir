@@ -11,7 +11,7 @@ void init_domain(py::module& m)
     using namespace mimir;
 using namespace mimir::pymimir;
 
-    py::class_<DomainImpl>(m, "Domain")  //
+    class_<DomainImpl>("Domain")  //
         .def("__str__", &DomainImpl::str)
         .def("__repr__", &DomainImpl::str)
         .def("get_index", &DomainImpl::get_index)

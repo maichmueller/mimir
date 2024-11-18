@@ -13,6 +13,6 @@ using namespace mimir::pymimir;
 void init_heuristics(py::module& m)
 {
     /* Heuristics */
-    py::class_<IHeuristic, IPyHeuristic, std::shared_ptr<IHeuristic>>(m, "IHeuristic").def(py::init<>());
-    py::class_<BlindHeuristic, IHeuristic, std::shared_ptr<BlindHeuristic>>(m, "BlindHeuristic").def(py::init<>());
+    class_<IHeuristic, IPyHeuristic, std::shared_ptr<IHeuristic>>("IHeuristic").def(py::init<>());
+    class_<BlindHeuristic, IHeuristic, std::shared_ptr<BlindHeuristic>>("BlindHeuristic").def(py::init<>());
 }

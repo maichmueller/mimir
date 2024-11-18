@@ -11,7 +11,7 @@ using namespace mimir::pymimir;
 
 void init_strips_action_precondition(py::module& m)
 {
-    py::class_<StripsActionPrecondition>(m, "StripsActionPrecondition")
+    class_<StripsActionPrecondition>("StripsActionPrecondition")
         .def("get_positive_condition", &all_atoms_from_conditions<true, StripsActionPrecondition>)
         .def("get_fluent_positive_condition", &atoms_from_conditions<true, Fluent, StripsActionPrecondition>)
         .def("get_static_positive_condition", &atoms_from_conditions<true, Static, StripsActionPrecondition>)

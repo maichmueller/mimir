@@ -9,7 +9,7 @@ using namespace mimir;
 void init_problem(py::module& m)
 {
     using namespace pymimir;
-    py::class_<ProblemImpl>(m, "Problem")  //
+    class_<ProblemImpl>("Problem")  //
         .def("__str__", &ProblemImpl::str)
         .def("__repr__", &ProblemImpl::str)
         .def("get_index", &ProblemImpl::get_index)
