@@ -207,16 +207,9 @@ void init_pymimir(py::module& m)
     init_ground_function_expression(m);
     init_optimization_metric(m);
     init_actions(m);
-
     init_domain(m);
     init_problem(m);
-
-    class_<PDDLParser>(m, "PDDLParser")  //
-        .def(py::init<std::string, std::string>(), py::arg("domain_path"), py::arg("problem_path"))
-        .def("get_domain", &PDDLParser::get_domain, py::return_value_policy::reference_internal)
-        .def("get_problem", &PDDLParser::get_problem, py::return_value_policy::reference_internal)
-        .def("get_pddl_factories", &PDDLParser::get_pddl_factories);
-
+    init_parser(m);
     init_state(m);
     init_strips_action_precondition(m);
     init_conditional_effect(m);

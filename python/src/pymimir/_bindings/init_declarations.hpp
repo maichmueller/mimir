@@ -93,6 +93,7 @@ DECLARE_INIT_FUNC(ground_atoms);
 DECLARE_INIT_FUNC(nauty_wrappers);
 DECLARE_INIT_FUNC(conditional_effect);
 DECLARE_INIT_FUNC(lists);
+DECLARE_INIT_FUNC(parser);
 DECLARE_INIT_FUNC(cista_types);
 DECLARE_INIT_FUNC(algorithms);
 DECLARE_INIT_FUNC(literals);
