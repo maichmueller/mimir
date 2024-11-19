@@ -11,7 +11,7 @@ using namespace mimir;
 
 void init_flatbitset(py::module& m)
 {
-    class_<FlatBitset>("FlatBitset")  //
+    class_<FlatBitset>(m, "FlatBitset")  //
         .def(py::init<>())                   // expose default constructor
         .def(py::init<size_t>())             // expose constructor that accepts number of bits
         .def(py::init<size_t, bool>())       // expose constructor that accepts num_bits and default_bit_value

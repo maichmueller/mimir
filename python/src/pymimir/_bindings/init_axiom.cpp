@@ -8,7 +8,7 @@ using namespace mimir;
 void init_axiom(py::module& m)
 {
 
-    class_<AxiomImpl>("Axiom")  //
+    class_<AxiomImpl>(m, "Axiom")  //
         .def("__str__", &AxiomImpl::str)
         .def("__repr__", &AxiomImpl::str)
         .def("get_index", &AxiomImpl::get_index)

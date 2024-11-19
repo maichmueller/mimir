@@ -9,145 +9,148 @@
 namespace py = pybind11;
 using namespace mimir;
 
-
-#define ENTRY(key, ...) TypeRegister::define(key,  __VA_ARGS__(m, key))
-
-
 void init_pymimir(py::module& m)
 {
-
-    ENTRY("RequirementEnum", py::enum_<loki::RequirementEnum>);
-    ENTRY("AssignOperatorEnum", py::enum_<loki::AssignOperatorEnum>);
-    ENTRY("BinaryOperatorEnum", py::enum_<loki::BinaryOperatorEnum>);
-    ENTRY("MultiOperatorEnum", py::enum_<loki::MultiOperatorEnum>);
-    ENTRY("OptimizationMetricEnum", py::enum_<loki::OptimizationMetricEnum>);
-    ENTRY("SearchNodeStatus", py::enum_<SearchNodeStatus>);
-    ENTRY("SearchStatus", py::enum_<SearchStatus>);
-    ENTRY("ObjectGraphPruningStrategyEnum", py::enum_<ObjectGraphPruningStrategyEnum>);
-
-
-    ENTRY("Requirements", py::class_<RequirementsImpl>);
-    ENTRY("Object", py::class_<ObjectImpl>);
-    ENTRY("Variable", py::class_<VariableImpl>);
-    ENTRY("TermObject", py::class_<TermObjectImpl>);
-    ENTRY("TermVariable", py::class_<TermVariableImpl>);
-    ENTRY("Term", py::class_<pymimir::TermVariant>);
-    ENTRY("StaticPredicate", py::class_<PredicateImpl<Static>>);
-    ENTRY("FluentPredicate", py::class_<PredicateImpl<Fluent>>);
-    ENTRY("DerivedPredicate", py::class_<PredicateImpl<Derived>>);
-    ENTRY("StaticAtom", py::class_<AtomImpl<Static>>);
-    ENTRY("FluentAtom", py::class_<AtomImpl<Fluent>>);
-    ENTRY("DerivedAtom", py::class_<AtomImpl<Derived>>);
-    ENTRY("PDDLFactories", py::class_<PDDLFactories, std::shared_ptr<PDDLFactories>>);
-    ENTRY("StaticGroundAtom", py::class_<GroundAtomImpl<Static>>);
-    ENTRY("FluentGroundAtom", py::class_<GroundAtomImpl<Fluent>>);
-    ENTRY("DerivedGroundAtom", py::class_<GroundAtomImpl<Derived>>);
-    ENTRY("StaticGroundLiteral", py::class_<GroundLiteralImpl<Static>>);
-    ENTRY("FluentGroundLiteral", py::class_<GroundLiteralImpl<Fluent>>);
-    ENTRY("DerivedGroundLiteral", py::class_<GroundLiteralImpl<Derived>>);
-    ENTRY("StaticLiteral", py::class_<LiteralImpl<Static>>);
-    ENTRY("FluentLiteral", py::class_<LiteralImpl<Fluent>>);
-    ENTRY("DerivedLiteral", py::class_<LiteralImpl<Derived>>);
-    ENTRY("Axiom", py::class_<AxiomImpl>);
-    ENTRY("NumericFluent", py::class_<NumericFluentImpl>);
-    ENTRY("EffectSimple", py::class_<EffectSimpleImpl>);
-    ENTRY("EffectComplex", py::class_<EffectComplexImpl>);
-    ENTRY("StripsActionEffect", py::class_<StripsActionEffect>);
-    ENTRY("SimpleFluentEffect", py::class_<SimpleFluentEffect>);
-    ENTRY("FlatBitset", py::class_<FlatBitset>);
-    ENTRY("FunctionSkeleton", py::class_<FunctionSkeletonImpl>);
-    ENTRY("Function", py::class_<FunctionImpl>);
-    ENTRY("GroundFunction", py::class_<GroundFunctionImpl>);
-    ENTRY("FunctionExpressionNumber", py::class_<FunctionExpressionNumberImpl>);
-    ENTRY("FunctionExpressionBinaryOperator", py::class_<FunctionExpressionBinaryOperatorImpl>);
-    ENTRY("FunctionExpressionMultiOperator", py::class_<FunctionExpressionMultiOperatorImpl>);
-    ENTRY("FunctionExpressionMinus", py::class_<FunctionExpressionMinusImpl>);
-    ENTRY("FunctionExpressionFunction", py::class_<FunctionExpressionFunctionImpl>);
-    ENTRY("FunctionExpression", py::class_<pymimir::FunctionExpressionVariant>);
-    ENTRY("GroundFunctionExpression", py::class_<pymimir::GroundFunctionExpressionVariant>);
-    ENTRY("GroundFunctionExpressionNumber", py::class_<GroundFunctionExpressionNumberImpl>);
-    ENTRY("GroundFunctionExpressionBinaryOperator", py::class_<GroundFunctionExpressionBinaryOperatorImpl>);
-    ENTRY("GroundFunctionExpressionMultiOperator", py::class_<GroundFunctionExpressionMultiOperatorImpl>);
-    ENTRY("GroundFunctionExpressionMinus", py::class_<GroundFunctionExpressionMinusImpl>);
-    ENTRY("GroundFunctionExpressionFunction", py::class_<GroundFunctionExpressionFunctionImpl>);
-    ENTRY("OptimizationMetric", py::class_<OptimizationMetricImpl>);
-    ENTRY("Action", py::class_<ActionImpl>);
-    ENTRY("GroundAction", py::class_<GroundActionImpl>);
-    ENTRY("Domain", py::class_<DomainImpl>);
-    ENTRY("Problem", py::class_<ProblemImpl>);
-    ENTRY("PDDLParser", py::class_<PDDLParser>);
-    ENTRY("State", py::class_<StateImpl>);
-    ENTRY("StateRepository", py::class_<StateRepository, std::shared_ptr<StateRepository>>);
-    ENTRY("StripsActionPrecondition", py::class_<StripsActionPrecondition>);
-    ENTRY("ConditionalEffect", py::class_<ConditionalEffect>);
-    ENTRY("LiftedConjunctionGrounder", py::class_<LiftedConjunctionGrounder, std::shared_ptr<LiftedConjunctionGrounder>>);
-    ENTRY("IApplicableActionGenerator", py::class_<IApplicableActionGenerator, std::shared_ptr<IApplicableActionGenerator>>);
-    ENTRY("ILiftedApplicableActionGeneratorEventHandler", py::class_<ILiftedApplicableActionGeneratorEventHandler, std::shared_ptr<ILiftedApplicableActionGeneratorEventHandler>>);
-    ENTRY("DefaultLiftedApplicableActionGeneratorEventHandler", py::class_<DefaultLiftedApplicableActionGeneratorEventHandler,ILiftedApplicableActionGeneratorEventHandler,std::shared_ptr<DefaultLiftedApplicableActionGeneratorEventHandler>>);
-    ENTRY("DebugLiftedApplicableActionGeneratorEventHandler", py::class_<DebugLiftedApplicableActionGeneratorEventHandler,ILiftedApplicableActionGeneratorEventHandler,std::shared_ptr<DebugLiftedApplicableActionGeneratorEventHandler>>);
-    ENTRY("LiftedApplicableActionGenerator", py::class_<LiftedApplicableActionGenerator, IApplicableActionGenerator, std::shared_ptr<LiftedApplicableActionGenerator>>);
-    ENTRY("IGroundedApplicableActionGeneratorEventHandler", py::class_<IGroundedApplicableActionGeneratorEventHandler, std::shared_ptr<IGroundedApplicableActionGeneratorEventHandler>>);
-    ENTRY("DefaultGroundedApplicableActionGeneratorEventHandler", py::class_<DefaultGroundedApplicableActionGeneratorEventHandler,IGroundedApplicableActionGeneratorEventHandler,std::shared_ptr<DefaultGroundedApplicableActionGeneratorEventHandler>>);
-    ENTRY("DebugGroundedApplicableActionGeneratorEventHandler", py::class_<DebugGroundedApplicableActionGeneratorEventHandler,IGroundedApplicableActionGeneratorEventHandler,std::shared_ptr<DebugGroundedApplicableActionGeneratorEventHandler>>);
-    ENTRY("GroundedApplicableActionGenerator", py::class_<GroundedApplicableActionGenerator, IApplicableActionGenerator, std::shared_ptr<GroundedApplicableActionGenerator>>);
-    ENTRY("IHeuristic", py::class_<IHeuristic, IPyHeuristic, std::shared_ptr<IHeuristic>>);
-    ENTRY("BlindHeuristic", py::class_<BlindHeuristic, IHeuristic, std::shared_ptr<BlindHeuristic>>);
-    ENTRY("IAlgorithm", py::class_<IAlgorithm, std::shared_ptr<IAlgorithm>>);
-    ENTRY("AStarAlgorithmStatistics", py::class_<AStarAlgorithmStatistics>);
-    ENTRY("IAStarAlgorithmEventHandler", py::class_<IAStarAlgorithmEventHandler, std::shared_ptr<IAStarAlgorithmEventHandler>>);
-    ENTRY("DefaultAStarAlgorithmEventHandler", py::class_<DefaultAStarAlgorithmEventHandler, IAStarAlgorithmEventHandler, std::shared_ptr<DefaultAStarAlgorithmEventHandler>>);
-    ENTRY("DebugAStarAlgorithmEventHandler", py::class_<DebugAStarAlgorithmEventHandler, IAStarAlgorithmEventHandler, std::shared_ptr<DebugAStarAlgorithmEventHandler>>);
-    ENTRY("AStarAlgorithmEventHandlerBase", py::class_<DynamicAStarAlgorithmEventHandlerBase,IAStarAlgorithmEventHandler,IPyDynamicAStarAlgorithmEventHandlerBase,std::shared_ptr<DynamicAStarAlgorithmEventHandlerBase>>);
-    ENTRY("AStarAlgorithm", py::class_<AStarAlgorithm, IAlgorithm, std::shared_ptr<AStarAlgorithm>>);
-    ENTRY("BrFSAlgorithmStatistics", py::class_<BrFSAlgorithmStatistics>);
-    ENTRY("IBrFSAlgorithmEventHandler", py::class_<IBrFSAlgorithmEventHandler, std::shared_ptr<IBrFSAlgorithmEventHandler>>);
-    ENTRY("DefaultBrFSAlgorithmEventHandler", py::class_<DefaultBrFSAlgorithmEventHandler, IBrFSAlgorithmEventHandler, std::shared_ptr<DefaultBrFSAlgorithmEventHandler>>);
-    ENTRY("DebugBrFSAlgorithmEventHandler", py::class_<DebugBrFSAlgorithmEventHandler, IBrFSAlgorithmEventHandler, std::shared_ptr<DebugBrFSAlgorithmEventHandler>>);
-    ENTRY("BrFSAlgorithm", py::class_<BrFSAlgorithm, IAlgorithm, std::shared_ptr<BrFSAlgorithm>>);
-    ENTRY("TupleIndexMapper", py::class_<TupleIndexMapper, std::shared_ptr<TupleIndexMapper>>);
-    ENTRY("IWAlgorithmStatistics", py::class_<IWAlgorithmStatistics>);
-    ENTRY("IIWAlgorithmEventHandler", py::class_<IIWAlgorithmEventHandler, std::shared_ptr<IIWAlgorithmEventHandler>>);
-    ENTRY("DefaultIWAlgorithmEventHandler", py::class_<DefaultIWAlgorithmEventHandler, IIWAlgorithmEventHandler, std::shared_ptr<DefaultIWAlgorithmEventHandler>>);
-    ENTRY("IWAlgorithm", py::class_<IWAlgorithm, IAlgorithm, std::shared_ptr<IWAlgorithm>>);
-    ENTRY("SIWAlgorithmStatistics", py::class_<SIWAlgorithmStatistics>);
-    ENTRY("ISIWAlgorithmEventHandler", py::class_<ISIWAlgorithmEventHandler, std::shared_ptr<ISIWAlgorithmEventHandler>>);
-    ENTRY("DefaultSIWAlgorithmEventHandler", py::class_<DefaultSIWAlgorithmEventHandler, ISIWAlgorithmEventHandler, std::shared_ptr<DefaultSIWAlgorithmEventHandler>>);
-    ENTRY("SIWAlgorithm", py::class_<SIWAlgorithm, IAlgorithm, std::shared_ptr<SIWAlgorithm>>);
-    ENTRY("StateVertex", py::class_<StateVertex>);
-    ENTRY("GroundActionEdge", py::class_<GroundActionEdge>);
-    ENTRY("GroundActionsEdge", py::class_<GroundActionsEdge>);
-    ENTRY("StateSpaceOptions", py::class_<StateSpaceOptions>);
-    ENTRY("StateSpacesOptions", py::class_<StateSpacesOptions>);
-    ENTRY("StateSpace", py::class_<StateSpace, std::shared_ptr<StateSpace>>);
-    ENTRY("FaithfulAbstractionOptions", py::class_<FaithfulAbstractionOptions>);
-    ENTRY("FaithfulAbstractionsOptions", py::class_<FaithfulAbstractionsOptions>);
-    ENTRY("FaithfulAbstractStateVertex", py::class_<FaithfulAbstractStateVertex>);
-    ENTRY("FaithfulAbstraction", py::class_<FaithfulAbstraction, std::shared_ptr<FaithfulAbstraction>>);
-    ENTRY("GlobalFaithfulAbstractState", py::class_<GlobalFaithfulAbstractState>);
-    ENTRY("GlobalFaithfulAbstraction", py::class_<GlobalFaithfulAbstraction, std::shared_ptr<GlobalFaithfulAbstraction>>);
-    ENTRY("Abstraction", py::class_<Abstraction, std::shared_ptr<Abstraction>>);
-    ENTRY("EmptyVertex", py::class_<EmptyVertex>);
-    ENTRY("EmptyEdge", py::class_<EmptyEdge>);
-    ENTRY("StaticDigraph", py::class_<StaticDigraph>);
-    ENTRY("NautyCertificate", py::class_<nauty_wrapper::Certificate, std::shared_ptr<nauty_wrapper::Certificate>>);
-    ENTRY("NautyDenseGraph", py::class_<nauty_wrapper::DenseGraph>);
-    ENTRY("NautySparseGraph", py::class_<nauty_wrapper::SparseGraph>);
-    ENTRY("ColorFunction", py::class_<ColorFunction>);
-    ENTRY("ProblemColorFunction", py::class_<ProblemColorFunction, ColorFunction>);
-    ENTRY("ColoredVertex", py::class_<ColoredVertex>);
-    ENTRY("StaticVertexColoredDigraph", py::class_<StaticVertexColoredDigraph>);
-    ENTRY("TupleGraphVertex", py::class_<TupleGraphVertex>);
-    ENTRY("TupleGraph", py::class_<TupleGraph>);
-    ENTRY("TupleGraphFactory", py::class_<TupleGraphFactory>);
-    ENTRY("ObjectGraphPruningStrategy", py::class_<ObjectGraphPruningStrategy>);
-    ENTRY("CertificateColorRefinement", py::class_<color_refinement::Certificate>);
-    ENTRY("Certificate2FWL", py::class_<kfwl::Certificate<2>>);
-    ENTRY("Certificate3FWL", py::class_<kfwl::Certificate<3>>);
-    ENTRY("Certificate4FWL", py::class_<kfwl::Certificate<4>>);
-    ENTRY("IsomorphismTypeCompressionFunction", py::class_<kfwl::IsomorphismTypeCompressionFunction>);
-
-
     init_enums(m);
+
+    class_<RequirementsImpl>(m, "Requirements");
+    class_<ObjectImpl>(m, "Object");
+    class_<VariableImpl>(m, "Variable");
+    class_<TermObjectImpl>(m, "TermObject");
+    class_<TermVariableImpl>(m, "TermVariable");
+    class_<pymimir::TermVariant>(m, "Term");
+    class_<PredicateImpl<Static>>(m, "StaticPredicate");
+    class_<PredicateImpl<Fluent>>(m, "FluentPredicate");
+    class_<PredicateImpl<Derived>>(m, "DerivedPredicate");
+    class_<AtomImpl<Static>>(m, "StaticAtom");
+    class_<AtomImpl<Fluent>>(m, "FluentAtom");
+    class_<AtomImpl<Derived>>(m, "DerivedAtom");
+    class_<PDDLFactories, std::shared_ptr<PDDLFactories>>(m, "PDDLFactories");
+    class_<GroundAtomImpl<Static>>(m, "StaticGroundAtom");
+    class_<GroundAtomImpl<Fluent>>(m, "FluentGroundAtom");
+    class_<GroundAtomImpl<Derived>>(m, "DerivedGroundAtom");
+    class_<GroundLiteralImpl<Static>>(m, "StaticGroundLiteral");
+    class_<GroundLiteralImpl<Fluent>>(m, "FluentGroundLiteral");
+    class_<GroundLiteralImpl<Derived>>(m, "DerivedGroundLiteral");
+    class_<LiteralImpl<Static>>(m, "StaticLiteral");
+    class_<LiteralImpl<Fluent>>(m, "FluentLiteral");
+    class_<LiteralImpl<Derived>>(m, "DerivedLiteral");
+    class_<AxiomImpl>(m, "Axiom");
+    class_<NumericFluentImpl>(m, "NumericFluent");
+    class_<EffectSimpleImpl>(m, "EffectSimple");
+    class_<EffectComplexImpl>(m, "EffectComplex");
+    class_<StripsActionEffect>(m, "StripsActionEffect");
+    class_<SimpleFluentEffect>(m, "SimpleFluentEffect");
+    class_<FlatBitset>(m, "FlatBitset");
+    class_<FunctionSkeletonImpl>(m, "FunctionSkeleton");
+    class_<FunctionImpl>(m, "Function");
+    class_<GroundFunctionImpl>(m, "GroundFunction");
+    class_<FunctionExpressionNumberImpl>(m, "FunctionExpressionNumber");
+    class_<FunctionExpressionBinaryOperatorImpl>(m, "FunctionExpressionBinaryOperator");
+    class_<FunctionExpressionMultiOperatorImpl>(m, "FunctionExpressionMultiOperator");
+    class_<FunctionExpressionMinusImpl>(m, "FunctionExpressionMinus");
+    class_<FunctionExpressionFunctionImpl>(m, "FunctionExpressionFunction");
+    class_<pymimir::FunctionExpressionVariant>(m, "FunctionExpression");
+    class_<pymimir::GroundFunctionExpressionVariant>(m, "GroundFunctionExpression");
+    class_<GroundFunctionExpressionNumberImpl>(m, "GroundFunctionExpressionNumber");
+    class_<GroundFunctionExpressionBinaryOperatorImpl>(m, "GroundFunctionExpressionBinaryOperator");
+    class_<GroundFunctionExpressionMultiOperatorImpl>(m, "GroundFunctionExpressionMultiOperator");
+    class_<GroundFunctionExpressionMinusImpl>(m, "GroundFunctionExpressionMinus");
+    class_<GroundFunctionExpressionFunctionImpl>(m, "GroundFunctionExpressionFunction");
+    class_<OptimizationMetricImpl>(m, "OptimizationMetric");
+    class_<ActionImpl>(m, "Action");
+    class_<GroundActionImpl>(m, "GroundAction");
+    class_<DomainImpl>(m, "Domain");
+    class_<ProblemImpl>(m, "Problem");
+    class_<PDDLParser>(m, "PDDLParser");
+    class_<StateImpl>(m, "State");
+    class_<StateRepository, std::shared_ptr<StateRepository>>(m, "StateRepository");
+    class_<StripsActionPrecondition>(m, "StripsActionPrecondition");
+    class_<ConditionalEffect>(m, "ConditionalEffect");
+    class_<LiftedConjunctionGrounder, std::shared_ptr<LiftedConjunctionGrounder>>(m, "LiftedConjunctionGrounder");
+    class_<IApplicableActionGenerator, std::shared_ptr<IApplicableActionGenerator>>(m, "IApplicableActionGenerator");
+    class_<ILiftedApplicableActionGeneratorEventHandler, std::shared_ptr<ILiftedApplicableActionGeneratorEventHandler>>(
+        m,
+        "ILiftedApplicableActionGeneratorEventHandler");
+    class_<DefaultLiftedApplicableActionGeneratorEventHandler,
+           ILiftedApplicableActionGeneratorEventHandler,
+           std::shared_ptr<DefaultLiftedApplicableActionGeneratorEventHandler>>(m, "DefaultLiftedApplicableActionGeneratorEventHandler");
+    class_<DebugLiftedApplicableActionGeneratorEventHandler,
+           ILiftedApplicableActionGeneratorEventHandler,
+           std::shared_ptr<DebugLiftedApplicableActionGeneratorEventHandler>>(m, "DebugLiftedApplicableActionGeneratorEventHandler");
+    class_<LiftedApplicableActionGenerator, IApplicableActionGenerator, std::shared_ptr<LiftedApplicableActionGenerator>>(m, "LiftedApplicableActionGenerator");
+    class_<IGroundedApplicableActionGeneratorEventHandler, std::shared_ptr<IGroundedApplicableActionGeneratorEventHandler>>(
+        m,
+        "IGroundedApplicableActionGeneratorEventHandler");
+    class_<DefaultGroundedApplicableActionGeneratorEventHandler,
+           IGroundedApplicableActionGeneratorEventHandler,
+           std::shared_ptr<DefaultGroundedApplicableActionGeneratorEventHandler>>(m, "DefaultGroundedApplicableActionGeneratorEventHandler");
+    class_<DebugGroundedApplicableActionGeneratorEventHandler,
+           IGroundedApplicableActionGeneratorEventHandler,
+           std::shared_ptr<DebugGroundedApplicableActionGeneratorEventHandler>>(m, "DebugGroundedApplicableActionGeneratorEventHandler");
+    class_<GroundedApplicableActionGenerator, IApplicableActionGenerator, std::shared_ptr<GroundedApplicableActionGenerator>>(
+        m,
+        "GroundedApplicableActionGenerator");
+    class_<IHeuristic, IPyHeuristic, std::shared_ptr<IHeuristic>>(m, "IHeuristic");
+    class_<BlindHeuristic, IHeuristic, std::shared_ptr<BlindHeuristic>>(m, "BlindHeuristic");
+    class_<IAlgorithm, std::shared_ptr<IAlgorithm>>(m, "IAlgorithm");
+    class_<AStarAlgorithmStatistics>(m, "AStarAlgorithmStatistics");
+    class_<IAStarAlgorithmEventHandler, std::shared_ptr<IAStarAlgorithmEventHandler>>(m, "IAStarAlgorithmEventHandler");
+    class_<DefaultAStarAlgorithmEventHandler, IAStarAlgorithmEventHandler, std::shared_ptr<DefaultAStarAlgorithmEventHandler>>(
+        m,
+        "DefaultAStarAlgorithmEventHandler");
+    class_<DebugAStarAlgorithmEventHandler, IAStarAlgorithmEventHandler, std::shared_ptr<DebugAStarAlgorithmEventHandler>>(m,
+                                                                                                                           "DebugAStarAlgorithmEventHandler");
+    class_<DynamicAStarAlgorithmEventHandlerBase,IAStarAlgorithmEventHandler,IPyDynamicAStarAlgorithmEventHandlerBase,std::shared_ptr<DynamicAStarAlgorithmEventHandlerBase>>(m, "AStarAlgorithmEventHandlerBase");
+    class_<AStarAlgorithm, IAlgorithm, std::shared_ptr<AStarAlgorithm>>(m, "AStarAlgorithm");
+    class_<BrFSAlgorithmStatistics>(m, "BrFSAlgorithmStatistics");
+    class_<IBrFSAlgorithmEventHandler, std::shared_ptr<IBrFSAlgorithmEventHandler>>(m, "IBrFSAlgorithmEventHandler");
+    class_<DefaultBrFSAlgorithmEventHandler, IBrFSAlgorithmEventHandler, std::shared_ptr<DefaultBrFSAlgorithmEventHandler>>(m,
+                                                                                                                            "DefaultBrFSAlgorithmEventHandler");
+    class_<DebugBrFSAlgorithmEventHandler, IBrFSAlgorithmEventHandler, std::shared_ptr<DebugBrFSAlgorithmEventHandler>>(m, "DebugBrFSAlgorithmEventHandler");
+    class_<BrFSAlgorithm, IAlgorithm, std::shared_ptr<BrFSAlgorithm>>(m, "BrFSAlgorithm");
+    class_<TupleIndexMapper, std::shared_ptr<TupleIndexMapper>>(m, "TupleIndexMapper");
+    class_<IWAlgorithmStatistics>(m, "IWAlgorithmStatistics");
+    class_<IIWAlgorithmEventHandler, std::shared_ptr<IIWAlgorithmEventHandler>>(m, "IIWAlgorithmEventHandler");
+    class_<DefaultIWAlgorithmEventHandler, IIWAlgorithmEventHandler, std::shared_ptr<DefaultIWAlgorithmEventHandler>>(m, "DefaultIWAlgorithmEventHandler");
+    class_<IWAlgorithm, IAlgorithm, std::shared_ptr<IWAlgorithm>>(m, "IWAlgorithm");
+    class_<SIWAlgorithmStatistics>(m, "SIWAlgorithmStatistics");
+    class_<ISIWAlgorithmEventHandler, std::shared_ptr<ISIWAlgorithmEventHandler>>(m, "ISIWAlgorithmEventHandler");
+    class_<DefaultSIWAlgorithmEventHandler, ISIWAlgorithmEventHandler, std::shared_ptr<DefaultSIWAlgorithmEventHandler>>(m, "DefaultSIWAlgorithmEventHandler");
+    class_<SIWAlgorithm, IAlgorithm, std::shared_ptr<SIWAlgorithm>>(m, "SIWAlgorithm");
+    class_<StateVertex>(m, "StateVertex");
+    class_<GroundActionEdge>(m, "GroundActionEdge");
+    class_<GroundActionsEdge>(m, "GroundActionsEdge");
+    class_<StateSpaceOptions>(m, "StateSpaceOptions");
+    class_<StateSpacesOptions>(m, "StateSpacesOptions");
+    class_<StateSpace, std::shared_ptr<StateSpace>>(m, "StateSpace");
+    class_<FaithfulAbstractionOptions>(m, "FaithfulAbstractionOptions");
+    class_<FaithfulAbstractionsOptions>(m, "FaithfulAbstractionsOptions");
+    class_<FaithfulAbstractStateVertex>(m, "FaithfulAbstractStateVertex");
+    class_<FaithfulAbstraction, std::shared_ptr<FaithfulAbstraction>>(m, "FaithfulAbstraction");
+    class_<GlobalFaithfulAbstractState>(m, "GlobalFaithfulAbstractState");
+    class_<GlobalFaithfulAbstraction, std::shared_ptr<GlobalFaithfulAbstraction>>(m, "GlobalFaithfulAbstraction");
+    class_<Abstraction, std::shared_ptr<Abstraction>>(m, "Abstraction");
+    class_<EmptyVertex>(m, "EmptyVertex");
+    class_<EmptyEdge>(m, "EmptyEdge");
+    class_<StaticDigraph>(m, "StaticDigraph");
+    class_<nauty_wrapper::Certificate, std::shared_ptr<nauty_wrapper::Certificate>>(m, "NautyCertificate");
+    class_<nauty_wrapper::DenseGraph>(m, "NautyDenseGraph");
+    class_<nauty_wrapper::SparseGraph>(m, "NautySparseGraph");
+    class_<ColorFunction>(m, "ColorFunction");
+    class_<ProblemColorFunction, ColorFunction>(m, "ProblemColorFunction");
+    class_<ColoredVertex>(m, "ColoredVertex");
+    class_<StaticVertexColoredDigraph>(m, "StaticVertexColoredDigraph");
+    class_<TupleGraphVertex>(m, "TupleGraphVertex");
+    class_<TupleGraph>(m, "TupleGraph");
+    class_<TupleGraphFactory>(m, "TupleGraphFactory");
+    class_<ObjectGraphPruningStrategy>(m, "ObjectGraphPruningStrategy");
+    class_<color_refinement::Certificate>(m, "CertificateColorRefinement");
+    class_<kfwl::Certificate<2>>(m, "Certificate2FWL");
+    class_<kfwl::Certificate<3>>(m, "Certificate3FWL");
+    class_<kfwl::Certificate<4>>(m, "Certificate4FWL");
+    class_<kfwl::IsomorphismTypeCompressionFunction>(m, "IsomorphismTypeCompressionFunction");
+
     init_requirements(m);
     init_object(m);
     init_variable(m);
@@ -172,7 +175,7 @@ void init_pymimir(py::module& m)
     init_domain(m);
     init_problem(m);
 
-    class_<PDDLParser>("PDDLParser")  //
+    class_<PDDLParser>(m, "PDDLParser")  //
         .def(py::init<std::string, std::string>(), py::arg("domain_path"), py::arg("problem_path"))
         .def("get_domain", &PDDLParser::get_domain, py::return_value_policy::reference_internal)
         .def("get_problem", &PDDLParser::get_problem, py::return_value_policy::reference_internal)
@@ -203,7 +206,7 @@ void init_pymimir(py::module& m)
           py::arg("pruning_strategy") = ObjectGraphPruningStrategy(),
           "Creates an object graph based on the provided parameters");
     // Color Refinement
-    class_<color_refinement::Certificate>("CertificateColorRefinement")
+    class_<color_refinement::Certificate>(m, "CertificateColorRefinement")
         .def("__eq__", [](const color_refinement::Certificate& lhs, const color_refinement::Certificate& rhs) { return lhs == rhs; })
         .def("__hash__", [](const color_refinement::Certificate& self) { return std::hash<color_refinement::Certificate>()(self); })
         .def("__str__",
@@ -227,7 +230,7 @@ void init_pymimir(py::module& m)
     {
         using CertificateK = kfwl::Certificate<K>;
 
-        class_<CertificateK>(class_name)
+        class_<CertificateK>(m, class_name.c_str())
             .def("__eq__", [](const CertificateK& lhs, const CertificateK& rhs) { return lhs == rhs; })
             .def("__hash__", [](const CertificateK& self) { return std::hash<CertificateK>()(self); })
             .def("__str__",
@@ -246,7 +249,7 @@ void init_pymimir(py::module& m)
     bind_kfwl_certificate("Certificate3FWL", std::integral_constant<size_t, 3> {});
     bind_kfwl_certificate("Certificate4FWL", std::integral_constant<size_t, 4> {});
 
-    class_<kfwl::IsomorphismTypeCompressionFunction>("IsomorphismTypeCompressionFunction")  //
+    class_<kfwl::IsomorphismTypeCompressionFunction>(m, "IsomorphismTypeCompressionFunction")  //
         .def(py::init<>());
 
     auto bind_compute_kfwl_certificate = [&]<size_t K>(const std::string& function_name, std::integral_constant<size_t, K>)

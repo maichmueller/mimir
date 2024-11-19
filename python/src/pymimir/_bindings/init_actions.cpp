@@ -14,7 +14,7 @@ void init_actions(py::module& m)
 
 
     /* Action */
-    class_<ActionImpl>("Action")  //
+    class_<ActionImpl>(m, "Action")  //
         .def("__str__", &ActionImpl::str)
         .def("__repr__", &ActionImpl::str)
         .def("get_index", &ActionImpl::get_index)
@@ -48,7 +48,7 @@ void init_actions(py::module& m)
     auto list_class = py::bind_vector<ActionList>(m, "ActionList");
     def_opaque_vector_repr<ActionList>(list_class, "ActionList");
 
-    class_<GroundActionImpl>("GroundAction")  //
+    class_<GroundActionImpl>(m, "GroundAction")  //
         .def("__hash__", [](const GroundActionImpl& obj) { return obj.get_index(); })
         .def("__eq__", [](const GroundActionImpl& a, const GroundActionImpl& b) { return a.get_index() == b.get_index(); })
         .def("to_string",

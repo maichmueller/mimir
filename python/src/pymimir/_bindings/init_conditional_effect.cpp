@@ -12,7 +12,7 @@ using namespace mimir::pymimir;
 
 void init_conditional_effect(py::module& m)
 {
-    class_<ConditionalEffect>("ConditionalEffect")
+    class_<ConditionalEffect>(m, "ConditionalEffect")
         .def("get_positive_condition", &all_atoms_from_conditions<true, const ConditionalEffect>)
         .def("get_fluent_positive_condition", &atoms_from_conditions<true, Fluent, ConditionalEffect>)
         .def("get_static_positive_condition", &atoms_from_conditions<true, Static, ConditionalEffect>)

@@ -10,7 +10,7 @@ void init_atoms(py::module& m)
 {
     auto bind_atom = [&]<typename Tag>(const std::string& class_name, Tag)
     {
-        class_<AtomImpl<Tag>>(class_name)
+        class_<AtomImpl<Tag>>(m, class_name.c_str())
             .def("__str__", &AtomImpl<Tag>::str)
             .def("__repr__", &AtomImpl<Tag>::str)
             .def("get_index", &AtomImpl<Tag>::get_index)

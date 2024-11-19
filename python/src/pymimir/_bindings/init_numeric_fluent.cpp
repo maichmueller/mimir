@@ -15,7 +15,7 @@ using namespace mimir::pymimir;
 void init_numeric_fluent(py::module& m)
 {
 
-    class_<NumericFluentImpl>("NumericFluent")  //
+    class_<NumericFluentImpl>(m, "NumericFluent")  //
         .def("__str__", &NumericFluentImpl::str)
         .def("__repr__", &NumericFluentImpl::str)
         .def("get_index", &NumericFluentImpl::get_index)

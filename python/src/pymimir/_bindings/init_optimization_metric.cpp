@@ -13,7 +13,7 @@ void init_optimization_metric(py::module& m)
 
 
     // dependent on ground function expression bindings!
-    class_<OptimizationMetricImpl>("OptimizationMetric")  //
+    class_<OptimizationMetricImpl>(m, "OptimizationMetric")  //
         .def("__str__", &OptimizationMetricImpl::str)
         .def("__repr__", &OptimizationMetricImpl::str)
         .def("get_index", &OptimizationMetricImpl::get_index)

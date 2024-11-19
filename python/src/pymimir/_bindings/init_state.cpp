@@ -11,7 +11,7 @@ using namespace mimir::pymimir;
 
 void init_state(py::module& m)
 {
-    class_<StateImpl>("State")  //
+    class_<StateImpl>(m, "State")  //
         .def("__hash__", CONST_OVERLOAD(StateImpl::get_index))
         .def("__eq__", [](const StateImpl& lhs, const StateImpl& rhs) { return lhs == rhs; })
         .def("__repr__",
@@ -115,7 +115,7 @@ void init_state(py::module& m)
     bind_const_index_grouped_vector<IndexGroupedVector<const State>>(m, "IndexGroupedVector");
 
     /* StateImplRepository */
-    class_<StateRepository, std::shared_ptr<StateRepository>>("StateRepository")  //
+    class_<StateRepository, std::shared_ptr<StateRepository>>(m, "StateRepository")  //
         .def(py::init<std::shared_ptr<IApplicableActionGenerator>>(), py::arg("applicable_action_generator"))
         .def("get_or_create_initial_state", &StateRepository::get_or_create_initial_state, py::return_value_policy::reference_internal)
         .def("get_or_create_state", &StateRepository::get_or_create_state, py::return_value_policy::reference_internal, py::arg("atoms"))

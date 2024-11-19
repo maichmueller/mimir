@@ -11,11 +11,11 @@ using namespace mimir::pymimir;
 void init_static_vertexcolored_graph(py::module& m)
 {
     // ColorFunction
-    class_<ColorFunction>("ColorFunction")  //
+    class_<ColorFunction>(m, "ColorFunction")  //
         .def("get_color_name", [](const ColorFunction& self, Color color) -> const std::string& { return self.get_color_name(color); }, py::arg("color"));
 
     // ProblemColorFunction
-    class_<ProblemColorFunction, ColorFunction>("ProblemColorFunction")  //
+    class_<ProblemColorFunction, ColorFunction>(m, "ProblemColorFunction")  //
         .def(py::init<Problem>(), py::arg("problem"))
         .def(
             "get_color",
@@ -65,14 +65,14 @@ void init_static_vertexcolored_graph(py::module& m)
         .def("get_color_to_name", &ProblemColorFunction::get_color_to_name, py::return_value_policy::reference_internal);
 
     // ColoredVertex
-    class_<ColoredVertex>("ColoredVertex")
+    class_<ColoredVertex>(m, "ColoredVertex")
         .def("__eq__", &ColoredVertex::operator==)
         .def("__hash__", [](const ColoredVertex& self) { return std::hash<ColoredVertex>()(self); })
         .def_property_readonly("index", &ColoredVertex::get_index)
         .def_property_readonly("color", [](const ColoredVertex& self) { return get_color(self); });
 
     // StaticVertexColoredDigraph
-    class_<StaticVertexColoredDigraph>("StaticVertexColoredDigraph")  //
+    class_<StaticVertexColoredDigraph>(m, "StaticVertexColoredDigraph")  //
         .def(py::init<>())
         .def(
             "to_string",

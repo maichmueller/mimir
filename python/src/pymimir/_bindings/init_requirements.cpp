@@ -14,7 +14,7 @@ using namespace mimir::pymimir;
 
 void init_requirements(py::module& m)
 {
-    class_<RequirementsImpl>("Requirements")  //
+    class_<RequirementsImpl>(m, "Requirements")  //
         .def("__str__", &RequirementsImpl::str)
         .def("__repr__", &RequirementsImpl::str)
         .def("get_index", &RequirementsImpl::get_index)

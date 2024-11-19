@@ -7,7 +7,7 @@ using namespace mimir;
 
 void init_enums(py::module& m)
 {
-    enum_<loki::RequirementEnum>("RequirementEnum")
+    py::enum_<loki::RequirementEnum>(m, "RequirementEnum")
         .value("STRIPS", loki::RequirementEnum::STRIPS)
         .value("TYPING", loki::RequirementEnum::TYPING)
         .value("NEGATIVE_PRECONDITIONS", loki::RequirementEnum::NEGATIVE_PRECONDITIONS)
@@ -29,7 +29,7 @@ void init_enums(py::module& m)
         .value("ACTION_COSTS", loki::RequirementEnum::ACTION_COSTS)
         .export_values();
 
-    enum_<loki::AssignOperatorEnum>("AssignOperatorEnum")
+    py::enum_<loki::AssignOperatorEnum>(m, "AssignOperatorEnum")
         .value("ASSIGN", loki::AssignOperatorEnum::ASSIGN)
         .value("SCALE_UP", loki::AssignOperatorEnum::SCALE_UP)
         .value("SCALE_DOWN", loki::AssignOperatorEnum::SCALE_DOWN)
@@ -37,31 +37,31 @@ void init_enums(py::module& m)
         .value("DECREASE", loki::AssignOperatorEnum::DECREASE)
         .export_values();
 
-    enum_<loki::BinaryOperatorEnum>("BinaryOperatorEnum")
+    py::enum_<loki::BinaryOperatorEnum>(m, "BinaryOperatorEnum")
         .value("MUL", loki::BinaryOperatorEnum::MUL)
         .value("PLUS", loki::BinaryOperatorEnum::PLUS)
         .value("MINUS", loki::BinaryOperatorEnum::MINUS)
         .value("DIV", loki::BinaryOperatorEnum::DIV)
         .export_values();
 
-    enum_<loki::MultiOperatorEnum>("MultiOperatorEnum")
+    py::enum_<loki::MultiOperatorEnum>(m, "MultiOperatorEnum")
         .value("MUL", loki::MultiOperatorEnum::MUL)
         .value("PLUS", loki::MultiOperatorEnum::PLUS)
         .export_values();
 
-    enum_<loki::OptimizationMetricEnum>("OptimizationMetricEnum")
+    py::enum_<loki::OptimizationMetricEnum>(m, "OptimizationMetricEnum")
         .value("MINIMIZE", loki::OptimizationMetricEnum::MINIMIZE)
         .value("MAXIMIZE", loki::OptimizationMetricEnum::MAXIMIZE)
         .export_values();
 
-    enum_<SearchNodeStatus>("SearchNodeStatus")
+    py::enum_<SearchNodeStatus>(m, "SearchNodeStatus")
         .value("NEW", SearchNodeStatus::NEW)
         .value("OPEN", SearchNodeStatus::OPEN)
         .value("CLOSED", SearchNodeStatus::CLOSED)
         .value("DEAD_END", SearchNodeStatus::DEAD_END)
         .export_values();
 
-    enum_<SearchStatus>("SearchStatus")
+    py::enum_<SearchStatus>(m, "SearchStatus")
         .value("IN_PROGRESS", SearchStatus::IN_PROGRESS)
         .value("OUT_OF_TIME", SearchStatus::OUT_OF_TIME)
         .value("OUT_OF_MEMORY", SearchStatus::OUT_OF_MEMORY)
@@ -71,7 +71,7 @@ void init_enums(py::module& m)
         .value("UNSOLVABLE", SearchStatus::UNSOLVABLE)
         .export_values();
 
-    enum_<ObjectGraphPruningStrategyEnum>("ObjectGraphPruningStrategyEnum")
+    py::enum_<ObjectGraphPruningStrategyEnum>(m, "ObjectGraphPruningStrategyEnum")
         .value("None", ObjectGraphPruningStrategyEnum::None)
         .value("StaticScc", ObjectGraphPruningStrategyEnum::StaticScc)
         .export_values();

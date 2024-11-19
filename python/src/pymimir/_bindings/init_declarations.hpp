@@ -61,50 +61,16 @@ inline auto& def_opaque_vector_repr(auto& cls, const std::string& class_name, Re
                    [=](const BoundVectorType& self) { return fmt::format("{}[{}]", class_name, fmt::join(std::views::transform(self, elem_repr), ",")); });
 }
 
-using ClassMap = std::unordered_map<std::string, std::any, mimir::StringHashTransparent, mimir::StringEqualTransparent>;
-
-struct TypeRegister
-{
-    static auto define(auto&&... args) { return map().emplace(FWD(args)...); }
-
-    static auto define(auto&& key, auto&& value)
-    {
-        fmt::print("All keys so far: {}\n", fmt::join(map() | std::views::keys, ",\n"));
-        fmt::print("Emplacing: {}\n", key);
-        fflush(stdout);
-        auto v= map().emplace(FWD(key), FWD(value));
-        fmt::print("All keys after emplace: {}\n", fmt::join(map() | std::views::keys, ",\n"));
-        fflush(stdout);
-        return v;
-    }
-
-    template<template<class...> class PyTemplate, typename Class_, typename... Options>
-    static PyTemplate<Class_, Options...>& get(std::string_view cls_name)
-    {
-        auto it = map().find(cls_name);
-        if (it == map().end())
-        {
-            fmt::print("All keys emplaced: {}\n", fmt::join(map() | std::views::keys, ", "));
-            fflush(stdout);
-            throw std::runtime_error(fmt::format("'{}' not found in class map", cls_name));
-        }
-        return *std::any_cast<PyTemplate<Class_, Options...>>(&it->second);
-    }
-
-    static ClassMap& map();
-};
-
 template<typename Class_, typename... Options>
-py::class_<Class_, Options...>& class_(std::string_view cls_name)
+py::class_<Class_, Options...> class_(pybind11::module_& m, const char* cls_name)
 {
-    return TypeRegister::get<py::class_, Class_, Options...>(cls_name);
+    if (py::hasattr(m, cls_name))
+    {
+        return py::class_<Class_, Options...>(m.attr(cls_name));
+    }
+    return py::class_<Class_, Options...>(m, cls_name);
 }
 
-template<typename Class_>
-py::enum_<Class_>& enum_(std::string_view cls_name)
-{
-    return TypeRegister::get<py::enum_, Class_>(cls_name);
-}
 
 //
 // init - declarations:

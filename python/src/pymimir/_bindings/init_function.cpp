@@ -14,7 +14,7 @@ void init_function(py::module& m)
 
 
 
-    class_<FunctionSkeletonImpl>("FunctionSkeleton")  //
+    class_<FunctionSkeletonImpl>(m, "FunctionSkeleton")  //
         .def("__str__", &FunctionSkeletonImpl::str)
         .def("__repr__", &FunctionSkeletonImpl::str)
         .def("get_index", &FunctionSkeletonImpl::get_index)
@@ -24,7 +24,7 @@ void init_function(py::module& m)
     auto list_class = py::bind_vector<FunctionSkeletonList>(m, "FunctionSkeletonList");
     def_opaque_vector_repr<FunctionSkeletonList>(list_class, "FunctionSkeletonList");
 
-    class_<FunctionImpl>("Function")  //
+    class_<FunctionImpl>(m, "Function")  //
         .def("__str__", &FunctionImpl::str)
         .def("__repr__", &FunctionImpl::str)
         .def("get_index", &FunctionImpl::get_index)
@@ -34,7 +34,7 @@ void init_function(py::module& m)
     list_class = py::bind_vector<FunctionList>(m, "FunctionList");
     def_opaque_vector_repr<FunctionSkeletonList>(list_class, "FunctionList");
 
-    class_<GroundFunctionImpl>("GroundFunction")  //
+    class_<GroundFunctionImpl>(m, "GroundFunction")  //
         .def("__str__", &GroundFunctionImpl::str)
         .def("__repr__", &GroundFunctionImpl::str)
         .def("get_index", &GroundFunctionImpl::get_index)

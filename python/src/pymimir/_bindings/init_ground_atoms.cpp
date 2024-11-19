@@ -8,11 +8,9 @@ using namespace mimir;
 
 void init_ground_atoms(py::module& m)
 {
-
-
     auto bind_ground_atom = [&]<typename Tag>(const std::string& class_name, Tag)
     {
-        class_<GroundAtomImpl<Tag>>(class_name)
+        class_<GroundAtomImpl<Tag>>(m, class_name.c_str())
             .def("__str__", &GroundAtomImpl<Tag>::str)
             .def("__repr__", &GroundAtomImpl<Tag>::str)
             .def("get_index", &GroundAtomImpl<Tag>::get_index)

@@ -14,7 +14,7 @@ using namespace mimir::pymimir;
 
 void init_termobject(py::module& m)
 {
-    class_<TermObjectImpl>("TermObject")  //
+    class_<TermObjectImpl>(m, "TermObject")  //
         .def("__str__", &TermObjectImpl::str)
         .def("__repr__", &TermObjectImpl::str)
         .def("get_index", &TermObjectImpl::get_index)

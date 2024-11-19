@@ -1,16 +1,16 @@
 #include "init_declarations.hpp"
 #include "mimir/mimir.hpp"
-#include "utils.hpp"
 #include "opaque_types.hpp"
+#include "utils.hpp"
+
 #include <pybind11/pybind11.h>
 namespace py = pybind11;
 using namespace mimir;
 
 void init_abstraction(py::module& m)
 {
-
     // FaithfulAbstraction
-    class_<FaithfulAbstractionOptions>("FaithfulAbstractionOptions")
+    class_<FaithfulAbstractionOptions>(m, "FaithfulAbstractionOptions")
         .def(py::init<bool, bool, bool, bool, uint32_t, uint32_t, uint32_t, ObjectGraphPruningStrategyEnum>(),
              py::arg("mark_true_goal_literals") = false,
              py::arg("use_unit_cost_one") = true,
@@ -29,7 +29,7 @@ void init_abstraction(py::module& m)
         .def_readwrite("timeout_ms", &FaithfulAbstractionOptions::timeout_ms)
         .def_readwrite("pruning_strategy", &FaithfulAbstractionOptions::pruning_strategy);
 
-    class_<FaithfulAbstractionsOptions>("FaithfulAbstractionsOptions")
+    class_<FaithfulAbstractionsOptions>(m, "FaithfulAbstractionsOptions")
         .def(py::init<FaithfulAbstractionOptions, bool, uint32_t>(),
              py::arg("fa_options") = FaithfulAbstractionOptions(),
              py::arg("sort_ascending_by_num_states") = true,
@@ -38,7 +38,7 @@ void init_abstraction(py::module& m)
         .def_readwrite("sort_ascending_by_num_states", &FaithfulAbstractionsOptions::sort_ascending_by_num_states)
         .def_readwrite("num_threads", &FaithfulAbstractionsOptions::num_threads);
 
-    class_<FaithfulAbstractStateVertex>("FaithfulAbstractStateVertex")
+    class_<FaithfulAbstractStateVertex>(m, "FaithfulAbstractStateVertex")
         .def("get_index", &FaithfulAbstractStateVertex::get_index)
         .def(
             "get_state_vertices",
@@ -50,7 +50,7 @@ void init_abstraction(py::module& m)
             py::keep_alive<0, 1>())
         .def("get_certificate", [](const FaithfulAbstractStateVertex& self) { return get_certificate(self); }, py::return_value_policy::reference_internal);
 
-    class_<FaithfulAbstraction, std::shared_ptr<FaithfulAbstraction>>("FaithfulAbstraction")
+    class_<FaithfulAbstraction, std::shared_ptr<FaithfulAbstraction>>(m, "FaithfulAbstraction")
         .def("__str__",
              [](const FaithfulAbstraction& self)
              {
@@ -198,7 +198,7 @@ void init_abstraction(py::module& m)
 
     // GlobalFaithfulAbstraction
 
-    class_<GlobalFaithfulAbstractState>("GlobalFaithfulAbstractState")
+    class_<GlobalFaithfulAbstractState>(m, "GlobalFaithfulAbstractState")
         .def("__eq__", &GlobalFaithfulAbstractState::operator==)
         .def("__hash__", [](const GlobalFaithfulAbstractState& self) { return std::hash<GlobalFaithfulAbstractState>()(self); })
         .def("get_index", &GlobalFaithfulAbstractState::get_index)
@@ -206,7 +206,7 @@ void init_abstraction(py::module& m)
         .def("get_faithful_abstraction_index", &GlobalFaithfulAbstractState::get_faithful_abstraction_index)
         .def("get_faithful_abstract_state_index", &GlobalFaithfulAbstractState::get_faithful_abstract_state_index);
 
-    class_<GlobalFaithfulAbstraction, std::shared_ptr<GlobalFaithfulAbstraction>>("GlobalFaithfulAbstraction")
+    class_<GlobalFaithfulAbstraction, std::shared_ptr<GlobalFaithfulAbstraction>>(m, "GlobalFaithfulAbstraction")
         .def("__str__",
              [](const GlobalFaithfulAbstraction& self)
              {
@@ -341,9 +341,8 @@ void init_abstraction(py::module& m)
         .def("get_num_transitions", &GlobalFaithfulAbstraction::get_num_transitions)
         .def("get_goal_distances", &GlobalFaithfulAbstraction::get_goal_distances, py::return_value_policy::reference_internal);
 
-
     // Abstraction
-    class_<Abstraction, std::shared_ptr<Abstraction>>("Abstraction")  //
+    class_<Abstraction, std::shared_ptr<Abstraction>>(m, "Abstraction")  //
         .def(py::init<FaithfulAbstraction>(), py::arg("faithful_abstraction"))
         .def(py::init<GlobalFaithfulAbstraction>(), py::arg("global_faithful_abstraction"))
         .def("get_problem", &Abstraction::get_problem, py::return_value_policy::reference_internal)
@@ -417,5 +416,4 @@ void init_abstraction(py::module& m)
             py::arg("state_index"))
         .def("get_num_transitions", &Abstraction::get_num_transitions)
         .def("get_goal_distances", &Abstraction::get_goal_distances, py::return_value_policy::reference_internal);
-
 }

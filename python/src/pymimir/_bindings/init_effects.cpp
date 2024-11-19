@@ -12,7 +12,7 @@ using namespace mimir::pymimir;
 void init_effects(py::module& m)
 {
 
-    class_<EffectSimpleImpl>("EffectSimple")  //
+    class_<EffectSimpleImpl>(m, "EffectSimple")  //
         .def("__str__", &EffectSimpleImpl::str)
         .def("__repr__", &EffectSimpleImpl::str)
         .def("get_index", &EffectSimpleImpl::get_index)
@@ -21,7 +21,7 @@ void init_effects(py::module& m)
     auto list_class = py::bind_vector<EffectSimpleList>(m, "EffectSimpleList");
     def_opaque_vector_repr<EffectSimpleList>(list_class, "EffectSimpleList");
 
-    class_<EffectComplexImpl>("EffectComplex")  //
+    class_<EffectComplexImpl>(m, "EffectComplex")  //
         .def("__str__", &EffectComplexImpl::str)
         .def("__repr__", &EffectComplexImpl::str)
         .def("get_index", &EffectComplexImpl::get_index)
@@ -46,7 +46,7 @@ void init_effects(py::module& m)
     list_class = py::bind_vector<EffectComplexList>(m, "EffectComplexList");
     def_opaque_vector_repr<EffectComplexList>(list_class, "EffectComplexList");
 
-    class_<StripsActionEffect>("StripsActionEffect")
+    class_<StripsActionEffect>(m, "StripsActionEffect")
         .def("get_negative_effects",
              [](const StripsActionEffect& self, const PDDLFactories& factories)
              { return factories.get_ground_atoms_from_indices<mimir::Fluent>(self.get_negative_effects()); })
@@ -56,7 +56,7 @@ void init_effects(py::module& m)
         .def("get_negative_effect_indices", CONST_OVERLOAD(StripsActionEffect::get_negative_effects), py::return_value_policy::copy)
         .def("get_negative_effect_indices", CONST_OVERLOAD(StripsActionEffect::get_positive_effects), py::return_value_policy::copy);
 
-    class_<SimpleFluentEffect>("SimpleFluentEffect")
+    class_<SimpleFluentEffect>(m, "SimpleFluentEffect")
         .def_readonly("is_negated", &SimpleFluentEffect::is_negated)
         .def_readonly("atom_index", &SimpleFluentEffect::atom_index);
 }
