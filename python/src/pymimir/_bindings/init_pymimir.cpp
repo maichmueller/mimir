@@ -11,33 +11,6 @@ namespace py = pybind11;
 using namespace mimir;
 using namespace mimir::pymimir;
 
-template<PredicateCategory P>
-constexpr std::string tag_name()
-{
-    if constexpr (std::is_same_v<P, Static>)
-    {
-        return "Static";
-    }
-    else if constexpr (std::is_same_v<P, Fluent>)
-    {
-        return "Fluent";
-    }
-    else if constexpr (std::is_same_v<P, Derived>)
-    {
-        return "Derived";
-    }
-    else
-    {
-        static_assert(dependent_false<P>::value, "non-exhaustive visitor!");
-    }
-}
-
-void for_each_tag(auto&& f)
-{
-    f(Static {});
-    f(Fluent {});
-    f(Derived {});
-}
 
 void init_pymimir(py::module& m)
 {
@@ -184,140 +157,36 @@ void init_pymimir(py::module& m)
     class_<kfwl::Certificate<4>>(m, "Certificate4FWL");
     class_<kfwl::IsomorphismTypeCompressionFunction>(m, "IsomorphismTypeCompressionFunction");
 
-    auto GroundActionListClass = py::bind_vector<GroundActionList>(m, "GroundActionList");
-    auto EffectComplexListClass = py::bind_vector<EffectComplexList>(m, "EffectComplexList");
-    auto GroundFunctionExpressionVariantListClass = py::bind_vector<GroundFunctionExpressionVariantList>(m, "GroundFunctionExpressionVariantList");
-    auto StateListClass = py::bind_vector<StateList>(m, "StateList");
-    auto EffectSimpleListClass = py::bind_vector<EffectSimpleList>(m, "EffectSimpleList");
-    auto ActionListClass = py::bind_vector<ActionList>(m, "ActionList");
-    auto ProblemListClass = py::bind_vector<ProblemList>(m, "ProblemList");
-    auto AxiomListClass = py::bind_vector<AxiomList>(m, "AxiomList");
-    auto VariableListClass = py::bind_vector<VariableList>(m, "VariableList");
-    auto DomainListClass = py::bind_vector<DomainList>(m, "DomainList");
-    auto FunctionExpressionVariantListClass = py::bind_vector<FunctionExpressionVariantList>(m, "FunctionExpressionVariantList");
-    auto FunctionSkeletonListClass = py::bind_vector<FunctionSkeletonList>(m, "FunctionSkeletonList");
-    auto FunctionListClass = py::bind_vector<FunctionList>(m, "FunctionList");
-    auto GroundFunctionListClass = py::bind_vector<GroundFunctionList>(m, "GroundFunctionList");
-    auto NumericFluentListClass = py::bind_vector<NumericFluentList>(m, "NumericFluentList");
-    auto ObjectListClass = py::bind_vector<ObjectList>(m, "ObjectList");
-    auto TermVariantListClass = py::bind_vector<TermVariantList>(m, "TermVariantList");
-
-    def_opaque_vector_repr(GroundActionListClass, "GroundActionList");
-    bind_const_span<std::span<const GroundAction>>(m, "GroundActionSpan");
-    static_assert(!py::detail::vector_needs_copy<GroundActionList>::value);  // Ensure return by reference + keep alive
-
+    py::bind_vector<GroundActionList>(m, "GroundActionList");
+    py::bind_vector<EffectComplexList>(m, "EffectComplexList");
+    py::bind_vector<GroundFunctionExpressionVariantList>(m, "GroundFunctionExpressionVariantList");
+    py::bind_vector<StateList>(m, "StateList");
+    py::bind_vector<EffectSimpleList>(m, "EffectSimpleList");
+    py::bind_vector<ActionList>(m, "ActionList");
+    py::bind_vector<ProblemList>(m, "ProblemList");
+    py::bind_vector<AxiomList>(m, "AxiomList");
+    py::bind_vector<VariableList>(m, "VariableList");
+    py::bind_vector<DomainList>(m, "DomainList");
+    py::bind_vector<FunctionExpressionVariantList>(m, "FunctionExpressionVariantList");
+    py::bind_vector<FunctionSkeletonList>(m, "FunctionSkeletonList");
+    py::bind_vector<FunctionList>(m, "FunctionList");
+    py::bind_vector<GroundFunctionList>(m, "GroundFunctionList");
+    py::bind_vector<NumericFluentList>(m, "NumericFluentList");
+    py::bind_vector<ObjectList>(m, "ObjectList");
+    py::bind_vector<TermVariantList>(m, "TermVariantList");
     for_each_tag(
         [&]<typename Tag>(Tag)
         {
-            static_assert(!py::detail::vector_needs_copy<AtomList<Tag>>::value);
-            std::string class_name = tag_name<Tag>() + "AtomList";
-            auto atom_list_class = py::bind_vector<AtomList<Tag>>(m, class_name);
-            def_opaque_vector_repr(atom_list_class, class_name);
+            std::string tag = tag_name<Tag>();
+            py::bind_vector<AtomList<Tag>>(m, tag + "AtomList");
+            py::bind_vector<LiteralList<Tag>>(m, tag + "LiteralList");
+            py::bind_vector<GroundLiteralList<Tag>>(m, tag + "GroundLiteralList");
+            py::bind_vector<GroundAtomList<Tag>>(m, tag + "GroundAtomList");
+            py::bind_vector<PredicateList<Tag>>(m, tag + "PredicateList");
+            py::bind_map<ToPredicateMap<std::string, Tag>>(m, "StringTo" + tag + "PredicateMap");
         });
 
-    static_assert(!py::detail::vector_needs_copy<EffectComplexList>::value);  // Ensure return by reference + keep alive
-    def_opaque_vector_repr(EffectComplexListClass, "EffectComplexList");
-
-    static_assert(!py::detail::vector_needs_copy<GroundFunctionExpressionVariantList>::value);  // Ensure return by reference + keep alive
-    def_opaque_vector_repr(GroundFunctionExpressionVariantListClass, "GroundFunctionExpressionVariantList");
-
-    static_assert(!py::detail::vector_needs_copy<StateList>::value);  // Ensure return by reference + keep alive
-    def_opaque_vector_repr(StateListClass, "StateList");
-    bind_const_span<std::span<const State>>(m, "StateSpan");
-    bind_const_index_grouped_vector<IndexGroupedVector<const State>>(m, "IndexGroupedVector");
-
-    static_assert(!py::detail::vector_needs_copy<EffectSimpleList>::value);  // Ensure return by reference + keep alive
-    def_opaque_vector_repr(EffectSimpleListClass, "EffectSimpleList");
-
-    static_assert(!py::detail::vector_needs_copy<ActionList>::value);  // Ensure return by reference + keep alive
-    def_opaque_vector_repr(ActionListClass, "ActionList");
-
-    static_assert(!py::detail::vector_needs_copy<ProblemList>::value);  // Ensure return by reference + keep alive
-    def_opaque_vector_repr(ProblemListClass, "ProblemList");
-
-    static_assert(!py::detail::vector_needs_copy<AxiomList>::value);  // Ensure return by reference + keep alive
-    def_opaque_vector_repr(AxiomListClass, "AxiomList");
-
-    static_assert(!py::detail::vector_needs_copy<VariableList>::value);  // Ensure return by reference + keep alive
-    def_opaque_vector_repr(VariableListClass, "VariableList");
-
-    static_assert(!py::detail::vector_needs_copy<DomainList>::value);  // Ensure return by reference + keep alive
-    def_opaque_vector_repr(DomainListClass, "DomainList");
-
-    static_assert(!py::detail::vector_needs_copy<FunctionExpressionVariantList>::value);  // Ensure return by reference + keep alive
-    def_opaque_vector_repr(FunctionExpressionVariantListClass, "FunctionExpressionVariantList");
-
-    static_assert(!py::detail::vector_needs_copy<FunctionSkeletonList>::value);  // Ensure return by reference + keep alive
-    def_opaque_vector_repr(FunctionSkeletonListClass, "FunctionSkeletonList");
-
-    static_assert(!py::detail::vector_needs_copy<FunctionList>::value);  // Ensure return by reference + keep alive
-    def_opaque_vector_repr(FunctionListClass, "FunctionList");
-
-    static_assert(!py::detail::vector_needs_copy<GroundFunctionList>::value);  // Ensure return by reference + keep alive
-    def_opaque_vector_repr(GroundFunctionListClass, "GroundFunctionList");
-
-    static_assert(!py::detail::vector_needs_copy<NumericFluentList>::value);  // Ensure return by reference + keep alive
-    def_opaque_vector_repr(NumericFluentListClass, "NumericFluentList");
-
-    // PredicateList
-    for_each_tag(
-        [&]<typename Tag>(Tag)
-        {
-            static_assert(!py::detail::vector_needs_copy<PredicateList<Tag>>::value);
-            std::string class_name = tag_name<Tag>() + "PredicateList";
-            auto predicate_list = py::bind_vector<PredicateList<Tag>>(m, class_name);
-            def_opaque_vector_repr(predicate_list, class_name);
-            py::bind_map<ToPredicateMap<std::string, Tag>>(m, "StringTo" + tag_name<Tag>() + "PredicateMap");
-        });
-
-    {
-        static_assert(!py::detail::vector_needs_copy<ObjectList>::value);  // Ensure return by reference + keep alive
-        def_opaque_vector_repr(ObjectListClass, "ObjectList");
-    }
-
-    {
-        static_assert(!py::detail::vector_needs_copy<TermVariantList>::value);  // Ensure return by reference + keep alive
-        def_opaque_vector_repr(TermVariantListClass, "TermVariantList", [](const TermVariant& elem) { return std::visit(repr_visitor, *elem.term); });
-    }
-
-    // LiteralList
-    for_each_tag(
-        [&]<typename Tag>(Tag)
-        {
-            static_assert(!py::detail::vector_needs_copy<LiteralList<Tag>>::value);
-            std::string class_name = tag_name<Tag>() + "LiteralList";
-            auto literal_list_class = py::bind_vector<LiteralList<Tag>>(m, class_name);
-            def_opaque_vector_repr(literal_list_class, class_name);
-        });
-
-    // GroundLiteralList
-    for_each_tag(
-        [&]<typename Tag>(Tag)
-        {
-            static_assert(!py::detail::vector_needs_copy<GroundLiteralList<Tag>>::value);
-            std::string class_name = tag_name<Tag>() + "GroundLiteralList";
-            auto list_class =
-                py::bind_vector<GroundLiteralList<Tag>>(m, class_name + "List")
-                    .def(
-                        "lift",
-                        [](const GroundLiteralList<Tag>& ground_literals, PDDLFactories& pddl_factories) { return lift(ground_literals, pddl_factories); },
-                        py::arg("pddl_factories"));
-            def_opaque_vector_repr(list_class, class_name);
-        });
-
-    // GroundAtomList
-    for_each_tag(
-        [&]<typename Tag>(Tag)
-        {
-            static_assert(!py::detail::vector_needs_copy<GroundAtomList<Tag>>::value);
-            std::string class_name = tag_name<Tag>() + "GroundAtomList";
-            auto list_class = py::bind_vector<GroundAtomList<Tag>>(m, class_name + "List")
-                                  .def(
-                                      "lift",
-                                      [](const GroundAtomList<Tag>& ground_atoms, PDDLFactories& pddl_factories) { return lift(ground_atoms, pddl_factories); },
-                                      py::arg("pddl_factories"));
-            def_opaque_vector_repr<GroundAtomList<Tag>>(list_class, class_name);
-        });
+    init_lists(m);
     init_requirements(m);
     init_object(m);
     init_variable(m);

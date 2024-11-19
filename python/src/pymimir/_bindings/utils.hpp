@@ -125,6 +125,35 @@ py::list all_atoms_from_conditions(const Self& self, const py::object& py_factor
 constexpr auto cast_visitor = AS_LAMBDA(py::cast);
 constexpr auto repr_visitor = AS_LAMBDA([](const auto& arg) { return arg.str(); });
 
+void for_each_tag(auto&& f)
+{
+    f(Static {});
+    f(Fluent {});
+    f(Derived {});
+}
+
+template<PredicateCategory P>
+constexpr std::string tag_name()
+{
+    if constexpr (std::is_same_v<P, Static>)
+    {
+        return "Static";
+    }
+    else if constexpr (std::is_same_v<P, Fluent>)
+    {
+        return "Fluent";
+    }
+    else if constexpr (std::is_same_v<P, Derived>)
+    {
+        return "Derived";
+    }
+    else
+    {
+        static_assert(dependent_false<P>::value, "non-exhaustive visitor!");
+    }
+}
+
+
 /// @brief Binds a std::span<T> as an unmodifiable python object.
 /// Modifiable std::span are more complicated.
 /// Hence, we use std::span exclusively for unmodifiable data,
