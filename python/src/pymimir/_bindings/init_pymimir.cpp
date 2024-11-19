@@ -39,6 +39,7 @@ void init_pymimir(py::module& m)
     class_<LiteralImpl<Fluent>>(m, "FluentLiteral");
     class_<LiteralImpl<Derived>>(m, "DerivedLiteral");
     class_<AxiomImpl>(m, "Axiom");
+    class_<GroundAxiomImpl>(m, "GroundAxiomImpl");
     class_<NumericFluentImpl>(m, "NumericFluent");
     class_<EffectSimpleImpl>(m, "EffectSimple");
     class_<EffectComplexImpl>(m, "EffectComplex");
@@ -175,9 +176,8 @@ void init_pymimir(py::module& m)
     py::bind_vector<ObjectList>(m, "ObjectList");
     py::bind_vector<TermVariantList>(m, "TermVariantList");
     for_each_tag(
-        [&]<typename Tag>(Tag)
+        [&]<typename Tag>(Tag, std::string tag = tag_name<Tag>())
         {
-            std::string tag = tag_name<Tag>();
             py::bind_vector<AtomList<Tag>>(m, tag + "AtomList");
             py::bind_vector<LiteralList<Tag>>(m, tag + "LiteralList");
             py::bind_vector<GroundLiteralList<Tag>>(m, tag + "GroundLiteralList");
