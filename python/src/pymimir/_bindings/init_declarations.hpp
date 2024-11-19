@@ -14,6 +14,7 @@
 #include "mimir/formalism/variable.hpp"
 #include "mimir/utils/utils.hpp"
 #include "opaque_types.hpp"
+#include "type_casters.hpp"
 
 #include <any>
 #include <fmt/format.h>
@@ -35,6 +36,15 @@
 //
 // utilities
 //
+template<typename Class_, typename... Options>
+py::class_<Class_, Options...> class_(pybind11::module_& m, const char* cls_name)
+{
+    if (py::hasattr(m, cls_name))
+    {
+        return py::class_<Class_, Options...>(m.attr(cls_name));
+    }
+    return py::class_<Class_, Options...>(m, cls_name);
+}
 
 struct default_elem_repr
 {
@@ -45,30 +55,26 @@ struct default_elem_repr
     }
 };
 
-template<typename BoundVectorType, typename ReprFunctor = default_elem_repr>
-inline auto& def_opaque_vector_repr(auto& cls, const std::string& class_name, ReprFunctor elem_repr = ReprFunctor {})
+template<typename BoundVectorType, typename ReprFunctor = default_elem_repr, typename... Options>
+inline auto def_opaque_vector_repr(py::class_<BoundVectorType, Options...> cls, const std::string_view class_name, ReprFunctor elem_repr = ReprFunctor {})
 {
-    return cls;
-}
-
-template<typename BoundVectorType, typename ReprFunctor = default_elem_repr>
-    requires requires(typename BoundVectorType::value_type elem) {
-        { mimir::deref(elem).str() } -> std::convertible_to<std::string>;
-    }
-inline auto& def_opaque_vector_repr(auto& cls, const std::string& class_name, ReprFunctor elem_repr = ReprFunctor {})
-{
-    return cls.def("__str__",
-                   [=](const BoundVectorType& self) { return fmt::format("{}[{}]", class_name, fmt::join(std::views::transform(self, elem_repr), ",")); });
-}
-
-template<typename Class_, typename... Options>
-py::class_<Class_, Options...> class_(pybind11::module_& m, const char* cls_name)
-{
-    if (py::hasattr(m, cls_name))
+    if constexpr (requires(typename BoundVectorType::value_type elem) {
+                      { mimir::deref(elem).str() } -> std::convertible_to<std::string>;
+                  })
     {
-        return py::class_<Class_, Options...>(m.attr(cls_name));
+        return cls.def("__str__",
+                            [=](const BoundVectorType& self) { return fmt::format("{}[{}]", class_name, fmt::join(std::views::transform(self, elem_repr), ",")); });
     }
-    return py::class_<Class_, Options...>(m, cls_name);
+    else
+    {
+        return cls;
+    }
+}
+
+template<typename BoundVectorType, typename ReprFunctor = default_elem_repr>
+inline auto def_opaque_vector_repr(py::module_& m, const std::string& class_name, ReprFunctor elem_repr = ReprFunctor {})
+{
+    return def_opaque_vector_repr(class_<BoundVectorType>(m, class_name.c_str()), class_name, elem_repr);
 }
 
 
@@ -86,7 +92,7 @@ DECLARE_INIT_FUNC(atoms);
 DECLARE_INIT_FUNC(ground_atoms);
 DECLARE_INIT_FUNC(nauty_wrappers);
 DECLARE_INIT_FUNC(conditional_effect);
-DECLARE_INIT_FUNC(flatbitset);
+DECLARE_INIT_FUNC(cista_types);
 DECLARE_INIT_FUNC(algorithms);
 DECLARE_INIT_FUNC(literals);
 DECLARE_INIT_FUNC(axiom);

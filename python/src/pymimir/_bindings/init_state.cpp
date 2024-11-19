@@ -108,11 +108,6 @@ void init_state(py::module& m)
             py::arg("problem"),
             py::arg("pddl_factories"))
         .def("get_index", CONST_OVERLOAD(StateImpl::get_index));
-    static_assert(!py::detail::vector_needs_copy<StateList>::value);  // Ensure return by reference + keep alive
-    auto list_class = py::bind_vector<StateList>(m, "StateList");
-    def_opaque_vector_repr<StateList>(list_class, "StateList");
-    bind_const_span<std::span<const State>>(m, "StateSpan");
-    bind_const_index_grouped_vector<IndexGroupedVector<const State>>(m, "IndexGroupedVector");
 
     /* StateImplRepository */
     class_<StateRepository, std::shared_ptr<StateRepository>>(m, "StateRepository")  //

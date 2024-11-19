@@ -19,10 +19,6 @@ void init_ground_function_expression(py::module& m)
             [](const GroundFunctionExpressionVariant& arg) -> py::object { return std::visit(cast_visitor, *arg.function_expression); },
             py::keep_alive<0, 1>());
 
-    static_assert(!py::detail::vector_needs_copy<GroundFunctionExpressionVariantList>::value);  // Ensure return by reference + keep alive
-    auto list_class = py::bind_vector<GroundFunctionExpressionVariantList>(m, "GroundFunctionExpressionVariantList");
-    def_opaque_vector_repr<GroundFunctionExpressionVariantList>(list_class, "GroundFunctionExpressionVariantList");
-
     class_<GroundFunctionExpressionNumberImpl>(m, "GroundFunctionExpressionNumber")  //
         .def("__str__", &GroundFunctionExpressionNumberImpl::str)
         .def("__repr__", &GroundFunctionExpressionNumberImpl::str)

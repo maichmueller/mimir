@@ -26,7 +26,5 @@ void init_axiom(py::module& m)
             [](const AxiomImpl& self) { return LiteralList<Derived>(self.get_conditions<Derived>()); },
             py::keep_alive<0, 1>())
         .def("get_arity", &AxiomImpl::get_arity);
-    static_assert(!py::detail::vector_needs_copy<AxiomList>::value);  // Ensure return by reference + keep alive
-    auto list_class = py::bind_vector<AxiomList>(m, "AxiomList");
-    def_opaque_vector_repr<AxiomList>(list_class, "AxiomList");
+
 }

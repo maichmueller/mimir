@@ -20,10 +20,6 @@ void init_predicates(py::module& m)
                 py::keep_alive<0, 1>())
             .def("get_arity", &PredicateImpl<Tag>::get_arity);
 
-        static_assert(!py::detail::vector_needs_copy<PredicateList<Tag>>::value);
-        auto predicate_list = py::bind_vector<PredicateList<Tag>>(m, class_name + "List");
-        def_opaque_vector_repr<PredicateList<Tag>>(predicate_list, class_name + "List");
-        py::bind_map<ToPredicateMap<std::string, Tag>>(m, "StringTo" + class_name + "Map");
     };
     bind_predicate("StaticPredicate", Static {});
     bind_predicate("FluentPredicate", Fluent {});

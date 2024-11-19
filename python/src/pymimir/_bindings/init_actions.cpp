@@ -44,9 +44,6 @@ void init_actions(py::module& m)
             [](const ActionImpl& self) { return EffectComplexList(self.get_complex_effects()); },
             py::keep_alive<0, 1>())
         .def("get_arity", &ActionImpl::get_arity);
-    static_assert(!py::detail::vector_needs_copy<ActionList>::value);  // Ensure return by reference + keep alive
-    auto list_class = py::bind_vector<ActionList>(m, "ActionList");
-    def_opaque_vector_repr<ActionList>(list_class, "ActionList");
 
     class_<GroundActionImpl>(m, "GroundAction")  //
         .def("__hash__", [](const GroundActionImpl& obj) { return obj.get_index(); })
@@ -74,8 +71,4 @@ void init_actions(py::module& m)
         .def(
             "get_conditional_effects",
             [](const GroundActionImpl& self) { return insert_into_list(as_range(self.get_conditional_effects().begin(), self.get_conditional_effects().end())); });
-    static_assert(!py::detail::vector_needs_copy<GroundActionList>::value);  // Ensure return by reference + keep alive
-    list_class = py::bind_vector<GroundActionList>(m, "GroundActionList");
-    def_opaque_vector_repr<GroundActionList>(list_class, "GroundActionList");
-    bind_const_span<std::span<const GroundAction>>(m, "GroundActionSpan");
 }

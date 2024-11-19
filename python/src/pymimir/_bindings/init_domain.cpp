@@ -69,7 +69,5 @@ using namespace mimir::pymimir;
             "get_name_to_derived_predicate",
             [](const DomainImpl& self) { return ToPredicateMap<std::string, Derived>(self.get_name_to_predicate<Derived>()); },
             py::keep_alive<0, 1>());
-    static_assert(!py::detail::vector_needs_copy<DomainList>::value);  // Ensure return by reference + keep alive
-    auto list_class = py::bind_vector<DomainList>(m, "DomainList");
-    def_opaque_vector_repr<DomainList>(list_class, "DomainList");
+
 }

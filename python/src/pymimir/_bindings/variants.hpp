@@ -2,12 +2,14 @@
 #ifndef PYMIMIR_VARIANTS_HPP
 #define PYMIMIR_VARIANTS_HPP
 
-#include <pybind11/pybind11.h>
 #include "init_declarations.hpp"
+
+#include <pybind11/pybind11.h>
 namespace py = pybind11;
 #include "mimir/mimir.hpp"
 
-namespace mimir::pymimir {
+namespace mimir::pymimir
+{
 
 /**
  * We cannot expose the variant types directly because they are not default constructible.
@@ -37,37 +39,16 @@ struct GroundFunctionExpressionVariant
 
 using GroundFunctionExpressionVariantList = std::vector<GroundFunctionExpressionVariant>;
 
-inline TermVariantList to_term_variant_list(const TermList& terms)
-{
-    auto result = TermVariantList {};
-    result.reserve(terms.size());
-    for (const auto& term : terms)
-    {
-        result.push_back(TermVariant(term));
-    }
-    return result;
-}
+inline TermVariantList to_term_variant_list(const TermList& terms) { return ranges::to_vector(terms | std::views::transform(AS_LAMBDA(TermVariant))); }
 
 inline FunctionExpressionVariantList to_function_expression_variant_list(const FunctionExpressionList& function_expressions)
 {
-    auto result = FunctionExpressionVariantList {};
-    result.reserve(function_expressions.size());
-    for (const auto& function_expression : function_expressions)
-    {
-        result.push_back(FunctionExpressionVariant(function_expression));
-    }
-    return result;
+    return ranges::to_vector(function_expressions | std::views::transform(AS_LAMBDA(FunctionExpressionVariant)));
 }
 
 inline GroundFunctionExpressionVariantList to_ground_function_expression_variant_list(const GroundFunctionExpressionList& ground_function_expressions)
 {
-    auto result = GroundFunctionExpressionVariantList {};
-    result.reserve(ground_function_expressions.size());
-    for (const auto& function_expression : ground_function_expressions)
-    {
-        result.push_back(GroundFunctionExpressionVariant(function_expression));
-    }
-    return result;
+    return ranges::to_vector(ground_function_expressions | std::views::transform(AS_LAMBDA(GroundFunctionExpressionVariant)));
 }
 
 }

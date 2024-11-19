@@ -17,9 +17,7 @@ void init_effects(py::module& m)
         .def("__repr__", &EffectSimpleImpl::str)
         .def("get_index", &EffectSimpleImpl::get_index)
         .def("get_effect", &EffectSimpleImpl::get_effect, py::return_value_policy::reference_internal);
-    static_assert(!py::detail::vector_needs_copy<EffectSimpleList>::value);  // Ensure return by reference + keep alive
-    auto list_class = py::bind_vector<EffectSimpleList>(m, "EffectSimpleList");
-    def_opaque_vector_repr<EffectSimpleList>(list_class, "EffectSimpleList");
+
 
     class_<EffectComplexImpl>(m, "EffectComplex")  //
         .def("__str__", &EffectComplexImpl::str)
@@ -42,9 +40,7 @@ void init_effects(py::module& m)
             [](const EffectComplexImpl& self) { return LiteralList<Derived>(self.get_conditions<Derived>()); },
             py::keep_alive<0, 1>())
         .def("get_effect", &EffectComplexImpl::get_effect, py::return_value_policy::reference_internal);
-    static_assert(!py::detail::vector_needs_copy<EffectComplexList>::value);  // Ensure return by reference + keep alive
-    list_class = py::bind_vector<EffectComplexList>(m, "EffectComplexList");
-    def_opaque_vector_repr<EffectComplexList>(list_class, "EffectComplexList");
+
 
     class_<StripsActionEffect>(m, "StripsActionEffect")
         .def("get_negative_effects",

@@ -68,7 +68,4 @@ void init_function_expression(py::module& m)
             [](const FunctionExpressionVariant& arg) -> py::object { return std::visit(cast_visitor, *arg.function_expression); },
             py::keep_alive<0, 1>());
 
-    static_assert(!py::detail::vector_needs_copy<FunctionExpressionVariantList>::value);  // Ensure return by reference + keep alive
-    auto list_class = py::bind_vector<FunctionExpressionVariantList>(m, "FunctionExpressionVariantList");
-    def_opaque_vector_repr<FunctionExpressionVariantList>(list_class, "FunctionExpressionVariantList");
 }

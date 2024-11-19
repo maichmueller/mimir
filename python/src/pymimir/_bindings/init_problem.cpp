@@ -63,7 +63,5 @@ void init_problem(py::module& m)
                  insert_into_list(py_problem, all_goal_literals, self.get_goal_condition<Derived>(), i);
                  return all_goal_literals;
              });
-    static_assert(!py::detail::vector_needs_copy<ProblemList>::value);  // Ensure return by reference + keep alive
-    auto list_class = py::bind_vector<ProblemList>(m, "ProblemList");
-    def_opaque_vector_repr<ProblemList>(list_class, "ProblemList");
+
 }

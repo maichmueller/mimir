@@ -17,14 +17,6 @@ void init_ground_atoms(py::module& m)
             .def("get_arity", &GroundAtomImpl<Tag>::get_arity)
             .def("get_predicate", &GroundAtomImpl<Tag>::get_predicate, py::return_value_policy::reference_internal)
             .def("get_objects", [](const GroundAtomImpl<Tag>& self) { return ObjectList(self.get_objects()); }, py::keep_alive<0, 1>());
-
-        static_assert(!py::detail::vector_needs_copy<GroundAtomList<Tag>>::value);
-        auto list_class = py::bind_vector<GroundAtomList<Tag>>(m, class_name + "List")
-                              .def(
-                                  "lift",
-                                  [](const GroundAtomList<Tag>& ground_atoms, PDDLFactories& pddl_factories) { return lift(ground_atoms, pddl_factories); },
-                                  py::arg("pddl_factories"));
-        def_opaque_vector_repr<GroundAtomList<Tag>>(list_class, class_name + "List");
     };
     bind_ground_atom("StaticGroundAtom", Static {});
     bind_ground_atom("FluentGroundAtom", Fluent {});
