@@ -51,7 +51,7 @@ struct GroundAxiomImpl
     Index& get_index();
     Index get_index() const;
 
-    Index& get_axiom();
+    Index& get_axiom_index();
     Index get_axiom_index() const;
 
     FlatIndexList& get_objects();

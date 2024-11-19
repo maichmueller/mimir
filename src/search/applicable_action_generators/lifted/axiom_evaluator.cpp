@@ -216,7 +216,7 @@ GroundAxiom AxiomEvaluator::ground_axiom(Axiom axiom, ObjectList&& binding)
     /* Header */
 
     m_axiom_builder.get_index() = m_flat_axioms.size();
-    m_axiom_builder.get_axiom() = axiom->get_index();
+    m_axiom_builder.get_axiom_index() = axiom->get_index();
     auto& objects = m_axiom_builder.get_objects();
     objects.clear();
     for (const auto& obj : binding)

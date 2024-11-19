@@ -48,7 +48,7 @@ Index& GroundAxiomImpl::get_index() { return index; }
 
 Index GroundAxiomImpl::get_index() const { return index; }
 
-Index& GroundAxiomImpl::get_axiom() { return axiom_index; }
+Index& GroundAxiomImpl::get_axiom_index() { return axiom_index; }
 
 Index GroundAxiomImpl::get_axiom_index() const { return axiom_index; }
 
