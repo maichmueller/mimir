@@ -21,7 +21,7 @@
 #include "mimir/cista/containers/dynamic_bitset.h"
 #include "mimir/common/types.hpp"
 #include "mimir/formalism/declarations.hpp"
-#include "mimir/formalism/predicate_category.hpp"
+#include "mimir/formalism/predicate_tag.hpp"
 
 #include <cista/containers/vector.h>
 #include <ostream>

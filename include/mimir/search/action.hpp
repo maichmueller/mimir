@@ -39,19 +39,19 @@ struct StripsActionPrecondition
     FlatBitset positive_derived_atoms = FlatBitset();
     FlatBitset negative_derived_atoms = FlatBitset();
 
-    template<PredicateCategory P>
+    template<PredicateTag P>
     FlatBitset& get_positive_precondition();
 
-    template<PredicateCategory P>
+    template<PredicateTag P>
     const FlatBitset& get_positive_precondition() const;
 
-    template<PredicateCategory P>
+    template<PredicateTag P>
     FlatBitset& get_negative_precondition();
 
-    template<PredicateCategory P>
+    template<PredicateTag P>
     const FlatBitset& get_negative_precondition() const;
 
-    template<DynamicPredicateCategory P>
+    template<DynamicPredicateTag P>
     bool is_applicable(State state) const;
 
     bool is_dynamically_applicable(State state) const;
@@ -60,7 +60,7 @@ struct StripsActionPrecondition
 
     bool is_applicable(Problem problem, State state) const;
 
-    template<PredicateCategory P>
+    template<PredicateTag P>
     bool is_applicable(const FlatBitset& atoms) const;
 
     bool is_applicable(const FlatBitset& fluent_state_atoms, const FlatBitset& derived_state_atoms, const FlatBitset& static_initial_atoms) const;
@@ -100,16 +100,16 @@ struct ConditionalEffect
 
     /* Precondition */
 
-    template<PredicateCategory P>
+    template<PredicateTag P>
     FlatIndexList& get_positive_precondition();
 
-    template<PredicateCategory P>
+    template<PredicateTag P>
     const FlatIndexList& get_positive_precondition() const;
 
-    template<PredicateCategory P>
+    template<PredicateTag P>
     FlatIndexList& get_negative_precondition();
 
-    template<PredicateCategory P>
+    template<PredicateTag P>
     const FlatIndexList& get_negative_precondition() const;
 
     /* Simple effects */
@@ -117,7 +117,7 @@ struct ConditionalEffect
 
     const SimpleFluentEffect& get_simple_effect() const;
 
-    template<DynamicPredicateCategory P>
+    template<DynamicPredicateTag P>
     bool is_applicable(State state) const;
 
     bool is_dynamically_applicable(State state) const;

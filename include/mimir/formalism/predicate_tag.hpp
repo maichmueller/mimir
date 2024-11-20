@@ -39,10 +39,10 @@ struct Derived
 };
 
 template<typename T>
-concept PredicateCategory = std::is_same_v<T, Static> || std::is_same_v<T, Fluent> || std::is_same_v<T, Derived>;
+concept PredicateTag = std::is_same_v<T, Static> || std::is_same_v<T, Fluent> || std::is_same_v<T, Derived>;
 
 template<typename T>
-concept DynamicPredicateCategory = std::is_same_v<T, Fluent> || std::is_same_v<T, Derived>;
+concept DynamicPredicateTag = std::is_same_v<T, Fluent> || std::is_same_v<T, Derived>;
 
 }
 

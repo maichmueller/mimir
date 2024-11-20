@@ -46,7 +46,7 @@ struct StateImpl
     FlatBitset fluent_atoms = FlatBitset();
     FlatBitset derived_atoms = FlatBitset();
 
-    template<DynamicPredicateCategory P>
+    template<DynamicPredicateTag P>
     bool contains(GroundAtom<P> atom) const;
 
     bool contains(const AnyGroundAtom& atom) const;
@@ -65,7 +65,7 @@ struct StateImpl
     template<DynamicPredicateCategory P>
     bool literal_holds(GroundLiteral<P> literal) const;
 
-    template<DynamicPredicateCategory P>
+    template<DynamicPredicateTag P>
     bool literals_hold(const GroundLiteralList<P>& literals) const;
 
     template<std::ranges::range Range>
@@ -92,10 +92,10 @@ struct StateImpl
 
     Index get_index() const;
 
-    template<DynamicPredicateCategory P>
+    template<DynamicPredicateTag P>
     FlatBitset& get_atoms();
 
-    template<DynamicPredicateCategory P>
+    template<DynamicPredicateTag P>
     const FlatBitset& get_atoms() const;
 
     bool operator==(const StateImpl& other) const;

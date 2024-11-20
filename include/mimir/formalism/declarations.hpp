@@ -20,7 +20,7 @@
 
 // Do not include headers with transitive dependencies.
 #include "mimir/common/types.hpp"
-#include "mimir/formalism/predicate_category.hpp"
+#include "mimir/formalism/predicate_tag.hpp"
 
 #include <loki/loki.hpp>
 #include <string>
@@ -46,9 +46,9 @@ class ActionImpl;
 using Action = const ActionImpl*;
 using ActionList = std::vector<Action>;
 
-template<PredicateCategory P>
+template<PredicateTag P>
 class AtomImpl;
-template<PredicateCategory P>
+template<PredicateTag P>
 using Atom = const AtomImpl<P>*;
 using AnyAtom = std::variant<Atom<Fluent>, Atom<Derived>, Atom<Fluent>>;
 template<PredicateCategory P>
@@ -100,9 +100,9 @@ class FunctionImpl;
 using Function = const FunctionImpl*;
 using FunctionList = std::vector<Function>;
 
-template<PredicateCategory P>
+template<PredicateTag P>
 class GroundAtomImpl;
-template<PredicateCategory P>
+template<PredicateTag P>
 using GroundAtom = const GroundAtomImpl<P>*;
 using AnyGroundAtom = std::variant<GroundAtom<Fluent>, GroundAtom<Derived>, GroundAtom<Static>>;
 template<PredicateCategory P>
@@ -136,9 +136,9 @@ class GroundFunctionImpl;
 using GroundFunction = const GroundFunctionImpl*;
 using GroundFunctionList = std::vector<GroundFunction>;
 
-template<PredicateCategory P>
+template<PredicateTag P>
 class GroundLiteralImpl;
-template<PredicateCategory P>
+template<PredicateTag P>
 using GroundLiteral = const GroundLiteralImpl<P>*;
 using AnyGroundLiteral = std::variant<GroundLiteral<Fluent>, GroundLiteral<Derived>, GroundLiteral<Static>>;
 template<PredicateCategory P>
@@ -150,9 +150,9 @@ template<PredicateCategory P>
 using GroundLiteralSet = std::unordered_set<GroundLiteral<P>>;
 using AnyGroundLiteralSet = std::unordered_set<AnyGroundLiteral>;
 
-template<PredicateCategory P>
+template<PredicateTag P>
 class LiteralImpl;
-template<PredicateCategory P>
+template<PredicateTag P>
 using Literal = const LiteralImpl<P>*;
 using AnyLiteral = std::variant<Literal<Fluent>, Literal<Derived>, Literal<Static>>;
 template<PredicateCategory P>
@@ -179,9 +179,9 @@ using ToObjectMap = std::unordered_map<Key, Object, Hash, KeyEqual>;
 
 class PDDLFactories;
 
-template<PredicateCategory P>
+template<PredicateTag P>
 class PredicateImpl;
-template<PredicateCategory P>
+template<PredicateTag P>
 using Predicate = const PredicateImpl<P>*;
 using AnyPredicate = std::variant<Predicate<Fluent>, Predicate<Derived>, Predicate<Static>>;
 template<PredicateCategory P>
