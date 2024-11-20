@@ -14,11 +14,11 @@ using namespace mimir;
 using namespace mimir::pymimir;
 
 
-void init_pddl_factories(py::module& m)
+void init_pddl_repositories(py::module& m)
 {
 
-    auto&& pddl_factories = class_<PDDLRepositories, std::shared_ptr<PDDLRepositories>>(m, "PDDLRepositories");  //
-    pddl_factories
+    auto&& pddl_repositories = class_<PDDLRepositories, std::shared_ptr<PDDLRepositories>>(m, "PDDLRepositories");  //
+    pddl_repositories
         .def("get_ground_atoms",
              [](const py::object& py_repo)  // we need an object handle to keep the factory alive for each atom in the list
              {
@@ -50,7 +50,7 @@ void init_pddl_factories(py::module& m)
 
     auto bind_ground_atoms_range = [&]<typename Tag>(std::string func_name, Tag)
     {
-        pddl_factories.def(
+        pddl_repositories.def(
             func_name.data(),
             [=](const PDDLRepositories& factory) { return ranges::to<GroundAtomList<Tag>>(factory.get_factory<GroundAtomFactory<Tag>>()); },
             py::keep_alive<0, 1>());

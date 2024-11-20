@@ -99,14 +99,14 @@ void init_state(py::module& m)
             py::arg("literals"))
         .def(
             "to_string",
-            [](const StateImpl& self, Problem problem, const PDDLRepositories& pddl_factories)
+            [](const StateImpl& self, Problem problem, const PDDLRepositories& pddl_repositories)
             {
                 std::stringstream ss;
-                ss << std::make_tuple(problem, &self, std::cref(pddl_factories));
+                ss << std::make_tuple(problem, &self, std::cref(pddl_repositories));
                 return ss.str();
             },
             py::arg("problem"),
-            py::arg("pddl_factories"))
+            py::arg("pddl_repositories"))
         .def("get_index", CONST_OVERLOAD(StateImpl::get_index));
 
     /* StateImplRepository */

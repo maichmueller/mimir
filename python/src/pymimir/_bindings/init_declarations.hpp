@@ -87,7 +87,7 @@ inline auto def_opaque_vector_repr(py::module_& m, const std::string& class_name
 
 DECLARE_INIT_FUNC(pymimir);
 DECLARE_INIT_FUNC(enums);
-DECLARE_INIT_FUNC(aag);
+DECLARE_INIT_FUNC(applicable_action_generator);
 DECLARE_INIT_FUNC(atoms);
 DECLARE_INIT_FUNC(ground_atoms);
 DECLARE_INIT_FUNC(nauty_wrappers);
@@ -114,7 +114,7 @@ DECLARE_INIT_FUNC(effects);
 DECLARE_INIT_FUNC(actions);
 DECLARE_INIT_FUNC(domain);
 DECLARE_INIT_FUNC(problem);
-DECLARE_INIT_FUNC(pddl_factories);
+DECLARE_INIT_FUNC(pddl_repositories);
 DECLARE_INIT_FUNC(state);
 DECLARE_INIT_FUNC(state_space);
 DECLARE_INIT_FUNC(strips_action_precondition);

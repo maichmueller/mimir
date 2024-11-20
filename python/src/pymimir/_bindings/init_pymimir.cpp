@@ -195,7 +195,7 @@ void init_pymimir(py::module& m)
     init_termvariant(m);
     init_predicates(m);
     init_atoms(m);
-    init_pddl_factories(m);
+    init_pddl_repositories(m);
     init_ground_atoms(m);
     init_literals(m);
     init_axiom(m);
@@ -213,7 +213,7 @@ void init_pymimir(py::module& m)
     init_state(m);
     init_strips_action_precondition(m);
     init_conditional_effect(m);
-    init_aag(m);
+    init_applicable_action_generator(m);
     init_heuristics(m);
     init_algorithms(m);
     init_state_space(m);
@@ -227,7 +227,7 @@ void init_pymimir(py::module& m)
     m.def("create_object_graph",
           &create_object_graph,
           py::arg("color_function"),
-          py::arg("pddl_factories"),
+          py::arg("pddl_repositories"),
           py::arg("problem"),
           py::arg("state"),
           py::arg("state_index") = 0,

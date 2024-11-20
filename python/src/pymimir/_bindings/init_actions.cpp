@@ -49,17 +49,17 @@ void init_actions(py::module& m)
         .def("__hash__", [](const GroundActionImpl& obj) { return obj.get_index(); })
         .def("__eq__", [](const GroundActionImpl& a, const GroundActionImpl& b) { return a.get_index() == b.get_index(); })
         .def("to_string",
-             [](const GroundActionImpl& self, PDDLRepositories& pddl_factories)
+             [](const GroundActionImpl& self, PDDLRepositories& pddl_repositories)
              {
                  std::stringstream ss;
-                 ss << std::make_tuple(&self, std::cref(pddl_factories));
+                 ss << std::make_tuple(&self, std::cref(pddl_repositories));
                  return ss.str();
              })
         .def("to_string_for_plan",
-             [](const GroundActionImpl& self, PDDLRepositories& pddl_factories)
+             [](const GroundActionImpl& self, PDDLRepositories& pddl_repositories)
              {
                  std::stringstream ss;
-                 ss << std::make_tuple(std::cref(pddl_factories), &self);
+                 ss << std::make_tuple(std::cref(pddl_repositories), &self);
                  return ss.str();
              })
         .def("get_index", CONST_OVERLOAD(GroundActionImpl::get_index))

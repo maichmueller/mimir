@@ -74,8 +74,8 @@ void init_abstraction(py::module& m)
                const FaithfulAbstractionOptions& options) { return FaithfulAbstraction::create(problem, factories, aag, ssg, options); },
             py::arg("problem"),
             py::arg("factories"),
-            py::arg("aag"),
-            py::arg("ssg"),
+            py::arg("applicable_action_generator"),
+            py::arg("state_repository"),
             py::arg("options") = FaithfulAbstractionOptions())
         .def_static(
             "create",
@@ -105,8 +105,8 @@ void init_abstraction(py::module& m)
         .def("compute_pairwise_shortest_backward_state_distances", &FaithfulAbstraction::compute_pairwise_shortest_state_distances<BackwardTraversal>)
         .def("get_problem", &FaithfulAbstraction::get_problem, py::return_value_policy::reference_internal)
         .def("get_pddl_repositories", &FaithfulAbstraction::get_pddl_repositories)
-        .def("get_aag", &FaithfulAbstraction::get_aag)
-        .def("get_ssg", &FaithfulAbstraction::get_ssg)
+        .def("get_applicable_action_generator", &FaithfulAbstraction::get_applicable_action_generator)
+        .def("get_state_repository", &FaithfulAbstraction::get_state_repository)
         .def("get_abstract_state_index", &FaithfulAbstraction::get_abstract_state_index, py::arg("state"))
         .def("get_state_vertices", &FaithfulAbstraction::get_states, py::return_value_policy::reference_internal)
         .def("get_concrete_to_abstract_state", &FaithfulAbstraction::get_concrete_to_abstract_state, py::return_value_policy::reference_internal)
@@ -243,8 +243,8 @@ void init_abstraction(py::module& m)
         .def("get_index", &GlobalFaithfulAbstraction::get_index)
         .def("get_problem", &GlobalFaithfulAbstraction::get_problem, py::return_value_policy::reference_internal)
         .def("get_pddl_repositories", &GlobalFaithfulAbstraction::get_pddl_repositories)
-        .def("get_aag", &GlobalFaithfulAbstraction::get_aag)
-        .def("get_ssg", &GlobalFaithfulAbstraction::get_ssg)
+        .def("get_applicable_action_generator", &GlobalFaithfulAbstraction::get_applicable_action_generator)
+        .def("get_state_repository", &GlobalFaithfulAbstraction::get_state_repository)
         .def("get_abstractions", &GlobalFaithfulAbstraction::get_abstractions, py::return_value_policy::reference_internal)
         .def("get_abstract_state_index", py::overload_cast<State>(&GlobalFaithfulAbstraction::get_abstract_state_index, py::const_), py::arg("state"))
         .def("get_abstract_state_index", py::overload_cast<Index>(&GlobalFaithfulAbstraction::get_abstract_state_index, py::const_), py::arg("state_index"))
@@ -347,8 +347,8 @@ void init_abstraction(py::module& m)
         .def(py::init<GlobalFaithfulAbstraction>(), py::arg("global_faithful_abstraction"))
         .def("get_problem", &Abstraction::get_problem, py::return_value_policy::reference_internal)
         .def("get_pddl_repositories", &Abstraction::get_pddl_repositories)
-        .def("get_aag", &Abstraction::get_aag)
-        .def("get_ssg", &Abstraction::get_ssg)
+        .def("get_applicable_action_generator", &Abstraction::get_applicable_action_generator)
+        .def("get_state_repository", &Abstraction::get_state_repository)
         .def("get_abstract_state_index", &Abstraction::get_abstract_state_index)
         .def("get_initial_state_index", &Abstraction::get_initial_state_index)
         .def("get_goal_state_indices", &Abstraction::get_goal_state_indices, py::return_value_policy::reference_internal)

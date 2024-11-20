@@ -84,8 +84,8 @@ void init_state_space(py::module& m)
                                       const StateSpaceOptions&>(&StateSpace::create),
                     py::arg("problem"),
                     py::arg("factories"),
-                    py::arg("aag"),
-                    py::arg("ssg"),
+                    py::arg("applicable_action_generator"),
+                    py::arg("state_repository"),
                     py::arg("options") = StateSpaceOptions())
         .def_static("create",
                     py::overload_cast<Problem, const std::shared_ptr<PDDLRepositories>&, StateSpaceOptions>(&StateSpace::create),
@@ -109,8 +109,8 @@ void init_state_space(py::module& m)
             "__iter__",
             [](const StateSpace& self) { return py::make_iterator(self.begin(), self.end()); },
             py::keep_alive<0, 1>())
-        .def("get_aag", &StateSpace::get_aag)
-        .def("get_ssg", &StateSpace::get_ssg)
+        .def("get_applicable_action_generator", &StateSpace::get_applicable_action_generator)
+        .def("get_state_repository", &StateSpace::get_state_repository)
         .def("get_problem", &StateSpace::get_problem)
         .def("get_pddl_repositories", &StateSpace::get_pddl_repositories)
         .def("compute_shortest_forward_distances_from_states", &StateSpace::compute_shortest_distances_from_states<ForwardTraversal>, py::arg("state_indices"))
@@ -120,9 +120,9 @@ void init_state_space(py::module& m)
         .def("compute_pairwise_shortest_forward_state_distances", &StateSpace::compute_pairwise_shortest_state_distances<ForwardTraversal>)
         .def("compute_pairwise_shortest_backward_state_distances", &StateSpace::compute_pairwise_shortest_state_distances<BackwardTraversal>)
         .def_property_readonly("problem", &StateSpace::get_problem, py::return_value_policy::reference_internal)
-        .def_property_readonly("pddl_factories", &StateSpace::get_pddl_repositories)
-        .def_property_readonly("aag", &StateSpace::get_aag)
-        .def_property_readonly("ssg", &StateSpace::get_ssg)
+        .def_property_readonly("pddl_repositories", &StateSpace::get_pddl_repositories)
+        .def_property_readonly("applicable_action_generator", &StateSpace::get_applicable_action_generator)
+        .def_property_readonly("state_repository", &StateSpace::get_state_repository)
         .def("get_state", &StateSpace::get_state, py::arg("state_index"), py::return_value_policy::reference_internal)
         .def("get_index", &StateSpace::get_index, py::arg("state"))
         .def("get_initial_state_index", &StateSpace::get_initial_state_index)

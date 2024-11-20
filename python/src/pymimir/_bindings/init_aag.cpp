@@ -10,7 +10,7 @@ namespace py = pybind11;
 using namespace mimir;
 using namespace mimir::pymimir;
 
-void init_aag(py::module_& m)
+void init_applicable_action_generator(py::module_& m)
 {
     /* ConjunctionGrounder */
 
@@ -21,7 +21,7 @@ void init_aag(py::module_& m)
              py::arg("static_literals"),
              py::arg("fluent_literals"),
              py::arg("derived_literals"),
-             py::arg("pddl_factories"))
+             py::arg("pddl_repositories"))
         .def("ground", &LiftedConjunctionGrounder::ground, py::arg("state"));
 
     /* ApplicableActionGenerators */
@@ -71,10 +71,10 @@ void init_aag(py::module_& m)
 
     class_<LiftedApplicableActionGenerator, IApplicableActionGenerator, std::shared_ptr<LiftedApplicableActionGenerator>>(m,
                                                                                                                           "LiftedApplicableActionGenerator")  //
-        .def(py::init<Problem, std::shared_ptr<PDDLRepositories>>(), py::arg("problem"), py::arg("pddl_factories"))
+        .def(py::init<Problem, std::shared_ptr<PDDLRepositories>>(), py::arg("problem"), py::arg("pddl_repositories"))
         .def(py::init<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<ILiftedApplicableActionGeneratorEventHandler>>(),
              py::arg("problem"),
-             py::arg("pddl_factories"),
+             py::arg("pddl_repositories"),
              py::arg("event_handler"));
 
     // Grounded
@@ -91,9 +91,9 @@ void init_aag(py::module_& m)
     class_<GroundedApplicableActionGenerator, IApplicableActionGenerator, std::shared_ptr<GroundedApplicableActionGenerator>>(
         m,
         "GroundedApplicableActionGenerator")  //
-        .def(py::init<Problem, std::shared_ptr<PDDLRepositories>>(), py::arg("problem"), py::arg("pddl_factories"))
+        .def(py::init<Problem, std::shared_ptr<PDDLRepositories>>(), py::arg("problem"), py::arg("pddl_repositories"))
         .def(py::init<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IGroundedApplicableActionGeneratorEventHandler>>(),
              py::arg("problem"),
-             py::arg("pddl_factories"),
+             py::arg("pddl_repositories"),
              py::arg("event_handler"));
 }
