@@ -299,7 +299,7 @@ private:
     bool m_use_unit_cost_one;
 
     /* Memory */
-    std::shared_ptr<PDDLRepositories> m_pddl_repo;
+    std::shared_ptr<PDDLRepositories> m_pddl_repositories;
     std::shared_ptr<IApplicableActionGenerator> m_applicable_action_generator;
     std::shared_ptr<StateRepository> m_state_repository;
 

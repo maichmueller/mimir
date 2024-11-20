@@ -19,6 +19,8 @@
 
 #include "mimir/datasets/state_space.hpp"
 
+#include <utility>
+
 namespace mimir
 {
 
@@ -32,7 +34,9 @@ HStarHeuristic::HStarHeuristic(Problem problem,
     auto state_space_options = StateSpaceOptions();
     state_space_options.use_unit_cost_one = false;
     state_space_options.remove_if_unsolvable = false;
-    auto state_space = StateSpace::create(problem, pddl_factories, applicable_action_generator, state_repository, state_space_options).value();
+    auto state_space =
+        StateSpace::create(problem, std::move(pddl_repositories), std::move(applicable_action_generator), std::move(state_repository), state_space_options)
+            .value();
     for (size_t state_index = 0; state_index < state_space.get_num_states(); ++state_index)
     {
         m_estimates.emplace(state_space.get_state(state_index), state_space.get_goal_distance(state_index));

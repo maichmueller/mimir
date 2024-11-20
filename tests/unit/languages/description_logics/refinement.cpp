@@ -88,9 +88,9 @@ TEST(MimirTests, LanguagesDescriptionLogicsRefinementBrfsTest)
     auto state_repository = std::make_shared<StateRepository>(applicable_action_generator);
     auto state_space = StateSpace::create(parser.get_problem(), parser.get_pddl_repositories(), applicable_action_generator, state_repository);
     auto state_list = StateList();
-    for (const auto& state_vertex : state_space.value().get_vertices())
+    for (const auto& state : state_space.value())
     {
-        state_list.push_back(get_state(state_vertex));
+        state_list.push_back(state);
     }
 
     auto pruning_function = dl::RefinementStateListPruningFunction(*parser.get_pddl_repositories(), parser.get_problem(), state_list);

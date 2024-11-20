@@ -39,7 +39,7 @@ template<typename T>
 concept IsAbstraction = requires(T a, State state)
 {
     {
-        a.get_vertex_index(state)
+        a.get_abstract_state_index(state)
         } -> std::same_as<Index>;
 };
 
