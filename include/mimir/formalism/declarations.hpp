@@ -51,9 +51,9 @@ class AtomImpl;
 template<PredicateTag P>
 using Atom = const AtomImpl<P>*;
 using AnyAtom = std::variant<Atom<Fluent>, Atom<Derived>, Atom<Fluent>>;
-template<PredicateCategory P>
+template<PredicateTag P>
 using AtomList = std::vector<Atom<P>>;
-template<PredicateCategory P>
+template<PredicateTag P>
 using AtomSpan = std::span<Atom<P>>;
 using AnyAtomList = std::vector<AnyAtom>;
 
@@ -105,12 +105,12 @@ class GroundAtomImpl;
 template<PredicateTag P>
 using GroundAtom = const GroundAtomImpl<P>*;
 using AnyGroundAtom = std::variant<GroundAtom<Fluent>, GroundAtom<Derived>, GroundAtom<Static>>;
-template<PredicateCategory P>
+template<PredicateTag P>
 using GroundAtomList = std::vector<GroundAtom<P>>;
-template<PredicateCategory P>
+template<PredicateTag P>
 using GroundAtomSpan = std::span<GroundAtom<P>>;
 using AnyGroundAtomList = std::vector<AnyGroundAtom>;
-template<PredicateCategory P>
+template<PredicateTag P>
 using GroundAtomSet = std::unordered_set<GroundAtom<P>>;
 using AnyGroundAtomSet = std::unordered_set<AnyGroundAtom>;
 
@@ -141,12 +141,12 @@ class GroundLiteralImpl;
 template<PredicateTag P>
 using GroundLiteral = const GroundLiteralImpl<P>*;
 using AnyGroundLiteral = std::variant<GroundLiteral<Fluent>, GroundLiteral<Derived>, GroundLiteral<Static>>;
-template<PredicateCategory P>
+template<PredicateTag P>
 using GroundLiteralList = std::vector<GroundLiteral<P>>;
-template<PredicateCategory P>
+template<PredicateTag P>
 using GroundLiteralSpan = std::span<GroundLiteral<P>>;
 using AnyGroundLiteralList = std::vector<AnyGroundLiteral>;
-template<PredicateCategory P>
+template<PredicateTag P>
 using GroundLiteralSet = std::unordered_set<GroundLiteral<P>>;
 using AnyGroundLiteralSet = std::unordered_set<AnyGroundLiteral>;
 
@@ -155,12 +155,12 @@ class LiteralImpl;
 template<PredicateTag P>
 using Literal = const LiteralImpl<P>*;
 using AnyLiteral = std::variant<Literal<Fluent>, Literal<Derived>, Literal<Static>>;
-template<PredicateCategory P>
+template<PredicateTag P>
 using LiteralList = std::vector<Literal<P>>;
-template<PredicateCategory P>
+template<PredicateTag P>
 using LiteralSpan = std::span<Literal<P>>;
 using AnyLiteralList = std::vector<AnyLiteral>;
-template<PredicateCategory P>
+template<PredicateTag P>
 using LiteralSet = std::unordered_set<Literal<P>>;
 using AnyLiteralSet = std::unordered_set<AnyLiteral>;
 
@@ -177,22 +177,22 @@ using ObjectList = std::vector<Object>;
 template<typename Key, typename Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>>
 using ToObjectMap = std::unordered_map<Key, Object, Hash, KeyEqual>;
 
-class PDDLFactories;
+class PDDLRepositories;
 
 template<PredicateTag P>
 class PredicateImpl;
 template<PredicateTag P>
 using Predicate = const PredicateImpl<P>*;
 using AnyPredicate = std::variant<Predicate<Fluent>, Predicate<Derived>, Predicate<Static>>;
-template<PredicateCategory P>
+template<PredicateTag P>
 using PredicateList = std::vector<Predicate<P>>;
-template<PredicateCategory P>
+template<PredicateTag P>
 using PredicateSpan = std::span<Predicate<P>>;
 using AnyPredicateList = std::vector<AnyPredicate>;
-template<PredicateCategory P>
+template<PredicateTag P>
 using PredicateSet = std::unordered_set<Predicate<P>>;
 using AnyPredicateSet = std::unordered_set<AnyPredicate>;
-template<typename Key, PredicateCategory P, typename Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>>
+template<typename Key, PredicateTag P, typename Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>>
 using ToPredicateMap = std::unordered_map<Key, Predicate<P>, Hash, KeyEqual>;
 
 class ProblemImpl;

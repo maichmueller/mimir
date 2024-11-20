@@ -51,7 +51,7 @@ struct StateImpl
 
     bool contains(const AnyGroundAtom& atom) const;
 
-    template<DynamicPredicateCategory P>
+    template<DynamicPredicateTag P>
     bool superset_of(const GroundAtomList<P>& atoms) const;
 
     template<std::ranges::range Range>
@@ -62,7 +62,7 @@ struct StateImpl
 
     bool literal_holds(AnyGroundLiteral literal) const;
 
-    template<DynamicPredicateCategory P>
+    template<DynamicPredicateTag P>
     bool literal_holds(GroundLiteral<P> literal) const;
 
     template<DynamicPredicateTag P>
@@ -127,5 +127,5 @@ using StateImplSet = cista::storage::UnorderedSet<StateImpl>;
  */
 
 template<>
-std::ostream& operator<<(std::ostream& os, const std::tuple<Problem, State, const PDDLFactories&>& data);
+std::ostream& operator<<(std::ostream& os, const std::tuple<Problem, State, const PDDLRepositories&>& data);
 }

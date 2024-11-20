@@ -73,7 +73,7 @@ from _pymimir import (
     ObjectList,
     OptimizationMetric,
     OptimizationMetricEnum,
-    PDDLFactories,
+    PDDLRepositories,
     PDDLParser,
     Problem,
     ProblemList,
@@ -94,7 +94,7 @@ from _pymimir import (
     TermObject,
     TermVariable,
     Variable,
-    VariableList
+    VariableList,
 )
 
 # Search
@@ -146,7 +146,7 @@ from _pymimir import (
     IndexGroupedVector,
     StripsActionEffect,
     StripsActionPrecondition,
-    TupleIndexMapper
+    TupleIndexMapper,
 )
 
 # Dataset
@@ -163,7 +163,7 @@ from _pymimir import (
     GlobalFaithfulAbstraction,
     StateSpace,
     StateSpaceOptions,
-    StateSpacesOptions
+    StateSpacesOptions,
 )
 
 # Graphs (classes)
@@ -186,7 +186,7 @@ from _pymimir import (
     TupleGraphVertexSpan,
     TupleGraphVertexIndexGroupedVector,
     TupleGraph,
-    TupleGraphFactory
+    TupleGraphFactory,
 )
 
 # Graphs (free functions)
@@ -195,7 +195,7 @@ from _pymimir import (
     compute_certificate_2fwl,
     compute_certificate_3fwl,
     compute_certificate_4fwl,
-    create_object_graph
+    create_object_graph,
 )
 
 from .hints import *
@@ -203,4 +203,4 @@ from .hints import *
 
 def parse_pddl(domain_path, problem_path):
     parser = PDDLParser(domain_path, problem_path)
-    return parser.get_domaiin(), parser.get_problem(), parser.get_pddl_factories()
+    return parser.get_domaiin(), parser.get_problem(), parser.get_pddl_repositories()

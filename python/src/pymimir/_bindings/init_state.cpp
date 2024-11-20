@@ -99,7 +99,7 @@ void init_state(py::module& m)
             py::arg("literals"))
         .def(
             "to_string",
-            [](const StateImpl& self, Problem problem, const PDDLFactories& pddl_factories)
+            [](const StateImpl& self, Problem problem, const PDDLRepositories& pddl_factories)
             {
                 std::stringstream ss;
                 ss << std::make_tuple(problem, &self, std::cref(pddl_factories));

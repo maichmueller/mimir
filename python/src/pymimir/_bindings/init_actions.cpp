@@ -49,14 +49,14 @@ void init_actions(py::module& m)
         .def("__hash__", [](const GroundActionImpl& obj) { return obj.get_index(); })
         .def("__eq__", [](const GroundActionImpl& a, const GroundActionImpl& b) { return a.get_index() == b.get_index(); })
         .def("to_string",
-             [](const GroundActionImpl& self, PDDLFactories& pddl_factories)
+             [](const GroundActionImpl& self, PDDLRepositories& pddl_factories)
              {
                  std::stringstream ss;
                  ss << std::make_tuple(&self, std::cref(pddl_factories));
                  return ss.str();
              })
         .def("to_string_for_plan",
-             [](const GroundActionImpl& self, PDDLFactories& pddl_factories)
+             [](const GroundActionImpl& self, PDDLRepositories& pddl_factories)
              {
                  std::stringstream ss;
                  ss << std::make_tuple(std::cref(pddl_factories), &self);

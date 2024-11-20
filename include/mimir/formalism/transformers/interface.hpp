@@ -18,7 +18,7 @@
 #pragma once
 
 
-#include "mimir/formalism/factories.hpp"
+#include "mimir/formalism/repositories.hpp"
 
 #include <algorithm>
 #include <boost/container/small_vector.hpp>

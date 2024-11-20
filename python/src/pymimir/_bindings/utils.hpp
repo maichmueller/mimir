@@ -96,8 +96,8 @@ inline py::list insert_into_list(std::ranges::range auto&& rng)
     }
 }
 
-template<bool positive, PredicateCategory P, typename Self>
-GroundAtomList<P> atoms_from_conditions(const Self& self, const PDDLFactories& factories)
+template<bool positive, PredicateTag P, typename Self>
+GroundAtomList<P> atoms_from_conditions(const Self& self, const PDDLRepositories& factories)
 {
     if constexpr (positive)
         return factories.get_ground_atoms_from_indices<P>(self.template get_positive_precondition<P>());
@@ -108,7 +108,7 @@ GroundAtomList<P> atoms_from_conditions(const Self& self, const PDDLFactories& f
 template<bool positive, typename Self>
 py::list all_atoms_from_conditions(const Self& self, const py::object& py_factories)
 {
-    const auto& factories = py::cast<const PDDLFactories&>(py_factories);
+    const auto& factories = py::cast<const PDDLRepositories&>(py_factories);
 
     auto fluent_atoms = atoms_from_conditions<positive, Fluent>(self, factories);
     auto static_atoms = atoms_from_conditions<positive, Static>(self, factories);
@@ -132,7 +132,7 @@ void for_each_tag(auto&& f)
     f(Derived {});
 }
 
-template<PredicateCategory P>
+template<PredicateTag P>
 constexpr std::string tag_name()
 {
     if constexpr (std::is_same_v<P, Static>)

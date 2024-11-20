@@ -68,7 +68,7 @@ void init_abstraction(py::module& m)
         .def_static(
             "create",
             [](Problem problem,
-               std::shared_ptr<PDDLFactories> factories,
+               std::shared_ptr<PDDLRepositories> factories,
                std::shared_ptr<IApplicableActionGenerator> aag,
                std::shared_ptr<StateRepository> ssg,
                const FaithfulAbstractionOptions& options) { return FaithfulAbstraction::create(problem, factories, aag, ssg, options); },
@@ -90,7 +90,7 @@ void init_abstraction(py::module& m)
         .def_static(
             "create",
             [](const std::vector<
-                   std::tuple<Problem, std::shared_ptr<PDDLFactories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>&
+                   std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>&
                    memories,
                const FaithfulAbstractionsOptions& options) { return FaithfulAbstraction::create(memories, options); },
             py::arg("memories"),
@@ -104,7 +104,7 @@ void init_abstraction(py::module& m)
         .def("compute_pairwise_shortest_forward_state_distances", &FaithfulAbstraction::compute_pairwise_shortest_state_distances<ForwardTraversal>)
         .def("compute_pairwise_shortest_backward_state_distances", &FaithfulAbstraction::compute_pairwise_shortest_state_distances<BackwardTraversal>)
         .def("get_problem", &FaithfulAbstraction::get_problem, py::return_value_policy::reference_internal)
-        .def("get_pddl_factories", &FaithfulAbstraction::get_pddl_factories)
+        .def("get_pddl_repositories", &FaithfulAbstraction::get_pddl_repositories)
         .def("get_aag", &FaithfulAbstraction::get_aag)
         .def("get_ssg", &FaithfulAbstraction::get_ssg)
         .def("get_abstract_state_index", &FaithfulAbstraction::get_abstract_state_index, py::arg("state"))
@@ -227,7 +227,7 @@ void init_abstraction(py::module& m)
         .def_static(
             "create",
             [](const std::vector<
-                   std::tuple<Problem, std::shared_ptr<PDDLFactories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>&
+                   std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>&
                    memories,
                const FaithfulAbstractionsOptions& options) { return GlobalFaithfulAbstraction::create(memories, options); },
             py::arg("memories"),
@@ -242,7 +242,7 @@ void init_abstraction(py::module& m)
         .def("compute_pairwise_shortest_backward_state_distances", &GlobalFaithfulAbstraction::compute_pairwise_shortest_state_distances<BackwardTraversal>)
         .def("get_index", &GlobalFaithfulAbstraction::get_index)
         .def("get_problem", &GlobalFaithfulAbstraction::get_problem, py::return_value_policy::reference_internal)
-        .def("get_pddl_factories", &GlobalFaithfulAbstraction::get_pddl_factories)
+        .def("get_pddl_repositories", &GlobalFaithfulAbstraction::get_pddl_repositories)
         .def("get_aag", &GlobalFaithfulAbstraction::get_aag)
         .def("get_ssg", &GlobalFaithfulAbstraction::get_ssg)
         .def("get_abstractions", &GlobalFaithfulAbstraction::get_abstractions, py::return_value_policy::reference_internal)
@@ -346,7 +346,7 @@ void init_abstraction(py::module& m)
         .def(py::init<FaithfulAbstraction>(), py::arg("faithful_abstraction"))
         .def(py::init<GlobalFaithfulAbstraction>(), py::arg("global_faithful_abstraction"))
         .def("get_problem", &Abstraction::get_problem, py::return_value_policy::reference_internal)
-        .def("get_pddl_factories", &Abstraction::get_pddl_factories)
+        .def("get_pddl_repositories", &Abstraction::get_pddl_repositories)
         .def("get_aag", &Abstraction::get_aag)
         .def("get_ssg", &Abstraction::get_ssg)
         .def("get_abstract_state_index", &Abstraction::get_abstract_state_index)

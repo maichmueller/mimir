@@ -18,7 +18,7 @@
 #pragma once
 
 
-#include "mimir/formalism/factories.hpp"
+#include "mimir/formalism/repositories.hpp"
 #include "mimir/search/algorithms/iw/types.hpp"
 #include "mimir/search/state.hpp"
 

@@ -43,24 +43,24 @@ public:
     using DynamicAStarAlgorithmEventHandlerBase::DynamicAStarAlgorithmEventHandlerBase;
 
     /* Trampoline (need one for each virtual function) */
-    void on_expand_state_impl(State state, Problem problem, const PDDLFactories& pddl_factories) override
+    void on_expand_state_impl(State state, Problem problem, const PDDLRepositories& pddl_factories) override
     {
         PYBIND11_OVERRIDE(void, DynamicAStarAlgorithmEventHandlerBase, on_expand_state_impl, state, problem, std::cref(pddl_factories));
     }
 
-    void on_generate_state_impl(State state, GroundAction action, Problem problem, const PDDLFactories& pddl_factories) override
+    void on_generate_state_impl(State state, GroundAction action, Problem problem, const PDDLRepositories& pddl_factories) override
     {
         PYBIND11_OVERRIDE(void, DynamicAStarAlgorithmEventHandlerBase, on_generate_state_impl, state, action, problem, std::cref(pddl_factories));
     }
-    void on_generate_state_relaxed_impl(State state, GroundAction action, Problem problem, const PDDLFactories& pddl_factories) override
+    void on_generate_state_relaxed_impl(State state, GroundAction action, Problem problem, const PDDLRepositories& pddl_factories) override
     {
         PYBIND11_OVERRIDE(void, DynamicAStarAlgorithmEventHandlerBase, on_generate_state_relaxed_impl, state, action, problem, std::cref(pddl_factories));
     }
-    void on_generate_state_not_relaxed_impl(State state, GroundAction action, Problem problem, const PDDLFactories& pddl_factories) override
+    void on_generate_state_not_relaxed_impl(State state, GroundAction action, Problem problem, const PDDLRepositories& pddl_factories) override
     {
         PYBIND11_OVERRIDE(void, DynamicAStarAlgorithmEventHandlerBase, on_generate_state_not_relaxed_impl, state, action, problem, std::cref(pddl_factories));
     }
-    void on_close_state_impl(State state, Problem problem, const PDDLFactories& pddl_factories) override
+    void on_close_state_impl(State state, Problem problem, const PDDLRepositories& pddl_factories) override
     {
         PYBIND11_OVERRIDE(void, DynamicAStarAlgorithmEventHandlerBase, on_close_state_impl, state, problem, std::cref(pddl_factories));
     }
@@ -68,11 +68,11 @@ public:
     {
         PYBIND11_OVERRIDE(void, DynamicAStarAlgorithmEventHandlerBase, on_finish_f_layer_impl, f_value, num_expanded_state, num_generated_states);
     }
-    void on_prune_state_impl(State state, Problem problem, const PDDLFactories& pddl_factories) override
+    void on_prune_state_impl(State state, Problem problem, const PDDLRepositories& pddl_factories) override
     {
         PYBIND11_OVERRIDE(void, DynamicAStarAlgorithmEventHandlerBase, on_prune_state_impl, state, problem, std::cref(pddl_factories));
     }
-    void on_start_search_impl(State start_state, Problem problem, const PDDLFactories& pddl_factories) override
+    void on_start_search_impl(State start_state, Problem problem, const PDDLRepositories& pddl_factories) override
     {
         PYBIND11_OVERRIDE(void, DynamicAStarAlgorithmEventHandlerBase, on_start_search_impl, start_state, problem, std::cref(pddl_factories));
     }
@@ -81,7 +81,7 @@ public:
      * does not take any arguments. For functions that take a nonzero number of arguments, the trailing comma must be omitted.
      */
     void on_end_search_impl() override { PYBIND11_OVERRIDE(void, DynamicAStarAlgorithmEventHandlerBase, on_end_search_impl, ); }
-    void on_solved_impl(const GroundActionList& ground_action_plan, const PDDLFactories& pddl_factories) override
+    void on_solved_impl(const GroundActionList& ground_action_plan, const PDDLRepositories& pddl_factories) override
     {
         PYBIND11_OVERRIDE(void, DynamicAStarAlgorithmEventHandlerBase, on_solved_impl, ground_action_plan, pddl_factories);
     }

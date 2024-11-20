@@ -44,10 +44,10 @@ void init_effects(py::module& m)
 
     class_<StripsActionEffect>(m, "StripsActionEffect")
         .def("get_negative_effects",
-             [](const StripsActionEffect& self, const PDDLFactories& factories)
+             [](const StripsActionEffect& self, const PDDLRepositories& factories)
              { return factories.get_ground_atoms_from_indices<mimir::Fluent>(self.get_negative_effects()); })
         .def("get_positive_effects",
-             [](const StripsActionEffect& self, const PDDLFactories& factories)
+             [](const StripsActionEffect& self, const PDDLRepositories& factories)
              { return factories.get_ground_atoms_from_indices<mimir::Fluent>(self.get_positive_effects()); })
         .def("get_negative_effect_indices", CONST_OVERLOAD(StripsActionEffect::get_negative_effects), py::return_value_policy::copy)
         .def("get_negative_effect_indices", CONST_OVERLOAD(StripsActionEffect::get_positive_effects), py::return_value_policy::copy);

@@ -101,7 +101,7 @@ void init_lists(py::module& m) {
                 class_<GroundLiteralList<Tag>>(m, class_name.c_str())
                     .def(
                         "lift",
-                        [](const GroundLiteralList<Tag>& ground_literals, PDDLFactories& pddl_factories) { return lift(ground_literals, pddl_factories); },
+                        [](const GroundLiteralList<Tag>& ground_literals, PDDLRepositories& pddl_factories) { return lift(ground_literals, pddl_factories); },
                         py::arg("pddl_factories"));
             def_opaque_vector_repr<GroundLiteralList<Tag>>(list_class, class_name);
         });
@@ -114,7 +114,7 @@ void init_lists(py::module& m) {
             auto list_class = class_<GroundAtomList<Tag>>(m, class_name.c_str())
                                   .def(
                                       "lift",
-                                      [](const GroundAtomList<Tag>& ground_atoms, PDDLFactories& pddl_factories) { return lift(ground_atoms, pddl_factories); },
+                                      [](const GroundAtomList<Tag>& ground_atoms, PDDLRepositories& pddl_factories) { return lift(ground_atoms, pddl_factories); },
                                       py::arg("pddl_factories"));
             def_opaque_vector_repr<GroundAtomList<Tag>>(list_class, class_name);
         });

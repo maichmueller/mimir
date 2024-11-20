@@ -28,7 +28,7 @@ void init_pymimir(py::module& m)
     class_<AtomImpl<Static>>(m, "StaticAtom");
     class_<AtomImpl<Fluent>>(m, "FluentAtom");
     class_<AtomImpl<Derived>>(m, "DerivedAtom");
-    class_<PDDLFactories, std::shared_ptr<PDDLFactories>>(m, "PDDLFactories");
+    class_<PDDLRepositories, std::shared_ptr<PDDLRepositories>>(m, "PDDLRepositories");
     class_<GroundAtomImpl<Static>>(m, "StaticGroundAtom");
     class_<GroundAtomImpl<Fluent>>(m, "FluentGroundAtom");
     class_<GroundAtomImpl<Derived>>(m, "DerivedGroundAtom");

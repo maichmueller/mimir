@@ -167,7 +167,7 @@ if [ "$use_conan" = true ]; then
   --options=nauty/*:fPIC=True \
   ${conan_extra_args[*]}"
 
-  action="$conan_cmd export dependencies/loki --version=0.0.6"
+  action="$conan_cmd export dependencies/loki --version=0.0.7"
   eval "$action"
   action="$conan_cmd export dependencies/nauty --version=2.8.8"
   eval "$action"

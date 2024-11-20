@@ -78,7 +78,7 @@ void init_state_space(py::module& m)
                     py::arg("options") = StateSpaceOptions())
         .def_static("create",
                     py::overload_cast<Problem,
-                                      std::shared_ptr<PDDLFactories>,
+                                      std::shared_ptr<PDDLRepositories>,
                                       std::shared_ptr<IApplicableActionGenerator>,
                                       std::shared_ptr<StateRepository>,
                                       const StateSpaceOptions&>(&StateSpace::create),
@@ -88,7 +88,7 @@ void init_state_space(py::module& m)
                     py::arg("ssg"),
                     py::arg("options") = StateSpaceOptions())
         .def_static("create",
-                    py::overload_cast<Problem, const std::shared_ptr<PDDLFactories>&, StateSpaceOptions>(&StateSpace::create),
+                    py::overload_cast<Problem, const std::shared_ptr<PDDLRepositories>&, StateSpaceOptions>(&StateSpace::create),
                     py::arg("problem"),
                     py::arg("factories"),
                     py::arg("options") = StateSpaceOptions())
@@ -101,7 +101,7 @@ void init_state_space(py::module& m)
             "create",
             py::overload_cast<
                 const std::vector<
-                    std::tuple<Problem, std::shared_ptr<PDDLFactories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>&,
+                    std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>&,
                 const StateSpacesOptions&>(&StateSpace::create),
             py::arg("memories"),
             py::arg("options") = StateSpacesOptions())
@@ -112,7 +112,7 @@ void init_state_space(py::module& m)
         .def("get_aag", &StateSpace::get_aag)
         .def("get_ssg", &StateSpace::get_ssg)
         .def("get_problem", &StateSpace::get_problem)
-        .def("get_pddl_factories", &StateSpace::get_pddl_factories)
+        .def("get_pddl_repositories", &StateSpace::get_pddl_repositories)
         .def("compute_shortest_forward_distances_from_states", &StateSpace::compute_shortest_distances_from_states<ForwardTraversal>, py::arg("state_indices"))
         .def("compute_shortest_backward_distances_from_states",
              &StateSpace::compute_shortest_distances_from_states<BackwardTraversal>,
@@ -120,7 +120,7 @@ void init_state_space(py::module& m)
         .def("compute_pairwise_shortest_forward_state_distances", &StateSpace::compute_pairwise_shortest_state_distances<ForwardTraversal>)
         .def("compute_pairwise_shortest_backward_state_distances", &StateSpace::compute_pairwise_shortest_state_distances<BackwardTraversal>)
         .def_property_readonly("problem", &StateSpace::get_problem, py::return_value_policy::reference_internal)
-        .def_property_readonly("pddl_factories", &StateSpace::get_pddl_factories)
+        .def_property_readonly("pddl_factories", &StateSpace::get_pddl_repositories)
         .def_property_readonly("aag", &StateSpace::get_aag)
         .def_property_readonly("ssg", &StateSpace::get_ssg)
         .def("get_state", &StateSpace::get_state, py::arg("state_index"), py::return_value_policy::reference_internal)

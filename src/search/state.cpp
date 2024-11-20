@@ -19,8 +19,8 @@
 
 #include "mimir/common/concepts.hpp"
 #include "mimir/common/hash.hpp"
-#include "mimir/formalism/factories.hpp"
 #include "mimir/utils/utils.hpp"
+#include "mimir/formalism/repositories.hpp"
 
 #include <ostream>
 #include <tuple>
@@ -57,7 +57,7 @@ bool StateImpl::contains(const AnyGroundAtom& atom) const
                       atom);
 }
 
-template<DynamicPredicateCategory P>
+template<DynamicPredicateTag P>
 bool StateImpl::superset_of(const GroundAtomList<P>& atoms) const
 {
     return std::ranges::all_of(atoms, AS_CPTR_LAMBDA(contains<P>));
@@ -74,7 +74,7 @@ bool StateImpl::literal_holds(AnyGroundLiteral literal) const
                       literal);
 }
 
-template<DynamicPredicateCategory P>
+template<DynamicPredicateTag P>
 bool StateImpl::literal_holds(GroundLiteral<P> literal) const
 {
     return literal->is_negated() != contains(literal->get_atom());
@@ -101,7 +101,7 @@ bool StateImpl::operator==(const StateImpl& other) const
     return fluent_atoms == other.fluent_atoms and derived_atoms == other.derived_atoms;
 }
 
-template<DynamicPredicateCategory P>
+template<DynamicPredicateTag P>
 FlatBitset& StateImpl::get_atoms()
 {
     if constexpr (std::is_same_v<P, Fluent>)
@@ -146,7 +146,7 @@ template const FlatBitset& StateImpl::get_atoms<Derived>() const;
  */
 
 template<>
-std::ostream& operator<<(std::ostream& os, const std::tuple<Problem, State, const PDDLFactories&>& data)
+std::ostream& operator<<(std::ostream& os, const std::tuple<Problem, State, const PDDLRepositories&>& data)
 {
     const auto [problem, state, pddl_factories] = data;
 

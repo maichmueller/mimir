@@ -15,7 +15,7 @@ void init_aag(py::module_& m)
     /* ConjunctionGrounder */
 
     class_<LiftedConjunctionGrounder, std::shared_ptr<LiftedConjunctionGrounder>>(m, "LiftedConjunctionGrounder")  //
-        .def(py::init<Problem, VariableList, LiteralList<Static>, LiteralList<Fluent>, LiteralList<Derived>, std::shared_ptr<PDDLFactories>>(),
+        .def(py::init<Problem, VariableList, LiteralList<Static>, LiteralList<Fluent>, LiteralList<Derived>, std::shared_ptr<PDDLRepositories>>(),
              py::arg("problem"),
              py::arg("variables"),
              py::arg("static_literals"),
@@ -56,7 +56,7 @@ void init_aag(py::module_& m)
             py::keep_alive<0, 1>())
         .def("get_ground_action", &IApplicableActionGenerator::get_ground_axiom, py::keep_alive<0, 1>(), py::arg("axiom_index"))
         .def("get_problem", &IApplicableActionGenerator::get_problem, py::return_value_policy::reference_internal)
-        .def("get_pddl_factories", &IApplicableActionGenerator::get_pddl_factories);
+        .def("get_pddl_repositories", &IApplicableActionGenerator::get_pddl_repositories);
 
     // Lifted
     class_<DefaultLiftedApplicableActionGeneratorEventHandler,
@@ -71,8 +71,8 @@ void init_aag(py::module_& m)
 
     class_<LiftedApplicableActionGenerator, IApplicableActionGenerator, std::shared_ptr<LiftedApplicableActionGenerator>>(m,
                                                                                                                           "LiftedApplicableActionGenerator")  //
-        .def(py::init<Problem, std::shared_ptr<PDDLFactories>>(), py::arg("problem"), py::arg("pddl_factories"))
-        .def(py::init<Problem, std::shared_ptr<PDDLFactories>, std::shared_ptr<ILiftedApplicableActionGeneratorEventHandler>>(),
+        .def(py::init<Problem, std::shared_ptr<PDDLRepositories>>(), py::arg("problem"), py::arg("pddl_factories"))
+        .def(py::init<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<ILiftedApplicableActionGeneratorEventHandler>>(),
              py::arg("problem"),
              py::arg("pddl_factories"),
              py::arg("event_handler"));
@@ -91,8 +91,8 @@ void init_aag(py::module_& m)
     class_<GroundedApplicableActionGenerator, IApplicableActionGenerator, std::shared_ptr<GroundedApplicableActionGenerator>>(
         m,
         "GroundedApplicableActionGenerator")  //
-        .def(py::init<Problem, std::shared_ptr<PDDLFactories>>(), py::arg("problem"), py::arg("pddl_factories"))
-        .def(py::init<Problem, std::shared_ptr<PDDLFactories>, std::shared_ptr<IGroundedApplicableActionGeneratorEventHandler>>(),
+        .def(py::init<Problem, std::shared_ptr<PDDLRepositories>>(), py::arg("problem"), py::arg("pddl_factories"))
+        .def(py::init<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IGroundedApplicableActionGeneratorEventHandler>>(),
              py::arg("problem"),
              py::arg("pddl_factories"),
              py::arg("event_handler"));

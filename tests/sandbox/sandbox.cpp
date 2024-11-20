@@ -32,7 +32,7 @@ int main()
     std::vector<std::string> v = { "a", "b", "c", "d" };
     auto parser = mimir::PDDLParser("data/blocks_4/domain.pddl", "data/blocks_4/test_problem.pddl");
     auto problem = parser.get_problem();
-    auto state_space = mimir::StateSpace::create(problem, parser.get_pddl_factories());
+    auto state_space = mimir::StateSpace::create(problem, parser.get_pddl_repositories());
     auto init_state = state_space->get_initial_state();
     py::list lst = pymimir::insert_into_list(pymimir::insert_into_list(init_state.get_satisfied_literals(problem->get_goal_condition<mimir::Fluent>())),
                                              init_state.get_satisfied_literals(problem->get_goal_condition<mimir::Derived>()));
