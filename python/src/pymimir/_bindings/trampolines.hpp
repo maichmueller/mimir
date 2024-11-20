@@ -2,10 +2,12 @@
 #ifndef PYMIMIR_TRAMPOLINES_HPP
 #define PYMIMIR_TRAMPOLINES_HPP
 
-#include <pybind11/pybind11.h>
-#include "mimir/mimir.hpp"
+#include "pymimir.hpp"
 
-using namespace mimir;
+#include <pybind11/pybind11.h>
+
+namespace pymimir
+{
 
 /**
  * IPyHeuristic
@@ -58,7 +60,13 @@ public:
     }
     void on_generate_state_not_relaxed_impl(State state, GroundAction action, Problem problem, const PDDLRepositories& pddl_repositories) override
     {
-        PYBIND11_OVERRIDE(void, DynamicAStarAlgorithmEventHandlerBase, on_generate_state_not_relaxed_impl, state, action, problem, std::cref(pddl_repositories));
+        PYBIND11_OVERRIDE(void,
+                          DynamicAStarAlgorithmEventHandlerBase,
+                          on_generate_state_not_relaxed_impl,
+                          state,
+                          action,
+                          problem,
+                          std::cref(pddl_repositories));
     }
     void on_close_state_impl(State state, Problem problem, const PDDLRepositories& pddl_repositories) override
     {
@@ -88,6 +96,6 @@ public:
     void on_unsolvable_impl() override { PYBIND11_OVERRIDE(void, DynamicAStarAlgorithmEventHandlerBase, on_unsolvable_impl, ); }
     void on_exhausted_impl() override { PYBIND11_OVERRIDE(void, DynamicAStarAlgorithmEventHandlerBase, on_exhausted_impl, ); }
 };
+}
 
-
-#endif //PYMIMIR_TRAMPOLINES_HPP
+#endif  // PYMIMIR_TRAMPOLINES_HPP

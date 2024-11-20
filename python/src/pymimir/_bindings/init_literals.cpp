@@ -3,7 +3,7 @@
 #include <pybind11/pybind11.h>
 namespace py = pybind11;
 
-using namespace mimir;
+using namespace pymimir;
 
 void init_literals(py::module& m)
 {

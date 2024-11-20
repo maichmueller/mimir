@@ -7,7 +7,7 @@
 
 namespace py = pybind11;
 
-using namespace mimir;
+using namespace pymimir;
 
 void init_cista_types(py::module& m)
 {

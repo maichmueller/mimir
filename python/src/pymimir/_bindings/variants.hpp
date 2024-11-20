@@ -6,9 +6,9 @@
 
 #include <pybind11/pybind11.h>
 namespace py = pybind11;
-#include "mimir/mimir.hpp"
+#include "pymimir.hpp"
 
-namespace mimir::pymimir
+namespace pymimir
 {
 
 /**

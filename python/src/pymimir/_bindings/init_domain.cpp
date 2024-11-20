@@ -1,5 +1,5 @@
 #include "init_declarations.hpp"
-#include "mimir/mimir.hpp"
+#include "pymimir.hpp"
 #include "opaque_types.hpp"
 #include "utils.hpp"
 
@@ -8,8 +8,8 @@ namespace py = pybind11;
 
 void init_domain(py::module& m)
 {
-    using namespace mimir;
-using namespace mimir::pymimir;
+
+using namespace pymimir;
 
     class_<DomainImpl>(m, "Domain")  //
         .def("__str__", &DomainImpl::str)

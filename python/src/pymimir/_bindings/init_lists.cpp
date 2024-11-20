@@ -7,8 +7,8 @@
 
 namespace py = pybind11;
 
-using namespace mimir;
-using namespace mimir::pymimir;
+
+using namespace pymimir;
 
 void init_lists(py::module& m) {
     def_opaque_vector_repr<GroundActionList>(m, "GroundActionList");

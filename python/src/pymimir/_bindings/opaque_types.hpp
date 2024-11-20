@@ -2,7 +2,7 @@
 #pragma once
 
 
-#include "mimir/mimir.hpp"
+#include "pymimir.hpp"
 #include "variants.hpp"
 
 #include <pybind11/pybind11.h>
@@ -16,13 +16,13 @@ PYBIND11_MAKE_OPAQUE(mimir::AxiomList);
 PYBIND11_MAKE_OPAQUE(mimir::DomainList);
 PYBIND11_MAKE_OPAQUE(mimir::EffectSimpleList);
 PYBIND11_MAKE_OPAQUE(mimir::EffectComplexList);
-PYBIND11_MAKE_OPAQUE(mimir::pymimir::FunctionExpressionVariantList);
+PYBIND11_MAKE_OPAQUE(pymimir::FunctionExpressionVariantList);
 PYBIND11_MAKE_OPAQUE(mimir::FunctionSkeletonList);
 PYBIND11_MAKE_OPAQUE(mimir::FunctionList);
 PYBIND11_MAKE_OPAQUE(mimir::GroundAtomList<mimir::Static>);
 PYBIND11_MAKE_OPAQUE(mimir::GroundAtomList<mimir::Fluent>);
 PYBIND11_MAKE_OPAQUE(mimir::GroundAtomList<mimir::Derived>);
-PYBIND11_MAKE_OPAQUE(mimir::pymimir::GroundFunctionExpressionVariantList);
+PYBIND11_MAKE_OPAQUE(pymimir::GroundFunctionExpressionVariantList);
 PYBIND11_MAKE_OPAQUE(mimir::GroundLiteralList<mimir::Static>);
 PYBIND11_MAKE_OPAQUE(mimir::GroundLiteralList<mimir::Fluent>);
 PYBIND11_MAKE_OPAQUE(mimir::GroundLiteralList<mimir::Derived>);

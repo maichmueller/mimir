@@ -6,8 +6,8 @@
 
 namespace py = pybind11;
 
-using namespace mimir;
-using namespace mimir::pymimir;
+
+using namespace pymimir;
 
 void init_effects(py::module& m)
 {

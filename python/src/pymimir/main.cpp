@@ -7,13 +7,9 @@
 #define STRINGIFY(x) #x
 #define MACRO_STRINGIFY(x) STRINGIFY(x)
 
-using namespace mimir;
-using namespace mimir::pymimir;
-
+using namespace pymimir;
 
 namespace py = pybind11;
-
-
 
 PYBIND11_MODULE(_pymimir, m)
 {

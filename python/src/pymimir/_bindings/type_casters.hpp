@@ -1,11 +1,7 @@
 #pragma once
 
-#include "mimir/mimir.hpp"
-#include "pybind11/pybind11.h"
+#include "pymimir.hpp"
 #include "utils.hpp"
-
-namespace py = pybind11;
-using namespace mimir;
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -16,11 +12,11 @@ namespace py = pybind11;
 namespace pybind11::detail
 {
 template<>
-struct type_caster<FlatIndexList>
+struct type_caster<pymimir::FlatIndexList>
 {
 public:
     // pybind11 requires these member functions
-    PYBIND11_TYPE_CASTER(FlatIndexList, _("FlatIndexList"));
+    PYBIND11_TYPE_CASTER(pymimir::FlatIndexList, _("FlatIndexList"));
 
     // Conversion: Python -> C++
     bool load(handle src, bool)
@@ -55,15 +51,12 @@ public:
         // Convert each element from Python to C++
         for (const auto& item : iterable)
         {
-            value.push_back(item.cast<Index>());
+            value.push_back(item.cast<pymimir::Index>());
         }
         return true;
     }
 
     // Conversion: C++ -> Python
-    static handle cast(const FlatIndexList& src, return_value_policy, handle)
-    {
-        return mimir::pymimir::insert_into_list(src);
-    }
+    static handle cast(const pymimir::FlatIndexList& src, return_value_policy, handle) { return pymimir::insert_into_list(src); }
 };
 }

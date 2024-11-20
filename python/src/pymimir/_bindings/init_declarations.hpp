@@ -31,7 +31,7 @@
 #define CONST_OVERLOAD(func, ...) py::overload_cast<__VA_ARGS__>(&func, py::const_)
 #endif
 
-#include "mimir/mimir.hpp"
+#include "pymimir.hpp"
 
 //
 // utilities

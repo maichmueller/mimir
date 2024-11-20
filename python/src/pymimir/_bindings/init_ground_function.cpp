@@ -1,11 +1,11 @@
 #include "init_declarations.hpp"
-#include "mimir/mimir.hpp"
+#include "pymimir.hpp"
 #include "utils.hpp"
 #include "variants.hpp"
 
 #include <pybind11/pybind11.h>
 namespace py = pybind11;
-using namespace mimir;
+
 
 
 void init_ground_function_expression(py::module& m)

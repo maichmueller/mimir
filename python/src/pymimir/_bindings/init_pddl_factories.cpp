@@ -1,6 +1,6 @@
 
 #include "init_declarations.hpp"
-#include "mimir/mimir.hpp"
+#include "pymimir.hpp"
 #include "opaque_types.hpp"
 #include "utils.hpp"
 #include "variants.hpp"
@@ -10,8 +10,8 @@
 
 namespace py = pybind11;
 
-using namespace mimir;
-using namespace mimir::pymimir;
+
+using namespace pymimir;
 
 void init_pddl_repositories(py::module& m)
 {

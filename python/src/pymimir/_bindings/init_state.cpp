@@ -1,13 +1,13 @@
 #include "init_declarations.hpp"
-#include "mimir/mimir.hpp"
+#include "pymimir.hpp"
 #include "utils.hpp"
 
 #include <pybind11/pybind11.h>
 #include <range/v3/view/transform.hpp>
 namespace py = pybind11;
 
-using namespace mimir;
-using namespace mimir::pymimir;
+
+using namespace pymimir;
 
 void init_state(py::module& m)
 {

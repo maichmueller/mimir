@@ -1,13 +1,13 @@
 #include "init_declarations.hpp"
-#include "mimir/mimir.hpp"
+#include "pymimir.hpp"
 #include "opaque_types.hpp"
 #include "utils.hpp"
 
 #include <pybind11/pybind11.h>
 namespace py = pybind11;
 
-using namespace mimir;
-using namespace mimir::pymimir;
+
+using namespace pymimir;
 
 
 void init_conditional_effect(py::module& m)

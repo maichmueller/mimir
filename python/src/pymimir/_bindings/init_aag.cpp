@@ -1,5 +1,5 @@
 #include "init_declarations.hpp"
-#include "mimir/mimir.hpp"
+#include "pymimir.hpp"
 #include "mimir/search/condition_grounders/conjunction_grounder.hpp"
 #include "opaque_types.hpp"
 #include "utils.hpp"
@@ -7,8 +7,8 @@
 #include <pybind11/pybind11.h>
 namespace py = pybind11;
 
-using namespace mimir;
-using namespace mimir::pymimir;
+
+using namespace pymimir;
 
 void init_applicable_action_generator(py::module_& m)
 {

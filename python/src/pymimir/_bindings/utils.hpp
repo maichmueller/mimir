@@ -5,7 +5,7 @@
 
 namespace py = pybind11;
 
-namespace mimir::pymimir
+namespace pymimir
 {
 inline py::object cast_safe(auto&& obj)
 {
@@ -263,4 +263,4 @@ py::class_<IndexGroupedVector, holder_type> bind_const_index_grouped_vector(py::
     return cl;
 }
 
-}  // namespace mimir::pymimir
+}  // namespace pymimir
