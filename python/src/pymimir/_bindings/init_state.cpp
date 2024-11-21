@@ -125,7 +125,9 @@ void init_state(py::module& m)
             },
             py::arg("problem"),
             py::arg("pddl_repositories"))
-        .def("get_index", CONST_OVERLOAD(StateImpl::get_index));
+        .def("get_index", CONST_OVERLOAD(StateImpl::get_index))
+        .def("__getstate__", [](const StateImpl& self) { return std::tuple { self.get_index(), self.get_atoms<Fluent>(), self.get_atoms<Derived>() }; })
+        .def("__setstate__", [](const std::tuple<Index, FlatBitset, FlatBitset>& tuple) { return std::apply(AS_LAMBDA(std::make_unique<StateImpl>), tuple); });
 
     /* StateImplRepository */
     class_<StateRepository, std::shared_ptr<StateRepository>>(m, "StateRepository")  //
