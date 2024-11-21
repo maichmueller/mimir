@@ -83,7 +83,7 @@ struct StateImpl
     template<std::ranges::range LiteralRange>
     auto get_satisfied_literals(LiteralRange&& literals) const
     {
-        return FWD(literals) | std::views::filter(AS_CPTR_LAMBDA(literal_holds));
+        return literals | std::views::filter(AS_CPTR_LAMBDA(literal_holds));
     }
 
     /* Getters */

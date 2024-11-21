@@ -16,61 +16,55 @@ struct overload : Ts...
 template<typename... Ts>
 overload(Ts...) -> overload<Ts...>;
 
-template < typename... Ts >
-struct transparent_overload : Ts... {
+template<typename... Ts>
+struct transparent_overload : Ts...
+{
     using is_transparent = std::true_type;
     using Ts::operator()...;
 };
-template < typename... Ts >
-transparent_overload(Ts...) -> transparent_overload< Ts... >;
+template<typename... Ts>
+transparent_overload(Ts...) -> transparent_overload<Ts...>;
 
 template<typename Iter, typename Sent>
-class RangeWrapper
+auto make_range(Iter begin, Sent end)
 {
-public:
-    RangeWrapper(Iter begin, Sent end) : m_begin(begin), m_end(end) {}
-
-    auto begin() const { return m_begin; }
-    auto end() const { return m_end; }
-
-    size_t size() const
-    {
-        return std::ranges::distance(m_begin, m_end);
-    }
-
-private:
-    Iter m_begin;
-    Sent m_end;
-};
-
-template<typename Iter, typename Sent>
-auto as_range(Iter begin, Sent end)
-{
-    return RangeWrapper { begin, end };
+    return std::ranges::subrange(begin, end);
 }
 
-template<typename RangeLike>
-auto as_range(RangeLike& range)
+template<typename Iter, typename Sent>
+auto make_range(Iter begin, Sent end, size_t size)
 {
-    return RangeWrapper { std::ranges::begin(range), std::ranges::end(range) };
+    return std::ranges::subrange(begin, end, size);
+}
+template<std::ranges::range RangeLike>
+auto& make_range(RangeLike& range)
+{
+    return range;
+}
+template<std::ranges::range RangeLike>
+auto make_range(RangeLike& range, std::ranges::range_size_t<RangeLike> size)
+{
+    return std::ranges::subrange(range, size);
 }
 
 /// const_cast for avoiding code duplication
 /// only use this if you are sure that the constness is actually a lie!
 template<typename T>
-constexpr T & as_mutable(T const & value) noexcept {
-    return const_cast<T &>(value);
+constexpr T& as_mutable(T const& value) noexcept
+{
+    return const_cast<T&>(value);
 }
 template<typename T>
-constexpr T * as_mutable(T const * value) noexcept {
-    return const_cast<T *>(value);
+constexpr T* as_mutable(T const* value) noexcept
+{
+    return const_cast<T*>(value);
 }
 template<typename T>
-constexpr T * as_mutable(T * value) noexcept {
+constexpr T* as_mutable(T* value) noexcept
+{
     return value;
 }
 template<typename T>
-void as_mutable(T const &&) = delete;
-
+void as_mutable(T const&&) = delete;
 
 }

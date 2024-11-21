@@ -17,6 +17,32 @@ inline py::object cast_safe(auto&& obj)
     return pyobj;
 }
 
+py::list init_list(auto&& rng)
+{
+    if constexpr (not std::derived_from<raw_t<decltype(rng)>, py::object>)
+    {
+        if constexpr (std::ranges::sized_range<raw_t<decltype(rng)>>)
+        {
+            return py::list(std::ranges::size(rng));
+        }
+        else
+        {
+            return py::list(0);
+        }
+    }
+    else
+    {
+        if (py::isinstance<py::sequence>(rng))
+        {
+            return py::list(py::cast<py::sequence>(rng).size());
+        }
+        else
+        {
+            return py::list(0);
+        }
+    }
+}
+
 template<typename ListT>
     requires std::same_as<raw_t<ListT>, py::list>
 decltype(auto) insert_into_list(const py::object& self, ListT&& lst, std::ranges::range auto&& rng, std::integral auto& counter)
@@ -68,31 +94,31 @@ decltype(auto) insert_into_list(ListT&& lst, std::ranges::range auto&& rng)
 
 inline py::list insert_into_list(const py::object& self, std::ranges::range auto&& rng)
 {
-    if constexpr (std::ranges::sized_range<raw_t<decltype(rng)>>)
+    py::list lst = init_list(rng);
+    if (lst.size() > 0)
     {
-        py::list lst(rng.size());  // alloc memory (autofilled with None)
         size_t counter = 0;
         insert_into_list(self, lst, FWD(rng), counter);
         return lst;
     }
     else
     {
-        return insert_into_list(self, py::list(0), FWD(rng));
+        return insert_into_list(self, lst, FWD(rng));
     }
 }
 
 inline py::list insert_into_list(std::ranges::range auto&& rng)
 {
-    if constexpr (std::ranges::sized_range<raw_t<decltype(rng)>>)
+    py::list lst = init_list(rng);
+    if (lst.size() > 0)
     {
-        py::list lst(rng.size());
         size_t counter = 0;
         insert_into_list(lst, FWD(rng), counter);
         return lst;
     }
     else
     {
-        return insert_into_list(py::list(0), FWD(rng));
+        return insert_into_list(lst, FWD(rng));
     }
 }
 
@@ -152,7 +178,6 @@ constexpr std::string tag_name()
         static_assert(dependent_false<P>::value, "non-exhaustive visitor!");
     }
 }
-
 
 /// @brief Binds a std::span<T> as an unmodifiable python object.
 /// Modifiable std::span are more complicated.

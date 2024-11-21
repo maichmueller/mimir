@@ -27,7 +27,7 @@ void init_state(py::module& m)
             "superset_of",
             [](const StateImpl& self, const py::iterable& rng)
             {
-                auto range = as_range(rng.begin(), rng.end());
+                auto range = make_range(rng.begin(), rng.end());
                 return self.superset_of(range | std::views::transform(AS_LAMBDA(py::cast<AnyGroundAtom>)));
             },
             py::arg("atoms"))
@@ -39,7 +39,7 @@ void init_state(py::module& m)
             "literals_hold",
             [](const StateImpl& self, const py::iterable& rng)
             {
-                auto range = as_range(rng.begin(), rng.end());
+                auto range = make_range(rng.begin(), rng.end());
                 return self.literals_hold(std::views::transform(range, AS_LAMBDA(py::cast<AnyGroundLiteral>)));
             },
             py::arg("literals"))
@@ -56,8 +56,17 @@ void init_state(py::module& m)
             "get_unsatisfied_literals",
             [](const StateImpl& self, const py::iterable& iter)
             {
-                auto rng = as_range(iter.begin(), iter.end());
-                return insert_into_list(self.get_unsatisfied_literals(std::views::transform(rng, AS_LAMBDA(py::cast<AnyGroundLiteral>))));
+                auto rng = make_range(iter.begin(), iter.end());
+                // this line should be used, but gcc-10.2 has a bug for pybind11::iterator's category dedcution (fixed only in 10.4). Until the manylinux image updates
+                // gcc to 10.4, we use the workaround below.
+//                return insert_into_list(self.get_unsatisfied_literals(std::views::transform(rng, AS_LAMBDA(py::cast<AnyGroundLiteral>))));
+                py::list lst = init_list(rng);
+                for( auto any_literal: std::views::transform(rng, AS_LAMBDA(py::cast<AnyGroundLiteral>))) {
+                    if(!self.literal_holds(any_literal)) {
+                        lst.append(cast_safe(any_literal));
+                    }
+                }
+                return lst;
             },
             py::arg("iterable"))
         .def(
@@ -83,8 +92,17 @@ void init_state(py::module& m)
             "get_satisfied_literals",
             [](const StateImpl& self, const py::iterable& iter)
             {
-                auto rng = as_range(iter.begin(), iter.end());
-                return insert_into_list(self.get_satisfied_literals(std::views::transform(rng, AS_LAMBDA(py::cast<AnyGroundLiteral>))));
+                auto rng = make_range(iter.begin(), iter.end());
+                // this line should be used, but gcc-10.2 has a bug for pybind11::iterator's category dedcution (fixed only in 10.4). Until the manylinux image updates
+                // gcc to 10.4, we use the workaround below.
+//                return insert_into_list(self.get_satisfied_literals(std::views::transform(rng, AS_LAMBDA(py::cast<AnyGroundLiteral>))));
+                py::list lst = init_list(rng);
+                for( auto any_literal: std::views::transform(rng, AS_LAMBDA(py::cast<AnyGroundLiteral>))) {
+                    if(self.literal_holds(any_literal)) {
+                        lst.append(cast_safe(any_literal));
+                    }
+                }
+                return lst;
             },
             py::arg("iterable"))
         .def(

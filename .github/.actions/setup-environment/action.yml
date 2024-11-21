@@ -76,7 +76,7 @@ runs:
       shell: bash
       run: |
         python3 -m pip install --upgrade pip setuptools
-        python3 -m pip install 'conan==2.8.1'
+        python3 -m pip install 'conan>=2.8.1,<3.0.0'
         conan profile detect --name default
 
     - name: Cache Conan Dependencies
