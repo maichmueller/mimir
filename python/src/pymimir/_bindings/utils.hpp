@@ -164,6 +164,12 @@ void for_each_tag(auto&& f)
     f(Derived {});
 }
 
+template<typename IndexType, IndexType... Is>
+void for_each_index(auto&& f)
+{
+    (f(std::integral_constant<IndexType, Is> {}), ...);
+}
+
 template<PredicateTag P>
 constexpr std::string tag_name()
 {

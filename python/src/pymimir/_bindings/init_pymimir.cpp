@@ -1,6 +1,6 @@
 #include "init_declarations.hpp"
-#include "pymimir.hpp"
 #include "opaque_types.hpp"
+#include "pymimir.hpp"
 #include "trampolines.hpp"
 #include "utils.hpp"
 #include "variants.hpp"
@@ -10,7 +10,6 @@
 namespace py = pybind11;
 
 using namespace pymimir;
-
 
 void init_pymimir(py::module& m)
 {
@@ -255,42 +254,38 @@ void init_pymimir(py::module& m)
           "Creates color refinement certificate");
 
     // K-FWL
-    auto bind_kfwl_certificate = [&]<size_t K>(const std::string& class_name, std::integral_constant<size_t, K>)
-    {
-        using CertificateK = kfwl::Certificate<K>;
+    for_each_index<size_t, 2, 3, 4>(
+        [&]<size_t K>(std::integral_constant<size_t, K>, const std::string& class_name = fmt::format("Certificate{}FWL", K))
+        {
+            using CertificateK = kfwl::Certificate<K>;
 
-        class_<CertificateK>(m, class_name.c_str())
-            .def("__eq__", [](const CertificateK& lhs, const CertificateK& rhs) { return lhs == rhs; })
-            .def("__hash__", [](const CertificateK& self) { return std::hash<CertificateK>()(self); })
-            .def("__str__",
-                 [](const CertificateK& self)
-                 {
-                     auto os = std::stringstream();
-                     os << self;
-                     return os.str();
-                 })
-            // Returning canonical compression functions does not work due to unhashable type list.
-            //.def("get_canonical_isomorphic_type_compression_function", &CertificateK::get_canonical_isomorphic_type_compression_function)
-            //.def("get_canonical_configuration_compression_function", &CertificateK::get_canonical_configuration_compression_function)
-            .def("get_canonical_coloring", &CertificateK::get_canonical_coloring);
-    };
-    bind_kfwl_certificate("Certificate2FWL", std::integral_constant<size_t, 2> {});
-    bind_kfwl_certificate("Certificate3FWL", std::integral_constant<size_t, 3> {});
-    bind_kfwl_certificate("Certificate4FWL", std::integral_constant<size_t, 4> {});
+            class_<CertificateK>(m, class_name.c_str())
+                .def("__eq__", [](const CertificateK& lhs, const CertificateK& rhs) { return lhs == rhs; })
+                .def("__hash__", [](const CertificateK& self) { return std::hash<CertificateK>()(self); })
+                .def("__str__",
+                     [](const CertificateK& self)
+                     {
+                         auto os = std::stringstream();
+                         os << self;
+                         return os.str();
+                     })
+                // Returning canonical compression functions does not work due to unhashable type list.
+                //.def("get_canonical_isomorphic_type_compression_function", &CertificateK::get_canonical_isomorphic_type_compression_function)
+                //.def("get_canonical_configuration_compression_function", &CertificateK::get_canonical_configuration_compression_function)
+                .def("get_canonical_coloring", &CertificateK::get_canonical_coloring);
+        });
 
     class_<kfwl::IsomorphismTypeCompressionFunction>(m, "IsomorphismTypeCompressionFunction")  //
         .def(py::init<>());
 
-    auto bind_compute_kfwl_certificate = [&]<size_t K>(const std::string& function_name, std::integral_constant<size_t, K>)
-    {
-        m.def(
-            function_name.c_str(),
-            [](const StaticVertexColoredDigraph& graph, kfwl::IsomorphismTypeCompressionFunction& iso_type_function)
-            { return kfwl::compute_certificate<K>(graph, iso_type_function); },
-            py::arg("static_vertex_colored_digraph"),
-            py::arg("isomorphism_type_compression_function"));
-    };
-    bind_compute_kfwl_certificate("compute_certificate_2fwl", std::integral_constant<size_t, 2> {});
-    bind_compute_kfwl_certificate("compute_certificate_3fwl", std::integral_constant<size_t, 3> {});
-    bind_compute_kfwl_certificate("compute_certificate_4fwl", std::integral_constant<size_t, 4> {});
+    for_each_index<size_t, 2, 3, 4>(
+        [&]<size_t K>(std::integral_constant<size_t, K>, const std::string& function_name = fmt::format("compute_certificate_{}fwl", K))
+        {
+            m.def(
+                function_name.c_str(),
+                [](const StaticVertexColoredDigraph& graph, kfwl::IsomorphismTypeCompressionFunction& iso_type_function)
+                { return kfwl::compute_certificate<K>(graph, iso_type_function); },
+                py::arg("static_vertex_colored_digraph"),
+                py::arg("isomorphism_type_compression_function"));
+        });
 }
