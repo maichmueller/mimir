@@ -36,5 +36,7 @@ void init_cista_types(py::module& m)
             "__iter__",
             [](const FlatBitset& bs) { return py::make_iterator(bs.begin(), bs.end()); },
             py::keep_alive<0, 1>(),
-            "Return an iterator over the set bits");
+            "Return an iterator over the set bits")
+        .def("__getstate", [](const FlatBitset& bs) { return cista::serialize(bs); })
+        .def("__setstate", [](const cista::byte_buf& buffer) { return cista::deserialize<FlatBitset>(buffer); });
 }
