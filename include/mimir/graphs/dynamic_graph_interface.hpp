@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/graphs/graph_interface.hpp"
 
 namespace mimir
@@ -32,8 +31,7 @@ struct DynamicGraphTag
 };
 
 template<typename T>
-concept IsDynamicGraph = requires(T a)
-{
+concept IsDynamicGraph = requires(T a) {
     typename T::GraphTag;
     requires std::same_as<typename T::GraphTag, DynamicGraphTag>;
 
@@ -44,5 +42,3 @@ concept IsDynamicGraph = requires(T a)
 };
 
 }
-
-

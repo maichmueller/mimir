@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 // Do not include headers with transitive dependencies.
 #include "mimir/common/types.hpp"
 
@@ -84,5 +83,3 @@ class ISIWAlgorithmEventHandler;
 // AStar search
 
 }
-
-

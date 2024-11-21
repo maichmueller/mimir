@@ -232,8 +232,7 @@ private:
                      }
                  }()),
              ...);
-        }
-        (std::make_index_sequence<num_elements> {});
+        }(std::make_index_sequence<num_elements> {});
 
         return success;
     }
@@ -345,8 +344,7 @@ public:
             ((std::get<Indices>(m_values) =
                   std::get<Indices>(m_constructors_by_complexity)->at((*m_complexity_distribution_iter)[Indices]).at(m_indices[Indices])),
              ...);
-        }
-        (std::make_index_sequence<num_elements> {});
+        }(std::make_index_sequence<num_elements> {});
 
         return m_values;
     }

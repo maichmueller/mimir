@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/languages/description_logics/constructors.hpp"
 #include "mimir/languages/description_logics/equal_to.hpp"
 #include "mimir/languages/description_logics/hash.hpp"
@@ -117,5 +116,3 @@ using ConstructorTagToRepository =
 extern ConstructorTagToRepository create_default_constructor_type_to_repository();
 
 }
-
-

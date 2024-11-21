@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "cista/containers/tuple.h"
 #include "cista/serialization.h"
 #include "mimir/cista/storage/vector.h"

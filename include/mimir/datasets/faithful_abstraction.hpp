@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/algorithms/nauty.hpp"
 #include "mimir/common/grouped_vector.hpp"
 #include "mimir/common/hash.hpp"
@@ -276,4 +275,3 @@ using FaithfulAbstractionList = std::vector<FaithfulAbstraction>;
 extern std::ostream& operator<<(std::ostream& out, const FaithfulAbstraction& abstraction);
 
 }
-

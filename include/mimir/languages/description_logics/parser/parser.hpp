@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/languages/description_logics/parser/ast.hpp"
 
 #include <boost/spirit/home/x3.hpp>
@@ -41,5 +40,3 @@ BOOST_SPIRIT_DECLARE(grammar_type)
 parser::grammar_type const& grammar_parser();
 
 }
-
-

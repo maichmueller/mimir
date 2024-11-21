@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/cista/containers/dynamic_bitset.h"
 #include "mimir/common/hash.hpp"
 
@@ -62,8 +61,8 @@ struct std::hash<cista::tuple<Ts...>>
     {
         constexpr std::size_t seed = sizeof...(Ts);
 
-        [&]<std::size_t... Is>(std::index_sequence<Is...>) { (mimir::hash_combine(seed, cista::get<Is>(tuple)), ...); }
-        (std::make_index_sequence<sizeof...(Ts)> {});
+        [&]<std::size_t... Is>(std::index_sequence<Is...>)
+        { (mimir::hash_combine(seed, cista::get<Is>(tuple)), ...); }(std::make_index_sequence<sizeof...(Ts)> {});
 
         return seed;
     }
@@ -86,4 +85,3 @@ struct std::hash<cista::basic_vector<T, Ptr, IndexPointers, TemplateSizeType, Al
         return seed;
     }
 };
-

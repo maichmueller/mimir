@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include <concepts>
 #include <cstdint>
 
@@ -56,4 +55,3 @@ public:
 };
 
 }
-

@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include <concepts>
 #include <cstddef>
 #include <memory>
@@ -46,4 +45,3 @@ template<typename T, typename Value>
 concept IsRangeOver = std::ranges::range<T> && std::same_as<std::ranges::range_value_t<T>, Value>;
 
 }
-

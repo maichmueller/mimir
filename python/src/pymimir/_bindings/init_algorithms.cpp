@@ -1,12 +1,11 @@
 #include "init_declarations.hpp"
-#include "pymimir.hpp"
 #include "opaque_types.hpp"
+#include "pymimir.hpp"
 #include "trampolines.hpp"
 #include "utils.hpp"
 
 #include <pybind11/pybind11.h>
 namespace py = pybind11;
-
 
 using namespace pymimir;
 

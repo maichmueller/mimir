@@ -56,9 +56,9 @@ int main(int argc, char** argv)
     std::cout << *parser.get_problem() << std::endl;
 
     auto applicable_action_generator = (grounded) ? std::shared_ptr<IApplicableActionGenerator> { std::make_shared<GroundedApplicableActionGenerator>(
-                                           parser.get_problem(),
-                                           parser.get_pddl_repositories(),
-                                           std::make_shared<DebugGroundedApplicableActionGeneratorEventHandler>(false)) } :
+                                                        parser.get_problem(),
+                                                        parser.get_pddl_repositories(),
+                                                        std::make_shared<DebugGroundedApplicableActionGeneratorEventHandler>(false)) } :
                                                     std::shared_ptr<IApplicableActionGenerator> { std::make_shared<LiftedApplicableActionGenerator>(
                                                         parser.get_problem(),
                                                         parser.get_pddl_repositories(),

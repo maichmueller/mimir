@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include <boost/container/small_vector.hpp>
 #include <unordered_set>
 #include <vector>
@@ -95,4 +94,3 @@ extern std::vector<T> uniquify_elements(const std::vector<T>& vec)
 }
 
 }
-

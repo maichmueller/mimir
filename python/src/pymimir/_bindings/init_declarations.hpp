@@ -4,11 +4,11 @@
 #include "mimir/datasets/state_space.hpp"
 #include "mimir/formalism/atom.hpp"
 #include "mimir/formalism/declarations.hpp"
-#include "mimir/formalism/repositories.hpp"
 #include "mimir/formalism/ground_atom.hpp"
 #include "mimir/formalism/object.hpp"
 #include "mimir/formalism/predicate.hpp"
 #include "mimir/formalism/predicate_tag.hpp"
+#include "mimir/formalism/repositories.hpp"
 #include "mimir/formalism/requirements.hpp"
 #include "mimir/formalism/term.hpp"
 #include "mimir/formalism/variable.hpp"
@@ -63,7 +63,7 @@ inline auto def_opaque_vector_repr(py::class_<BoundVectorType, Options...> cls, 
                   })
     {
         return cls.def("__str__",
-                            [=](const BoundVectorType& self) { return fmt::format("{}[{}]", class_name, fmt::join(std::views::transform(self, elem_repr), ",")); });
+                       [=](const BoundVectorType& self) { return fmt::format("{}[{}]", class_name, fmt::join(std::views::transform(self, elem_repr), ",")); });
     }
     else
     {
@@ -76,7 +76,6 @@ inline auto def_opaque_vector_repr(py::module_& m, const std::string& class_name
 {
     return def_opaque_vector_repr(class_<BoundVectorType>(m, class_name.c_str()), class_name, elem_repr);
 }
-
 
 //
 // init - declarations:

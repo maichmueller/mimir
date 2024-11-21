@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/formalism/literal.hpp"
 #include "mimir/formalism/problem.hpp"
@@ -298,5 +297,3 @@ bool AssignmentSet<P>::consistent_literals(const LiteralList<P>& literals, const
 }
 
 }
-
-

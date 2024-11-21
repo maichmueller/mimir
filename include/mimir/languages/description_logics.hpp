@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/languages/description_logics/constructor_interface.hpp"
 #include "mimir/languages/description_logics/constructor_keywords.hpp"
 #include "mimir/languages/description_logics/constructor_properties.hpp"
@@ -38,5 +37,3 @@
 #include "mimir/languages/description_logics/grammar_constructors.hpp"
 #include "mimir/languages/description_logics/hash.hpp"
 #include "mimir/languages/description_logics/refinement.hpp"
-
-

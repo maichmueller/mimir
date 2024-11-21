@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/search/action.hpp"
 #include "mimir/search/algorithms/astar/event_handlers/statistics.hpp"
@@ -387,5 +386,3 @@ public:
 };
 
 }
-
-

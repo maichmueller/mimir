@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/concepts.hpp"
 #include "mimir/graphs/dynamic_graph_interface.hpp"
 #include "mimir/graphs/dynamic_graph_iterators.hpp"
@@ -92,7 +91,8 @@ public:
     /// @param ...properties the vertex properties.
     /// @return the index of the newly created vertex.
     template<typename... VertexProperties>
-    requires HasVertexProperties<V, VertexProperties...> VertexIndex add_vertex(VertexProperties&&... properties);
+        requires HasVertexProperties<V, VertexProperties...>
+    VertexIndex add_vertex(VertexProperties&&... properties);
 
     /// @brief Add a directed edge from source to target to the graph with edge properties args.
     /// @tparam ...EdgeProperties the types of the edge properties. Must match the properties mentioned in the edge constructor.
@@ -101,7 +101,8 @@ public:
     /// @param ...properties the edge properties.
     /// @return the index of the newly created edge.
     template<typename... EdgeProperties>
-    requires HasEdgeProperties<E, EdgeProperties...> EdgeIndex add_directed_edge(VertexIndex source, VertexIndex target, EdgeProperties&&... properties);
+        requires HasEdgeProperties<E, EdgeProperties...>
+    EdgeIndex add_directed_edge(VertexIndex source, VertexIndex target, EdgeProperties&&... properties);
 
     /// @brief Add two anti-parallel directed edges to the graph with the identical edge properties, representing the undirected edge.
     ///
@@ -115,8 +116,8 @@ public:
     /// @param ...properties the edge properties.
     /// @return the index pair of the two newly created edges.
     template<typename... EdgeProperties>
-    requires HasEdgeProperties<E, EdgeProperties...> std::pair<EdgeIndex, EdgeIndex>
-    add_undirected_edge(VertexIndex source, VertexIndex target, EdgeProperties&&... properties);
+        requires HasEdgeProperties<E, EdgeProperties...>
+    std::pair<EdgeIndex, EdgeIndex> add_undirected_edge(VertexIndex source, VertexIndex target, EdgeProperties&&... properties);
 
     /**
      * Destructible functionality.
@@ -229,7 +230,8 @@ void DynamicGraph<V, E>::clear()
 
 template<IsVertex V, IsEdge E>
 template<typename... VertexProperties>
-requires HasVertexProperties<V, VertexProperties...> VertexIndex DynamicGraph<V, E>::add_vertex(VertexProperties&&... properties)
+    requires HasVertexProperties<V, VertexProperties...>
+VertexIndex DynamicGraph<V, E>::add_vertex(VertexProperties&&... properties)
 {
     /* Get the vertex index. */
     auto index = m_free_vertices.empty() ? m_next_vertex_index++ : m_free_vertices.back();
@@ -264,8 +266,8 @@ requires HasVertexProperties<V, VertexProperties...> VertexIndex DynamicGraph<V,
 
 template<IsVertex V, IsEdge E>
 template<typename... EdgeProperties>
-requires HasEdgeProperties<E, EdgeProperties...>
-    EdgeIndex DynamicGraph<V, E>::add_directed_edge(VertexIndex source, VertexIndex target, EdgeProperties&&... properties)
+    requires HasEdgeProperties<E, EdgeProperties...>
+EdgeIndex DynamicGraph<V, E>::add_directed_edge(VertexIndex source, VertexIndex target, EdgeProperties&&... properties)
 {
     vertex_index_check(source, "DynamicGraph<V, E>::add_directed_edge(...): Source vertex does not exist.");
     vertex_index_check(target, "DynamicGraph<V, E>::add_directed_edge(...): Target vertex does not exist.");
@@ -293,8 +295,8 @@ requires HasEdgeProperties<E, EdgeProperties...>
 
 template<IsVertex V, IsEdge E>
 template<typename... EdgeProperties>
-requires HasEdgeProperties<E, EdgeProperties...> std::pair<EdgeIndex, EdgeIndex>
-DynamicGraph<V, E>::add_undirected_edge(VertexIndex source, VertexIndex target, EdgeProperties&&... properties)
+    requires HasEdgeProperties<E, EdgeProperties...>
+std::pair<EdgeIndex, EdgeIndex> DynamicGraph<V, E>::add_undirected_edge(VertexIndex source, VertexIndex target, EdgeProperties&&... properties)
 {
     auto properties_tuple = std::make_tuple(std::forward<EdgeProperties>(properties)...);
     auto properties_tuple_copy = properties_tuple;
@@ -563,5 +565,3 @@ void DynamicGraph<V, E>::edge_index_check(EdgeIndex edge, const std::string& err
 }
 
 }
-
-

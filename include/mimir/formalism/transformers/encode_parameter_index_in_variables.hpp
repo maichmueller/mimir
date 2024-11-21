@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/transformers/base_recurse.hpp"
 
 #include <unordered_map>

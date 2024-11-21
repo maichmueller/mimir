@@ -40,16 +40,16 @@ StateRepository::StateRepository(std::shared_ptr<IApplicableActionGenerator> app
 
 State StateRepository::get_or_create_initial_state()
 {
-    return get_or_create_state(ranges::to<GroundAtomList<Fluent>>(std::views::transform(m_applicable_action_generator->get_problem()->get_fluent_initial_literals(),
-                                                                                        [&](const auto& literal)
-                                                                                        {
-                                                                                            if (literal->is_negated())
-                                                                                            {
-                                                                                                throw std::runtime_error(
-                                                                                                    "negated literals in the initial state are not supported");
-                                                                                            }
-                                                                                            return literal->get_atom();
-                                                                                        })));
+    return get_or_create_state(
+        ranges::to<GroundAtomList<Fluent>>(std::views::transform(m_applicable_action_generator->get_problem()->get_fluent_initial_literals(),
+                                                                 [&](const auto& literal)
+                                                                 {
+                                                                     if (literal->is_negated())
+                                                                     {
+                                                                         throw std::runtime_error("negated literals in the initial state are not supported");
+                                                                     }
+                                                                     return literal->get_atom();
+                                                                 })));
 }
 
 State StateRepository::get_or_create_state(const GroundAtomList<Fluent>& atoms)

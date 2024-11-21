@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include <chrono>
 #include <cstdint>
 #include <ostream>
@@ -98,8 +97,7 @@ using BrFSAlgorithmStatisticsList = std::vector<BrFSAlgorithmStatistics>;
 
 inline std::ostream& operator<<(std::ostream& os, const BrFSAlgorithmStatistics& statistics)
 {
-    os << "[BrFS] Search time: " << statistics.get_search_time_ms().count() << "ms"
-       << "\n"
+    os << "[BrFS] Search time: " << statistics.get_search_time_ms().count() << "ms" << "\n"
        << "[BrFS] Number of generated states: " << statistics.get_num_generated() << "\n"
        << "[BrFS] Number of expanded states: " << statistics.get_num_expanded() << "\n"
        << "[BrFS] Number of pruned states: " << statistics.get_num_pruned() << "\n"
@@ -114,5 +112,3 @@ inline std::ostream& operator<<(std::ostream& os, const BrFSAlgorithmStatistics&
 }
 
 }
-
-

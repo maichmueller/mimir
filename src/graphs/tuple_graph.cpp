@@ -650,8 +650,7 @@ std::ostream& operator<<(std::ostream& out, const TupleGraph& tuple_graph)
     auto atom_indices = AtomIndexList {};
 
     out << "digraph {\n"
-        << "rankdir=\"LR\""
-        << "\n";
+        << "rankdir=\"LR\"" << "\n";
 
     // 3. Tuple nodes.
     for (const auto& vertex : tuple_graph.get_vertices_grouped_by_distance().front())
@@ -699,8 +698,7 @@ std::ostream& operator<<(std::ostream& out, const TupleGraph& tuple_graph)
         {
             for (const auto& succ_vertex : tuple_graph.get_digraph().get_adjacent_vertices<ForwardTraversal>(vertex.get_index()))
             {
-                out << "t" << vertex.get_index() << "->"
-                    << "t" << succ_vertex.get_index() << "\n";
+                out << "t" << vertex.get_index() << "->" << "t" << succ_vertex.get_index() << "\n";
             }
         }
         out << "}\n";

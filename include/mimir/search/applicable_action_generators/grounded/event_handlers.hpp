@@ -17,11 +17,8 @@
 
 #pragma once
 
-
 /**
  * Include all specializations here
  */
 #include "mimir/search/applicable_action_generators/grounded/event_handlers/debug.hpp"
 #include "mimir/search/applicable_action_generators/grounded/event_handlers/default.hpp"
-
-

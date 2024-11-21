@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/search/algorithms/astar/event_handlers/interface.hpp"
 
 #include <iostream>
@@ -63,5 +62,3 @@ public:
 };
 
 }
-
-

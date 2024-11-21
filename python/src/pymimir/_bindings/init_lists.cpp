@@ -7,16 +7,17 @@
 
 namespace py = pybind11;
 
-
 using namespace pymimir;
 
-void init_lists(py::module& m) {
+void init_lists(py::module& m)
+{
     def_opaque_vector_repr<GroundActionList>(m, "GroundActionList");
     bind_const_span<std::span<const GroundAction>>(m, "GroundActionSpan");
     static_assert(!py::detail::vector_needs_copy<GroundActionList>::value);  // Ensure return by reference + keep alive
 
     for_each_tag(
-        [&]<typename Tag>(Tag) {
+        [&]<typename Tag>(Tag)
+        {
             static_assert(!py::detail::vector_needs_copy<AtomList<Tag>>::value);
             std::string class_name = tag_name<Tag>() + "AtomList";
             def_opaque_vector_repr<AtomList<Tag>>(m, class_name);
@@ -68,10 +69,12 @@ void init_lists(py::module& m) {
 
     // PredicateList
     for_each_tag(
-        [&]<typename Tag>(Tag) {
+        [&]<typename Tag>(Tag)
+        {
             static_assert(!py::detail::vector_needs_copy<PredicateList<Tag>>::value);
             std::string class_name = tag_name<Tag>() + "PredicateList";
-            def_opaque_vector_repr<PredicateList<Tag>>(m, class_name);;
+            def_opaque_vector_repr<PredicateList<Tag>>(m, class_name);
+            ;
         });
 
     {
@@ -86,7 +89,8 @@ void init_lists(py::module& m) {
 
     // LiteralList
     for_each_tag(
-        [&]<typename Tag>(Tag) {
+        [&]<typename Tag>(Tag)
+        {
             static_assert(!py::detail::vector_needs_copy<LiteralList<Tag>>::value);
             std::string class_name = tag_name<Tag>() + "LiteralList";
             def_opaque_vector_repr<LiteralList<Tag>>(m, class_name);
@@ -94,28 +98,31 @@ void init_lists(py::module& m) {
 
     // GroundLiteralList
     for_each_tag(
-        [&]<typename Tag>(Tag) {
+        [&]<typename Tag>(Tag)
+        {
             static_assert(!py::detail::vector_needs_copy<GroundLiteralList<Tag>>::value);
             std::string class_name = tag_name<Tag>() + "GroundLiteralList";
-            auto list_class =
-                class_<GroundLiteralList<Tag>>(m, class_name.c_str())
-                    .def(
-                        "lift",
-                        [](const GroundLiteralList<Tag>& ground_literals, PDDLRepositories& pddl_repositories) { return lift(ground_literals, pddl_repositories); },
-                        py::arg("pddl_repositories"));
+            auto list_class = class_<GroundLiteralList<Tag>>(m, class_name.c_str())
+                                  .def(
+                                      "lift",
+                                      [](const GroundLiteralList<Tag>& ground_literals, PDDLRepositories& pddl_repositories)
+                                      { return lift(ground_literals, pddl_repositories); },
+                                      py::arg("pddl_repositories"));
             def_opaque_vector_repr<GroundLiteralList<Tag>>(list_class, class_name);
         });
 
     // GroundAtomList
     for_each_tag(
-        [&]<typename Tag>(Tag) {
+        [&]<typename Tag>(Tag)
+        {
             static_assert(!py::detail::vector_needs_copy<GroundAtomList<Tag>>::value);
             std::string class_name = tag_name<Tag>() + "GroundAtomList";
-            auto list_class = class_<GroundAtomList<Tag>>(m, class_name.c_str())
-                                  .def(
-                                      "lift",
-                                      [](const GroundAtomList<Tag>& ground_atoms, PDDLRepositories& pddl_repositories) { return lift(ground_atoms, pddl_repositories); },
-                                      py::arg("pddl_repositories"));
+            auto list_class =
+                class_<GroundAtomList<Tag>>(m, class_name.c_str())
+                    .def(
+                        "lift",
+                        [](const GroundAtomList<Tag>& ground_atoms, PDDLRepositories& pddl_repositories) { return lift(ground_atoms, pddl_repositories); },
+                        py::arg("pddl_repositories"));
             def_opaque_vector_repr<GroundAtomList<Tag>>(list_class, class_name);
         });
 }

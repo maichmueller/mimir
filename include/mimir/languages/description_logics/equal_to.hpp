@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/languages/description_logics/declarations.hpp"
 
 #include <functional>
@@ -391,5 +390,3 @@ struct UniqueDLEqualTo<const grammar::RoleIdentityImpl*>
 };
 
 }
-
-

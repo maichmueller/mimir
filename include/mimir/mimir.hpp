@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 /**
  * Include all specializations here
  */
@@ -106,4 +105,4 @@
 
 #include "mimir/algorithms/nauty.hpp"
 
-  // MIMIR_MIMIR_HPP_
+// MIMIR_MIMIR_HPP_

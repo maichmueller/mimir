@@ -153,8 +153,8 @@ void split_color_classes(const std::vector<std::tuple<Color, std::vector<ColorTy
 }
 
 template<typename G>
-requires IsVertexListGraph<G> && IsIncidenceGraph<G> && IsVertexColoredGraph<G>  //
-    Certificate compute_certificate(const G& graph)
+    requires IsVertexListGraph<G> && IsIncidenceGraph<G> && IsVertexColoredGraph<G>  //
+Certificate compute_certificate(const G& graph)
 {
     if (!is_undirected_graph(graph))
     {

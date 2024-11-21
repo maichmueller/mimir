@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/search/declarations.hpp"
 
@@ -50,5 +49,3 @@ extern Plan to_plan(const GroundActionList& action_view_list, const PDDLReposito
 extern std::ostream& operator<<(std::ostream& os, const Plan& plan);
 
 }
-
-

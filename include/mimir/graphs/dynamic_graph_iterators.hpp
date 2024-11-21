@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/concepts.hpp"
 #include "mimir/graphs/declarations.hpp"
 #include "mimir/graphs/graph_edge_interface.hpp"
@@ -558,5 +557,3 @@ bool DynamicAdjacentEdgeIndexConstIterator<Edge, Direction>::operator!=(const Dy
 }
 
 }
-
-

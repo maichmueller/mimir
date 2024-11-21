@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/search/algorithms/astar/event_handlers/interface.hpp"
 
 namespace mimir
@@ -61,5 +60,3 @@ public:
 };
 
 }
-
-

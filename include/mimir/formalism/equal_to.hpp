@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 
 #include <functional>
@@ -267,4 +266,3 @@ struct UniquePDDLEqualTo<const VariableImpl*>
 };
 
 }
-

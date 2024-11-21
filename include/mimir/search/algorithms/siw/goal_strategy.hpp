@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/search/algorithms/strategies/goal_strategy.hpp"
 
 namespace mimir
@@ -39,4 +38,3 @@ public:
     bool test_dynamic_goal(State state) override;
 };
 }
-

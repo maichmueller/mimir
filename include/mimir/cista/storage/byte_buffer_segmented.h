@@ -22,8 +22,8 @@
 #include <cstdint>
 #include <cstring>
 #include <stdexcept>
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace cista::storage
 {
@@ -117,4 +117,3 @@ public:
     size_t capacity() const { return m_capacity; }
 };
 }
-

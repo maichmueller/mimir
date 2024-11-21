@@ -1,18 +1,15 @@
 #include "init_declarations.hpp"
-#include "pymimir.hpp"
 #include "opaque_types.hpp"
+#include "pymimir.hpp"
 #include "utils.hpp"
 
 #include <pybind11/pybind11.h>
 namespace py = pybind11;
 
-
 using namespace pymimir;
 
 void init_actions(py::module& m)
 {
-
-
     /* Action */
     class_<ActionImpl>(m, "Action")  //
         .def("__str__", &ActionImpl::str)
@@ -52,14 +49,14 @@ void init_actions(py::module& m)
              [](const GroundActionImpl& self, PDDLRepositories& pddl_repositories)
              {
                  std::stringstream ss;
-                 ss << std::make_tuple(&self, std::cref(pddl_repositories), FullActionFormatterTag{});
+                 ss << std::make_tuple(&self, std::cref(pddl_repositories), FullActionFormatterTag {});
                  return ss.str();
              })
         .def("to_string_for_plan",
              [](const GroundActionImpl& self, PDDLRepositories& pddl_repositories)
              {
                  std::stringstream ss;
-                 ss << std::make_tuple(&self, std::cref(pddl_repositories), PlanActionFormatterTag{});
+                 ss << std::make_tuple(&self, std::cref(pddl_repositories), PlanActionFormatterTag {});
                  return ss.str();
              })
         .def("get_index", CONST_OVERLOAD(GroundActionImpl::get_index))
@@ -68,7 +65,7 @@ void init_actions(py::module& m)
         .def("get_object_indices", &GroundActionImpl::get_object_indices, py::return_value_policy::copy)
         .def("get_strips_precondition", [](const GroundActionImpl& self) { return StripsActionPrecondition(self.get_strips_precondition()); })
         .def("get_strips_effect", [](const GroundActionImpl& self) { return StripsActionEffect(self.get_strips_effect()); })
-        .def(
-            "get_conditional_effects",
-            [](const GroundActionImpl& self) { return insert_into_list(make_range(self.get_conditional_effects().begin(), self.get_conditional_effects().end())); });
+        .def("get_conditional_effects",
+             [](const GroundActionImpl& self)
+             { return insert_into_list(make_range(self.get_conditional_effects().begin(), self.get_conditional_effects().end())); });
 }

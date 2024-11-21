@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/search/algorithms/interface.hpp"
 #include "mimir/search/declarations.hpp"
@@ -66,5 +65,3 @@ private:
 };
 
 }
-
-

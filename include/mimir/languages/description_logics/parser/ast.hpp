@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include <boost/optional.hpp>
 #include <boost/spirit/home/x3/support/ast/position_tagged.hpp>
 #include <boost/spirit/home/x3/support/ast/variant.hpp>
@@ -301,5 +300,3 @@ struct Grammar : x3::position_tagged
 };
 
 }
-
-

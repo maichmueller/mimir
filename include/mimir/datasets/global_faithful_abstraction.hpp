@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/datasets/abstraction.hpp"
 #include "mimir/datasets/faithful_abstraction.hpp"
 #include "mimir/datasets/state_space.hpp"
@@ -220,4 +219,3 @@ struct std::hash<mimir::GlobalFaithfulAbstractState>
 {
     size_t operator()(const mimir::GlobalFaithfulAbstractState& element) const;
 };
-

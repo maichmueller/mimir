@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/languages/description_logics/parser/config.hpp"
 
 #include <iostream>
@@ -57,5 +56,3 @@ void parse_ast(const std::string& source, const Parser& parser, Node& out)
 }
 
 }
-
-

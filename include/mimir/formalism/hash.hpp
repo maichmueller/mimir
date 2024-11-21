@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 
 #include <cstddef>
@@ -289,4 +288,3 @@ struct UniquePDDLHasher<const VariableImpl*>
 };
 
 }
-

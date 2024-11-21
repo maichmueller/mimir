@@ -8,9 +8,7 @@
 
 namespace py = pybind11;
 
-
 using namespace pymimir;
-
 
 void init_termobject(py::module& m)
 {

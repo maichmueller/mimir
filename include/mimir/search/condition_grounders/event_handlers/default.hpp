@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/search/condition_grounders/event_handlers/interface.hpp"
 
@@ -33,5 +32,3 @@ public:
 };
 
 }
-
-

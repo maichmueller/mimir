@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/repositories.hpp"
 
 #include <loki/loki.hpp>
@@ -180,4 +179,3 @@ public:
 };
 
 }
-

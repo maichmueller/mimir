@@ -173,7 +173,8 @@ TEST(MimirTests, GraphsBreadthFirstSearchTest)
         const auto state_space = StateSpace::create(domain_file, problem_file).value();
         auto graph = TraversalDirectionTaggedType(state_space.get_graph(), BackwardTraversal());
 
-        const auto [predecessor_map, distance_map] = breadth_first_search(graph, state_space.get_goal_state_indices().begin(), state_space.get_goal_state_indices().end());
+        const auto [predecessor_map, distance_map] =
+            breadth_first_search(graph, state_space.get_goal_state_indices().begin(), state_space.get_goal_state_indices().end());
 
         EXPECT_EQ(distance_map.at(state_space.get_initial_state_index()), 4);
         // There is one deadend state.

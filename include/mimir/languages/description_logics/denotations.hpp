@@ -83,5 +83,3 @@ template<ConstructorTag D>
 using DenotationImplSet = cista::storage::UnorderedSet<DenotationImpl<D>>;
 
 }
-
-

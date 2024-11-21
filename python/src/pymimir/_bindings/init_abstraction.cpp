@@ -1,6 +1,6 @@
 #include "init_declarations.hpp"
-#include "pymimir.hpp"
 #include "opaque_types.hpp"
+#include "pymimir.hpp"
 #include "utils.hpp"
 
 #include <pybind11/pybind11.h>

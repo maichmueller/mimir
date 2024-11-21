@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/search/applicable_action_generators/lifted/assignment_set.hpp"
 #include "mimir/search/applicable_action_generators/lifted/consistency_graph.hpp"
@@ -116,5 +115,3 @@ public:
 std::ostream& operator<<(std::ostream& out, const ConditionGrounder& condition_grounder);
 
 }
-
-

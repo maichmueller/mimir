@@ -14,6 +14,7 @@ from lab.reports import Attribute, geometric_mean
 from brfs_parser import BrfsParser
 import utils
 
+
 # Create custom report class with suitable info and error attributes.
 class BaseReport(AbsoluteReport):
     INFO_ATTRIBUTES = ["time_limit", "memory_limit"]
@@ -26,6 +27,7 @@ class BaseReport(AbsoluteReport):
         "node",
     ]
 
+
 DIR = Path(__file__).resolve().parent
 REPO = DIR.parent
 BENCHMARKS_DIR = os.environ["BENCHMARKS_PDDL_DOWNWARD"]
@@ -36,7 +38,8 @@ if REMOTE:
     ENV = TetralithEnvironment(
         setup=TetralithEnvironment.DEFAULT_SETUP,
         memory_per_cpu="8G",
-        extra_options="#SBATCH --account=naiss2024-22-1086")
+        extra_options="#SBATCH --account=naiss2024-22-1086",
+    )
     SUITE = utils.SUITE_OPTIMAL
     TIME_LIMIT = 30 * 60  # 30 minutes
 else:
@@ -82,7 +85,15 @@ for task in suites.build_suite(BENCHMARKS_DIR, SUITE):
     # We could also use exp.add_resource().
     run.add_command(
         "brfs_planner",
-        ["{run_planner}", "{planner_exe}", "{domain}", "{problem}", "plan.out", "1", "0"],
+        [
+            "{run_planner}",
+            "{planner_exe}",
+            "{domain}",
+            "{problem}",
+            "plan.out",
+            "1",
+            "0",
+        ],
         time_limit=TIME_LIMIT,
         memory_limit=MEMORY_LIMIT,
     )
@@ -108,7 +119,15 @@ for task in suites.build_suite(BENCHMARKS_DIR, SUITE):
     # We could also use exp.add_resource().
     run.add_command(
         "brfs_planner",
-        ["{run_planner}", "{planner_exe}", "{domain}", "{problem}", "plan.out", "0", "0"],
+        [
+            "{run_planner}",
+            "{planner_exe}",
+            "{domain}",
+            "{problem}",
+            "plan.out",
+            "0",
+            "0",
+        ],
         time_limit=TIME_LIMIT,
         memory_limit=MEMORY_LIMIT,
     )

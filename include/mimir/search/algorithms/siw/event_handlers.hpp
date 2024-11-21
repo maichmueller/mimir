@@ -17,10 +17,7 @@
 
 #pragma once
 
-
 /**
  * Include all specializations here
  */
 #include "mimir/search/algorithms/siw/event_handlers/default.hpp"
-
-

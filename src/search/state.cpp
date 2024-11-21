@@ -19,8 +19,8 @@
 
 #include "mimir/common/concepts.hpp"
 #include "mimir/common/hash.hpp"
-#include "mimir/utils/utils.hpp"
 #include "mimir/formalism/repositories.hpp"
+#include "mimir/utils/utils.hpp"
 
 #include <ostream>
 #include <tuple>
@@ -96,10 +96,7 @@ Index& StateImpl::get_index() { return index; }
 
 Index StateImpl::get_index() const { return index; }
 
-bool StateImpl::operator==(const StateImpl& other) const
-{
-    return fluent_atoms == other.fluent_atoms and derived_atoms == other.derived_atoms;
-}
+bool StateImpl::operator==(const StateImpl& other) const { return fluent_atoms == other.fluent_atoms and derived_atoms == other.derived_atoms; }
 
 template<DynamicPredicateTag P>
 FlatBitset& StateImpl::get_atoms()
@@ -158,11 +155,8 @@ std::ostream& operator<<(std::ostream& os, const std::tuple<Problem, State, cons
     pddl_repositories.get_ground_atoms_from_indices(problem->get_static_initial_positive_atoms_bitset(), out_static_ground_atoms);
     pddl_repositories.get_ground_atoms_from_indices(state->get_atoms<Derived>(), out_derived_ground_atoms);
 
-    os << "State("
-       << "index=" << state->get_index() << ", "
-       << "fluent atoms=" << out_fluent_ground_atoms << ", "
-       << "static atoms=" << out_static_ground_atoms << ", "
-       << "derived atoms=" << out_derived_ground_atoms << ")";
+    os << "State(" << "index=" << state->get_index() << ", " << "fluent atoms=" << out_fluent_ground_atoms << ", " << "static atoms=" << out_static_ground_atoms
+       << ", " << "derived atoms=" << out_derived_ground_atoms << ")";
 
     return os;
 }

@@ -1,6 +1,6 @@
 #include "init_declarations.hpp"
-#include "pymimir.hpp"
 #include "opaque_types.hpp"
+#include "pymimir.hpp"
 #include "utils.hpp"
 
 #include <pybind11/pybind11.h>
@@ -8,8 +8,7 @@ namespace py = pybind11;
 
 void init_domain(py::module& m)
 {
-
-using namespace pymimir;
+    using namespace pymimir;
 
     class_<DomainImpl>(m, "Domain")  //
         .def("__str__", &DomainImpl::str)
@@ -69,5 +68,4 @@ using namespace pymimir;
             "get_name_to_derived_predicate",
             [](const DomainImpl& self) { return ToPredicateMap<std::string, Derived>(self.get_name_to_predicate<Derived>()); },
             py::keep_alive<0, 1>());
-
 }

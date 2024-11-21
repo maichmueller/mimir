@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/search/algorithms/brfs.hpp"
 #include "mimir/search/algorithms/iw/event_handlers/interface.hpp"
 
@@ -62,4 +61,3 @@ private:
 
 using IWAlgorithm = IterativeWidthAlgorithm;
 }
-

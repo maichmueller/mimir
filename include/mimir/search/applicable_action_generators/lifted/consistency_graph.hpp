@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/printers.hpp"
 #include "mimir/common/types.hpp"
 #include "mimir/formalism/declarations.hpp"
@@ -156,5 +155,3 @@ namespace mimir
 template<>
 std::ostream& operator<<(std::ostream& out, const std::tuple<const consistency_graph::StaticConsistencyGraph&, const PDDLRepositories&>& data);
 }
-
-

@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/types_cista.hpp"
 #include "mimir/formalism/declarations.hpp"
 
@@ -101,4 +100,3 @@ extern std::ostream& operator<<(std::ostream& out, const ProblemImpl& element);
 extern std::ostream& operator<<(std::ostream& out, Problem element);
 
 }
-

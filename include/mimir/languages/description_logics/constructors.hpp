@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/languages/description_logics/constructor_base.hpp"
 #include "mimir/languages/description_logics/declarations.hpp"
@@ -757,5 +756,3 @@ public:
 };
 
 }
-
-

@@ -104,5 +104,4 @@ concept pointer_like_to = requires(T t) {
     requires std::same_as<U, raw_t<decltype(*t)>>;
 };
 
-
 }

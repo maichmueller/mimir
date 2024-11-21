@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/repositories.hpp"
 #include "mimir/formalism/transformers/interface.hpp"
 
@@ -544,4 +543,3 @@ protected:
     }
 };
 }
-

@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/concepts.hpp"
 
 #include <functional>
@@ -38,4 +37,3 @@ bool operator==(const R1& lhs, const R2& rhs)
 }
 
 }
-

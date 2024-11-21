@@ -3,6 +3,7 @@
 from lab.experiment import Experiment
 from downward.reports.absolute import AbsoluteReport
 
+
 # Create custom report class with suitable info and error attributes.
 class BaseReport(AbsoluteReport):
     INFO_ATTRIBUTES = ["time_limit", "memory_limit"]
@@ -14,6 +15,7 @@ class BaseReport(AbsoluteReport):
         "error",
         "node",
     ]
+
 
 ATTRIBUTES = [
     "run_dir",
@@ -34,6 +36,15 @@ exp = Experiment("combined-brfs-eval")
 exp.add_fetcher("brfs-downward-eval")
 exp.add_fetcher("brfs-mimir-eval")
 
-exp.add_report(BaseReport(attributes=ATTRIBUTES, filter_algorithm=["downward-astar-blind", "mimir-brfs-grounded", "mimir-brfs-lifted"]))
+exp.add_report(
+    BaseReport(
+        attributes=ATTRIBUTES,
+        filter_algorithm=[
+            "downward-astar-blind",
+            "mimir-brfs-grounded",
+            "mimir-brfs-lifted",
+        ],
+    )
+)
 
 exp.run_steps()

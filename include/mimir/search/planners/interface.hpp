@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/search/algorithms/interface.hpp"
 #include "mimir/search/plan.hpp"
 
@@ -36,5 +35,3 @@ public:
 };
 
 }
-
-

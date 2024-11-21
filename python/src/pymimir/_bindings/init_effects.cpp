@@ -6,18 +6,15 @@
 
 namespace py = pybind11;
 
-
 using namespace pymimir;
 
 void init_effects(py::module& m)
 {
-
     class_<EffectSimpleImpl>(m, "EffectSimple")  //
         .def("__str__", &EffectSimpleImpl::str)
         .def("__repr__", &EffectSimpleImpl::str)
         .def("get_index", &EffectSimpleImpl::get_index)
         .def("get_effect", &EffectSimpleImpl::get_effect, py::return_value_policy::reference_internal);
-
 
     class_<EffectComplexImpl>(m, "EffectComplex")  //
         .def("__str__", &EffectComplexImpl::str)
@@ -40,7 +37,6 @@ void init_effects(py::module& m)
             [](const EffectComplexImpl& self) { return LiteralList<Derived>(self.get_conditions<Derived>()); },
             py::keep_alive<0, 1>())
         .def("get_effect", &EffectComplexImpl::get_effect, py::return_value_policy::reference_internal);
-
 
     class_<StripsActionEffect>(m, "StripsActionEffect")
         .def("get_negative_effects",

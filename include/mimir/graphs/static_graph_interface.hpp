@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/graphs/graph_interface.hpp"
 
 namespace mimir
@@ -32,8 +31,7 @@ struct StaticGraphTag
 };
 
 template<typename T>
-concept IsStaticGraph = requires(T a)
-{
+concept IsStaticGraph = requires(T a) {
     typename T::GraphTag;
     requires std::same_as<typename T::GraphTag, StaticGraphTag>;
 
@@ -44,5 +42,3 @@ concept IsStaticGraph = requires(T a)
 };
 
 }
-
-

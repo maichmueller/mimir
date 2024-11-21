@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/search/applicable_action_generators/grounded/event_handlers/statistics.hpp"
 #include "mimir/search/applicable_action_generators/grounded/match_tree.hpp"
@@ -155,5 +154,3 @@ public:
     const GroundedApplicableActionGeneratorStatistics& get_statistics() const override { return m_statistics; }
 };
 }
-
-

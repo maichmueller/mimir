@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/equal_to.hpp"
 #include "mimir/common/hash.hpp"
 #include "mimir/graphs/graph_vertex_interface.hpp"
@@ -104,13 +103,8 @@ using ColoredVertex = Vertex<Color>;
 inline Color get_color(const ColoredVertex& vertex) { return vertex.get_property<0>(); }
 
 template<typename T>
-concept IsVertexColoredGraph = requires(T::VertexType vertex)
-{
-    {
-        get_color(vertex)
-        } -> std::same_as<Color>;
+concept IsVertexColoredGraph = requires(T::VertexType vertex) {
+    { get_color(vertex) } -> std::same_as<Color>;
 };
 
 }
-
-

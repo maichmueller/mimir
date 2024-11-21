@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/repositories.hpp"
 #include "mimir/search/action.hpp"
 #include "mimir/search/algorithms/brfs/event_handlers/statistics.hpp"
@@ -155,4 +154,3 @@ public:
 };
 
 }
-

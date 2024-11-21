@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/datasets/declarations.hpp"
 #include "mimir/graphs/graph_edges.hpp"
 #include "mimir/search/action.hpp"
@@ -37,4 +36,3 @@ inline GroundAction get_creating_action(const GroundActionEdge& edge) { return e
 inline ContinuousCost get_cost(const GroundActionEdge& edge) { return get_creating_action(edge)->get_cost(); }
 
 }
-

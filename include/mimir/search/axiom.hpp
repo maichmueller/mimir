@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/printers.hpp"
 #include "mimir/common/types.hpp"
 #include "mimir/common/types_cista.hpp"
@@ -104,5 +103,3 @@ std::ostream& operator<<(std::ostream& os, const std::tuple<SimpleDerivedEffect,
 template<>
 std::ostream& operator<<(std::ostream& os, const std::tuple<GroundAxiom, const PDDLRepositories&>& data);
 }
-
-

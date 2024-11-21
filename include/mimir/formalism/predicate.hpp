@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 
 namespace mimir
@@ -63,4 +62,3 @@ template<PredicateTag P>
 extern std::ostream& operator<<(std::ostream& out, Predicate<P> element);
 
 }
-

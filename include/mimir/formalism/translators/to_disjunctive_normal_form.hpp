@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/translators/base_cached_recurse.hpp"
 #include "mimir/formalism/translators/to_negation_normal_form.hpp"
 
@@ -76,5 +75,3 @@ public:
 };
 
 }
-
-

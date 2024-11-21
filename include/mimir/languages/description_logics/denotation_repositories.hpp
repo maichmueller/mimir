@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/cista/storage/unordered_set.h"
 #include "mimir/languages/description_logics/declarations.hpp"
 #include "mimir/languages/description_logics/denotations.hpp"
@@ -67,5 +66,3 @@ using ConstructorTagToDenotationRepository = boost::hana::map<boost::hana::pair<
                                                               boost::hana::pair<boost::hana::type<Role>, DenotationRepository<Role>>>;
 
 }
-
-

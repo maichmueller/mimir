@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 
 namespace mimir
@@ -56,4 +55,3 @@ extern std::ostream& operator<<(std::ostream& out, const RequirementsImpl& eleme
 extern std::ostream& operator<<(std::ostream& out, Requirements element);
 
 }
-

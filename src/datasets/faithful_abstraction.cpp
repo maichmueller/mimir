@@ -632,10 +632,8 @@ const std::map<ContinuousCost, IndexList>& FaithfulAbstraction::get_states_by_go
 std::ostream& operator<<(std::ostream& out, const FaithfulAbstraction& abstraction)
 {
     // 2. Header
-    out << "digraph {"
-        << "\n"
-        << "rankdir=\"LR\""
-        << "\n";
+    out << "digraph {" << "\n"
+        << "rankdir=\"LR\"" << "\n";
 
     // 3. Draw states
     for (size_t state_index = 0; state_index < abstraction.get_num_states(); ++state_index)
@@ -684,8 +682,7 @@ std::ostream& operator<<(std::ostream& out, const FaithfulAbstraction& abstracti
     for (const auto& transition : abstraction.get_graph().get_edges())
     {
         // direction
-        out << "s" << transition.get_source() << "->"
-            << "s" << transition.get_target() << " [";
+        out << "s" << transition.get_source() << "->" << "s" << transition.get_target() << " [";
 
         // label
         out << "label=\"";

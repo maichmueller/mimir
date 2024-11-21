@@ -5,7 +5,6 @@
 #include <pybind11/pybind11.h>
 namespace py = pybind11;
 
-
 void init_problem(py::module& m)
 {
     using namespace pymimir;
@@ -63,5 +62,4 @@ void init_problem(py::module& m)
                  insert_into_list(py_problem, all_goal_literals, self.get_goal_condition<Derived>(), i);
                  return all_goal_literals;
              });
-
 }

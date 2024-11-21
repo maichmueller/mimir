@@ -17,18 +17,17 @@
 
 #pragma once
 
-
 // Do not include headers with transitive dependencies.
 #include "mimir/common/types.hpp"
 #include "mimir/formalism/predicate_tag.hpp"
 
 #include <loki/loki.hpp>
+#include <span>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <variant>
 #include <vector>
-#include <span>
 
 namespace loki
 {
@@ -216,4 +215,3 @@ using VariableList = std::vector<Variable>;
 using VariableSet = std::unordered_set<Variable>;
 
 }
-

@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/search/algorithms/iw/event_handlers/statistics.hpp"
 
 #include <algorithm>
@@ -154,8 +153,7 @@ public:
 
 inline std::ostream& operator<<(std::ostream& os, const SIWAlgorithmStatistics& statistics)
 {
-    os << "[SIW] Search time: " << statistics.get_search_time_ms().count() << "ms"
-       << "\n"
+    os << "[SIW] Search time: " << statistics.get_search_time_ms().count() << "ms" << "\n"
        << "[SIW] Maximum effective width: " << statistics.get_maximum_effective_width() << "\n"
        << "[SIW] Average effective width: " << statistics.get_average_effective_width() << "\n"
        << "[SIW] Number of generated states: " << statistics.get_num_generated() << "\n"
@@ -169,5 +167,3 @@ inline std::ostream& operator<<(std::ostream& os, const SIWAlgorithmStatistics& 
 }
 
 }
-
-

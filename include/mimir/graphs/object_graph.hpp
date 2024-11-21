@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/types_cista.hpp"
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/graphs/digraph_vertex_colored.hpp"
@@ -50,5 +49,3 @@ extern StaticVertexColoredDigraph create_object_graph(const ProblemColorFunction
                                                       const ObjectGraphPruningStrategy& pruning_strategy = ObjectGraphPruningStrategy());
 
 }
-
-

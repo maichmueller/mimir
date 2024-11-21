@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include <concepts>
 #include <type_traits>
 
@@ -45,4 +44,3 @@ template<typename T>
 concept DynamicPredicateTag = std::is_same_v<T, Fluent> || std::is_same_v<T, Derived>;
 
 }
-

@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/concepts.hpp"
 
 #include <concepts>
@@ -86,5 +85,3 @@ private:
 };
 
 }
-
-

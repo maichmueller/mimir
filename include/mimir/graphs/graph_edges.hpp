@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/equal_to.hpp"
 #include "mimir/common/hash.hpp"
 #include "mimir/graphs/graph_edge_interface.hpp"
@@ -116,13 +115,8 @@ using ColoredEdge = Edge<Color>;
 inline Color get_color(const ColoredEdge& edge) { return edge.get_property<0>(); }
 
 template<typename T>
-concept IsEdgeColoredGraph = requires(T::EdgeType edge)
-{
-    {
-        get_color(edge)
-        } -> std::same_as<Color>;
+concept IsEdgeColoredGraph = requires(T::EdgeType edge) {
+    { get_color(edge) } -> std::same_as<Color>;
 };
 
 }
-
-

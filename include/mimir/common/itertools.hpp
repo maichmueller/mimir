@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include <iostream>
 #include <unordered_set>
 #include <vector>
@@ -130,4 +129,3 @@ public:
 };
 
 }
-

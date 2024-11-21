@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/concepts.hpp"
 
 #include <boost/graph/graph_concepts.hpp>
@@ -224,5 +223,3 @@ inline void put(UnorderedMapReadWritePropertyMap<Key, Value>& m, Key key, Value 
 }
 
 }
-
-

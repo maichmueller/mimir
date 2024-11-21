@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/translators/base_recurse.hpp"
 
 #include <deque>
@@ -128,4 +127,3 @@ public:
     explicit RenameQuantifiedVariablesTranslator(loki::PDDLRepositories& pddl_repositories);
 };
 }
-

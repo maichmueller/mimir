@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/types.hpp"
 #include "mimir/formalism/translators/base_cached_recurse.hpp"
 #include "mimir/formalism/translators/to_negation_normal_form.hpp"
@@ -98,4 +97,3 @@ public:
     RemoveUniversalQuantifiersTranslator(loki::PDDLRepositories& pddl_repositories, ToNNFTranslator& to_nnf_translator);
 };
 }
-

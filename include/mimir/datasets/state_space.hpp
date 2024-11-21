@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/grouped_vector.hpp"
 #include "mimir/datasets/ground_action_edge.hpp"
 #include "mimir/datasets/state_vertex.hpp"
@@ -283,13 +282,15 @@ public:
         return get_state_indices_by_goal_distance().at(goal_distance) | std::views::transform(AS_CPTR_LAMBDA(get_state));
     }
     template<typename RNGType>
-    Index sample_state_index_with_goal_distance(ContinuousCost goal_distance, RNGType& rng) const {
-            const auto& states = m_states_by_goal_distance.at(goal_distance);
-            const auto index = std::uniform_int_distribution<size_t> { 0ul, states.size() }(rng);
-            return states.at(index);
+    Index sample_state_index_with_goal_distance(ContinuousCost goal_distance, RNGType& rng) const
+    {
+        const auto& states = m_states_by_goal_distance.at(goal_distance);
+        const auto index = std::uniform_int_distribution<size_t> { 0ul, states.size() }(rng);
+        return states.at(index);
     }
     template<typename RNGType>
-    State sample_state_with_goal_distance(ContinuousCost goal_distance, RNGType& rng ) const {
+    State sample_state_with_goal_distance(ContinuousCost goal_distance, RNGType& rng) const
+    {
         return get_state(sample_state_index_with_goal_distance(goal_distance, rng));
     }
 

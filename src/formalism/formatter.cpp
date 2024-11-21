@@ -89,8 +89,7 @@ void PDDLFormatter::write(const ActionImpl& element, std::ostream& out)
         }
         if (m_action_costs)
         {
-            out << " "
-                << "(increase total-cost ";
+            out << " " << "(increase total-cost ";
             write(*element.get_function_expression(), out);
             out << ")";
         }

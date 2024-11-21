@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/types_cista.hpp"
 
 #include <cstdint>
@@ -320,5 +319,3 @@ void MatchTree<T>::get_applicable_elements(const FlatBitset& fluent_ground_atoms
     get_applicable_elements_recursively(0, fluent_ground_atoms, derived_ground_atoms, out_applicable_elements);
 }
 }
-
-

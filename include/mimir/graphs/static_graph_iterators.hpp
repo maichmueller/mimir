@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/concepts.hpp"
 #include "mimir/graphs/graph_edge_interface.hpp"
 #include "mimir/graphs/graph_traversal_interface.hpp"
@@ -685,5 +684,3 @@ bool StaticAdjacentEdgeIndexConstIterator<Edge, Direction>::operator!=(const Sta
 }
 
 }
-
-

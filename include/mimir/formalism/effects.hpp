@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 
 namespace mimir
@@ -104,4 +103,3 @@ extern std::ostream& operator<<(std::ostream& out, EffectSimple element);
 extern std::ostream& operator<<(std::ostream& out, EffectComplex element);
 
 }
-

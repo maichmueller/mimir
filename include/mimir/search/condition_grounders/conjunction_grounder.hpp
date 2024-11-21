@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/search/condition_grounders.hpp"
 #include "mimir/search/declarations.hpp"
 
@@ -44,5 +43,3 @@ public:
 };
 
 }
-
-

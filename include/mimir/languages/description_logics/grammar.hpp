@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/languages/description_logics/grammar_constructor_repositories.hpp"
 
@@ -61,5 +60,3 @@ public:
     const DerivationRuleList<D>& get_alternative_rules() const;
 };
 }
-
-

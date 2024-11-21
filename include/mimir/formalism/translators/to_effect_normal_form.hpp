@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/translators/base_cached_recurse.hpp"
 
 namespace mimir
@@ -78,5 +77,3 @@ public:
     explicit ToENFTranslator(loki::PDDLRepositories& pddl_repositories);
 };
 }
-
-

@@ -556,14 +556,19 @@ using dynamic_bitset = basic_dynamic_bitset<Block, ptr>;
 ///  Macro taken form cista/serialization.h (since it is #undef'ed there at the end)
 ///  Verify if this macro changes in future versions of cista and adapt this code accordingly
 #ifndef cista_member_offset
-#define cista_member_offset(Type, Member)                            \
-  ([]() {                                                            \
-    if constexpr (std::is_standard_layout_v<Type>) {                 \
-      return static_cast<::cista::offset_t>(offsetof(Type, Member)); \
-    } else {                                                         \
-      return ::cista::member_offset(null<Type>(), &Type::Member);    \
-    }                                                                \
-  }())
+#define cista_member_offset(Type, Member)                                      \
+    (                                                                          \
+        []()                                                                   \
+        {                                                                      \
+            if constexpr (std::is_standard_layout_v<Type>)                     \
+            {                                                                  \
+                return static_cast<::cista::offset_t>(offsetof(Type, Member)); \
+            }                                                                  \
+            else                                                               \
+            {                                                                  \
+                return ::cista::member_offset(null<Type>(), &Type::Member);    \
+            }                                                                  \
+        }())
 #endif
 
 template<typename Ctx, typename Block, template<typename> typename Ptr>

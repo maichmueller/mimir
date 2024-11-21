@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/repositories.hpp"
 
 #include <algorithm>
@@ -174,4 +173,3 @@ public:
     Problem run(const ProblemImpl& problem) { return self().run_base(problem); }
 };
 }
-

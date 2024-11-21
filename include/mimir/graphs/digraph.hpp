@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/graphs/dynamic_graph.hpp"
 #include "mimir/graphs/graph_edge_interface.hpp"
 #include "mimir/graphs/graph_edges.hpp"
@@ -58,4 +57,3 @@ static_assert(IsDynamicGraph<DynamicDigraph>);
 extern std::ostream& operator<<(std::ostream& out, const StaticDigraph& digraph);
 
 }
-

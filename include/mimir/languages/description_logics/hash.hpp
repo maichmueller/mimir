@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/languages/description_logics/declarations.hpp"
 
 #include <cstddef>
@@ -413,5 +412,3 @@ struct UniqueDLHasher<const grammar::RoleIdentityImpl*>
 };
 
 }
-
-

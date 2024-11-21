@@ -1,22 +1,21 @@
 /*
-* Copyright (C) 2023 Dominik Drexler and Simon Stahlberg
-*
-* This program is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program. If not, see <https://www.gnu.org/licenses/>.
-*/
+ * Copyright (C) 2023 Dominik Drexler and Simon Stahlberg
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
 
 #pragma once
-
 
 #include "mimir/algorithms/nauty.hpp"
 #include "mimir/common/equal_to.hpp"
@@ -56,10 +55,10 @@ public:
     const ColorList& get_canonical_coloring() const;
 
 private:
-   ColorList m_hash_to_color;
+    ColorList m_hash_to_color;
 
-   CanonicalConfigurationCompressionFunction m_f;
-   ColorList m_coloring_coloring;
+    CanonicalConfigurationCompressionFunction m_f;
+    ColorList m_coloring_coloring;
 };
 
 /// @brief `IsomorphismTypeCompressionFunction` encapsulates mappings from canonical subgraphs to colors.
@@ -102,8 +101,8 @@ IndexArray<K> hash_to_tuple(size_t hash, size_t num_vertices);
 /// @tparam K is the dimensionality.
 /// @return the `Certicate`
 template<size_t K, typename G>
-requires IsVertexListGraph<G> && IsIncidenceGraph<G> && IsVertexColoredGraph<G>  //
-    Certificate<K> compute_certificate(const G& graph, IsomorphismTypeCompressionFunction& iso_type_function);
+    requires IsVertexListGraph<G> && IsIncidenceGraph<G> && IsVertexColoredGraph<G>  //
+Certificate<K> compute_certificate(const G& graph, IsomorphismTypeCompressionFunction& iso_type_function);
 }
 
 /// @brief std::hash specialization for the certificate.

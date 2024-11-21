@@ -68,7 +68,7 @@ TEST_F(PymimirFixture, state_space_states)
         py_iter = state_space.attr("__iter__")();
         auto b = std::ranges::begin(state_space_cpp);
         auto e = std::ranges::end(state_space_cpp);
-        return std::pair { std::pair{b,e}, state_space_cpp.get_num_states() };
+        return std::pair { std::pair { b, e }, state_space_cpp.get_num_states() };
     }();
     auto [state_iter, state_end] = states_view;
     size_t count = 0;

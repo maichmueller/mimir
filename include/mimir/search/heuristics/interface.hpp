@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/search/declarations.hpp"
 
 namespace mimir
@@ -36,4 +35,3 @@ public:
 };
 
 }
-

@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/translators/base_cached_recurse.hpp"
 
 namespace mimir
@@ -50,4 +49,3 @@ public:
     explicit SimplifyGoalTranslator(loki::PDDLRepositories& pddl_repositories);
 };
 }
-

@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/types_cista.hpp"
 #include "mimir/datasets/state_space.hpp"
 #include "mimir/formalism/declarations.hpp"
@@ -110,5 +109,3 @@ extern std::ostream& operator<<(std::ostream& out,
                                 const std::tuple<const ObjectGraphStaticSccPruningStrategy::SccPruningComponent&, Problem, const PDDLRepositories&>& data);
 
 }
-
-

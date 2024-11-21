@@ -12,9 +12,9 @@ using namespace pymimir;
 void init_cista_types(py::module& m)
 {
     class_<FlatBitset>(m, "FlatBitset")  //
-        .def(py::init<>())                   // expose default constructor
-        .def(py::init<size_t>())             // expose constructor that accepts number of bits
-        .def(py::init<size_t, bool>())       // expose constructor that accepts num_bits and default_bit_value
+        .def(py::init<>())               // expose default constructor
+        .def(py::init<size_t>())         // expose constructor that accepts number of bits
+        .def(py::init<size_t, bool>())   // expose constructor that accepts num_bits and default_bit_value
         .def("get", &FlatBitset::get, py::arg("position"), "Get the value of the bit at a specific position")
         .def("set", &FlatBitset::set, py::arg("position"), "Set the bit at the specified position")
         .def("unset", &FlatBitset::unset, py::arg("position"), "Unset the bit at the specified position")

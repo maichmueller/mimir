@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/predicate.hpp"
 #include "mimir/languages/description_logics/constructor_tag.hpp"
 #include "mimir/languages/description_logics/declarations.hpp"
@@ -813,5 +812,3 @@ public:
     Choice<Concept> get_concept() const;
 };
 }
-
-

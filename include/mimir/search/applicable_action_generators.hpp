@@ -17,8 +17,5 @@
 
 #pragma once
 
-
 #include "mimir/search/applicable_action_generators/grounded.hpp"
 #include "mimir/search/applicable_action_generators/lifted.hpp"
-
-

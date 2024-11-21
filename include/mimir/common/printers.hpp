@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include <array>
 #include <map>
 #include <memory>
@@ -168,4 +167,3 @@ std::ostream& operator<<(std::ostream& os, const std::vector<T>& vec)
     return os;
 }
 }
-

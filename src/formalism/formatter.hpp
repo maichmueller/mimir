@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/action.hpp"
 #include "mimir/formalism/atom.hpp"
 #include "mimir/formalism/axiom.hpp"

@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/search/algorithms/iw/dynamic_novelty_table.hpp"
 #include "mimir/search/algorithms/iw/tuple_index_mapper.hpp"
 #include "mimir/search/algorithms/iw/types.hpp"
@@ -54,4 +53,3 @@ public:
     bool test_prune_successor_state(const State state, const State succ_state, bool is_new_succ) override;
 };
 }
-

@@ -6,11 +6,14 @@ from lab.parser import Parser
 def coverage(content, props):
     props["coverage"] = int("cost" in props)
 
+
 def unsolvable(content, props):
     props["unsolvable"] = int("exhausted" in props)
 
+
 def invalid_plan_reported(content, props):
     props["invalid_plan_reported"] = int("val_plan_invalid" in props)
+
 
 class AStarParser(Parser):
     """
@@ -38,14 +41,31 @@ class AStarParser(Parser):
     Goal not satisfied
     Plan invalid
     """
+
     def __init__(self):
         super().__init__()
         self.add_pattern("search_time", r"\[AStar\] Search time: (\d+)ms", type=int)
-        self.add_pattern("num_expanded", r"\[AStar\] Number of expanded states: (\d+)", type=int)
-        self.add_pattern("num_generated", r"\[AStar\] Number of generated states: (\d+)", type=int)
-        self.add_pattern("num_expanded_until_last_f_layer", r"\[AStar\] Number of expanded states until last f-layer: (\d+)", type=int)
-        self.add_pattern("num_generated_until_last_f_layer", r"\[AStar\] Number of generated states until last f-layer: (\d+)", type=int)
-        self.add_pattern("num_pruned_until_last_f_layer", r"\[AStar\] Number of pruned states until last f-layer: (\d+)", type=int)
+        self.add_pattern(
+            "num_expanded", r"\[AStar\] Number of expanded states: (\d+)", type=int
+        )
+        self.add_pattern(
+            "num_generated", r"\[AStar\] Number of generated states: (\d+)", type=int
+        )
+        self.add_pattern(
+            "num_expanded_until_last_f_layer",
+            r"\[AStar\] Number of expanded states until last f-layer: (\d+)",
+            type=int,
+        )
+        self.add_pattern(
+            "num_generated_until_last_f_layer",
+            r"\[AStar\] Number of generated states until last f-layer: (\d+)",
+            type=int,
+        )
+        self.add_pattern(
+            "num_pruned_until_last_f_layer",
+            r"\[AStar\] Number of pruned states until last f-layer: (\d+)",
+            type=int,
+        )
         self.add_pattern("cost", r"\[AStar\] Plan cost: (.+)", type=float)
         self.add_pattern("length", r"\[AStar\] Plan length: (.+)", type=float)
         self.add_pattern("exhausted", r"(\[AStar\] Exhausted!)", type=str)

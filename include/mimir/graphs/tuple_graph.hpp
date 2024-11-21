@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/grouped_vector.hpp"
 #include "mimir/datasets/state_space.hpp"
 #include "mimir/graphs/digraph.hpp"
@@ -142,4 +141,3 @@ public:
 extern std::ostream& operator<<(std::ostream& out, const TupleGraph& tuple_graph);
 
 }
-

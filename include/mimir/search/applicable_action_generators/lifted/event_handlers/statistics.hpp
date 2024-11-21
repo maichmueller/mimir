@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include <cstdint>
 #include <ostream>
 #include <vector>
@@ -118,5 +117,3 @@ inline std::ostream& operator<<(std::ostream& os, const LiftedApplicableActionGe
 }
 
 }
-
-

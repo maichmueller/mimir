@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/concepts.hpp"
 #include "mimir/common/printers.hpp"
 #include "mimir/formalism/transformers/base_cached_recurse.hpp"
@@ -203,4 +202,3 @@ void ToPositiveNormalFormTransformer::introduce_axiom_for_dual(const std::unorde
 }
 
 }
-

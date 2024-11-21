@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include "mimir/common/hash.hpp"
 #include "mimir/formalism/declarations.hpp"
 

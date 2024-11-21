@@ -17,8 +17,5 @@
 
 #pragma once
 
-
 #include "mimir/search/heuristics/blind.hpp"
 #include "mimir/search/heuristics/hstar.hpp"
-
-

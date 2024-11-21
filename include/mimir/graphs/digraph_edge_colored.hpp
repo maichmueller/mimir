@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/graphs/dynamic_graph.hpp"
 #include "mimir/graphs/graph_edge_interface.hpp"
 #include "mimir/graphs/graph_edges.hpp"
@@ -57,4 +56,3 @@ static_assert(IsStaticGraph<StaticEdgeColoredBidirectionalDigraph>);
 static_assert(IsDynamicGraph<DynamicEdgeColoredDigraph>);
 
 }
-

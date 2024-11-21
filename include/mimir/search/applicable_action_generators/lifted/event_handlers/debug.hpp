@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/search/applicable_action_generators/lifted/event_handlers/interface.hpp"
 
 namespace mimir
@@ -62,5 +61,3 @@ public:
 };
 
 }
-
-

@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/graphs/declarations.hpp"
 
 #include <concepts>
@@ -26,13 +25,10 @@ namespace mimir
 {
 
 template<typename T>
-concept IsVertex = requires(T a)
-{
+concept IsVertex = requires(T a) {
     typename T::VertexPropertiesTypes;
 
-    {
-        a.get_index()
-        } -> std::convertible_to<VertexIndex>;
+    { a.get_index() } -> std::convertible_to<VertexIndex>;
 };
 
 /// Check whether `T` is a vertex with the given `VertexProperties`s.
@@ -40,5 +36,3 @@ template<typename T, typename... VertexProperties>
 concept HasVertexProperties = IsVertex<T> && std::is_same_v<typename T::VertexPropertiesTypes, std::tuple<std::decay_t<VertexProperties>...>>;
 
 }
-
-

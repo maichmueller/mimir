@@ -49,8 +49,7 @@ bool operator==(const Certificate& lhs, const Certificate& rhs)
 
 std::ostream& operator<<(std::ostream& out, const Certificate& element)
 {
-    out << "CertificateColorRefinement("
-        << "canonical_coloring=" << element.get_canonical_coloring() << ", "
+    out << "CertificateColorRefinement(" << "canonical_coloring=" << element.get_canonical_coloring() << ", "
         << "canonical_compression_function=" << element.get_canonical_compression_function() << ")";
     return out;
 }

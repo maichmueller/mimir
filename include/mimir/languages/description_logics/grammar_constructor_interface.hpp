@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/languages/description_logics/constructor_interface.hpp"
 
 #include <concepts>
@@ -52,5 +51,3 @@ public:
     virtual void accept(Visitor& visitor) const = 0;
 };
 }
-
-

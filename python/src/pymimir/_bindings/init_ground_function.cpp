@@ -6,12 +6,9 @@
 #include <pybind11/pybind11.h>
 namespace py = pybind11;
 
-
-
 void init_ground_function_expression(py::module& m)
 {
     using namespace pymimir;
-
 
     class_<GroundFunctionExpressionVariant>(m, "GroundFunctionExpression")  //
         .def(
@@ -66,5 +63,5 @@ void init_ground_function_expression(py::module& m)
         .def("__str__", &GroundFunctionExpressionFunctionImpl::str)
         .def("__repr__", &GroundFunctionExpressionFunctionImpl::str)
         .def("get_index", &GroundFunctionExpressionFunctionImpl::get_index)
-         .def("get_function", &GroundFunctionExpressionFunctionImpl::get_function, py::return_value_policy::reference_internal);
+        .def("get_function", &GroundFunctionExpressionFunctionImpl::get_function, py::return_value_policy::reference_internal);
 }

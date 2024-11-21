@@ -1,22 +1,21 @@
 /*
-* Copyright (C) 2023 Dominik Drexler and Simon Stahlberg
-*
-* This program is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program. If not, see <https://www.gnu.org/licenses/>.
-*/
+ * Copyright (C) 2023 Dominik Drexler and Simon Stahlberg
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
 
 #pragma once
-
 
 #include "mimir/common/equal_to.hpp"
 #include "mimir/common/hash.hpp"
@@ -45,18 +44,18 @@ public:
 
     using CanonicalCompressionFunction = std::map<std::pair<Color, ColorList>, Color>;
 
-   Certificate(CompressionFunction f, ColorList hash_to_color);
+    Certificate(CompressionFunction f, ColorList hash_to_color);
 
-   const ColorList& get_hash_to_color() const;
+    const ColorList& get_hash_to_color() const;
 
-   const CanonicalCompressionFunction& get_canonical_compression_function() const;
-   const ColorList& get_canonical_coloring() const;
+    const CanonicalCompressionFunction& get_canonical_compression_function() const;
+    const ColorList& get_canonical_coloring() const;
 
 private:
-   ColorList m_hash_to_color;
+    ColorList m_hash_to_color;
 
-   CanonicalCompressionFunction m_f;
-   ColorList m_canonical_coloring;
+    CanonicalCompressionFunction m_f;
+    ColorList m_canonical_coloring;
 };
 
 /// @brief Compare two certificates for equality.
@@ -76,15 +75,15 @@ extern std::ostream& operator<<(std::ostream& out, const Certificate& element);
 /// @tparam G is the vertex-colored graph.
 /// @return the `Certicate`
 template<typename G>
-requires IsVertexListGraph<G> && IsIncidenceGraph<G> && IsVertexColoredGraph<G>  //
-    Certificate compute_certificate(const G& graph);
+    requires IsVertexListGraph<G> && IsIncidenceGraph<G> && IsVertexColoredGraph<G>  //
+Certificate compute_certificate(const G& graph);
 }
 
 /// @brief std::hash specialization for the certificate.
 template<>
 struct std::hash<mimir::color_refinement::Certificate>
 {
-   size_t operator()(const mimir::color_refinement::Certificate& element) const;
+    size_t operator()(const mimir::color_refinement::Certificate& element) const;
 };
 
 #include "mimir/graphs/algorithms/color_refinement_impl.hpp"

@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/datasets/declarations.hpp"
 #include "mimir/graphs/graph_edges.hpp"
 #include "mimir/search/action.hpp"
@@ -55,4 +54,3 @@ inline GroundAction get_representative_action(const GroundActionsEdge& edge)
 }
 
 }
-

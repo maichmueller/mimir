@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/graphs/color_function.hpp"
 #include "mimir/graphs/dynamic_graph.hpp"
 #include "mimir/graphs/graph_edge_interface.hpp"
@@ -68,5 +67,3 @@ static_assert(IsDynamicGraph<DynamicVertexColoredDigraph>);
 extern std::ostream& operator<<(std::ostream& out, const std::tuple<const StaticVertexColoredDigraph&, const ColorFunction&>& data);
 
 }
-
-

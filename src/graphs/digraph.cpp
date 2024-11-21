@@ -40,8 +40,7 @@ std::ostream& operator<<(std::ostream& out, const StaticDigraph& digraph)
     {
         for (const auto& succ_vertex : digraph.template get_adjacent_vertices<ForwardTraversal>(vertex.get_index()))
         {
-            out << "t" << vertex.get_index() << "->"
-                << "t" << succ_vertex.get_index() << "\n";
+            out << "t" << vertex.get_index() << "->" << "t" << succ_vertex.get_index() << "\n";
         }
     }
     out << "}";  // end digraph

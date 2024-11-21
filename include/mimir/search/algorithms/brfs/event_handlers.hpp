@@ -17,11 +17,8 @@
 
 #pragma once
 
-
 /**
  * Include all specializations here
  */
 #include "mimir/search/algorithms/brfs/event_handlers/debug.hpp"
 #include "mimir/search/algorithms/brfs/event_handlers/default.hpp"
-
-

@@ -7,7 +7,6 @@ namespace py = pybind11;
 
 using namespace pymimir;
 
-
 void init_tuple_graph(py::module& m)
 {
     // TupleGraphVertex

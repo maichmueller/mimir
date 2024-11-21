@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/graphs/declarations.hpp"
 #include "mimir/search/state.hpp"

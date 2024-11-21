@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/concepts.hpp"
 #include "mimir/datasets/ground_actions_edge.hpp"
 #include "mimir/graphs/static_graph_interface.hpp"
@@ -36,11 +35,8 @@ namespace mimir
  */
 
 template<typename T>
-concept IsAbstraction = requires(T a, State state)
-{
-    {
-        a.get_abstract_state_index(state)
-        } -> std::same_as<Index>;
+concept IsAbstraction = requires(T a, State state) {
+    { a.get_abstract_state_index(state) } -> std::same_as<Index>;
 };
 
 /**
@@ -187,8 +183,10 @@ private:
 
 public:
     template<IsAbstraction A>
-    requires IsStaticGraph<typename A::GraphType>
-    explicit Abstraction(A abstraction) : m_pimpl(std::make_unique<AbstractionModel<A>>(std::move(abstraction))) {}
+        requires IsStaticGraph<typename A::GraphType>
+    explicit Abstraction(A abstraction) : m_pimpl(std::make_unique<AbstractionModel<A>>(std::move(abstraction)))
+    {
+    }
 
     // Copy operations
     Abstraction(const Abstraction& other) : m_pimpl { other.m_pimpl->clone() } {}

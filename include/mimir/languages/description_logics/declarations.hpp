@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/predicate_tag.hpp"
 #include "mimir/languages/description_logics/constructor_tag.hpp"
 
@@ -234,4 +233,3 @@ class Visitor;
 
 }
 }
-

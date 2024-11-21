@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/formalism/equal_to.hpp"
 #include "mimir/formalism/hash.hpp"
@@ -58,4 +57,3 @@ extern std::ostream& operator<<(std::ostream& out, const OptimizationMetricImpl&
 extern std::ostream& operator<<(std::ostream& out, OptimizationMetric element);
 
 }
-

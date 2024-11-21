@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/search/action.hpp"
 #include "mimir/search/state.hpp"
 

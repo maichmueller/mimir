@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/search/applicable_action_generators/grounded/event_handlers/interface.hpp"
 
 namespace mimir
@@ -55,4 +54,3 @@ public:
 };
 
 }
-

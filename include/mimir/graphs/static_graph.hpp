@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/concepts.hpp"
 #include "mimir/common/grouped_vector.hpp"
 #include "mimir/graphs/graph_edge_interface.hpp"
@@ -90,7 +89,8 @@ public:
     /// @param ...properties the vertex properties.
     /// @return the index of the newly created vertex.
     template<typename... VertexProperties>
-    requires HasVertexProperties<V, VertexProperties...> VertexIndex add_vertex(VertexProperties&&... properties);
+        requires HasVertexProperties<V, VertexProperties...>
+    VertexIndex add_vertex(VertexProperties&&... properties);
 
     /// @brief Add a directed edge from source to target to the graph with edge properties args.
     /// @tparam ...EdgeProperties the types of the edge properties. Must match the properties mentioned in the edge constructor.
@@ -99,7 +99,8 @@ public:
     /// @param ...properties the edge properties.
     /// @return the index of the newly created edge.
     template<typename... EdgeProperties>
-    requires HasEdgeProperties<E, EdgeProperties...> EdgeIndex add_directed_edge(VertexIndex source, VertexIndex target, EdgeProperties&&... properties);
+        requires HasEdgeProperties<E, EdgeProperties...>
+    EdgeIndex add_directed_edge(VertexIndex source, VertexIndex target, EdgeProperties&&... properties);
 
     /// @brief Add two anti-parallel directed edges to the graph with the identical edge properties, representing the undirected edge.
     ///
@@ -113,8 +114,8 @@ public:
     /// @param ...properties the edge properties.
     /// @return the index pair of the two newly created edges.
     template<typename... EdgeProperties>
-    requires HasEdgeProperties<E, EdgeProperties...> std::pair<EdgeIndex, EdgeIndex>
-    add_undirected_edge(VertexIndex source, VertexIndex target, EdgeProperties&&... properties);
+        requires HasEdgeProperties<E, EdgeProperties...>
+    std::pair<EdgeIndex, EdgeIndex> add_undirected_edge(VertexIndex source, VertexIndex target, EdgeProperties&&... properties);
 
     /**
      * Iterators
@@ -327,7 +328,8 @@ StaticGraph<V, E>::StaticGraph() : m_vertices(), m_edges(), m_degrees()
 
 template<IsVertex V, IsEdge E>
 template<typename... VertexProperties>
-requires HasVertexProperties<V, VertexProperties...> VertexIndex StaticGraph<V, E>::add_vertex(VertexProperties&&... properties)
+    requires HasVertexProperties<V, VertexProperties...>
+VertexIndex StaticGraph<V, E>::add_vertex(VertexProperties&&... properties)
 {
     const auto index = m_vertices.size();
     m_vertices.emplace_back(index, std::forward<VertexProperties>(properties)...);
@@ -340,8 +342,8 @@ requires HasVertexProperties<V, VertexProperties...> VertexIndex StaticGraph<V, 
 
 template<IsVertex V, IsEdge E>
 template<typename... EdgeProperties>
-requires HasEdgeProperties<E, EdgeProperties...>
-    EdgeIndex StaticGraph<V, E>::add_directed_edge(VertexIndex source, VertexIndex target, EdgeProperties&&... properties)
+    requires HasEdgeProperties<E, EdgeProperties...>
+EdgeIndex StaticGraph<V, E>::add_directed_edge(VertexIndex source, VertexIndex target, EdgeProperties&&... properties)
 {
     vertex_index_check(source, "StaticGraph<V, E>::add_directed_edge(...): Source vertex out of range");
     vertex_index_check(target, "StaticGraph<V, E>::add_directed_edge(...): Source vertex out of range");
@@ -357,8 +359,8 @@ requires HasEdgeProperties<E, EdgeProperties...>
 
 template<IsVertex V, IsEdge E>
 template<typename... EdgeProperties>
-requires HasEdgeProperties<E, EdgeProperties...> std::pair<EdgeIndex, EdgeIndex>
-StaticGraph<V, E>::add_undirected_edge(VertexIndex source, VertexIndex target, EdgeProperties&&... properties)
+    requires HasEdgeProperties<E, EdgeProperties...>
+std::pair<EdgeIndex, EdgeIndex> StaticGraph<V, E>::add_undirected_edge(VertexIndex source, VertexIndex target, EdgeProperties&&... properties)
 {
     auto properties_tuple = std::make_tuple(std::forward<EdgeProperties>(properties)...);
     auto properties_tuple_copy = properties_tuple;
@@ -947,4 +949,3 @@ Degree StaticBidirectionalGraph<G>::get_degree(VertexIndex vertex) const
 }
 
 }
-

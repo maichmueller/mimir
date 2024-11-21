@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/concepts.hpp"
 #include "mimir/graphs/boost_adapter_utils.hpp"
 #include "mimir/graphs/digraph.hpp"
@@ -399,5 +398,3 @@ floyd_warshall_all_pairs_shortest_paths(const TraversalDirectionTaggedType<Graph
     return d;
 }
 }
-
-

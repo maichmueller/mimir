@@ -4,7 +4,6 @@
 
 #pragma once
 
-
 //-----------------------------------------------------------------------------
 // Platform-specific functions and macros
 

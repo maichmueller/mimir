@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include <algorithm>
 #include <boost/container/small_vector.hpp>
 #include <loki/loki.hpp>
@@ -151,5 +150,3 @@ public:
 };
 
 }
-
-

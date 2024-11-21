@@ -6,11 +6,14 @@ from lab.parser import Parser
 def coverage(content, props):
     props["coverage"] = int("cost" in props)
 
+
 def unsolvable(content, props):
     props["unsolvable"] = int("exhausted" in props)
 
+
 def invalid_plan_reported(content, props):
     props["invalid_plan_reported"] = int("val_plan_invalid" in props)
+
 
 class BrfsParser(Parser):
     """
@@ -38,14 +41,31 @@ class BrfsParser(Parser):
     Goal not satisfied
     Plan invalid
     """
+
     def __init__(self):
         super().__init__()
         self.add_pattern("search_time", r"\[BrFS\] Search time: (\d+)ms", type=int)
-        self.add_pattern("num_expanded", r"\[BrFS\] Number of expanded states: (\d+)", type=int)
-        self.add_pattern("num_generated", r"\[BrFS\] Number of generated states: (\d+)", type=int)
-        self.add_pattern("num_expanded_until_last_g_layer", r"\[BrFS\] Number of expanded states until last g-layer: (\d+)", type=int)
-        self.add_pattern("num_generated_until_last_g_layer", r"\[BrFS\] Number of generated states until last g-layer: (\d+)", type=int)
-        self.add_pattern("num_pruned_until_last_g_layer", r"\[BrFS\] Number of pruned states until last g-layer: (\d+)", type=int)
+        self.add_pattern(
+            "num_expanded", r"\[BrFS\] Number of expanded states: (\d+)", type=int
+        )
+        self.add_pattern(
+            "num_generated", r"\[BrFS\] Number of generated states: (\d+)", type=int
+        )
+        self.add_pattern(
+            "num_expanded_until_last_g_layer",
+            r"\[BrFS\] Number of expanded states until last g-layer: (\d+)",
+            type=int,
+        )
+        self.add_pattern(
+            "num_generated_until_last_g_layer",
+            r"\[BrFS\] Number of generated states until last g-layer: (\d+)",
+            type=int,
+        )
+        self.add_pattern(
+            "num_pruned_until_last_g_layer",
+            r"\[BrFS\] Number of pruned states until last g-layer: (\d+)",
+            type=int,
+        )
         self.add_pattern("cost", r"\[BrFS\] Plan cost: (.+)", type=float)
         self.add_pattern("length", r"\[BrFS\] Plan length: (.+)", type=float)
         self.add_pattern("exhausted", r"(\[BrFS\] Exhausted!)", type=str)

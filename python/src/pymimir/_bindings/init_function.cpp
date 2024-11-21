@@ -7,7 +7,6 @@
 
 namespace py = pybind11;
 
-
 void init_function(py::module& m)
 {
     using namespace pymimir;

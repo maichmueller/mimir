@@ -1,7 +1,6 @@
 
 #pragma once
 
-
 #include "pymimir.hpp"
 #include "variants.hpp"
 
@@ -44,4 +43,3 @@ PYBIND11_MAKE_OPAQUE(mimir::VariableList);
 /* Search */
 PYBIND11_MAKE_OPAQUE(mimir::StateList);
 PYBIND11_MAKE_OPAQUE(mimir::GroundActionList);
-

@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 
 namespace mimir
@@ -231,4 +230,3 @@ extern std::ostream& operator<<(std::ostream& out, const FunctionExpressionImpl&
 
 extern std::ostream& operator<<(std::ostream& out, FunctionExpression element);
 }
-

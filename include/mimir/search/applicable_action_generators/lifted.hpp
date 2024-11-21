@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/formalism/grounding_table.hpp"
 #include "mimir/search/action.hpp"
@@ -114,5 +113,3 @@ public:
 std::ostream& operator<<(std::ostream& out, const LiftedApplicableActionGenerator& lifted_applicable_action_generator);
 
 }  // namespace mimir
-
-

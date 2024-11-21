@@ -17,10 +17,7 @@
 
 #pragma once
 
-
 /**
  * Include all specializations here
  */
 #include "mimir/search/openlists/priority_queue.hpp"
-
-

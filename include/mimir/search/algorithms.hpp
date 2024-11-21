@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 /**
  * Include all specializations here
  */
@@ -30,5 +29,3 @@
 #include "mimir/search/algorithms/iw/event_handlers.hpp"
 #include "mimir/search/algorithms/siw.hpp"
 #include "mimir/search/algorithms/siw/event_handlers.hpp"
-
-

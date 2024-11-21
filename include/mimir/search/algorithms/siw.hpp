@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/search/algorithms/iw.hpp"
 #include "mimir/search/algorithms/siw/event_handlers/interface.hpp"
 

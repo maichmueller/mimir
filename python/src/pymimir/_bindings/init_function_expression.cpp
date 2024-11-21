@@ -9,11 +9,8 @@ namespace py = pybind11;
 
 using namespace pymimir;
 
-
 void init_function_expression(py::module& m)
 {
-
-
     class_<FunctionExpressionNumberImpl>(m, "FunctionExpressionNumber")  //
         .def("__str__", &FunctionExpressionNumberImpl::str)
         .def("__repr__", &FunctionExpressionNumberImpl::str)
@@ -67,5 +64,4 @@ void init_function_expression(py::module& m)
             "get",
             [](const FunctionExpressionVariant& arg) -> py::object { return std::visit(cast_visitor, *arg.function_expression); },
             py::keep_alive<0, 1>());
-
 }

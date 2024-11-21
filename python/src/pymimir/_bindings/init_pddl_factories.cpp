@@ -1,7 +1,7 @@
 
 #include "init_declarations.hpp"
-#include "pymimir.hpp"
 #include "opaque_types.hpp"
+#include "pymimir.hpp"
 #include "utils.hpp"
 #include "variants.hpp"
 
@@ -9,7 +9,6 @@
 #include <range/v3/all.hpp>
 
 namespace py = pybind11;
-
 
 using namespace pymimir;
 

@@ -145,7 +145,7 @@ struct join
     constexpr auto operator()(Args&&... args) const noexcept
     {
         // create a tuple by forwarding only the arguments at indices Is...
-        return std::forward_as_tuple(project<Is>{}(std::forward_as_tuple(args...))...);
+        return std::forward_as_tuple(project<Is> {}(std::forward_as_tuple(args...))...);
     };
 };
 

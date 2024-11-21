@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 // Do not include headers with transitive dependencies.
 #include "mimir/common/types.hpp"
 #include "mimir/graphs/declarations.hpp"
@@ -38,4 +37,3 @@ class FaithfulAbstraction;
 class GlobalFaithfulAbstraction;
 
 }
-

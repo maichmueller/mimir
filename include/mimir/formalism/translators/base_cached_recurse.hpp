@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/translators/interface.hpp"
 
 #include <deque>

@@ -6,8 +6,7 @@ ROOT_DIR = (Path(__file__).parent.parent.parent.parent).absolute()
 
 
 def test_faithful_abstraction():
-    """ Test the construction of faithful abstraction
-    """
+    """Test the construction of faithful abstraction"""
     domain_filepath = str(ROOT_DIR / "data" / "gripper" / "domain.pddl")
     problem_filepath = str(ROOT_DIR / "data" / "gripper" / "p-2-0.pddl")
 
@@ -21,8 +20,7 @@ def test_faithful_abstraction():
 
 
 def test_faithful_abstraction_parallel():
-    """ Test the parallel construction of parallel faithful abstraction
-    """
+    """Test the parallel construction of parallel faithful abstraction"""
     domain_filepath = str(ROOT_DIR / "data" / "gripper" / "domain.pddl")
     problem_filepath_1 = str(ROOT_DIR / "data" / "gripper" / "p-1-0.pddl")
     problem_filepath_2 = str(ROOT_DIR / "data" / "gripper" / "p-2-0.pddl")

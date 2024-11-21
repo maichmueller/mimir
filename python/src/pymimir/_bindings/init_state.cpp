@@ -6,7 +6,6 @@
 #include <range/v3/view/transform.hpp>
 namespace py = pybind11;
 
-
 using namespace pymimir;
 
 void init_state(py::module& m)
@@ -57,12 +56,14 @@ void init_state(py::module& m)
             [](const StateImpl& self, const py::iterable& iter)
             {
                 auto rng = make_range(iter.begin(), iter.end());
-                // this line should be used, but gcc-10.2 has a bug for pybind11::iterator's category dedcution (fixed only in 10.4). Until the manylinux image updates
-                // gcc to 10.4, we use the workaround below.
-//                return insert_into_list(self.get_unsatisfied_literals(std::views::transform(rng, AS_LAMBDA(py::cast<AnyGroundLiteral>))));
+                // this line should be used, but gcc-10.2 has a bug for pybind11::iterator's category dedcution (fixed only in 10.4). Until the manylinux image
+                // updates gcc to 10.4, we use the workaround below.
+                //                return insert_into_list(self.get_unsatisfied_literals(std::views::transform(rng, AS_LAMBDA(py::cast<AnyGroundLiteral>))));
                 py::list lst = init_list(rng);
-                for( auto any_literal: std::views::transform(rng, AS_LAMBDA(py::cast<AnyGroundLiteral>))) {
-                    if(!self.literal_holds(any_literal)) {
+                for (auto any_literal : std::views::transform(rng, AS_LAMBDA(py::cast<AnyGroundLiteral>)))
+                {
+                    if (!self.literal_holds(any_literal))
+                    {
                         lst.append(cast_safe(any_literal));
                     }
                 }
@@ -93,12 +94,14 @@ void init_state(py::module& m)
             [](const StateImpl& self, const py::iterable& iter)
             {
                 auto rng = make_range(iter.begin(), iter.end());
-                // this line should be used, but gcc-10.2 has a bug for pybind11::iterator's category dedcution (fixed only in 10.4). Until the manylinux image updates
-                // gcc to 10.4, we use the workaround below.
-//                return insert_into_list(self.get_satisfied_literals(std::views::transform(rng, AS_LAMBDA(py::cast<AnyGroundLiteral>))));
+                // this line should be used, but gcc-10.2 has a bug for pybind11::iterator's category dedcution (fixed only in 10.4). Until the manylinux image
+                // updates gcc to 10.4, we use the workaround below.
+                //                return insert_into_list(self.get_satisfied_literals(std::views::transform(rng, AS_LAMBDA(py::cast<AnyGroundLiteral>))));
                 py::list lst = init_list(rng);
-                for( auto any_literal: std::views::transform(rng, AS_LAMBDA(py::cast<AnyGroundLiteral>))) {
-                    if(self.literal_holds(any_literal)) {
+                for (auto any_literal : std::views::transform(rng, AS_LAMBDA(py::cast<AnyGroundLiteral>)))
+                {
+                    if (self.literal_holds(any_literal))
+                    {
                         lst.append(cast_safe(any_literal));
                     }
                 }

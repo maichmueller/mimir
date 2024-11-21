@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/common/printers.hpp"
 #include "mimir/graphs/declarations.hpp"
 #include "mimir/graphs/digraph_vertex_colored.hpp"

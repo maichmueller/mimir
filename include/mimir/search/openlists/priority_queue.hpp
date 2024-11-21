@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/search/openlists/interface.hpp"
 
 #include <queue>
@@ -68,5 +67,3 @@ private:
 };
 
 }  // namespace mimir
-
-

@@ -8,7 +8,7 @@ namespace py = pybind11;
 namespace pymimir
 {
 template<typename T>
-requires(not std::derived_from<T, py::handle>)
+    requires(not std::derived_from<T, py::handle>)
 inline py::object cast_safe(T&& obj)
 {
     auto pyobj = py::cast(FWD(obj));
@@ -18,10 +18,7 @@ inline py::object cast_safe(T&& obj)
     }
     return pyobj;
 }
-inline py::handle cast_safe(py::handle obj)
-{
-    return obj;
-}
+inline py::handle cast_safe(py::handle obj) { return obj; }
 
 py::list init_list(auto&& rng)
 {

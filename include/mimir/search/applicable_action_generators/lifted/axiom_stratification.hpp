@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 
 namespace mimir
@@ -51,5 +50,3 @@ public:
 extern std::vector<AxiomPartition> compute_axiom_partitioning(const AxiomList& axioms, const PredicateList<Derived>& derived_predicates);
 
 }
-
-

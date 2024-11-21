@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/transformers/base_cached_recurse.hpp"
 
 namespace mimir

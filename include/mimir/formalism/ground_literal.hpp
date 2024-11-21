@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 
 namespace mimir
@@ -65,4 +64,3 @@ extern std::ostream& operator<<(std::ostream& out, const GroundLiteralImpl<P>& e
 template<PredicateTag P>
 extern std::ostream& operator<<(std::ostream& out, GroundLiteral<P> element);
 }
-

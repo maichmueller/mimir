@@ -77,8 +77,7 @@ bool operator==(const Certificate<K>& lhs, const Certificate<K>& rhs)
 template<size_t K>
 std::ostream& operator<<(std::ostream& out, const Certificate<K>& element)
 {
-    out << "Certificate" << K << "FWL("
-        << "canonical_coloring=" << element.get_canonical_coloring() << ", "
+    out << "Certificate" << K << "FWL(" << "canonical_coloring=" << element.get_canonical_coloring() << ", "
         << "canonical_configuration_compression_function=" << element.get_canonical_configuration_compression_function() << ")";
     return out;
 }
@@ -117,8 +116,8 @@ IndexArray<K> hash_to_tuple(size_t hash, size_t num_vertices)
 /// @param iso_type_function is the function that tracks assigned colors to canonical subgraphs.
 /// @return two mappings: k-tuple hash to color and color to k-tuple hashes.
 template<size_t K, typename G>
-requires IsVertexListGraph<G> && IsIncidenceGraph<G> && IsVertexColoredGraph<G>  //
-    std::pair<ColorList, ColorMap<IndexList>> compute_ordered_isomorphism_types(const G& graph, IsomorphismTypeCompressionFunction& iso_type_function)
+    requires IsVertexListGraph<G> && IsIncidenceGraph<G> && IsVertexColoredGraph<G>  //
+std::pair<ColorList, ColorMap<IndexList>> compute_ordered_isomorphism_types(const G& graph, IsomorphismTypeCompressionFunction& iso_type_function)
 {
     const auto num_vertices = graph.get_num_vertices();
     const auto num_hashes = std::pow(num_vertices, K);
@@ -192,8 +191,8 @@ requires IsVertexListGraph<G> && IsIncidenceGraph<G> && IsVertexColoredGraph<G> 
 }
 
 template<size_t K, typename G>
-requires IsVertexListGraph<G> && IsIncidenceGraph<G> && IsVertexColoredGraph<G>  //
-    Certificate<K> compute_certificate(const G& graph, IsomorphismTypeCompressionFunction& iso_type_function)
+    requires IsVertexListGraph<G> && IsIncidenceGraph<G> && IsVertexColoredGraph<G>  //
+Certificate<K> compute_certificate(const G& graph, IsomorphismTypeCompressionFunction& iso_type_function)
 {
     if (!is_undirected_graph(graph))
     {

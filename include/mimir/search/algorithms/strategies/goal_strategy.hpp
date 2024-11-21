@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/search/state.hpp"
 
@@ -48,4 +47,3 @@ public:
     bool test_dynamic_goal(State state) override;
 };
 }
-

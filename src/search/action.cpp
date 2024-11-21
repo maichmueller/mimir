@@ -159,15 +159,9 @@ bool StripsActionPrecondition::is_applicable(const FlatBitset& fluent_state_atom
 
 FlatBitset& StripsActionEffect::get_positive_effects() { return positive_effects; }
 
-const FlatBitset& StripsActionEffect::get_positive_effects() const
-{
-    return positive_effects;
-}
+const FlatBitset& StripsActionEffect::get_positive_effects() const { return positive_effects; }
 
-FlatBitset& StripsActionEffect::get_negative_effects()
-{
-    return negative_effects;
-}
+FlatBitset& StripsActionEffect::get_negative_effects() { return negative_effects; }
 
 const FlatBitset& StripsActionEffect::get_negative_effects() const { return negative_effects; }
 
@@ -371,12 +365,9 @@ std::ostream& operator<<(std::ostream& os, const std::tuple<StripsActionPrecondi
     pddl_repositories.get_ground_atoms_from_indices<Derived>(positive_derived_precondition_bitset, positive_derived_precondition);
     pddl_repositories.get_ground_atoms_from_indices<Derived>(negative_derived_precondition_bitset, negative_derived_precondition);
 
-    os << "positive static precondition=" << positive_static_precondition << ", "
-       << "negative static precondition=" << negative_static_precondition << ", "
-       << "positive fluent precondition=" << positive_fluent_precondition << ", "
-       << "negative fluent precondition=" << negative_fluent_precondition << ", "
-       << "positive derived precondition=" << positive_derived_precondition << ", "
-       << "negative derived precondition=" << negative_derived_precondition;
+    os << "positive static precondition=" << positive_static_precondition << ", " << "negative static precondition=" << negative_static_precondition << ", "
+       << "positive fluent precondition=" << positive_fluent_precondition << ", " << "negative fluent precondition=" << negative_fluent_precondition << ", "
+       << "positive derived precondition=" << positive_derived_precondition << ", " << "negative derived precondition=" << negative_derived_precondition;
 
     return os;
 }
@@ -395,8 +386,7 @@ std::ostream& operator<<(std::ostream& os, const std::tuple<StripsActionEffect, 
     pddl_repositories.get_ground_atoms_from_indices<Fluent>(positive_effect_bitset, positive_simple_effects);
     pddl_repositories.get_ground_atoms_from_indices<Fluent>(negative_effect_bitset, negative_simple_effects);
 
-    os << "delete effects=" << negative_simple_effects << ", "
-       << "add effects=" << positive_simple_effects;
+    os << "delete effects=" << negative_simple_effects << ", " << "add effects=" << positive_simple_effects;
 
     return os;
 }
@@ -428,12 +418,9 @@ std::ostream& operator<<(std::ostream& os, const std::tuple<ConditionalEffect, c
     pddl_repositories.get_ground_atoms_from_indices<Derived>(positive_derived_precondition_bitset, positive_derived_precondition);
     pddl_repositories.get_ground_atoms_from_indices<Derived>(negative_derived_precondition_bitset, negative_derived_precondition);
 
-    os << "positive static precondition=" << positive_static_precondition << ", "
-       << "negative static precondition=" << negative_static_precondition << ", "
-       << "positive fluent precondition=" << positive_fluent_precondition << ", "
-       << "negative fluent precondition=" << negative_fluent_precondition << ", "
-       << "positive derived precondition=" << positive_derived_precondition << ", "
-       << "negative derived precondition=" << negative_derived_precondition << ", "
+    os << "positive static precondition=" << positive_static_precondition << ", " << "negative static precondition=" << negative_static_precondition << ", "
+       << "positive fluent precondition=" << positive_fluent_precondition << ", " << "negative fluent precondition=" << negative_fluent_precondition << ", "
+       << "positive derived precondition=" << positive_derived_precondition << ", " << "negative derived precondition=" << negative_derived_precondition << ", "
        << "effect=" << std::make_tuple(simple_effect, std::cref(pddl_repositories));
 
     return os;
@@ -460,8 +447,7 @@ std::ostream& operator<<(std::ostream& os, const std::tuple<GroundAction, const 
        << "binding=" << binding << ", "                                                            //
        << std::make_tuple(strips_precondition, std::cref(pddl_repositories)) << ", "               //
        << std::make_tuple(strips_effect, std::cref(pddl_repositories))                             //
-       << ", "
-       << "conditional_effects=[";
+       << ", " << "conditional_effects=[";
     for (const auto& cond_effect : cond_effects)
     {
         os << "[" << std::make_tuple(cond_effect, std::cref(pddl_repositories)) << "], ";

@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include <boost/spirit/home/x3.hpp>
 #include <boost/spirit/home/x3/support/ast/position_tagged.hpp>
 #include <boost/spirit/home/x3/support/utility/error_reporting.hpp>
@@ -47,5 +46,3 @@ typedef x3::phrase_parse_context<x3::ascii::space_type>::type phrase_context_typ
 /* Combined error handler, pddl, and phrase parse Context */
 typedef x3::context<error_handler_tag, std::reference_wrapper<error_handler_type>, phrase_context_type> context_type;
 }
-
-

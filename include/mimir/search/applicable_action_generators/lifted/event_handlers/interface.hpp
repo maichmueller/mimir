@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/search/applicable_action_generators/lifted/event_handlers/statistics.hpp"
 #include "mimir/search/condition_grounders/event_handlers/interface.hpp"
@@ -195,5 +194,3 @@ public:
     const LiftedApplicableActionGeneratorStatistics& get_statistics() const override { return m_statistics; }
 };
 }
-
-

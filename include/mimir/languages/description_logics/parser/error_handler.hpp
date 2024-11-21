@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/languages/description_logics/parser/config.hpp"
 
 #include <string>
@@ -61,5 +60,3 @@ struct error_handler_base
     }
 };
 }
-
-

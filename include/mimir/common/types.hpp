@@ -17,10 +17,9 @@
 
 #pragma once
 
-
 #include <array>
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -44,4 +43,3 @@ using DiscreteCost = int32_t;
 using DiscreteCostList = std::vector<DiscreteCost>;
 using DiscreteCostMatrix = std::vector<ContinuousCostList>;
 }
-

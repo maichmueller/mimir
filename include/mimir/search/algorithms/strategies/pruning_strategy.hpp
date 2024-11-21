@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/search/state.hpp"
 
@@ -50,5 +49,3 @@ public:
     bool test_prune_successor_state(State state, State succ_state, bool is_new_succ) override;
 };
 }
-
-

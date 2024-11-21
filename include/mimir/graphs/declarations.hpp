@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 // Do not include headers with transitive dependencies.
 #include "mimir/common/types.hpp"
 
@@ -52,5 +51,3 @@ template<typename T>
 using ColorMap = std::unordered_map<Color, T>;
 
 }
-
-

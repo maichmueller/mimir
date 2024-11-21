@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/languages/description_logics/constructor_interface.hpp"
 #include "mimir/languages/description_logics/denotation_repositories.hpp"
@@ -65,5 +64,3 @@ public:
     DenotationRepository<D>& get_denotation_repository();
 };
 }
-
-

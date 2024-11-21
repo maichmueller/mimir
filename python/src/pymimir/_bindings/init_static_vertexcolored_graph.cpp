@@ -7,7 +7,6 @@ namespace py = pybind11;
 
 using namespace pymimir;
 
-
 void init_static_vertexcolored_graph(py::module& m)
 {
     // ColorFunction
@@ -175,5 +174,4 @@ void init_static_vertexcolored_graph(py::module& m)
         .def("get_edges", &StaticVertexColoredDigraph::get_edges, py::return_value_policy::reference_internal)
         .def("get_num_vertices", &StaticVertexColoredDigraph::get_num_vertices)
         .def("get_num_edges", &StaticVertexColoredDigraph::get_num_edges);
-
 }

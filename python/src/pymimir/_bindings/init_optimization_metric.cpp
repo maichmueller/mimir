@@ -6,11 +6,9 @@
 #include <pybind11/pybind11.h>
 namespace py = pybind11;
 
-
 void init_optimization_metric(py::module& m)
 {
     using namespace pymimir;
-
 
     // dependent on ground function expression bindings!
     class_<OptimizationMetricImpl>(m, "OptimizationMetric")  //

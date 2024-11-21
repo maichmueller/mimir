@@ -28,7 +28,7 @@ namespace mimir
 {
 
 template<typename G>
-requires IsEdgeListGraph<G>  //
+    requires IsEdgeListGraph<G>  //
 bool is_undirected_graph(const G& graph)
 {
     // Create datastructure for efficient lookup
@@ -50,7 +50,7 @@ bool is_undirected_graph(const G& graph)
 }
 
 template<typename G>
-requires IsEdgeListGraph<G>  //
+    requires IsEdgeListGraph<G>  //
 bool is_multi_graph(const G& graph)
 {
     auto directed_edges = std::unordered_set<std::pair<Index, Index>, Hash<std::pair<Index, Index>>>();

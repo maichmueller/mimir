@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include "_bindings/init_declarations.hpp"
 
 #include <gtest/gtest.h>
@@ -8,7 +7,7 @@
 #include <pybind11/pybind11.h>
 
 // necessary to replicate the module here to use it in-place (verify against python/src/mimir/main.cpp)
-//PYBIND11_MODULE(_pymimir, m) { init_pymimir(m); }
+// PYBIND11_MODULE(_pymimir, m) { init_pymimir(m); }
 
 PyMODINIT_FUNC PyInit__pymimir();
 
@@ -28,4 +27,3 @@ private:
     std::unique_ptr<pybind11::scoped_interpreter> guard = nullptr;
     std::unique_ptr<pybind11::module> m_pymimir = nullptr;
 };
-

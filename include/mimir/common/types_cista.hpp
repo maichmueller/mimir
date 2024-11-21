@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/cista/containers/dynamic_bitset.h"
 #include "mimir/common/types.hpp"
 #include "mimir/formalism/declarations.hpp"
@@ -76,4 +75,3 @@ inline bool is_superseteq(const FlatBitset& bitset, const FlatIndexList& list)
 }
 
 }
-

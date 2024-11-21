@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include <unordered_set>
 #include <vector>
 
@@ -49,4 +48,3 @@ using TupleIndexList = std::vector<TupleIndex>;
 using TupleIndexSet = std::unordered_set<TupleIndex>;
 
 }
-

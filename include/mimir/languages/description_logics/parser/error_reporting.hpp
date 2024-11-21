@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/languages/description_logics/parser/config.hpp"
 
 #include <sstream>
@@ -50,5 +49,3 @@ public:
     std::ostringstream& get_error_stream() { return m_error_stream; }
 };
 }
-
-

@@ -18,6 +18,7 @@
 #pragma once
 
 #include "mimir/cista/storage/byte_buffer_segmented.h"
+
 #include <cista/serialization.h>
 
 namespace cista::storage

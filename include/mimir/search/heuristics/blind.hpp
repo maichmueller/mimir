@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/search/declarations.hpp"
 #include "mimir/search/heuristics/interface.hpp"
 
@@ -31,5 +30,3 @@ public:
 };
 
 }
-
-

@@ -17,7 +17,6 @@
 
 #pragma once
 
-
 #include "mimir/graphs/graph_vertices.hpp"
 #include "mimir/search/state.hpp"
 
@@ -30,4 +29,3 @@ using StateVertexList = std::vector<StateVertex>;
 inline State get_state(const StateVertex& vertex) { return vertex.get_property<0>(); }
 
 }
-
