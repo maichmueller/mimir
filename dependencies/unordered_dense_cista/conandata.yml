@@ -1,0 +1,5 @@
+sources:
+  "2024.10.22":
+    - url: "https://github.com/motis-project/unordered_dense.git"
+      commit: "b33b037377ca966bbdd9cccc3417e46e88f83bfb"
+      type: "git"

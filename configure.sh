@@ -156,7 +156,12 @@ echo "conan_extra_args: ${conan_extra_args[*]}"
 echo "Executing cmake config."
 
 if [ "$use_conan" = true ]; then
-  # install all dependencies defined for conan first
+  # first export all custom conan recipes (needed to register them in the local conan cache)
+  current_directory="$(dirname "$(realpath "$0")")"
+  chmod +x "$current_directory"/conan_export.sh
+  "$current_directory"/conan_export.sh --conan_cmd="$conan_cmd"
+
+  # install all dependencies defined for conan
   conan_args="\
   -s build_type=Release \
   -s:h compiler.cppstd=gnu20 \
@@ -167,12 +172,6 @@ if [ "$use_conan" = true ]; then
   --options=nauty/*:fPIC=True \
   ${conan_extra_args[*]}"
 
-  action="$conan_cmd export dependencies/loki --version=0.0.7"
-  eval "$action"
-  action="$conan_cmd export dependencies/nauty --version=2.8.8"
-  eval "$action"
-  action="$conan_cmd export dependencies/cista --version=2024.10.22"
-  eval "$action"
   action="$conan_cmd install . -of=$cmake_build_folder/conan -g CMakeDeps -s \"&\":build_type=$config $conan_args"
   eval "$action"
   # append the necessary cmake config to the cmake call
