@@ -44,7 +44,7 @@ private:
     std::shared_ptr<PDDLRepositories> m_pddl_repositories;
     std::shared_ptr<ILiftedApplicableActionGeneratorEventHandler> m_event_handler;
 
-    std::vector<AxiomPartition> m_partitioning;
+    vector<AxiomPartition> m_partitioning;
 
     GroundAxiomImplSet m_flat_axioms;
     GroundAxiomList m_axioms_by_index;
@@ -70,7 +70,7 @@ public:
     void generate_and_apply_axioms(StateImpl& unextended_state);
 
     /// @brief Return the axiom partitioning.
-    const std::vector<AxiomPartition>& get_axiom_partitioning() const;
+    const vector<AxiomPartition>& get_axiom_partitioning() const;
 
     /// @brief Ground an axiom and return a view onto it.
     GroundAxiom ground_axiom(Axiom axiom, ObjectList&& binding);

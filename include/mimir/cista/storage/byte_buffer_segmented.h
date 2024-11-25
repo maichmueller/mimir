@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "mimir/declarations.hpp"
+
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -34,7 +36,7 @@ private:
     size_t m_num_bytes_per_segment;
     size_t m_maximum_num_bytes_per_segment;
 
-    std::vector<std::vector<uint8_t>> m_segments;
+    mimir::vector<mimir::vector<uint8_t>> m_segments;
 
     size_t m_current_segment_index;
     size_t m_current_segment_position;
@@ -56,7 +58,7 @@ private:
         // Use doubling strategy to make future insertions cheaper.
         m_num_bytes_per_segment = std::min(2 * m_num_bytes_per_segment, m_maximum_num_bytes_per_segment);
 
-        m_segments.push_back(std::vector<uint8_t>(m_num_bytes_per_segment));
+        m_segments.push_back(mimir::vector<uint8_t>(m_num_bytes_per_segment));
 
         m_capacity += m_num_bytes_per_segment;
         m_current_segment_position = 0;

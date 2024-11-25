@@ -17,13 +17,18 @@ template<class Key,  //
          class Hash = cista::hash_all,
          class KeyEqual = cista::equals_all,
          class AllocatorOrContainer = vector<std::pair<Key, T>>>
-using unordered_map = cista::offset::ankerl_map<Key, T, Hash, AllocatorOrContainer>;
+using unordered_map = cista::offset::ankerl_map<Key, T, Hash, KeyEqual, AllocatorOrContainer>;
 
 template<class Key,  //
-         class T,
          class Hash = cista::hash_all,
          class KeyEqual = cista::equals_all,
-         class AllocatorOrContainer = vector<std::pair<Key, T>>>
-using unordered_set = cista::offset::ankerl_set<Key, Hash, AllocatorOrContainer>;
+         class AllocatorOrContainer = cista::offset::vector<Key>>
+using unordered_set = cista::offset::ankerl_set<Key, Hash, KeyEqual, AllocatorOrContainer>;
+
+template<typename T>
+using hash = cista::hashing<T>;
+
+template<typename T>
+using equal_to = cista::equal_to<T>;
 
 }

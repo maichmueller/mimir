@@ -48,7 +48,7 @@ void AxiomEvaluator::generate_and_apply_axioms(StateImpl& unextended_state)
 
     /* 2. Fixed point computation */
 
-    auto bindings = std::vector<ObjectList> {};
+    auto bindings = vector<ObjectList> {};
     auto applicable_axioms = GroundAxiomList {};
 
     for (const auto& partition : m_partitioning)
@@ -192,7 +192,7 @@ AxiomEvaluator::AxiomEvaluator(Problem problem,
     }
 }
 
-const std::vector<AxiomPartition>& AxiomEvaluator::get_axiom_partitioning() const { return m_partitioning; }
+const vector<AxiomPartition>& AxiomEvaluator::get_axiom_partitioning() const { return m_partitioning; }
 
 GroundAxiom AxiomEvaluator::ground_axiom(Axiom axiom, ObjectList&& binding)
 {

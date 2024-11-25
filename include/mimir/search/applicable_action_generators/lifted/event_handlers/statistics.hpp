@@ -33,12 +33,12 @@ private:
     uint64_t m_num_ground_axiom_cache_hits;
     uint64_t m_num_ground_axiom_cache_misses;
 
-    std::vector<uint64_t> m_num_ground_action_cache_hits_per_search_layer;
-    std::vector<uint64_t> m_num_ground_action_cache_misses_per_search_layer;
-    std::vector<uint64_t> m_num_inapplicable_grounded_actions_per_search_layer;
+    vector<uint64_t> m_num_ground_action_cache_hits_per_search_layer;
+    vector<uint64_t> m_num_ground_action_cache_misses_per_search_layer;
+    vector<uint64_t> m_num_inapplicable_grounded_actions_per_search_layer;
 
-    std::vector<uint64_t> m_num_ground_axiom_cache_hits_per_search_layer;
-    std::vector<uint64_t> m_num_ground_axiom_cache_misses_per_search_layer;
+    vector<uint64_t> m_num_ground_axiom_cache_hits_per_search_layer;
+    vector<uint64_t> m_num_ground_axiom_cache_misses_per_search_layer;
 
 public:
     LiftedApplicableActionGeneratorStatistics() :
@@ -76,12 +76,12 @@ public:
     uint64_t get_num_ground_axiom_cache_hits() const { return m_num_ground_axiom_cache_hits; }
     uint64_t get_num_ground_axiom_cache_misses() const { return m_num_ground_axiom_cache_misses; }
 
-    const std::vector<uint64_t>& get_num_ground_action_cache_hits_per_search_layer() const { return m_num_ground_action_cache_hits_per_search_layer; }
-    const std::vector<uint64_t>& get_num_ground_action_cache_misses_per_search_layer() const { return m_num_ground_action_cache_misses_per_search_layer; }
-    const std::vector<uint64_t>& get_num_inapplicable_grounded_actions_per_search_layer() const { return m_num_inapplicable_grounded_actions_per_search_layer; }
+    const vector<uint64_t>& get_num_ground_action_cache_hits_per_search_layer() const { return m_num_ground_action_cache_hits_per_search_layer; }
+    const vector<uint64_t>& get_num_ground_action_cache_misses_per_search_layer() const { return m_num_ground_action_cache_misses_per_search_layer; }
+    const vector<uint64_t>& get_num_inapplicable_grounded_actions_per_search_layer() const { return m_num_inapplicable_grounded_actions_per_search_layer; }
 
-    const std::vector<uint64_t>& get_num_ground_axiom_cache_hits_per_search_layer() const { return m_num_ground_axiom_cache_hits_per_search_layer; }
-    const std::vector<uint64_t>& get_num_ground_axiom_cache_misses_per_search_layer() const { return m_num_ground_axiom_cache_misses_per_search_layer; }
+    const vector<uint64_t>& get_num_ground_axiom_cache_hits_per_search_layer() const { return m_num_ground_axiom_cache_hits_per_search_layer; }
+    const vector<uint64_t>& get_num_ground_axiom_cache_misses_per_search_layer() const { return m_num_ground_axiom_cache_misses_per_search_layer; }
 };
 
 /**

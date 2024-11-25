@@ -18,6 +18,7 @@
 #pragma once
 
 #include "mimir/common/concepts.hpp"
+#include "mimir/declarations.hpp"
 
 #include <boost/graph/graph_concepts.hpp>
 #include <boost/property_map/property_map.hpp>
@@ -51,18 +52,16 @@ template<typename I, typename V>
 class VectorBasicMatrix
 {
 public:
-    VectorBasicMatrix(std::size_t num_vertices, V init_value = std::numeric_limits<V>::max()) : m_matrix(num_vertices, std::vector<V>(num_vertices, init_value))
-    {
-    }
+    VectorBasicMatrix(std::size_t num_vertices, V init_value = std::numeric_limits<V>::max()) : m_matrix(num_vertices, vector<V>(num_vertices, init_value)) {}
 
-    std::vector<V>& operator[](I i) { return m_matrix[i]; }
+    vector<V>& operator[](I i) { return m_matrix[i]; }
 
-    const std::vector<V>& operator[](I i) const { return m_matrix[i]; }
+    const vector<V>& operator[](I i) const { return m_matrix[i]; }
 
-    const std::vector<std::vector<V>>& get_matrix() const { return m_matrix; }
+    const vector<vector<V>>& get_matrix() const { return m_matrix; }
 
 private:
-    std::vector<std::vector<V>> m_matrix;
+    vector<vector<V>> m_matrix;
 };
 
 template<typename I, typename V>
@@ -119,12 +118,12 @@ public:
     using reference = Value;
     using category = boost::read_write_property_map_tag;
 
-    explicit VectorReadPropertyMap(const std::vector<Value>& distances) : m_distances(distances) {}
+    explicit VectorReadPropertyMap(const vector<Value>& distances) : m_distances(distances) {}
 
     const Value& get(Key key) const { return m_distances.get().at(key); }
 
 private:
-    std::reference_wrapper<const std::vector<Value>> m_distances;
+    std::reference_wrapper<const vector<Value>> m_distances;
 };
 
 template<typename Key, typename Value>
@@ -144,13 +143,13 @@ public:
     using reference = Value;
     using category = boost::read_write_property_map_tag;
 
-    explicit VectorReadWritePropertyMap(std::vector<Value>& distances) : m_distances(distances) {}
+    explicit VectorReadWritePropertyMap(vector<Value>& distances) : m_distances(distances) {}
 
     const Value& get(Key key) const { return m_distances.get().at(key); }
     void set(Key key, Value value) { m_distances.get().at(key) = value; }
 
 private:
-    std::reference_wrapper<std::vector<Value>> m_distances;
+    std::reference_wrapper<vector<Value>> m_distances;
 };
 
 template<typename Key, typename Value>

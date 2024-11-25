@@ -12,6 +12,6 @@ template<typename T>
 using GroundingTable = std::unordered_map<ObjectList, T, Hash<ObjectList>>;
 
 template<typename T>
-using GroundingTableList = std::vector<GroundingTable<T>>;
+using GroundingTableList = vector<GroundingTable<T>>;
 
 }

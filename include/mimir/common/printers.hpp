@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "mimir/declarations.hpp"
+
 #include <array>
 #include <map>
 #include <memory>
@@ -56,7 +58,7 @@ template<typename T>
 std::ostream& operator<<(std::ostream& os, const std::unordered_set<T>& set);
 
 template<typename T>
-std::ostream& operator<<(std::ostream& os, const std::vector<T>& vec);
+std::ostream& operator<<(std::ostream& os, const vector<T>& vec);
 
 /**
  * Definitions
@@ -154,7 +156,7 @@ std::ostream& operator<<(std::ostream& os, const std::unordered_set<T>& set)
 }
 
 template<typename T>
-std::ostream& operator<<(std::ostream& os, const std::vector<T>& vec)
+std::ostream& operator<<(std::ostream& os, const vector<T>& vec)
 {
     os << "[";
     for (size_t i = 0; i < vec.size(); ++i)

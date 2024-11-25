@@ -29,7 +29,7 @@ namespace mimir
 {
 
 using GroundActionEdge = Edge<GroundAction>;
-using GroundActionEdgeList = std::vector<GroundActionEdge>;
+using GroundActionEdgeList = vector<GroundActionEdge>;
 
 inline GroundAction get_creating_action(const GroundActionEdge& edge) { return edge.get_property<0>(); }
 

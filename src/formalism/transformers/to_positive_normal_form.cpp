@@ -149,10 +149,10 @@ Domain ToPositiveNormalFormTransformer::transform_impl(const DomainImpl& domain)
                                                           this->transform(domain.get_constants()),
                                                           this->transform(domain.get_predicates<Static>()),
                                                           this->transform(domain.get_predicates<Fluent>()),
-                                                          uniquify_elements(transformed_derived_predicates),
+                                                          ranges::to<vector<Predicate<Derived>>>(uniquify_elements(transformed_derived_predicates)),
                                                           this->transform(domain.get_functions()),
                                                           this->transform(domain.get_actions()),
-                                                          uniquify_elements(transformed_axioms));
+                                                          ranges::to<vector<Axiom>>(uniquify_elements(transformed_axioms)));
 }
 
 ToPositiveNormalFormTransformer::ToPositiveNormalFormTransformer(PDDLRepositories& pddl_repositories) :

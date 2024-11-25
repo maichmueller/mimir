@@ -35,8 +35,8 @@ namespace mimir::dl::refinement_brfs
 
 struct SearchSpace
 {
-    using ConstructorTagToConstructorsByComplexity = boost::hana::map<boost::hana::pair<boost::hana::type<Concept>, std::vector<ConstructorList<Concept>>>,
-                                                                      boost::hana::pair<boost::hana::type<Role>, std::vector<ConstructorList<Role>>>>;
+    using ConstructorTagToConstructorsByComplexity = boost::hana::map<boost::hana::pair<boost::hana::type<Concept>, vector<ConstructorList<Concept>>>,
+                                                                      boost::hana::pair<boost::hana::type<Role>, vector<ConstructorList<Role>>>>;
 
     ConstructorTagToConstructorsByComplexity constructors_by_complexity = ConstructorTagToConstructorsByComplexity();
 };
@@ -205,7 +205,7 @@ class ConstructorArgumentConstIterator
 {
 private:
     /* Inputs */
-    std::tuple<std::vector<ConstructorList<Ds>>*...> m_constructors_by_complexity;
+    std::tuple<vector<ConstructorList<Ds>>*...> m_constructors_by_complexity;
 
     /* Internal state */
     SumPartitionConstIterator<sizeof...(Ds)> m_complexity_distribution_iter;
@@ -318,7 +318,7 @@ public:
         m_pos(0)
     {
     }
-    ConstructorArgumentConstIterator(std::tuple<std::reference_wrapper<std::vector<ConstructorList<Ds>>>...>& constructors_by_complexity,
+    ConstructorArgumentConstIterator(std::tuple<std::reference_wrapper<vector<ConstructorList<Ds>>>...>& constructors_by_complexity,
                                      size_t complexity,
                                      bool begin) :
         m_constructors_by_complexity(std::apply([](auto&... refs) { return std::make_tuple(&refs.get()...); }, constructors_by_complexity)),

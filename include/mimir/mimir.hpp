@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "mimir/declarations.hpp"
+
 /**
  * Include all specializations here
  */

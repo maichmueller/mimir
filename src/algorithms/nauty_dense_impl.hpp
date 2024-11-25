@@ -20,6 +20,7 @@
 
 // Only include nauty_impl.hpp in a source file to avoid transitive includes of nauty.h.
 #include "mimir/algorithms/nauty.hpp"
+#include "mimir/declarations.hpp"
 #include "mimir/graphs/declarations.hpp"
 
 #include <nauty.h>
@@ -43,8 +44,8 @@ private:
     bool use_default_ptn_;
 
     mimir::ColorList canon_coloring_;
-    std::vector<int> lab_;
-    std::vector<int> ptn_;
+    mimir::vector<int> lab_;
+    mimir::vector<int> ptn_;
 
     // The canonical graph
     graph* canon_graph_;

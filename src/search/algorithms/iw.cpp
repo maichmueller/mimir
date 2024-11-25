@@ -198,7 +198,7 @@ void StateTupleIndexGenerator::const_iterator::advance()
         size_t old_index = m_indices[j];
 
         // Cap at placeholder index
-        size_t new_index = m_indices[j] = std::min(num_atoms - 1, m_indices[j - 1] + 1);
+        size_t new_index = m_indices[j] = std::min(size_t { num_atoms } - 1, m_indices[j - 1] + 1);
 
         // Update and update cur based on the change
         const auto diff_j = get_atoms()[new_index] - get_atoms()[old_index];
@@ -396,7 +396,7 @@ std::optional<size_t> StatePairTupleIndexGenerator::const_iterator::find_next_in
         if (!m_a[i])
         {
             // Same update as in the else case but simply capped at placeholder.
-            return std::min(get_atoms()[m_a[i]].size() - 1, m_indices[i - 1] + 1);
+            return std::min(size_t { get_atoms()[m_a[i]].size() } - 1, m_indices[i - 1] + 1);
         }
         else
         {
@@ -417,7 +417,7 @@ std::optional<size_t> StatePairTupleIndexGenerator::const_iterator::find_next_in
         if (!m_a[i])
         {
             // Same update as in the else case but simply capped at placeholder.
-            return std::min(get_atoms()[m_a[i]].size() - 1, get_jumpers()[m_a[i - 1]][m_indices[i - 1]]);
+            return std::min(size_t { get_atoms()[m_a[i]].size() } - 1, get_jumpers()[m_a[i - 1]][m_indices[i - 1]]);
         }
         else
         {
@@ -579,7 +579,7 @@ const std::array<AtomIndexList, 2>& StatePairTupleIndexGenerator::const_iterator
     return *m_a_atoms;
 }
 
-std::array<std::vector<size_t>, 2>& StatePairTupleIndexGenerator::const_iterator::get_jumpers() const
+std::array<vector<size_t>, 2>& StatePairTupleIndexGenerator::const_iterator::get_jumpers() const
 {
     assert(m_a_jumpers);
     return *m_a_jumpers;
@@ -657,7 +657,7 @@ StatePairTupleIndexGenerator::const_iterator StatePairTupleIndexGenerator::end()
 
 DynamicNoveltyTable::DynamicNoveltyTable(std::shared_ptr<TupleIndexMapper> tuple_index_mapper) :
     m_tuple_index_mapper(std::move(tuple_index_mapper)),
-    m_table(std::vector<bool>(m_tuple_index_mapper->get_max_tuple_index() + 1, false)),
+    m_table(vector<bool>(m_tuple_index_mapper->get_max_tuple_index() + 1, false)),
     m_state_tuple_index_generator(m_tuple_index_mapper),
     m_state_pair_tuple_index_generator(m_tuple_index_mapper)
 {
@@ -678,7 +678,7 @@ void DynamicNoveltyTable::resize_to_fit(AtomIndex atom_index)
     }
     const auto new_placeholder = new_size;
     auto new_tuple_index_mapper = std::make_shared<TupleIndexMapper>(arity, new_size);
-    auto new_table = std::vector<bool>(new_tuple_index_mapper->get_max_tuple_index() + 1, false);
+    auto new_table = vector<bool>(new_tuple_index_mapper->get_max_tuple_index() + 1, false);
 
     // Convert tuple indices that are not novel from old to new table.
     auto atom_indices = AtomIndexList(arity);

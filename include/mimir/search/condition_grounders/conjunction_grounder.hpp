@@ -39,7 +39,7 @@ public:
                               LiteralList<Derived> derived_literals,
                               std::shared_ptr<PDDLRepositories> pddl_repositories);
 
-    std::vector<ObjectList> ground(State state);
+    vector<ObjectList> ground(State state);
 };
 
 }

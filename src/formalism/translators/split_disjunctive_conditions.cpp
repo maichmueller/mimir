@@ -48,7 +48,7 @@ static loki::ActionList split_actions_at_disjunction(const loki::ActionList& act
             split_actions.push_back(action);
         }
     }
-    return uniquify_elements(split_actions);
+    return ranges::to_vector(uniquify_elements(split_actions));
 }
 
 static loki::AxiomList split_axioms_at_disjunction(const loki::AxiomList& axioms, loki::PDDLRepositories& pddl_repositories)
@@ -73,7 +73,7 @@ static loki::AxiomList split_axioms_at_disjunction(const loki::AxiomList& axioms
             split_axioms.push_back(axiom);
         }
     }
-    return uniquify_elements(split_axioms);
+    return ranges::to_vector(uniquify_elements(split_axioms));
 }
 
 loki::Effect SplitDisjunctiveConditionsTranslator::translate_impl(const loki::EffectCompositeWhenImpl& effect)

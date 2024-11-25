@@ -114,24 +114,24 @@ private:
         ActionIter get_end() const noexcept { return third_data; }
     };
 
-    std::vector<GeneratorOrSelectorNode> m_nodes;
-    std::vector<T> m_elements;
+    vector<GeneratorOrSelectorNode> m_nodes;
+    vector<T> m_elements;
 
     NodeIndex build_recursively(const size_t order_pos,
-                                const std::vector<T>& elements,
-                                const std::vector<size_t>& fluent_ground_atoms_order,
-                                const std::vector<size_t>& derived_ground_atoms_order);
+                                const vector<T>& elements,
+                                const vector<size_t>& fluent_ground_atoms_order,
+                                const vector<size_t>& derived_ground_atoms_order);
 
     void get_applicable_elements_recursively(size_t node_index,
                                              const FlatBitset& fluent_ground_atoms,
                                              const FlatBitset& derived_ground_atoms,
-                                             std::vector<T>& out_applicable_elements);
+                                             vector<T>& out_applicable_elements);
 
 public:
     MatchTree();
-    MatchTree(const std::vector<T>& elements, const std::vector<size_t>& fluent_ground_atoms_order, const std::vector<size_t>& derived_ground_atoms_order);
+    MatchTree(const vector<T>& elements, const vector<size_t>& fluent_ground_atoms_order, const vector<size_t>& derived_ground_atoms_order);
 
-    void get_applicable_elements(const FlatBitset& fluent_ground_atoms, const FlatBitset& derived_ground_atoms, std::vector<T>& out_applicable_elements);
+    void get_applicable_elements(const FlatBitset& fluent_ground_atoms, const FlatBitset& derived_ground_atoms, vector<T>& out_applicable_elements);
 
     size_t get_num_nodes() const;
 
@@ -140,9 +140,9 @@ public:
 
 template<typename T>
 MatchTree<T>::NodeIndex MatchTree<T>::MatchTree::build_recursively(const size_t order_pos,
-                                                                   const std::vector<T>& elements,
-                                                                   const std::vector<size_t>& fluent_ground_atoms_order,
-                                                                   const std::vector<size_t>& derived_ground_atoms_order)
+                                                                   const vector<T>& elements,
+                                                                   const vector<size_t>& fluent_ground_atoms_order,
+                                                                   const vector<size_t>& derived_ground_atoms_order)
 {
     const auto num_fluent_atoms = fluent_ground_atoms_order.size();
     const auto num_derived_atoms = derived_ground_atoms_order.size();
@@ -165,9 +165,9 @@ MatchTree<T>::NodeIndex MatchTree<T>::MatchTree::build_recursively(const size_t 
     bool is_fluent = (order_pos < num_fluent_atoms);
     const auto atom_index = (is_fluent) ? fluent_ground_atoms_order[order_pos] : derived_ground_atoms_order[order_pos - num_fluent_atoms];
     // Partition elements into positive, negative and dontcare depending on how atom_index occurs in precondition
-    auto positive_elements = std::vector<T> {};
-    auto negative_elements = std::vector<T> {};
-    auto dontcare_elements = std::vector<T> {};
+    auto positive_elements = vector<T> {};
+    auto negative_elements = vector<T> {};
+    auto dontcare_elements = vector<T> {};
     for (const auto& element : elements)
     {
         const bool positive_condition = (is_fluent) ? element->get_strips_precondition().template get_positive_precondition<Fluent>().get(atom_index) :
@@ -257,9 +257,7 @@ MatchTree<T>::MatchTree()
 }
 
 template<typename T>
-MatchTree<T>::MatchTree(const std::vector<T>& elements,
-                        const std::vector<size_t>& fluent_ground_atoms_order,
-                        const std::vector<size_t>& derived_ground_atoms_order)
+MatchTree<T>::MatchTree(const vector<T>& elements, const vector<size_t>& fluent_ground_atoms_order, const vector<size_t>& derived_ground_atoms_order)
 {
     const auto root_node_index = build_recursively(0, elements, fluent_ground_atoms_order, derived_ground_atoms_order);
 
@@ -272,7 +270,7 @@ template<typename T>
 void MatchTree<T>::get_applicable_elements_recursively(size_t node_index,
                                                        const FlatBitset& fluent_ground_atoms,
                                                        const FlatBitset& derived_ground_atoms,
-                                                       std::vector<T>& out_applicable_elements)
+                                                       vector<T>& out_applicable_elements)
 {
     auto& node = m_nodes[node_index];
 
@@ -308,9 +306,7 @@ void MatchTree<T>::get_applicable_elements_recursively(size_t node_index,
 }
 
 template<typename T>
-void MatchTree<T>::get_applicable_elements(const FlatBitset& fluent_ground_atoms,
-                                           const FlatBitset& derived_ground_atoms,
-                                           std::vector<T>& out_applicable_elements)
+void MatchTree<T>::get_applicable_elements(const FlatBitset& fluent_ground_atoms, const FlatBitset& derived_ground_atoms, vector<T>& out_applicable_elements)
 {
     out_applicable_elements.clear();
 

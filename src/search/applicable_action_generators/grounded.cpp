@@ -38,9 +38,9 @@ namespace mimir
 /// can result in a smaller match tree. Such math tree structures have size linear in the number of mutex variables.
 /// We also consider larger groups first since such mutex variables would result in a very large linear split.
 template<PredicateTag P>
-static std::vector<size_t> compute_ground_atom_order(const GroundAtomList<P>& atoms, const PDDLRepositories& pddl_repositories)
+static vector<size_t> compute_ground_atom_order(const GroundAtomList<P>& atoms, const PDDLRepositories& pddl_repositories)
 {
-    auto ground_atoms_order = std::vector<size_t> {};
+    auto ground_atoms_order = vector<size_t> {};
     auto m_ground_atoms_by_predicate = std::unordered_map<Predicate<P>, GroundAtomList<P>> {};
     for (const auto& ground_atom : atoms)
     {
@@ -48,7 +48,7 @@ static std::vector<size_t> compute_ground_atom_order(const GroundAtomList<P>& at
     }
     auto ground_atoms = GroundAtomList<P> {};
     // Sort group decreasingly in their size, break ties lexicographically by predicate name
-    auto sorted_groups = std::vector<std::pair<Predicate<P>, GroundAtomList<P>>> {};
+    auto sorted_groups = vector<std::pair<Predicate<P>, GroundAtomList<P>>> {};
     for (const auto& [predicate, group] : m_ground_atoms_by_predicate)
     {
         sorted_groups.emplace_back(predicate, group);
@@ -113,7 +113,7 @@ GroundedApplicableActionGenerator::GroundedApplicableActionGenerator(Problem pro
     bool reached_delete_free_explore_fixpoint = true;
 
     // Serialization buffer
-    cista::buf<std::vector<uint8_t>> state_buf;
+    cista::buf<vector<uint8_t>> state_buf;
 
     auto actions = GroundActionList {};
     do

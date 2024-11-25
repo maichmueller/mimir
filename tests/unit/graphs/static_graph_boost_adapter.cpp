@@ -120,7 +120,7 @@ TEST(MimirTests, GraphsDijkstraShortestPathTest)
         const auto state_space = StateSpace::create(domain_file, problem_file).value();
         auto graph = TraversalDirectionTaggedType(state_space.get_graph(), ForwardTraversal());
 
-        const auto edge_costs = std::vector<double>(state_space.get_num_transitions(), 1);
+        const auto edge_costs = vector<double>(state_space.get_num_transitions(), 1);
         auto states = IndexList { state_space.get_initial_state_index() };
         const auto [predecessor_map, distance_map] = dijkstra_shortest_paths(graph, edge_costs, states.begin(), states.end());
 
@@ -138,7 +138,7 @@ TEST(MimirTests, GraphsDijkstraShortestPathTest)
         const auto state_space = StateSpace::create(domain_file, problem_file).value();
         auto graph = TraversalDirectionTaggedType(state_space.get_graph(), BackwardTraversal());
 
-        const auto edge_costs = std::vector<double>(state_space.get_num_transitions(), 1);
+        const auto edge_costs = vector<double>(state_space.get_num_transitions(), 1);
         const auto [predecessor_map, distance_map] =
             dijkstra_shortest_paths(graph, edge_costs, state_space.get_goal_state_indices().begin(), state_space.get_goal_state_indices().end());
 
@@ -190,7 +190,7 @@ TEST(MimirTests, GraphsFloydWarshallAllPairsShortestPathTest)
         const auto state_space = StateSpace::create(domain_file, problem_file).value();
         auto graph = TraversalDirectionTaggedType(state_space.get_graph(), ForwardTraversal());
 
-        const auto edge_costs = std::vector<double>(state_space.get_num_transitions(), 1);
+        const auto edge_costs = vector<double>(state_space.get_num_transitions(), 1);
         const auto distance_matrix = floyd_warshall_all_pairs_shortest_paths(graph, edge_costs);
 
         auto min_goal_distance = std::numeric_limits<ContinuousCost>::infinity();

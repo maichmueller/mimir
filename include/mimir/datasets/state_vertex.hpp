@@ -24,7 +24,7 @@ namespace mimir
 {
 
 using StateVertex = Vertex<State>;
-using StateVertexList = std::vector<StateVertex>;
+using StateVertexList = vector<StateVertex>;
 
 inline State get_state(const StateVertex& vertex) { return vertex.get_property<0>(); }
 

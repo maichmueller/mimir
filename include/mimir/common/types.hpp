@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "mimir/declarations.hpp"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -29,7 +31,7 @@ namespace mimir
 using Count = uint32_t;
 
 using Index = uint32_t;
-using IndexList = std::vector<Index>;
+using IndexList = vector<Index>;
 template<size_t K>
 using IndexArray = std::array<Index, K>;
 template<typename T>
@@ -37,9 +39,9 @@ using IndexMap = std::unordered_map<Index, T>;
 using IndexSet = std::unordered_set<Index>;
 
 using ContinuousCost = double;
-using ContinuousCostList = std::vector<ContinuousCost>;
-using ContinuousCostMatrix = std::vector<ContinuousCostList>;
+using ContinuousCostList = vector<ContinuousCost>;
+using ContinuousCostMatrix = vector<ContinuousCostList>;
 using DiscreteCost = int32_t;
-using DiscreteCostList = std::vector<DiscreteCost>;
-using DiscreteCostMatrix = std::vector<ContinuousCostList>;
+using DiscreteCostList = vector<DiscreteCost>;
+using DiscreteCostMatrix = vector<ContinuousCostList>;
 }

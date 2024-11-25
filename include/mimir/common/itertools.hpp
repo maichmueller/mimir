@@ -28,10 +28,10 @@ template<typename T>
 class CartesianProduct
 {
 private:
-    const std::vector<std::vector<T>>& m_vectors;
+    const vector<vector<T>>& m_vectors;
 
 public:
-    explicit CartesianProduct(const std::vector<std::vector<T>>& vectors) : m_vectors(vectors) {}
+    explicit CartesianProduct(const vector<vector<T>>& vectors) : m_vectors(vectors) {}
 
     /**
      * Iterators
@@ -39,18 +39,18 @@ public:
     class const_iterator
     {
     private:
-        const std::vector<std::vector<T>>& m_vectors;
-        typename std::vector<typename std::vector<T>::const_iterator> m_current;
+        const vector<vector<T>>& m_vectors;
+        vector<typename vector<T>::const_iterator> m_current;
         bool m_is_end;
 
     public:
         using difference_type = std::ptrdiff_t;
-        using value_type = std::vector<typename std::vector<T>::const_iterator>;
+        using value_type = vector<typename vector<T>::const_iterator>;
         using pointer = const value_type*;
         using reference = const value_type&;
         using iterator_category = std::forward_iterator_tag;
 
-        const_iterator(const std::vector<std::vector<T>>& vectors, bool begin) : m_vectors(vectors), m_is_end(false)
+        const_iterator(const vector<vector<T>>& vectors, bool begin) : m_vectors(vectors), m_is_end(false)
         {
             if (vectors.empty() || !begin)
             {

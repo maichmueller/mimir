@@ -45,7 +45,7 @@ LiftedConjunctionGrounder::LiftedConjunctionGrounder(Problem problem,
 {
 }
 
-std::vector<ObjectList> LiftedConjunctionGrounder::ground(State state)
+vector<ObjectList> LiftedConjunctionGrounder::ground(State state)
 {
     auto problem = m_condition_grounder.get_problem();
 
@@ -57,7 +57,7 @@ std::vector<ObjectList> LiftedConjunctionGrounder::ground(State state)
     auto derived_atoms = m_pddl_repositories->get_ground_atoms_from_indices<Derived>(state->get_atoms<Derived>());
     auto derived_assignment_set = AssignmentSet<Derived>(problem, derived_predicates, derived_atoms);
 
-    std::vector<ObjectList> bindings;
+    vector<ObjectList> bindings;
     m_condition_grounder.compute_bindings(state, fluent_assignment_set, derived_assignment_set, bindings);
     return bindings;
 }

@@ -712,13 +712,13 @@ Domain ToMimirStructures::translate_lifted(const loki::DomainImpl& domain)
     return m_pddl_repositories.get_or_create_domain(domain.get_filepath(),
                                                     domain.get_name(),
                                                     requirements,
-                                                    uniquify_elements(constants),
-                                                    uniquify_elements(static_predicates),
-                                                    uniquify_elements(fluent_predicates),
-                                                    uniquify_elements(derived_predicates),
-                                                    uniquify_elements(functions),
-                                                    uniquify_elements(actions),
-                                                    uniquify_elements(axioms));
+                                                    ranges::to<vector<Object>>(uniquify_elements(constants)),
+                                                    ranges::to<vector<Predicate<Static>>>(uniquify_elements(static_predicates)),
+                                                    ranges::to<vector<Predicate<Fluent>>>(uniquify_elements(fluent_predicates)),
+                                                    ranges::to<vector<Predicate<Derived>>>(uniquify_elements(derived_predicates)),
+                                                    ranges::to<vector<FunctionSkeleton>>(uniquify_elements(functions)),
+                                                    ranges::to<vector<Action>>(uniquify_elements(actions)),
+                                                    ranges::to<vector<Axiom>>(uniquify_elements(axioms)));
 }
 
 /**
@@ -975,14 +975,14 @@ Problem ToMimirStructures::translate_grounded(const loki::ProblemImpl& problem)
                                                      translated_domain,
                                                      problem.get_name(),
                                                      translate_common(*problem.get_requirements()),
-                                                     uniquify_elements(objects),
-                                                     uniquify_elements(derived_predicates),
-                                                     uniquify_elements(static_initial_literals),
-                                                     uniquify_elements(fluent_initial_literals),
-                                                     uniquify_elements(translate_grounded(problem.get_numeric_fluents())),
-                                                     uniquify_elements(static_goal_literals),
-                                                     uniquify_elements(fluent_goal_literals),
-                                                     uniquify_elements(derived_goal_literals),
+                                                     ranges::to<vector<Object>>(uniquify_elements(objects)),
+                                                     ranges::to<vector<Predicate<Derived>>>(uniquify_elements(derived_predicates)),
+                                                     ranges::to<vector<GroundLiteral<Static>>>(uniquify_elements(static_initial_literals)),
+                                                     ranges::to<vector<GroundLiteral<Fluent>>>(uniquify_elements(fluent_initial_literals)),
+                                                     ranges::to<vector<NumericFluent>>(uniquify_elements(translate_grounded(problem.get_numeric_fluents()))),
+                                                     ranges::to<vector<GroundLiteral<Static>>>(uniquify_elements(static_goal_literals)),
+                                                     ranges::to<vector<GroundLiteral<Fluent>>>(uniquify_elements(fluent_goal_literals)),
+                                                     ranges::to<vector<GroundLiteral<Derived>>>(uniquify_elements(derived_goal_literals)),
                                                      (problem.get_optimization_metric().has_value() ?
                                                           std::optional<OptimizationMetric>(translate_grounded(*problem.get_optimization_metric().value())) :
                                                           std::nullopt),

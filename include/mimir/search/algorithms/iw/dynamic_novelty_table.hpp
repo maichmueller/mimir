@@ -32,7 +32,7 @@ class DynamicNoveltyTable
 private:
     std::shared_ptr<TupleIndexMapper> m_tuple_index_mapper;
 
-    std::vector<bool> m_table;
+    vector<bool> m_table;
 
     void resize_to_fit(AtomIndex atom_index);
 

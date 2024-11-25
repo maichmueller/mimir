@@ -36,7 +36,7 @@ namespace nauty_wrapper
 /// @param ref_lab
 /// @param ref_ptn
 /// @param n
-inline void initialize_lab_and_ptr(const mimir::ColorList& vertex_coloring, std::vector<int>& ref_lab, std::vector<int>& ref_ptn)
+inline void initialize_lab_and_ptr(const mimir::ColorList& vertex_coloring, mimir::vector<int>& ref_lab, mimir::vector<int>& ref_ptn)
 {
     const auto n = vertex_coloring.size();
     assert(ref_lab.size() >= n);
@@ -45,7 +45,7 @@ inline void initialize_lab_and_ptr(const mimir::ColorList& vertex_coloring, std:
     if (n > 0)
     {
         using ColorVertexPair = std::pair<uint32_t, uint32_t>;
-        std::vector<ColorVertexPair> color_vertex_pairs;
+        mimir::vector<ColorVertexPair> color_vertex_pairs;
         color_vertex_pairs.reserve(n);
         for (size_t i = 0; i < n; ++i)
         {

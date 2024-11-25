@@ -16,6 +16,7 @@
  */
 
 #pragma once
+#include "mimir/declarations.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -77,10 +78,10 @@ template<typename T>
 class IndexGroupedVector
 {
 private:
-    std::vector<std::remove_const_t<T>> m_vec;
-    std::vector<size_t> m_groups_begin;
+    vector<std::remove_const_t<T>> m_vec;
+    vector<size_t> m_groups_begin;
 
-    IndexGroupedVector(std::vector<std::remove_const_t<T>> vec, std::vector<size_t> groups_begin);
+    IndexGroupedVector(vector<std::remove_const_t<T>> vec, vector<size_t> groups_begin);
 
     friend class IndexGroupedVectorBuilder<T>;
 
@@ -105,7 +106,7 @@ public:
     template<typename GroupBoundaryChecker, typename GroupIndexRetriever>
         requires IsGroupBoundaryChecker<GroupBoundaryChecker, T> && IsGroupIndexRetriever<GroupIndexRetriever, T>
     static IndexGroupedVector<T>
-    create(std::vector<std::remove_const_t<T>> vec, GroupBoundaryChecker group_boundary_checker, GroupIndexRetriever group_index_retriever, size_t num_groups);
+    create(vector<std::remove_const_t<T>> vec, GroupBoundaryChecker group_boundary_checker, GroupIndexRetriever group_index_retriever, size_t num_groups);
 
     /// @brief This implementation adds a new group whenever the boundary checker returns true.
     /// @tparam GroupBoundaryChecker
@@ -114,7 +115,7 @@ public:
     /// @return
     template<typename GroupBoundaryChecker>
         requires IsGroupBoundaryChecker<GroupBoundaryChecker, T>
-    static IndexGroupedVector<T> create(std::vector<std::remove_const_t<T>> vec, GroupBoundaryChecker group_boundary_checker);
+    static IndexGroupedVector<T> create(vector<std::remove_const_t<T>> vec, GroupBoundaryChecker group_boundary_checker);
 
     /**
      * Iterators
@@ -173,8 +174,8 @@ public:
 
     /// @brief Get the underlying data.
     /// @return
-    std::vector<std::remove_const_t<T>>& data();
-    const std::vector<std::remove_const_t<T>>& data() const;
+    vector<std::remove_const_t<T>>& data();
+    const vector<std::remove_const_t<T>>& data() const;
 
     /**
      * Capacity
@@ -189,8 +190,8 @@ template<typename T>
 class IndexGroupedVectorBuilder
 {
 private:
-    std::vector<std::remove_const_t<T>> m_vec;
-    std::vector<size_t> m_groups_begin;
+    vector<std::remove_const_t<T>> m_vec;
+    vector<size_t> m_groups_begin;
 
 public:
     IndexGroupedVectorBuilder();
@@ -211,7 +212,7 @@ public:
 
     IndexGroupedVector<T> get_result();
 
-    const std::vector<std::remove_const_t<T>>& data() const;
+    const vector<std::remove_const_t<T>>& data() const;
 };
 
 /**
@@ -229,7 +230,7 @@ static inline void create_range_check(size_t cur_num_groups, size_t num_groups)
 /* IndexGroupedVector */
 
 template<typename T>
-IndexGroupedVector<T>::IndexGroupedVector(std::vector<std::remove_const_t<T>> vec, std::vector<size_t> groups_begin) :
+IndexGroupedVector<T>::IndexGroupedVector(vector<std::remove_const_t<T>> vec, vector<size_t> groups_begin) :
     m_vec(std::move(vec)),
     m_groups_begin(std::move(groups_begin))
 {
@@ -253,12 +254,12 @@ IndexGroupedVector<T>::IndexGroupedVector() : m_vec(), m_groups_begin({ 0 })
 template<typename T>
 template<typename GroupBoundaryChecker, typename GroupIndexRetriever>
     requires IsGroupBoundaryChecker<GroupBoundaryChecker, T> && IsGroupIndexRetriever<GroupIndexRetriever, T>
-inline IndexGroupedVector<T> IndexGroupedVector<T>::create(std::vector<std::remove_const_t<T>> vec,
+inline IndexGroupedVector<T> IndexGroupedVector<T>::create(vector<std::remove_const_t<T>> vec,
                                                            GroupBoundaryChecker group_boundary_checker,
                                                            GroupIndexRetriever group_index_retriever,
                                                            size_t num_groups)
 {
-    auto groups_begin = std::vector<size_t> {};
+    auto groups_begin = vector<size_t> {};
 
     if (vec.size() > 0)
     {
@@ -302,9 +303,9 @@ inline IndexGroupedVector<T> IndexGroupedVector<T>::create(std::vector<std::remo
 template<typename T>
 template<typename GroupBoundaryChecker>
     requires IsGroupBoundaryChecker<GroupBoundaryChecker, T>
-inline IndexGroupedVector<T> IndexGroupedVector<T>::create(std::vector<std::remove_const_t<T>> vec, GroupBoundaryChecker group_boundary_checker)
+inline IndexGroupedVector<T> IndexGroupedVector<T>::create(vector<std::remove_const_t<T>> vec, GroupBoundaryChecker group_boundary_checker)
 {
-    auto groups_begin = std::vector<size_t> {};
+    auto groups_begin = vector<size_t> {};
 
     if (vec.size() > 0)
     {
@@ -439,13 +440,13 @@ size_t IndexGroupedVector<T>::size() const
 }
 
 template<typename T>
-std::vector<std::remove_const_t<T>>& IndexGroupedVector<T>::data()
+vector<std::remove_const_t<T>>& IndexGroupedVector<T>::data()
 {
     return m_vec;
 }
 
 template<typename T>
-const std::vector<std::remove_const_t<T>>& IndexGroupedVector<T>::data() const
+const vector<std::remove_const_t<T>>& IndexGroupedVector<T>::data() const
 {
     return m_vec;
 }
@@ -487,7 +488,7 @@ IndexGroupedVector<T> IndexGroupedVectorBuilder<T>::get_result()
 }
 
 template<typename T>
-const std::vector<std::remove_const_t<T>>& IndexGroupedVectorBuilder<T>::data() const
+const vector<std::remove_const_t<T>>& IndexGroupedVectorBuilder<T>::data() const
 {
     return m_vec;
 }

@@ -31,19 +31,19 @@ namespace mimir
 {
 
 using VertexIndex = Index;
-using VertexIndexList = std::vector<VertexIndex>;
+using VertexIndexList = vector<VertexIndex>;
 using VertexIndexSet = std::unordered_set<VertexIndex>;
 
 using EdgeIndex = Index;
-using EdgeIndexList = std::vector<EdgeIndex>;
+using EdgeIndexList = vector<EdgeIndex>;
 using EdgeIndexSet = std::unordered_set<EdgeIndex>;
 
 using Degree = uint32_t;
-using DegreeList = std::vector<Degree>;
+using DegreeList = vector<Degree>;
 using DegreeMap = std::unordered_map<VertexIndex, Degree>;
 
 using Color = uint32_t;
-using ColorList = std::vector<Color>;
+using ColorList = vector<Color>;
 template<size_t K>
 using ColorArray = std::array<Color, K>;
 using ColorSet = std::unordered_set<Color>;

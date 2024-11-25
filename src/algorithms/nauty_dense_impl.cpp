@@ -242,8 +242,8 @@ void DenseGraphImpl::clear(size_t num_vertices)
         m_ = SETWORDSNEEDED(num_vertices);
         c_ = num_vertices;
         canon_coloring_ = mimir::ColorList(n_, 0);
-        lab_ = std::vector<int>(n_);
-        ptn_ = std::vector<int>(n_);
+        lab_ = mimir::vector<int>(n_);
+        ptn_ = mimir::vector<int>(n_);
 
         allocate_graph(&graph_);
         allocate_graph(&canon_graph_);

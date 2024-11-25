@@ -100,7 +100,7 @@ bool ConditionGrounder::nullary_conditions_hold(Problem problem, State state)
            && nullary_literals_hold(m_derived_conditions, problem, state, *m_pddl_repositories);
 }
 
-void ConditionGrounder::nullary_case(State state, std::vector<ObjectList>& ref_bindings)
+void ConditionGrounder::nullary_case(State state, vector<ObjectList>& ref_bindings)
 {
     // There are no parameters, meaning that the preconditions are already fully ground. Simply check if the single ground action is applicable.
     auto binding = ObjectList {};
@@ -118,7 +118,7 @@ void ConditionGrounder::nullary_case(State state, std::vector<ObjectList>& ref_b
 void ConditionGrounder::unary_case(const AssignmentSet<Fluent>& fluent_assignment_sets,
                                    const AssignmentSet<Derived>& derived_assignment_sets,
                                    State state,
-                                   std::vector<ObjectList>& ref_bindings)
+                                   vector<ObjectList>& ref_bindings)
 {
     for (const auto& vertex : m_static_consistency_graph.get_vertices())
     {
@@ -142,7 +142,7 @@ void ConditionGrounder::unary_case(const AssignmentSet<Fluent>& fluent_assignmen
 void ConditionGrounder::general_case(const AssignmentSet<Fluent>& fluent_assignment_sets,
                                      const AssignmentSet<Derived>& derived_assignment_sets,
                                      State state,
-                                     std::vector<ObjectList>& ref_bindings)
+                                     vector<ObjectList>& ref_bindings)
 {
     if (m_static_consistency_graph.get_edges().size() == 0)
     {
@@ -151,7 +151,7 @@ void ConditionGrounder::general_case(const AssignmentSet<Fluent>& fluent_assignm
 
     const auto& vertices = m_static_consistency_graph.get_vertices();
 
-    std::vector<boost::dynamic_bitset<>> full_consistency_graph(vertices.size(), boost::dynamic_bitset<>(vertices.size()));
+    vector<boost::dynamic_bitset<>> full_consistency_graph(vertices.size(), boost::dynamic_bitset<>(vertices.size()));
 
     // D: Restrict statically consistent assignments based on the assignments in the current state
     //    and build the consistency graph as an adjacency matrix
@@ -173,7 +173,7 @@ void ConditionGrounder::general_case(const AssignmentSet<Fluent>& fluent_assignm
     // parameters) tends to be very small.
 
     const auto& partitions = m_static_consistency_graph.get_vertices_by_parameter_index();
-    std::vector<std::vector<std::size_t>> cliques;
+    vector<vector<std::size_t>> cliques;
     find_all_k_cliques_in_k_partite_graph(full_consistency_graph, partitions, cliques);
 
     for (const auto& clique : cliques)
@@ -257,7 +257,7 @@ ConditionGrounder::ConditionGrounder(Problem problem,
 void ConditionGrounder::compute_bindings(State state,
                                          const AssignmentSet<Fluent>& fluent_assignment_set,
                                          const AssignmentSet<Derived>& derived_assignment_set,
-                                         std::vector<ObjectList>& out_bindings)
+                                         vector<ObjectList>& out_bindings)
 {
     out_bindings.clear();
 

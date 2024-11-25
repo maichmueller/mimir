@@ -25,7 +25,7 @@ namespace mimir::tests
 TEST(MimirTests, CommonIndexGroupedVectorTest)
 {
     using ElementType = std::pair<int, int>;
-    auto vec = std::vector<ElementType> { { 0, 2 }, { 0, 2 }, { 2, 0 }, { 2, 3 } };
+    auto vec = vector<ElementType> { { 0, 2 }, { 0, 2 }, { 2, 0 }, { 2, 3 } };
     auto group_boundary_checker = [](const ElementType& l, const ElementType& r)
     {
         if (l.first == r.first)

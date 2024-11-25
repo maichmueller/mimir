@@ -94,7 +94,7 @@ enum class StratumStatus
     STRICTLY_LOWER = 2,
 };
 
-static std::vector<PredicateSet<Derived>> compute_stratification(const AxiomList& axioms, const PredicateList<Derived>& derived_predicates)
+static vector<PredicateSet<Derived>> compute_stratification(const AxiomList& axioms, const PredicateList<Derived>& derived_predicates)
 {
     const auto head_predicates = compute_predicate_head_occurrences(axioms);
 
@@ -153,7 +153,7 @@ static std::vector<PredicateSet<Derived>> compute_stratification(const AxiomList
         throw std::runtime_error("Set of axioms is not stratifiable.");
     }
 
-    auto stratification = std::vector<PredicateSet<Derived>> {};
+    auto stratification = vector<PredicateSet<Derived>> {};
     auto remaining = PredicateSet<Derived>(derived_predicates.begin(), derived_predicates.end());
     while (!remaining.empty())
     {
@@ -179,13 +179,13 @@ static std::vector<PredicateSet<Derived>> compute_stratification(const AxiomList
     return stratification;
 }
 
-std::vector<AxiomPartition> compute_axiom_partitioning(const AxiomList& axioms, const PredicateList<Derived>& derived_predicates)
+vector<AxiomPartition> compute_axiom_partitioning(const AxiomList& axioms, const PredicateList<Derived>& derived_predicates)
 {
     const auto stratification = compute_stratification(axioms, derived_predicates);
 
     const auto derived_predicate_set = PredicateSet<Derived>(derived_predicates.begin(), derived_predicates.end());
 
-    auto axiom_partitioning = std::vector<AxiomPartition> {};
+    auto axiom_partitioning = vector<AxiomPartition> {};
 
     auto remaining_axioms = AxiomSet(axioms.begin(), axioms.end());
     auto affected_derived_predicates_in_earlier_partition = PredicateSet<Derived> {};

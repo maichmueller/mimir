@@ -61,7 +61,7 @@ public:
     Index get_faithful_abstract_state_index() const;
 };
 
-using GlobalFaithfulAbstractStateList = std::vector<GlobalFaithfulAbstractState>;
+using GlobalFaithfulAbstractStateList = vector<GlobalFaithfulAbstractState>;
 
 /// @brief `GlobalFaithfulAbstraction` is a wrapper around a collection of `FaithfulAbstraction`s
 /// representing one of the `FaithfulAbstraction` with additional isomorphism reduction applied across the collection.
@@ -93,17 +93,17 @@ private:
 
 public:
     /// @brief Convenience function when sharing parsers, applicable_action_generators, state_repositorys is not relevant.
-    static std::vector<GlobalFaithfulAbstraction> create(const fs::path& domain_filepath,
-                                                         const std::vector<fs::path>& problem_filepaths,
-                                                         const FaithfulAbstractionsOptions& options = FaithfulAbstractionsOptions());
+    static vector<GlobalFaithfulAbstraction> create(const fs::path& domain_filepath,
+                                                    const vector<fs::path>& problem_filepaths,
+                                                    const FaithfulAbstractionsOptions& options = FaithfulAbstractionsOptions());
 
     /// @brief Try to create a `GlobalFaithfulAbstractionList` from the given data and the given options.
     /// @param memories External memory to problem, factories, applicable_action_generators, state_repositorys.
     /// @param options the options.
     /// @return `GlobalFaithfulAbstractionList` contains the `GlobalFaithfulAbstraction`s for which the construction was successful.
-    static std::vector<GlobalFaithfulAbstraction>
-    create(const std::vector<
-               std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>& memories,
+    static vector<GlobalFaithfulAbstraction>
+    create(const vector<std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>&
+               memories,
            const FaithfulAbstractionsOptions& options = FaithfulAbstractionsOptions());
 
     /**

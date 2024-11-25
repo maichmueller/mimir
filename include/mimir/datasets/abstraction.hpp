@@ -286,6 +286,6 @@ public:
 
 static_assert(IsAbstraction<Abstraction>);
 
-using AbstractionList = std::vector<Abstraction>;
+using AbstractionList = vector<Abstraction>;
 
 }

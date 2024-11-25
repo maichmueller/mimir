@@ -20,6 +20,8 @@
 #include "mimir/formalism/repositories.hpp"
 
 #include <loki/loki.hpp>
+#include <range/v3/to_container.hpp>
+#include <range/v3/view/transform.hpp>
 #include <unordered_map>
 #include <variant>
 
@@ -100,7 +102,7 @@ private:
     auto translate_common(const std::vector<const T*>& input)
     {
         using ReturnType = decltype(this->translate_common(std::declval<T>()));
-        auto output = std::vector<ReturnType> {};
+        auto output = vector<ReturnType> {};
         output.reserve(input.size());
         std::transform(std::begin(input), std::end(input), std::back_inserter(output), [this](auto&& arg) { return this->translate_common(*arg); });
         return output;
@@ -116,14 +118,12 @@ private:
      */
 
     /// @brief Translate a container of elements into a container of elements.
-    template<typename T>
-    auto translate_lifted(const std::vector<const T*>& input)
+    template<std::ranges::range Range>
+        requires std::is_pointer_v<std::ranges::range_value_t<Range>>
+    auto translate_lifted(const Range& input)
     {
-        using ReturnType = decltype(this->translate_lifted(std::declval<T>()));
-        auto output = std::vector<ReturnType> {};
-        output.reserve(input.size());
-        std::transform(std::begin(input), std::end(input), std::back_inserter(output), [this](auto&& arg) { return this->translate_lifted(*arg); });
-        return output;
+        using ResultT = raw_t<decltype(translate_lifted(deref(deref(std::ranges::begin(input)))))>;
+        return input | ranges::views::transform([&](auto& arg) { return translate_lifted(*arg); }) | ranges::to<vector<ResultT>>;
     }
     Term translate_lifted(const loki::TermVariableImpl& term);
     Term translate_lifted(const loki::TermObjectImpl& term);
@@ -148,14 +148,12 @@ private:
      * Grounded translation
      */
 
-    template<typename T>
-    auto translate_grounded(const std::vector<const T*>& input)
+    template<std::ranges::range Range>
+        requires std::is_pointer_v<std::ranges::range_value_t<Range>>
+    auto translate_grounded(const Range& input)
     {
-        using ReturnType = decltype(this->translate_grounded(std::declval<T>()));
-        auto output = std::vector<ReturnType> {};
-        output.reserve(input.size());
-        std::transform(std::begin(input), std::end(input), std::back_inserter(output), [this](auto&& arg) { return this->translate_grounded(*arg); });
-        return output;
+        using ResultT = raw_t<decltype(translate_grounded(deref(deref(std::ranges::begin(input)))))>;
+        return input | ranges::views::transform([&](auto& arg) { return translate_grounded(*arg); }) | ranges::to<vector<ResultT>>;
     }
     Object translate_grounded(const loki::TermImpl& term);
     StaticOrFluentOrDerivedGroundAtom translate_grounded(const loki::AtomImpl& atom);

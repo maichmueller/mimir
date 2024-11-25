@@ -40,7 +40,7 @@ TEST(MimirTests, DatasetsFaithfulAbstractionCreateParallelTest)
     const auto domain_file = fs::path(std::string(DATA_DIR) + "gripper/domain.pddl");
     const auto problem_file_1 = fs::path(std::string(DATA_DIR) + "gripper/p-1-0.pddl");
     const auto problem_file_2 = fs::path(std::string(DATA_DIR) + "gripper/p-2-0.pddl");
-    const auto problem_files = std::vector<fs::path> { problem_file_1, problem_file_2 };
+    const auto problem_files = vector<fs::path> { problem_file_1, problem_file_2 };
 
     const auto abstractions = FaithfulAbstraction::create(domain_file, problem_files);
 

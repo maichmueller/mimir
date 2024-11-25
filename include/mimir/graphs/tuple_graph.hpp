@@ -39,7 +39,7 @@ class TupleGraphArityZeroComputation;
 class TupleGraphArityKComputation;
 
 using TupleVertexIndex = int;
-using TupleVertexIndexList = std::vector<TupleVertexIndex>;
+using TupleVertexIndexList = vector<TupleVertexIndex>;
 
 class TupleGraphVertex
 {
@@ -60,7 +60,7 @@ public:
     const StateList& get_states() const;
 };
 
-using TupleGraphVertexList = std::vector<TupleGraphVertex>;
+using TupleGraphVertexList = vector<TupleGraphVertex>;
 
 class TupleGraph
 {
@@ -104,7 +104,7 @@ public:
     const IndexGroupedVector<const State>& get_states_grouped_by_distance() const;
 };
 
-using TupleGraphList = std::vector<TupleGraph>;
+using TupleGraphList = vector<TupleGraph>;
 
 class TupleGraphFactory
 {

@@ -17,7 +17,10 @@
 
 #pragma once
 
+#include "mimir/declarations.hpp"
+
 #include <boost/container/small_vector.hpp>
+#include <range/v3/to_container.hpp>
 #include <unordered_set>
 #include <vector>
 
@@ -30,7 +33,7 @@ namespace mimir
 /// @param vec2 the second vector.
 /// @return true iff the first vector is a subset or equal to the second vector, and false otherwise.
 template<typename T>
-bool is_subseteq(const std::vector<T>& vec1, const std::vector<T>& vec2)
+bool is_subseteq(const vector<T>& vec1, const vector<T>& vec2)
 {
     assert(std::is_sorted(vec1.begin(), vec1.end()));
     assert(std::is_sorted(vec2.begin(), vec2.end()));
@@ -44,7 +47,7 @@ bool is_subseteq(const std::vector<T>& vec1, const std::vector<T>& vec2)
 /// @param vec2 the second vector.
 /// @return true iff first and second vector are disjoint, i.e., do not share a common element, and false otherwise.
 template<typename T>
-bool are_disjoint(const std::vector<T>& vec1, const std::vector<T>& vec2)
+bool are_disjoint(const vector<T>& vec1, const vector<T>& vec2)
 {
     assert(std::is_sorted(vec1.begin(), vec1.end()));
     assert(std::is_sorted(vec2.begin(), vec2.end()));
@@ -78,19 +81,26 @@ bool are_disjoint(const std::vector<T>& vec1, const std::vector<T>& vec2)
 /// @tparam T the vector value type.
 /// @param vec the vector.
 /// @return true iff all element in the vector are unique, i.e., do not occur more than once, and false otherwise.
-template<typename T>
-bool is_all_unique(const std::vector<T>& vec)
+template<std::ranges::range Range>
+extern bool is_all_unique(const Range& rng)
 {
-    auto set = std::unordered_set<T>(vec.begin(), vec.end());
-    return vec.size() == set.size();
+    using T = std::ranges::range_value_t<Range>;
+    mimir::unordered_set<T> set {};
+    return std::ranges::all_of(rng, [&](const auto elem) { return set.emplace(elem).second; });
 }
 
 /// @brief Uniquify elements in a vector of elements.
-template<typename T>
-extern std::vector<T> uniquify_elements(const std::vector<T>& vec)
+template<std::ranges::range Range>
+extern mimir::unordered_set<std::ranges::range_value_t<Range>> uniquify_elements(const Range& rng)
 {
-    std::unordered_set<T> set(vec.begin(), vec.end());
-    return std::vector<T>(set.begin(), set.end());
+    using T = std::ranges::range_value_t<Range>;
+    mimir::unordered_set<T> set {};
+    // manual insertion is faster than constructor method (at least for std::unordered_set)
+    for (const auto elem : rng)
+    {
+        set.emplace(elem);
+    }
+    return set;
 }
 
 }

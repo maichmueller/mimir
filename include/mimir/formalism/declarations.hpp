@@ -19,6 +19,7 @@
 
 // Do not include headers with transitive dependencies.
 #include "mimir/common/types.hpp"
+#include "mimir/declarations.hpp"
 #include "mimir/formalism/predicate_tag.hpp"
 
 #include <loki/loki.hpp>
@@ -43,7 +44,7 @@ namespace mimir
 
 class ActionImpl;
 using Action = const ActionImpl*;
-using ActionList = std::vector<Action>;
+using ActionList = vector<Action>;
 
 template<PredicateTag P>
 class AtomImpl;
@@ -51,27 +52,27 @@ template<PredicateTag P>
 using Atom = const AtomImpl<P>*;
 using AnyAtom = std::variant<Atom<Fluent>, Atom<Derived>, Atom<Fluent>>;
 template<PredicateTag P>
-using AtomList = std::vector<Atom<P>>;
+using AtomList = vector<Atom<P>>;
 template<PredicateTag P>
 using AtomSpan = std::span<Atom<P>>;
-using AnyAtomList = std::vector<AnyAtom>;
+using AnyAtomList = vector<AnyAtom>;
 
 class AxiomImpl;
 using Axiom = const AxiomImpl*;
-using AxiomList = std::vector<Axiom>;
+using AxiomList = vector<Axiom>;
 using AxiomSet = std::unordered_set<Axiom>;
 
 class DomainImpl;
 using Domain = const DomainImpl*;
-using DomainList = std::vector<Domain>;
+using DomainList = vector<Domain>;
 
 class EffectSimpleImpl;
 using EffectSimple = const EffectSimpleImpl*;
-using EffectSimpleList = std::vector<EffectSimple>;
+using EffectSimpleList = vector<EffectSimple>;
 
 class EffectComplexImpl;
 using EffectComplex = const EffectComplexImpl*;
-using EffectComplexList = std::vector<EffectComplex>;
+using EffectComplexList = vector<EffectComplex>;
 
 class FunctionExpressionNumberImpl;
 using FunctionExpressionNumber = const FunctionExpressionNumberImpl*;
@@ -89,15 +90,15 @@ using FunctionExpressionImpl = std::variant<FunctionExpressionNumberImpl,
                                             FunctionExpressionMinusImpl,
                                             FunctionExpressionFunctionImpl>;
 using FunctionExpression = const FunctionExpressionImpl*;
-using FunctionExpressionList = std::vector<FunctionExpression>;
+using FunctionExpressionList = vector<FunctionExpression>;
 
 class FunctionSkeletonImpl;
 using FunctionSkeleton = const FunctionSkeletonImpl*;
-using FunctionSkeletonList = std::vector<FunctionSkeleton>;
+using FunctionSkeletonList = vector<FunctionSkeleton>;
 
 class FunctionImpl;
 using Function = const FunctionImpl*;
-using FunctionList = std::vector<Function>;
+using FunctionList = vector<Function>;
 
 template<PredicateTag P>
 class GroundAtomImpl;
@@ -105,10 +106,10 @@ template<PredicateTag P>
 using GroundAtom = const GroundAtomImpl<P>*;
 using AnyGroundAtom = std::variant<GroundAtom<Fluent>, GroundAtom<Derived>, GroundAtom<Static>>;
 template<PredicateTag P>
-using GroundAtomList = std::vector<GroundAtom<P>>;
+using GroundAtomList = vector<GroundAtom<P>>;
 template<PredicateTag P>
 using GroundAtomSpan = std::span<GroundAtom<P>>;
-using AnyGroundAtomList = std::vector<AnyGroundAtom>;
+using AnyGroundAtomList = vector<AnyGroundAtom>;
 template<PredicateTag P>
 using GroundAtomSet = std::unordered_set<GroundAtom<P>>;
 using AnyGroundAtomSet = std::unordered_set<AnyGroundAtom>;
@@ -129,11 +130,11 @@ using GroundFunctionExpressionImpl = std::variant<GroundFunctionExpressionNumber
                                                   GroundFunctionExpressionMinusImpl,
                                                   GroundFunctionExpressionFunctionImpl>;
 using GroundFunctionExpression = const GroundFunctionExpressionImpl*;
-using GroundFunctionExpressionList = std::vector<GroundFunctionExpression>;
+using GroundFunctionExpressionList = vector<GroundFunctionExpression>;
 
 class GroundFunctionImpl;
 using GroundFunction = const GroundFunctionImpl*;
-using GroundFunctionList = std::vector<GroundFunction>;
+using GroundFunctionList = vector<GroundFunction>;
 
 template<PredicateTag P>
 class GroundLiteralImpl;
@@ -141,10 +142,10 @@ template<PredicateTag P>
 using GroundLiteral = const GroundLiteralImpl<P>*;
 using AnyGroundLiteral = std::variant<GroundLiteral<Fluent>, GroundLiteral<Derived>, GroundLiteral<Static>>;
 template<PredicateTag P>
-using GroundLiteralList = std::vector<GroundLiteral<P>>;
+using GroundLiteralList = vector<GroundLiteral<P>>;
 template<PredicateTag P>
 using GroundLiteralSpan = std::span<GroundLiteral<P>>;
-using AnyGroundLiteralList = std::vector<AnyGroundLiteral>;
+using AnyGroundLiteralList = vector<AnyGroundLiteral>;
 template<PredicateTag P>
 using GroundLiteralSet = std::unordered_set<GroundLiteral<P>>;
 using AnyGroundLiteralSet = std::unordered_set<AnyGroundLiteral>;
@@ -155,10 +156,10 @@ template<PredicateTag P>
 using Literal = const LiteralImpl<P>*;
 using AnyLiteral = std::variant<Literal<Fluent>, Literal<Derived>, Literal<Static>>;
 template<PredicateTag P>
-using LiteralList = std::vector<Literal<P>>;
+using LiteralList = vector<Literal<P>>;
 template<PredicateTag P>
 using LiteralSpan = std::span<Literal<P>>;
-using AnyLiteralList = std::vector<AnyLiteral>;
+using AnyLiteralList = vector<AnyLiteral>;
 template<PredicateTag P>
 using LiteralSet = std::unordered_set<Literal<P>>;
 using AnyLiteralSet = std::unordered_set<AnyLiteral>;
@@ -168,11 +169,11 @@ using OptimizationMetric = const OptimizationMetricImpl*;
 
 class NumericFluentImpl;
 using NumericFluent = const NumericFluentImpl*;
-using NumericFluentList = std::vector<NumericFluent>;
+using NumericFluentList = vector<NumericFluent>;
 
 class ObjectImpl;
 using Object = const ObjectImpl*;
-using ObjectList = std::vector<Object>;
+using ObjectList = vector<Object>;
 template<typename Key, typename Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>>
 using ToObjectMap = std::unordered_map<Key, Object, Hash, KeyEqual>;
 
@@ -184,10 +185,10 @@ template<PredicateTag P>
 using Predicate = const PredicateImpl<P>*;
 using AnyPredicate = std::variant<Predicate<Fluent>, Predicate<Derived>, Predicate<Static>>;
 template<PredicateTag P>
-using PredicateList = std::vector<Predicate<P>>;
+using PredicateList = vector<Predicate<P>>;
 template<PredicateTag P>
 using PredicateSpan = std::span<Predicate<P>>;
-using AnyPredicateList = std::vector<AnyPredicate>;
+using AnyPredicateList = vector<AnyPredicate>;
 template<PredicateTag P>
 using PredicateSet = std::unordered_set<Predicate<P>>;
 using AnyPredicateSet = std::unordered_set<AnyPredicate>;
@@ -196,7 +197,7 @@ using ToPredicateMap = std::unordered_map<Key, Predicate<P>, Hash, KeyEqual>;
 
 class ProblemImpl;
 using Problem = const ProblemImpl*;
-using ProblemList = std::vector<Problem>;
+using ProblemList = vector<Problem>;
 
 class RequirementsImpl;
 using Requirements = const RequirementsImpl*;
@@ -207,11 +208,11 @@ class TermVariableImpl;
 using TermVariable = const TermVariableImpl*;
 using TermImpl = std::variant<TermObjectImpl, TermVariableImpl>;
 using Term = const TermImpl*;
-using TermList = std::vector<Term>;
+using TermList = vector<Term>;
 
 class VariableImpl;
 using Variable = const VariableImpl*;
-using VariableList = std::vector<Variable>;
+using VariableList = vector<Variable>;
 using VariableSet = std::unordered_set<Variable>;
 
 }

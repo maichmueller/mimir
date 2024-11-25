@@ -326,13 +326,11 @@ public:
     GroundLiteral<P> ground_literal(const Literal<P> literal, const ObjectList& binding);
 
     template<PredicateTag P>
-    void ground_and_fill_bitset(const std::vector<Literal<P>>& literals,
-                                FlatBitset& ref_positive_bitset,
-                                FlatBitset& ref_negative_bitset,
-                                const ObjectList& binding);
+    void
+    ground_and_fill_bitset(const vector<Literal<P>>& literals, FlatBitset& ref_positive_bitset, FlatBitset& ref_negative_bitset, const ObjectList& binding);
 
     template<PredicateTag P>
-    void ground_and_fill_vector(const std::vector<Literal<P>>& literals,
+    void ground_and_fill_vector(const vector<Literal<P>>& literals,
                                 FlatIndexList& ref_positive_indices,
                                 FlatIndexList& ref_negative_indices,
                                 const ObjectList& binding);

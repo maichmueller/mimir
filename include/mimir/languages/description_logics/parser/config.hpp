@@ -27,7 +27,7 @@ namespace mimir::dl
 namespace x3 = boost::spirit::x3;
 
 using Position = x3::position_tagged;
-using PositionList = std::vector<Position>;
+using PositionList = vector<Position>;
 
 // Our iterator type
 typedef std::string::const_iterator iterator_type;

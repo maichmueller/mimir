@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "mimir/declarations.hpp"
+
 #include <boost/optional.hpp>
 #include <boost/spirit/home/x3/support/ast/position_tagged.hpp>
 #include <boost/spirit/home/x3/support/ast/variant.hpp>
@@ -196,7 +198,7 @@ struct ConceptChoice : x3::position_tagged, x3::variant<ConceptNonTerminal, Conc
 struct ConceptDerivationRule : x3::position_tagged
 {
     ConceptNonTerminal non_terminal;
-    std::vector<ConceptChoice> choices;
+    vector<ConceptChoice> choices;
 };
 
 /**
@@ -281,7 +283,7 @@ struct RoleChoice : x3::position_tagged, x3::variant<RoleNonTerminal, Role>
 struct RoleDerivationRule : x3::position_tagged
 {
     RoleNonTerminal non_terminal;
-    std::vector<RoleChoice> choices;
+    vector<RoleChoice> choices;
 };
 
 /**
@@ -296,7 +298,7 @@ struct DerivationRule : x3::position_tagged, x3::variant<ConceptDerivationRule, 
 
 struct Grammar : x3::position_tagged
 {
-    std::vector<DerivationRule> rules;
+    vector<DerivationRule> rules;
 };
 
 }

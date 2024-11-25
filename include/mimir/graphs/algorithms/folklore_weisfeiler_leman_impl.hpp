@@ -31,6 +31,8 @@
 #include "mimir/graphs/graph_vertices.hpp"
 
 #include <cassert>
+#include <fmt/format.h>
+#include <fmt/ranges.h>
 #include <map>
 #include <set>
 #include <unordered_map>
@@ -133,7 +135,7 @@ std::pair<ColorList, ColorMap<IndexList>> compute_ordered_isomorphism_types(cons
     }
 
     // Create adj matrix for fast creation of subgraph induced by k-tuple.
-    auto adj_matrix = std::vector<std::vector<bool>>(num_vertices, std::vector<bool>(num_vertices, false));
+    auto adj_matrix = vector<vector<bool>>(num_vertices, vector<bool>(num_vertices, false));
     for (const auto& vertex1 : graph.get_vertex_indices())
     {
         for (const auto& vertex2 : graph.template get_adjacent_vertex_indices<ForwardTraversal>(vertex1))
@@ -234,14 +236,14 @@ Certificate<K> compute_certificate(const G& graph, IsomorphismTypeCompressionFun
 
     /* Refine colors of k-tuples. */
     auto f = typename Certificate<K>::ConfigurationCompressionFunction();
-    auto M = std::vector<std::pair<Index, ColorArray<K>>>();
-    auto M_replaced = std::vector<std::tuple<Color, std::vector<ColorArray<K>>, Index>>();
+    auto M = vector<std::pair<Index, ColorArray<K>>>();
+    auto M_replaced = vector<std::tuple<Color, vector<ColorArray<K>>, Index>>();
     // (line 3-18): subroutine to find stable coloring
 
     while (!L.empty())
     {
         if (debug)
-            std::cout << "L: " << L << std::endl;
+            fmt::print("L: {}\n", L);
 
         // Clear data structures that are reused.
         M.clear();
@@ -280,7 +282,7 @@ Certificate<K> compute_certificate(const G& graph, IsomorphismTypeCompressionFun
         std::sort(M.begin(), M.end());
 
         if (debug)
-            std::cout << "M: " << M << std::endl;
+            fmt::println("M: {}", M);
 
         // (line 16): Scan M and replace tuples (vec{v},c_1^1,...,c_k^1,...,vec{v},c_1^r,...,c_k^r) with single tuple
         // (C(vec{v}),(c_1^1,...,c_k^1),...,(c_1^r,...,c_k^r))
@@ -290,7 +292,7 @@ Certificate<K> compute_certificate(const G& graph, IsomorphismTypeCompressionFun
         std::sort(M_replaced.begin(), M_replaced.end());
 
         if (debug)
-            std::cout << "M_replaced: " << M_replaced << std::endl;
+            fmt::println("M_replaced: {}", M_replaced);
 
         // (line 18): Split color classes
         color_refinement::split_color_classes(M_replaced, f, max_color, hash_to_color, color_to_hashes, L);

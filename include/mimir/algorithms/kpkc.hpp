@@ -17,13 +17,15 @@
 
 #pragma once
 
+#include "mimir/declarations.hpp"
+
 #include <boost/dynamic_bitset.hpp>
 #include <vector>
 
 namespace mimir
 {
 // Find all cliques of size k in a k-partite graph
-void find_all_k_cliques_in_k_partite_graph(const std::vector<boost::dynamic_bitset<>>& adjacency_matrix,
-                                           const std::vector<std::vector<size_t>>& partitions,
-                                           std::vector<std::vector<std::size_t>>& out_cliques);
+void find_all_k_cliques_in_k_partite_graph(const vector<boost::dynamic_bitset<>>& adjacency_matrix,
+                                           const vector<vector<size_t>>& partitions,
+                                           vector<vector<std::size_t>>& out_cliques);
 }

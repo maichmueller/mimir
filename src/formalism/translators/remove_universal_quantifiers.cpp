@@ -189,7 +189,7 @@ loki::Domain RemoveUniversalQuantifiersTranslator::translate_impl(const loki::Do
 
     // Combine all axioms.
     translated_axioms.insert(translated_axioms.end(), m_axioms.begin(), m_axioms.end());
-    translated_axioms = uniquify_elements(translated_axioms);
+    translated_axioms = ranges::to_vector(uniquify_elements(translated_axioms));
 
     auto translated_predicates = this->translate(domain.get_predicates());
     translated_predicates.insert(translated_predicates.end(), m_derived_predicates.begin(), m_derived_predicates.end());
@@ -224,9 +224,9 @@ loki::Problem RemoveUniversalQuantifiersTranslator::translate_impl(const loki::P
 
     // Combine all derived predicates and axioms.
     translated_derived_predicates.insert(translated_derived_predicates.end(), m_derived_predicates.begin(), m_derived_predicates.end());
-    translated_derived_predicates = uniquify_elements(translated_derived_predicates);
+    translated_derived_predicates = ranges::to_vector(uniquify_elements(translated_derived_predicates));
     translated_axioms.insert(translated_axioms.end(), m_axioms.begin(), m_axioms.end());
-    translated_axioms = uniquify_elements(translated_axioms);
+    translated_axioms = ranges::to_vector(uniquify_elements(translated_axioms));
 
     return this->m_pddl_repositories.get_or_create_problem(
         problem.get_filepath(),

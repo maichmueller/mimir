@@ -200,10 +200,10 @@ std::optional<StateSpace> StateSpace::create(Problem problem,
                       std::move(goal_distances));
 }
 
-StateSpaceList StateSpace::create(const fs::path& domain_filepath, const std::vector<fs::path>& problem_filepaths, const StateSpacesOptions& options)
+StateSpaceList StateSpace::create(const fs::path& domain_filepath, const vector<fs::path>& problem_filepaths, const StateSpacesOptions& options)
 {
     auto memories =
-        std::vector<std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>> {};
+        vector<std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>> {};
     for (const auto& problem_filepath : problem_filepaths)
     {
         auto parser = PDDLParser(domain_filepath, problem_filepath);
@@ -215,18 +215,18 @@ StateSpaceList StateSpace::create(const fs::path& domain_filepath, const std::ve
     return StateSpace::create(memories, options);
 }
 
-std::vector<StateSpace> StateSpace::create(
-    const std::vector<std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>&
+vector<StateSpace> StateSpace::create(
+    const vector<std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>&
         memories,
     const StateSpacesOptions& options)
 {
     auto state_spaces = StateSpaceList {};
     auto pool = BS::thread_pool(options.num_threads);
-    auto futures = std::vector<std::future<std::optional<StateSpace>>> {};
+    auto futures = vector<std::future<std::optional<StateSpace>>> {};
 
     for (const auto& [problem, factories, applicable_action_generator, state_repository] : memories)
     {
-        futures.push_back(
+        futures.emplace_back(
             pool.submit_task([problem, factories, applicable_action_generator, state_repository, state_space_options = options.state_space_options]
                              { return StateSpace::create(problem, factories, applicable_action_generator, state_repository, state_space_options); }));
     }

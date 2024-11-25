@@ -31,13 +31,13 @@ namespace mimir
 class Plan
 {
 private:
-    std::vector<std::string> m_actions;
+    vector<std::string> m_actions;
     ContinuousCost m_cost;
 
 public:
-    Plan(std::vector<std::string> actions, ContinuousCost cost);
+    Plan(vector<std::string> actions, ContinuousCost cost);
 
-    const std::vector<std::string>& get_actions() const;
+    const vector<std::string>& get_actions() const;
 
     ContinuousCost get_cost() const;
 };

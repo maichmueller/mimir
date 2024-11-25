@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "mimir/declarations.hpp"
 #include "mimir/formalism/predicate_tag.hpp"
 #include "mimir/languages/description_logics/constructor_tag.hpp"
 
@@ -57,7 +58,7 @@ class ConstructorImpl;
 template<ConstructorTag D>
 using Constructor = const ConstructorImpl<D>*;
 template<ConstructorTag D>
-using ConstructorList = std::vector<Constructor<D>>;
+using ConstructorList = vector<Constructor<D>>;
 
 /* Concrete concepts */
 class ConceptTopImpl;
@@ -143,7 +144,7 @@ class DerivationRuleImpl;
 template<dl::ConstructorTag D>
 using DerivationRule = const DerivationRuleImpl<D>*;
 template<ConstructorTag D>
-using DerivationRuleList = std::vector<DerivationRule<D>>;
+using DerivationRuleList = vector<DerivationRule<D>>;
 using ConstructorTagToDerivationRuleList = boost::hana::map<boost::hana::pair<boost::hana::type<Concept>, DerivationRuleList<Concept>>,
                                                             boost::hana::pair<boost::hana::type<Role>, DerivationRuleList<Role>>>;
 
@@ -163,7 +164,7 @@ class ChoiceImpl;
 template<dl::ConstructorTag D>
 using Choice = const ChoiceImpl<D>*;
 template<dl::ConstructorTag D>
-using ChoiceList = std::vector<Choice<D>>;
+using ChoiceList = vector<Choice<D>>;
 
 /* Concrete concepts */
 class ConceptTopImpl;

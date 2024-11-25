@@ -252,14 +252,14 @@ namespace mimir
 /// @return a pair of the number of strong components and a map from state to component.
 template<IsStaticGraph Graph, IsTraversalDirection Direction>
 std::pair<typename boost::graph_traits<TraversalDirectionTaggedType<Graph, Direction>>::vertices_size_type,
-          std::vector<typename boost::graph_traits<TraversalDirectionTaggedType<Graph, Direction>>::vertices_size_type>>
+          vector<typename boost::graph_traits<TraversalDirectionTaggedType<Graph, Direction>>::vertices_size_type>>
 strong_components(const TraversalDirectionTaggedType<Graph, Direction>& g)
 {
     using vertex_descriptor_type = typename boost::graph_traits<TraversalDirectionTaggedType<Graph, Direction>>::vertex_descriptor;
     using vertices_size_type = typename boost::graph_traits<TraversalDirectionTaggedType<Graph, Direction>>::vertices_size_type;
 
     auto vertex_index_map = TrivialReadPropertyMap<vertex_descriptor_type, vertex_descriptor_type>();
-    auto c = std::vector<vertices_size_type>(g.get().get_num_vertices());
+    auto c = vector<vertices_size_type>(g.get().get_num_vertices());
     auto component_map = VectorReadWritePropertyMap<vertex_descriptor_type, vertices_size_type>(c);
 
     const auto num_components = boost::strong_components(g, component_map, boost::vertex_index_map(vertex_index_map));
@@ -270,13 +270,13 @@ template<IsStaticGraph Graph, IsTraversalDirection Direction>
 IndexGroupedVector<std::pair<typename boost::graph_traits<TraversalDirectionTaggedType<Graph, Direction>>::vertices_size_type,
                              typename boost::graph_traits<TraversalDirectionTaggedType<Graph, Direction>>::vertex_descriptor>>
 get_partitioning(typename boost::graph_traits<TraversalDirectionTaggedType<Graph, Direction>>::vertices_size_type num_components,
-                 std::vector<typename boost::graph_traits<TraversalDirectionTaggedType<Graph, Direction>>::vertices_size_type> component_map)
+                 vector<typename boost::graph_traits<TraversalDirectionTaggedType<Graph, Direction>>::vertices_size_type> component_map)
 {
     using vertex_descriptor_type = typename boost::graph_traits<TraversalDirectionTaggedType<Graph, Direction>>::vertex_descriptor;
     using vertices_size_type = typename boost::graph_traits<TraversalDirectionTaggedType<Graph, Direction>>::vertices_size_type;
     using state_component_pair_t = std::pair<vertices_size_type, vertex_descriptor_type>;
 
-    auto partitioning = std::vector<state_component_pair_t>();
+    auto partitioning = vector<state_component_pair_t>();
     for (vertex_descriptor_type v = 0; v < component_map.size(); ++v)
     {
         partitioning.push_back({ component_map.at(v), v });
@@ -296,13 +296,13 @@ namespace mimir
 {
 
 template<IsStaticGraph Graph, IsTraversalDirection Direction, class SourceInputIter>
-std::tuple<std::vector<typename boost::graph_traits<TraversalDirectionTaggedType<Graph, Direction>>::vertex_descriptor>, ContinuousCostList>
+std::tuple<vector<typename boost::graph_traits<TraversalDirectionTaggedType<Graph, Direction>>::vertex_descriptor>, ContinuousCostList>
 dijkstra_shortest_paths(const TraversalDirectionTaggedType<Graph, Direction>& g, const ContinuousCostList& w, SourceInputIter s_begin, SourceInputIter s_end)
 {
     using vertex_descriptor_type = typename boost::graph_traits<TraversalDirectionTaggedType<Graph, Direction>>::vertex_descriptor;
     using edge_descriptor_type = typename boost::graph_traits<TraversalDirectionTaggedType<Graph, Direction>>::edge_descriptor;
 
-    auto p = std::vector<vertex_descriptor_type>(g.get().get_num_vertices());
+    auto p = vector<vertex_descriptor_type>(g.get().get_num_vertices());
     auto predecessor_map = VectorReadWritePropertyMap<vertex_descriptor_type, vertex_descriptor_type>(p);
     auto d = ContinuousCostList(g.get().get_num_vertices());
     auto distance_map = VectorReadWritePropertyMap<vertex_descriptor_type, ContinuousCost>(d);
@@ -337,10 +337,10 @@ dijkstra_shortest_paths(const TraversalDirectionTaggedType<Graph, Direction>& g,
 template<typename VertexDescriptor>
 struct CustomBFSVisitor : public boost::bfs_visitor<>
 {
-    std::reference_wrapper<std::vector<VertexDescriptor>> predecessors;
+    std::reference_wrapper<vector<VertexDescriptor>> predecessors;
     std::reference_wrapper<ContinuousCostList> distances;
 
-    CustomBFSVisitor(std::vector<VertexDescriptor>& p, ContinuousCostList& d) : predecessors(p), distances(d) {}
+    CustomBFSVisitor(vector<VertexDescriptor>& p, ContinuousCostList& d) : predecessors(p), distances(d) {}
 
     template<typename Edge, typename Graph>
     void tree_edge(Edge e, const Graph& g) const
@@ -353,14 +353,14 @@ struct CustomBFSVisitor : public boost::bfs_visitor<>
 };
 
 template<IsStaticGraph Graph, IsTraversalDirection Direction, class SourceInputIter>
-std::tuple<std::vector<typename boost::graph_traits<TraversalDirectionTaggedType<Graph, Direction>>::vertex_descriptor>, ContinuousCostList>
+std::tuple<vector<typename boost::graph_traits<TraversalDirectionTaggedType<Graph, Direction>>::vertex_descriptor>, ContinuousCostList>
 breadth_first_search(const TraversalDirectionTaggedType<Graph, Direction>& g, SourceInputIter s_begin, SourceInputIter s_end)
 {
     using vertex_descriptor_type = typename boost::graph_traits<TraversalDirectionTaggedType<Graph, Direction>>::vertex_descriptor;
-    using ColorMap = boost::iterator_property_map<std::vector<boost::default_color_type>::iterator, boost::identity_property_map>;
+    using ColorMap = boost::iterator_property_map<vector<boost::default_color_type>::iterator, boost::identity_property_map>;
 
     auto buffer = boost::queue<vertex_descriptor_type>();
-    auto p = std::vector<vertex_descriptor_type>(g.get().get_num_vertices());
+    auto p = vector<vertex_descriptor_type>(g.get().get_num_vertices());
     for (vertex_descriptor_type v = 0; v < g.get().get_num_vertices(); ++v)
     {
         p.at(v) = v;
@@ -372,7 +372,7 @@ breadth_first_search(const TraversalDirectionTaggedType<Graph, Direction>& g, So
         d.at(*it) = 0;
     }
     auto visitor = CustomBFSVisitor(p, d);
-    auto color_vector = std::vector<boost::default_color_type>(g.get().get_num_vertices(), boost::white_color);
+    auto color_vector = vector<boost::default_color_type>(g.get().get_num_vertices(), boost::white_color);
     auto color_map = ColorMap(color_vector.begin(), boost::identity_property_map());
     boost::breadth_first_search(g, s_begin, s_end, buffer, visitor, color_map);
 

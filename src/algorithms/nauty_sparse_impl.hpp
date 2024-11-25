@@ -20,6 +20,7 @@
 
 // Only include nauty_sparse_impl.hpp in a source file to avoid transitive includes of nauty.h.
 #include "mimir/algorithms/nauty.hpp"
+#include "mimir/declarations.hpp"
 #include "mimir/graphs/declarations.hpp"
 
 #include <nausparse.h>
@@ -38,15 +39,15 @@ private:
     // vertex capacity
     size_t c_;
     // Track existing edges to avoid duplicates
-    std::vector<bool> adj_matrix_;
+    mimir::vector<bool> adj_matrix_;
 
     // The input graph
     sparsegraph graph_;
     bool use_default_ptn_;
 
     mimir::ColorList canon_coloring_;
-    std::vector<int> lab_;
-    std::vector<int> ptn_;
+    mimir::vector<int> lab_;
+    mimir::vector<int> ptn_;
 
     // The canonical graph
     sparsegraph canon_graph_;

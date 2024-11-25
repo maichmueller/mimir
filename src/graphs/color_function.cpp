@@ -34,7 +34,7 @@ ProblemColorFunction::ProblemColorFunction(Problem problem) : m_problem(problem)
 
 void ProblemColorFunction::initialize_predicates()
 {
-    std::vector<std::pair<std::string, size_t>> lexicographically_sorted_predicates;
+    vector<std::pair<std::string, size_t>> lexicographically_sorted_predicates;
 
     auto add_predicates = [&](const auto& predicates)
     {

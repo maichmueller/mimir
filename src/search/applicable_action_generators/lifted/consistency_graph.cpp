@@ -103,7 +103,7 @@ Graphs::Graphs(Problem problem, Action action, const AssignmentSet<Static>& stat
 
 const StaticConsistencyGraph& Graphs::get_precondition_graph() const { return m_precondition; }
 
-const std::vector<StaticConsistencyGraph>& Graphs::get_complex_effect_graphs() const { return m_complex_effects; }
+const vector<StaticConsistencyGraph>& Graphs::get_complex_effect_graphs() const { return m_complex_effects; }
 }
 
 namespace mimir

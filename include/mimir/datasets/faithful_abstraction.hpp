@@ -66,7 +66,7 @@ struct FaithfulAbstractionsOptions
 /// @brief `FaithfulAbstractStateVertex` encapsulates data of an abstract state in a `FaithfulAbstraction`.
 
 using FaithfulAbstractStateVertex = Vertex<std::span<const State>, std::shared_ptr<const nauty_wrapper::Certificate>>;
-using FaithfulAbstractStateVertexList = std::vector<FaithfulAbstractStateVertex>;
+using FaithfulAbstractStateVertexList = vector<FaithfulAbstractStateVertex>;
 
 inline std::span<const State> get_states(const FaithfulAbstractStateVertex& state) { return state.get_property<0>(); }
 
@@ -141,17 +141,17 @@ public:
                                                      const FaithfulAbstractionOptions& options = FaithfulAbstractionOptions());
 
     /// @brief Convenience function when sharing parsers, applicable_action_generators, state_repositorys is not relevant.
-    static std::vector<FaithfulAbstraction> create(const fs::path& domain_filepath,
-                                                   const std::vector<fs::path>& problem_filepaths,
-                                                   const FaithfulAbstractionsOptions& options = FaithfulAbstractionsOptions());
+    static vector<FaithfulAbstraction> create(const fs::path& domain_filepath,
+                                              const vector<fs::path>& problem_filepaths,
+                                              const FaithfulAbstractionsOptions& options = FaithfulAbstractionsOptions());
 
     /// @brief Try to create a FaithfulAbstractionList from the given data and the given options.
     /// @param memories External memory to problem, factories, applicable_action_generators, state_repositorys.
     /// @param options the options.
     /// @return `FaithfulAbstractionList` contains the `FaithfulAbstraction`s for which the construction was successful.
-    static std::vector<FaithfulAbstraction>
-    create(const std::vector<
-               std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>& memories,
+    static vector<FaithfulAbstraction>
+    create(const vector<std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>&
+               memories,
            const FaithfulAbstractionsOptions& options = FaithfulAbstractionsOptions());
 
     /**
@@ -260,7 +260,7 @@ private:
 
 static_assert(IsAbstraction<FaithfulAbstraction>);
 
-using FaithfulAbstractionList = std::vector<FaithfulAbstraction>;
+using FaithfulAbstractionList = vector<FaithfulAbstraction>;
 
 /**
  * Static assertions

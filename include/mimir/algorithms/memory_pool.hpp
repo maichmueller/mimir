@@ -17,11 +17,12 @@
 
 #pragma once
 
+#include "mimir/declarations.hpp"
+
 #include <cassert>
 #include <memory>
 #include <stack>
 #include <vector>
-
 namespace mimir
 {
 template<typename T>
@@ -65,12 +66,12 @@ class MemoryPool
 private:
     // TODO: maybe we want a segmented vector here in the future
     // to store several objects persistently in 1 segment.
-    std::vector<std::unique_ptr<T>> m_storage;
+    vector<std::unique_ptr<T>> m_storage;
     std::stack<T*> m_stack;
 
     void allocate()
     {
-        m_storage.push_back(std::make_unique<T>(T {}));
+        m_storage.emplace_back(std::make_unique<T>(T {}));
         m_stack.push(m_storage.back().get());
     }
 

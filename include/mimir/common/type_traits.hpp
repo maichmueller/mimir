@@ -9,7 +9,7 @@ namespace mimir
 /// is_specialization checks whether T is a specialized template class of 'Template'
 /// This has the limitation of
 /// usage:
-///     constexpr bool is_vector = is_specialization< std::vector< int >, std::vector>;
+///     constexpr bool is_vector = is_specialization< vector< int >, vector>;
 ///
 /// Note that this trait has 2 limitations:
 ///  1) Does not work with non-type parameters.

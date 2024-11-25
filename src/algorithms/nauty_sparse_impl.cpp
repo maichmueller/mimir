@@ -285,9 +285,9 @@ void SparseGraphImpl::clear(size_t num_vertices)
         n_ = num_vertices;
         c_ = num_vertices;
         canon_coloring_ = mimir::ColorList(n_, 0);
-        lab_ = std::vector<int>(n_);
-        ptn_ = std::vector<int>(n_);
-        adj_matrix_ = std::vector<bool>(n_ * n_, false);
+        lab_ = mimir::vector<int>(n_);
+        ptn_ = mimir::vector<int>(n_);
+        adj_matrix_ = mimir::vector<bool>(n_ * n_, false);
 
         allocate_graph(graph_);
         allocate_graph(canon_graph_);

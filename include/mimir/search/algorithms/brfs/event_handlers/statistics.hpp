@@ -35,10 +35,10 @@ private:
     std::chrono::time_point<std::chrono::high_resolution_clock> m_search_start_time_point;
     std::chrono::time_point<std::chrono::high_resolution_clock> m_search_end_time_point;
 
-    std::vector<uint64_t> m_num_generated_until_g_value;
-    std::vector<uint64_t> m_num_expanded_until_g_value;
-    std::vector<uint64_t> m_num_deadends_until_g_value;
-    std::vector<uint64_t> m_num_pruned_until_g_value;
+    vector<uint64_t> m_num_generated_until_g_value;
+    vector<uint64_t> m_num_expanded_until_g_value;
+    vector<uint64_t> m_num_deadends_until_g_value;
+    vector<uint64_t> m_num_pruned_until_g_value;
 
 public:
     BrFSAlgorithmStatistics() :
@@ -79,17 +79,17 @@ public:
         return std::chrono::duration_cast<std::chrono::milliseconds>(m_search_end_time_point - m_search_start_time_point);
     }
 
-    const std::vector<uint64_t>& get_num_generated_until_g_value() const { return m_num_generated_until_g_value; }
-    const std::vector<uint64_t>& get_num_expanded_until_g_value() const { return m_num_expanded_until_g_value; }
-    const std::vector<uint64_t>& get_num_deadends_until_g_value() const { return m_num_deadends_until_g_value; }
-    const std::vector<uint64_t>& get_num_pruned_until_g_value() const { return m_num_pruned_until_g_value; }
+    const vector<uint64_t>& get_num_generated_until_g_value() const { return m_num_generated_until_g_value; }
+    const vector<uint64_t>& get_num_expanded_until_g_value() const { return m_num_expanded_until_g_value; }
+    const vector<uint64_t>& get_num_deadends_until_g_value() const { return m_num_deadends_until_g_value; }
+    const vector<uint64_t>& get_num_pruned_until_g_value() const { return m_num_pruned_until_g_value; }
 };
 
 /**
  * Types
  */
 
-using BrFSAlgorithmStatisticsList = std::vector<BrFSAlgorithmStatistics>;
+using BrFSAlgorithmStatisticsList = vector<BrFSAlgorithmStatistics>;
 
 /**
  * Pretty printing

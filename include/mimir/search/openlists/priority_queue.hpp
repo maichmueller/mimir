@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "mimir/declarations.hpp"
 #include "mimir/search/openlists/interface.hpp"
 
 #include <queue>
@@ -55,7 +56,7 @@ private:
 
     void clear_impl()
     {
-        auto tmp = std::priority_queue<Entry, std::vector<Entry>, EntryComparator> {};
+        auto tmp = std::priority_queue<Entry, vector<Entry>, EntryComparator> {};
         std::swap(m_priority_queue, tmp);
     }
 
@@ -63,7 +64,7 @@ private:
 
     std::size_t size_impl() const { return m_priority_queue.size(); }
 
-    std::priority_queue<Entry, std::vector<Entry>, EntryComparator> m_priority_queue;
+    std::priority_queue<Entry, vector<Entry>, EntryComparator> m_priority_queue;
 };
 
 }  // namespace mimir

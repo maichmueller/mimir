@@ -58,7 +58,7 @@ private:
     std::unordered_set<const T*, Hash, Equal> m_elements;
 
     // Serialization buffer
-    cista::buf<std::vector<uint8_t>> m_buf;
+    cista::buf<mimir::vector<uint8_t>> m_buf;
 
     using iterator = typename std::unordered_set<const T*, Hash, Equal>::iterator;
     using const_iterator = typename std::unordered_set<const T*, Hash, Equal>::const_iterator;

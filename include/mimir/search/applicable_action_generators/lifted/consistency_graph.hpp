@@ -37,8 +37,8 @@ namespace mimir::consistency_graph
 using ParameterIndex = size_t;
 using VertexIndex = size_t;
 using ObjectIndex = size_t;
-using VertexIndexList = std::vector<VertexIndex>;
-using ObjectIndexList = std::vector<ObjectIndex>;
+using VertexIndexList = vector<VertexIndex>;
+using ObjectIndexList = vector<ObjectIndex>;
 
 /// @brief A vertex [parameter_index/object_index] in the consistency graph.
 class Vertex
@@ -79,8 +79,8 @@ public:
     const Vertex& get_dst() const { return m_dst; }
 };
 
-using Vertices = std::vector<Vertex>;
-using Edges = std::vector<Edge>;
+using Vertices = vector<Vertex>;
+using Edges = vector<Edge>;
 
 /// @brief The StaticConsistencyGraph encodes the assignments to static conditions,
 /// and hence, it is an overapproximation of the actual consistency graph.
@@ -93,8 +93,8 @@ private:
     Vertices m_vertices;
     Edges m_edges;
 
-    std::vector<VertexIndexList> m_vertices_by_parameter_index;
-    std::vector<ObjectIndexList> m_objects_by_parameter_index;
+    vector<VertexIndexList> m_vertices_by_parameter_index;
+    vector<ObjectIndexList> m_objects_by_parameter_index;
 
 public:
     /// @brief Construct a static consistency graph
@@ -122,10 +122,10 @@ public:
     const Edges& get_edges() const { return m_edges; }
 
     /// @brief Get the vertex indices partitioned by the parameter index.
-    const std::vector<VertexIndexList>& get_vertices_by_parameter_index() const { return m_vertices_by_parameter_index; }
+    const vector<VertexIndexList>& get_vertices_by_parameter_index() const { return m_vertices_by_parameter_index; }
 
     /// @brief Get the object_index indices partitioned by the parameter index.
-    const std::vector<ObjectIndexList>& get_objects_by_parameter_index() const { return m_objects_by_parameter_index; }
+    const vector<ObjectIndexList>& get_objects_by_parameter_index() const { return m_objects_by_parameter_index; }
 };
 
 /// @brief The Graphs is a collection of StaticConsistenctGraphs:
@@ -136,13 +136,13 @@ class Graphs
 private:
     StaticConsistencyGraph m_precondition;
     // TODO: For universal effects, we do not need edges, lets keep it for simplicity now.
-    std::vector<StaticConsistencyGraph> m_complex_effects;
+    vector<StaticConsistencyGraph> m_complex_effects;
 
 public:
     Graphs(Problem problem, Action action, const AssignmentSet<Static>& static_assignment_set);
 
     const StaticConsistencyGraph& get_precondition_graph() const;
-    const std::vector<StaticConsistencyGraph>& get_complex_effect_graphs() const;
+    const vector<StaticConsistencyGraph>& get_complex_effect_graphs() const;
 };
 
 }

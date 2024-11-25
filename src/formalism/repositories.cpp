@@ -501,7 +501,7 @@ GroundLiteral<P> PDDLRepositories::ground_literal(const Literal<P> literal, cons
 }
 
 template<PredicateTag P>
-void PDDLRepositories::ground_and_fill_bitset(const std::vector<Literal<P>>& literals,
+void PDDLRepositories::ground_and_fill_bitset(const vector<Literal<P>>& literals,
                                               FlatBitset& ref_positive_bitset,
                                               FlatBitset& ref_negative_bitset,
                                               const ObjectList& binding)
@@ -521,21 +521,21 @@ void PDDLRepositories::ground_and_fill_bitset(const std::vector<Literal<P>>& lit
     }
 }
 
-template void PDDLRepositories::ground_and_fill_bitset(const std::vector<Literal<Static>>& literals,
+template void PDDLRepositories::ground_and_fill_bitset(const vector<Literal<Static>>& literals,
                                                        FlatBitset& ref_positive_bitset,
                                                        FlatBitset& ref_negative_bitset,
                                                        const ObjectList& binding);
-template void PDDLRepositories::ground_and_fill_bitset(const std::vector<Literal<Fluent>>& literals,
+template void PDDLRepositories::ground_and_fill_bitset(const vector<Literal<Fluent>>& literals,
                                                        FlatBitset& ref_positive_bitset,
                                                        FlatBitset& ref_negative_bitset,
                                                        const ObjectList& binding);
-template void PDDLRepositories::ground_and_fill_bitset(const std::vector<Literal<Derived>>& literals,
+template void PDDLRepositories::ground_and_fill_bitset(const vector<Literal<Derived>>& literals,
                                                        FlatBitset& ref_positive_bitset,
                                                        FlatBitset& ref_negative_bitset,
                                                        const ObjectList& binding);
 
 template<PredicateTag P>
-void PDDLRepositories::ground_and_fill_vector(const std::vector<Literal<P>>& literals,
+void PDDLRepositories::ground_and_fill_vector(const vector<Literal<P>>& literals,
                                               FlatIndexList& ref_positive_indices,
                                               FlatIndexList& ref_negative_indices,
                                               const ObjectList& binding)
@@ -557,15 +557,15 @@ void PDDLRepositories::ground_and_fill_vector(const std::vector<Literal<P>>& lit
     std::sort(ref_negative_indices.begin(), ref_negative_indices.end());
 }
 
-template void PDDLRepositories::ground_and_fill_vector(const std::vector<Literal<Static>>& literals,
+template void PDDLRepositories::ground_and_fill_vector(const vector<Literal<Static>>& literals,
                                                        FlatIndexList& ref_positive_indices,
                                                        FlatIndexList& ref_negative_indices,
                                                        const ObjectList& binding);
-template void PDDLRepositories::ground_and_fill_vector(const std::vector<Literal<Fluent>>& literals,
+template void PDDLRepositories::ground_and_fill_vector(const vector<Literal<Fluent>>& literals,
                                                        FlatIndexList& ref_positive_indices,
                                                        FlatIndexList& ref_negative_indices,
                                                        const ObjectList& binding);
-template void PDDLRepositories::ground_and_fill_vector(const std::vector<Literal<Derived>>& literals,
+template void PDDLRepositories::ground_and_fill_vector(const vector<Literal<Derived>>& literals,
                                                        FlatIndexList& ref_positive_indices,
                                                        FlatIndexList& ref_negative_indices,
                                                        const ObjectList& binding);

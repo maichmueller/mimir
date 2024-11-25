@@ -47,6 +47,6 @@ public:
 /// Source: https://users.cecs.anu.edu.au/~thiebaux/papers/ijcai03.pdf
 /// @param axioms
 /// @return
-extern std::vector<AxiomPartition> compute_axiom_partitioning(const AxiomList& axioms, const PredicateList<Derived>& derived_predicates);
+extern vector<AxiomPartition> compute_axiom_partitioning(const AxiomList& axioms, const PredicateList<Derived>& derived_predicates);
 
 }

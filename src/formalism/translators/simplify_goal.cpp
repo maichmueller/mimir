@@ -82,9 +82,9 @@ loki::Problem SimplifyGoalTranslator::translate_impl(const loki::ProblemImpl& pr
 
     // Combine all derived derived predicates and axioms.
     translated_derived_predicates.insert(translated_derived_predicates.end(), derived_predicates.begin(), derived_predicates.end());
-    translated_derived_predicates = uniquify_elements(translated_derived_predicates);
+    translated_derived_predicates = ranges::to_vector(uniquify_elements(translated_derived_predicates));
     translated_axioms.insert(translated_axioms.end(), axioms.begin(), axioms.end());
-    translated_axioms = uniquify_elements(translated_axioms);
+    translated_axioms = ranges::to_vector(uniquify_elements(translated_axioms));
 
     return this->m_pddl_repositories.get_or_create_problem(
         problem.get_filepath(),

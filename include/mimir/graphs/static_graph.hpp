@@ -58,9 +58,9 @@ class StaticGraph
 public:
     using GraphTag = StaticGraphTag;
     using VertexType = V;
-    using VertexList = std::vector<V>;
+    using VertexList = vector<V>;
     using EdgeType = E;
-    using EdgeList = std::vector<E>;
+    using EdgeList = vector<E>;
 
     using VertexIndexConstIteratorType = std::ranges::iterator_t<std::ranges::iota_view<VertexIndex, VertexIndex>>;
     using EdgeIndexConstIteratorType = std::ranges::iterator_t<std::ranges::iota_view<EdgeIndex, EdgeIndex>>;
@@ -183,8 +183,8 @@ public:
     using GraphTag = typename G::GraphTag;
     using VertexType = typename G::VertexType;
     using EdgeType = typename G::EdgeType;
-    using VertexList = std::vector<VertexType>;
-    using EdgeList = std::vector<EdgeType>;
+    using VertexList = vector<VertexType>;
+    using EdgeList = vector<EdgeType>;
 
     using VertexIndexConstIteratorType = typename G::VertexIndexConstIteratorType;
     using EdgeIndexConstIteratorType = typename G::EdgeIndexConstIteratorType;
@@ -252,8 +252,8 @@ public:
     using GraphTag = typename G::GraphTag;
     using VertexType = typename G::VertexType;
     using EdgeType = typename G::EdgeType;
-    using VertexList = std::vector<VertexType>;
-    using EdgeList = std::vector<EdgeType>;
+    using VertexList = vector<VertexType>;
+    using EdgeList = vector<EdgeType>;
 
     using VertexIndexConstIteratorType = typename G::VertexIndexConstIteratorType;
     using EdgeIndexConstIteratorType = typename G::EdgeIndexConstIteratorType;
@@ -570,7 +570,7 @@ void StaticGraph<V, E>::edge_index_check(EdgeIndex edge, const std::string& erro
 template<IsVertex V, IsEdge E>
 static IndexGroupedVector<const EdgeIndex> compute_index_grouped_edge_indices(const StaticGraph<V, E>& graph, bool forward)
 {
-    auto grouped_by_source_data = std::vector<std::pair<VertexIndex, EdgeIndex>> {};
+    auto grouped_by_source_data = vector<std::pair<VertexIndex, EdgeIndex>> {};
     for (const auto& edge : graph.get_edges())
     {
         grouped_by_source_data.emplace_back(((forward) ? edge.get_source() : edge.get_target()), edge.get_index());

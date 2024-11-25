@@ -62,7 +62,7 @@ EffectComplexList DeleteRelaxTransformer::transform_impl(const EffectComplexList
             positive_complex_effects.push_back(positive_complex_effect);
         }
     }
-    return uniquify_elements(positive_complex_effects);
+    return ranges::to<vector<EffectComplex>>(uniquify_elements(positive_complex_effects));
 }
 
 ActionList DeleteRelaxTransformer::transform_impl(const ActionList& actions)
@@ -76,7 +76,7 @@ ActionList DeleteRelaxTransformer::transform_impl(const ActionList& actions)
             relaxed_actions.push_back(relaxed_action);
         }
     }
-    return uniquify_elements(relaxed_actions);
+    return ranges::to<vector<Action>>(uniquify_elements(relaxed_actions));
 }
 
 AxiomList DeleteRelaxTransformer::transform_impl(const AxiomList& axioms)
@@ -90,7 +90,7 @@ AxiomList DeleteRelaxTransformer::transform_impl(const AxiomList& axioms)
             relaxed_axioms.push_back(relaxed_axiom);
         }
     }
-    return uniquify_elements(relaxed_axioms);
+    return ranges::to<vector<Axiom>>(uniquify_elements(relaxed_axioms));
 }
 
 EffectSimple DeleteRelaxTransformer::transform_impl(const EffectSimpleImpl& effect)

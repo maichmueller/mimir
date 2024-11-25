@@ -140,7 +140,7 @@ private:
     Problem m_problem;
 
     // The underlying function
-    std::vector<std::vector<bool>> m_f;
+    vector<vector<bool>> m_f;
 
 public:
     /// @brief Construct from a given set of ground atoms.
@@ -233,10 +233,7 @@ void AssignmentSet<P>::insert_ground_atom(GroundAtom<P> ground_atom)
 }
 
 template<PredicateTag P, typename AssignmentIterator>
-bool consistent_literals_helper(const Problem& problem,
-                                const std::vector<std::vector<bool>>& assignment_sets,
-                                const LiteralList<P>& literals,
-                                const auto& element)
+bool consistent_literals_helper(const Problem& problem, const vector<vector<bool>>& assignment_sets, const LiteralList<P>& literals, const auto& element)
 {
     // If the type of "element" is "Vertex", then "AssignmentIterator" must be "VertexAssignmentIterator". Likewise for "Edge" and "EdgeAssignmentIterator".
     using ExpectedElementType =

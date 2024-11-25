@@ -44,7 +44,7 @@ loki::Condition ToDNFTranslator::translate_impl(const loki::ConditionAndImpl& co
     if (disjunctive_parts.empty())
     {
         // No disjunctive parts to distribute
-        return this->m_pddl_repositories.get_or_create_condition_and(uniquify_elements(other_parts));
+        return this->m_pddl_repositories.get_or_create_condition_and(ranges::to_vector(uniquify_elements(other_parts)));
     }
 
     auto result_parts = loki::ConditionList {};
@@ -58,7 +58,7 @@ loki::Condition ToDNFTranslator::translate_impl(const loki::ConditionAndImpl& co
     else
     {
         // Start with conjunctive part
-        result_parts = loki::ConditionList { this->m_pddl_repositories.get_or_create_condition_and(uniquify_elements(other_parts)) };
+        result_parts = loki::ConditionList { this->m_pddl_repositories.get_or_create_condition_and(ranges::to_vector(uniquify_elements(other_parts))) };
     }
 
     while (!disjunctive_parts.empty())
@@ -79,7 +79,7 @@ loki::Condition ToDNFTranslator::translate_impl(const loki::ConditionAndImpl& co
         }
     }
 
-    return this->translate(*this->m_pddl_repositories.get_or_create_condition_or(uniquify_elements(result_parts)));
+    return this->translate(*this->m_pddl_repositories.get_or_create_condition_or(ranges::to_vector(uniquify_elements(result_parts))));
 }
 
 loki::Condition ToDNFTranslator::translate_impl(const loki::ConditionOrImpl& condition)

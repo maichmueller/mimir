@@ -25,7 +25,7 @@ namespace mimir::tests
 
 TEST(MimirTests, AlgorithmsMemoryPoolTest)
 {
-    MemoryPool<std::vector<int>> pool;
+    MemoryPool<vector<int>> pool;
     EXPECT_EQ(pool.get_size(), 0);
     auto object_0 = pool.get_or_allocate();
     EXPECT_EQ(pool.get_size(), 1);

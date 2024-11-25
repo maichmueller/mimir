@@ -82,7 +82,7 @@ private:
     /// Each state feature denotation is uniquely identified by its memory address.
     /// These addresses are stored as vectors of `uintptr_t`.
     /// Two identical vectors imply identical evaluations across all states.
-    using DenotationsList = std::vector<uintptr_t>;
+    using DenotationsList = vector<uintptr_t>;
     std::unordered_set<DenotationsList, Hash<DenotationsList>> m_denotations_repository;
 };
 

@@ -103,11 +103,11 @@ GlobalFaithfulAbstraction::GlobalFaithfulAbstraction(bool mark_true_goal_literal
     }
 }
 
-std::vector<GlobalFaithfulAbstraction>
-GlobalFaithfulAbstraction::create(const fs::path& domain_filepath, const std::vector<fs::path>& problem_filepaths, const FaithfulAbstractionsOptions& options)
+vector<GlobalFaithfulAbstraction>
+GlobalFaithfulAbstraction::create(const fs::path& domain_filepath, const vector<fs::path>& problem_filepaths, const FaithfulAbstractionsOptions& options)
 {
     auto memories =
-        std::vector<std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>> {};
+        vector<std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>> {};
     for (const auto& problem_filepath : problem_filepaths)
     {
         auto parser = PDDLParser(domain_filepath, problem_filepath);
@@ -119,12 +119,12 @@ GlobalFaithfulAbstraction::create(const fs::path& domain_filepath, const std::ve
     return GlobalFaithfulAbstraction::create(memories, options);
 }
 
-std::vector<GlobalFaithfulAbstraction> GlobalFaithfulAbstraction::create(
-    const std::vector<std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>&
+vector<GlobalFaithfulAbstraction> GlobalFaithfulAbstraction::create(
+    const vector<std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>&
         memories,
     const FaithfulAbstractionsOptions& options)
 {
-    auto abstractions = std::vector<GlobalFaithfulAbstraction> {};
+    auto abstractions = vector<GlobalFaithfulAbstraction> {};
     auto faithful_abstractions = FaithfulAbstraction::create(memories, options);
 
     auto certificate_to_global_state = std::unordered_map<std::shared_ptr<const nauty_wrapper::Certificate>,

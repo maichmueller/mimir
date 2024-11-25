@@ -260,7 +260,7 @@ std::optional<FaithfulAbstraction> FaithfulAbstraction::create(Problem problem,
     /* Sort concrete states by abstract state */
     auto concrete_states_by_abstract_state = std::make_shared<StateList>();
     concrete_states_by_abstract_state->reserve(num_abstract_states);
-    auto concrete_states_begin_by_abstract_state = std::vector<Index> {};
+    auto concrete_states_begin_by_abstract_state = vector<Index> {};
     for (Index cur_abstract_state_index = 0; cur_abstract_state_index < num_abstract_states; ++cur_abstract_state_index)
     {
         concrete_states_begin_by_abstract_state.push_back(concrete_states_by_abstract_state->size());
@@ -398,11 +398,11 @@ std::optional<FaithfulAbstraction> FaithfulAbstraction::create(Problem problem,
                                std::move(abstract_goal_distances));
 }
 
-std::vector<FaithfulAbstraction>
-FaithfulAbstraction::create(const fs::path& domain_filepath, const std::vector<fs::path>& problem_filepaths, const FaithfulAbstractionsOptions& options)
+vector<FaithfulAbstraction>
+FaithfulAbstraction::create(const fs::path& domain_filepath, const vector<fs::path>& problem_filepaths, const FaithfulAbstractionsOptions& options)
 {
     auto memories =
-        std::vector<std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>> {};
+        vector<std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>> {};
     for (const auto& problem_filepath : problem_filepaths)
     {
         auto parser = PDDLParser(domain_filepath, problem_filepath);
@@ -414,12 +414,12 @@ FaithfulAbstraction::create(const fs::path& domain_filepath, const std::vector<f
     return FaithfulAbstraction::create(memories, options);
 }
 
-std::vector<FaithfulAbstraction> FaithfulAbstraction::create(
-    const std::vector<std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>&
+vector<FaithfulAbstraction> FaithfulAbstraction::create(
+    const vector<std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>&
         memories,
     const FaithfulAbstractionsOptions& options)
 {
-    auto abstractions_data = std::vector<FaithfulAbstraction> {};
+    auto abstractions_data = vector<FaithfulAbstraction> {};
     auto pool = BS::thread_pool(options.num_threads);
     auto futures = std::vector<std::future<std::optional<FaithfulAbstraction>>> {};
 

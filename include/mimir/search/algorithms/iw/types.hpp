@@ -41,10 +41,10 @@ const size_t INITIAL_TABLE_ATOMS = 64;
  */
 
 using AtomIndex = Index;
-using AtomIndexList = std::vector<AtomIndex>;
+using AtomIndexList = vector<AtomIndex>;
 
 using TupleIndex = Index;
-using TupleIndexList = std::vector<TupleIndex>;
+using TupleIndexList = vector<TupleIndex>;
 using TupleIndexSet = std::unordered_set<TupleIndex>;
 
 }

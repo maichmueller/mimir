@@ -20,6 +20,7 @@
 #include "mimir/common/collections.hpp"
 
 #include <iomanip>
+#include <range/v3/to_container.hpp>
 #include <sstream>
 #include <string>
 #include <unordered_set>
@@ -49,7 +50,7 @@ loki::Condition flatten(const loki::ConditionAndImpl& condition, loki::PDDLRepos
             parts.push_back(part);
         }
     }
-    return pddl_repositories.get_or_create_condition_and(uniquify_elements(parts));
+    return pddl_repositories.get_or_create_condition_and(ranges::to_vector(uniquify_elements(parts)));
 }
 
 loki::Effect flatten(const loki::EffectAndImpl& effect, loki::PDDLRepositories& pddl_repositories)
@@ -73,7 +74,7 @@ loki::Effect flatten(const loki::EffectAndImpl& effect, loki::PDDLRepositories& 
             parts.push_back(part);
         }
     }
-    return pddl_repositories.get_or_create_effect_and(uniquify_elements(parts));
+    return pddl_repositories.get_or_create_effect_and(ranges::to_vector(uniquify_elements(parts)));
 }
 
 loki::Condition flatten(const loki::ConditionOrImpl& condition, loki::PDDLRepositories& pddl_repositories)
@@ -92,7 +93,7 @@ loki::Condition flatten(const loki::ConditionOrImpl& condition, loki::PDDLReposi
             parts.push_back(part);
         }
     }
-    return pddl_repositories.get_or_create_condition_or(uniquify_elements(parts));
+    return pddl_repositories.get_or_create_condition_or(ranges::to_vector(uniquify_elements(parts)));
 }
 
 loki::Condition flatten(const loki::ConditionExistsImpl& condition, loki::PDDLRepositories& pddl_repositories)
@@ -129,7 +130,7 @@ loki::Effect flatten(const loki::EffectCompositeWhenImpl& effect, loki::PDDLRepo
 
         return pddl_repositories.get_or_create_effect_composite_when(
             flatten(*std::get_if<loki::ConditionAndImpl>(pddl_repositories.get_or_create_condition_and(
-                        uniquify_elements(loki::ConditionList { effect.get_condition(), nested_effect.get_condition() }))),
+                        ranges::to_vector(uniquify_elements(loki::ConditionList { effect.get_condition(), nested_effect.get_condition() })))),
                     pddl_repositories),
             nested_effect.get_effect());
     }

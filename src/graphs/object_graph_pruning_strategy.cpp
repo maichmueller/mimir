@@ -37,8 +37,8 @@ namespace mimir
 /* ObjectGraphStaticPruningStrategy */
 
 ObjectGraphStaticSccPruningStrategy::ObjectGraphStaticSccPruningStrategy(size_t num_components,
-                                                                         std::vector<SccPruningComponent> pruning_components,
-                                                                         std::vector<size_t> component_map) :
+                                                                         vector<SccPruningComponent> pruning_components,
+                                                                         vector<size_t> component_map) :
     m_num_components(num_components),
     m_pruning_components(std::move(pruning_components)),
     m_component_map(std::move(component_map))
@@ -52,8 +52,8 @@ bool ObjectGraphStaticSccPruningStrategy::prune(Index state, Object object) cons
 }
 
 template<PredicateTag P>
-static bool prune(const std::vector<ObjectGraphStaticSccPruningStrategy::SccPruningComponent>& pruning_components,
-                  const std::vector<size_t>& component_map,
+static bool prune(const vector<ObjectGraphStaticSccPruningStrategy::SccPruningComponent>& pruning_components,
+                  const vector<size_t>& component_map,
                   Index state,
                   GroundAtom<P> atom)
 {
@@ -85,8 +85,8 @@ bool ObjectGraphStaticSccPruningStrategy::prune(Index state, GroundAtom<Derived>
 }
 
 template<PredicateTag P>
-static bool prune(const std::vector<ObjectGraphStaticSccPruningStrategy::SccPruningComponent>& pruning_components,
-                  const std::vector<size_t>& component_map,
+static bool prune(const vector<ObjectGraphStaticSccPruningStrategy::SccPruningComponent>& pruning_components,
+                  const vector<size_t>& component_map,
                   Index state,
                   GroundLiteral<P> literal)
 {
@@ -143,7 +143,7 @@ template const FlatBitset& ObjectGraphStaticSccPruningStrategy::SccPruningCompon
 template const FlatBitset& ObjectGraphStaticSccPruningStrategy::SccPruningComponent::get_pruned_goal_literals<Fluent>() const;
 template const FlatBitset& ObjectGraphStaticSccPruningStrategy::SccPruningComponent::get_pruned_goal_literals<Derived>() const;
 
-static StaticForwardGraph<StaticDigraph> create_scc_digraph(size_t num_components, const std::vector<size_t>& component_map, const StateSpace& state_space)
+static StaticForwardGraph<StaticDigraph> create_scc_digraph(size_t num_components, const vector<size_t>& component_map, const StateSpace& state_space)
 {
     auto g = StaticDigraph();
     for (size_t i = 0; i < num_components; ++i)
@@ -226,7 +226,7 @@ ObjectGraphStaticSccPruningStrategy::create(Problem problem,
     const auto scc_digraph = create_scc_digraph(num_components, component_map, state_space.value());
     const auto partitioning =
         get_partitioning<StaticBidirectionalGraph<StaticGraph<StateVertex, GroundActionEdge>>, ForwardTraversal>(num_components, component_map);
-    auto pruning_components = std::vector<ObjectGraphStaticSccPruningStrategy::SccPruningComponent>();
+    auto pruning_components = vector<ObjectGraphStaticSccPruningStrategy::SccPruningComponent>();
     pruning_components.reserve(partitioning.size());
 
     /* 1. Compute atoms that are always true or false in the SCC
@@ -354,7 +354,7 @@ ObjectGraphStaticSccPruningStrategy::create(Problem problem,
     /* 5. Propagate info along SCCs using post-order DFS.
      */
 
-    auto visited_components = std::vector<bool>(num_components, false);
+    auto visited_components = vector<bool>(num_components, false);
     auto scc_stack = std::stack<size_t>();
     scc_stack.push(component_map.at(state_space->get_initial_state_index()));
 
@@ -399,12 +399,12 @@ ObjectGraphStaticSccPruningStrategy::create(Problem problem,
 
 size_t ObjectGraphStaticSccPruningStrategy::get_num_components() const { return m_num_components; }
 
-const std::vector<ObjectGraphStaticSccPruningStrategy::SccPruningComponent>& ObjectGraphStaticSccPruningStrategy::get_pruning_components() const
+const vector<ObjectGraphStaticSccPruningStrategy::SccPruningComponent>& ObjectGraphStaticSccPruningStrategy::get_pruning_components() const
 {
     return m_pruning_components;
 }
 
-const std::vector<size_t>& ObjectGraphStaticSccPruningStrategy::get_component_map() const { return m_component_map; }
+const vector<size_t>& ObjectGraphStaticSccPruningStrategy::get_component_map() const { return m_component_map; }
 
 /**
  * Pretty printing

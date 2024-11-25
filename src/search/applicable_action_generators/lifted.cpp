@@ -103,7 +103,7 @@ public:
     }
 };
 
-const std::vector<AxiomPartition>& LiftedApplicableActionGenerator::get_axiom_partitioning() const { return m_axiom_evaluator.get_axiom_partitioning(); }
+const vector<AxiomPartition>& LiftedApplicableActionGenerator::get_axiom_partitioning() const { return m_axiom_evaluator.get_axiom_partitioning(); }
 
 GroundAxiom LiftedApplicableActionGenerator::ground_axiom(Axiom axiom, ObjectList&& binding)
 {
@@ -333,7 +333,7 @@ void LiftedApplicableActionGenerator::generate_applicable_actions(State state, G
     // This is done by getting bindings in the given state using the precondition.
     // These bindings are then used to ground the actual action schemas.
 
-    std::vector<ObjectList> bindings;
+    vector<ObjectList> bindings;
     for (auto& [action, condition_grounder] : m_action_precondition_grounders)
     {
         condition_grounder.compute_bindings(state, fluent_assignment_set, derived_assignment_set, bindings);
@@ -395,7 +395,7 @@ LiftedApplicableActionGenerator::LiftedApplicableActionGenerator(Problem problem
                                                                   action->get_conditions<Derived>(),
                                                                   static_assignment_set,
                                                                   m_pddl_repositories));
-        auto complex_effects = std::vector<consistency_graph::StaticConsistencyGraph>();
+        auto complex_effects = vector<consistency_graph::StaticConsistencyGraph>();
         complex_effects.reserve(action->get_complex_effects().size());
 
         for (const auto& complex_effect : action->get_complex_effects())

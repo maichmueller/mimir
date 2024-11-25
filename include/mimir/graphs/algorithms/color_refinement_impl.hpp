@@ -29,6 +29,8 @@
 #include "mimir/graphs/graph_vertices.hpp"
 
 #include <cassert>
+#include <fmt/format.h>
+#include <fmt/ranges.h>
 #include <map>
 #include <set>
 #include <unordered_map>
@@ -44,15 +46,15 @@ using mimir::operator<<;
 /// @param hash_to_color
 /// @param out_M_replaced
 template<typename ColorType>
-void replace_tuples(const std::vector<std::pair<Index, ColorType>>& M,
+void replace_tuples(const vector<std::pair<Index, ColorType>>& M,
                     const ColorList& hash_to_color,
-                    std::vector<std::tuple<Color, std::vector<ColorType>, Index>>& out_M_replaced)
+                    vector<std::tuple<Color, vector<ColorType>, Index>>& out_M_replaced)
 {
     // Subroutine to construct signatures.
     auto it = M.begin();
     while (it != M.end())
     {
-        auto signature = std::vector<ColorType>();
+        auto signature = vector<ColorType>();
         const auto hash = it->first;
 
         auto it2 = it;
@@ -78,8 +80,8 @@ void replace_tuples(const std::vector<std::pair<Index, ColorType>>& M,
 /// @param out_color_to_hashes
 /// @param out_L
 template<typename ColorType>
-void split_color_classes(const std::vector<std::tuple<Color, std::vector<ColorType>, Index>>& M_replaced,
-                         std::unordered_map<std::pair<Color, std::vector<ColorType>>, Color, Hash<std::pair<Color, std::vector<ColorType>>>>& ref_f,
+void split_color_classes(const vector<std::tuple<Color, vector<ColorType>, Index>>& M_replaced,
+                         std::unordered_map<std::pair<Color, vector<ColorType>>, Color, Hash<std::pair<Color, vector<ColorType>>>>& ref_f,
                          Color& ref_max_color,
                          ColorList& ref_hash_to_color,
                          ColorMap<IndexList>& out_color_to_hashes,
@@ -191,8 +193,8 @@ Certificate compute_certificate(const G& graph)
 
     // (line 1-2): Initialize multi set.
     auto f = Certificate::CompressionFunction();
-    auto M = std::vector<std::pair<Index, Color>>();
-    auto M_replaced = std::vector<std::tuple<Color, ColorList, Index>>();
+    auto M = vector<std::pair<Index, Color>>();
+    auto M_replaced = vector<std::tuple<Color, ColorList, Index>>();
     // (line 3): Process work list until all vertex colors have stabilized.
     while (!L.empty())
     {
@@ -221,7 +223,7 @@ Certificate compute_certificate(const G& graph)
         std::sort(M.begin(), M.end());
 
         if (debug)
-            std::cout << "M: " << M << std::endl;
+            fmt::println("M: {}", M);
 
         // (line 13): Scan M and replace tuples (v,c1),...,(v,cr) with single tuple (C(v),c1,...,cr,v) to construct signatures.
         replace_tuples(M, hash_to_color, M_replaced);
@@ -230,7 +232,7 @@ Certificate compute_certificate(const G& graph)
         std::sort(M_replaced.begin(), M_replaced.end());
 
         if (debug)
-            std::cout << "M_replaced: " << M_replaced << std::endl;
+            fmt::println("M_replaced: {}", M_replaced);
 
         /* (line 15): Add new colors to work list */
         split_color_classes(M_replaced, f, max_color, hash_to_color, color_to_hashes, L);

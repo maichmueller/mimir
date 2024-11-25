@@ -35,10 +35,10 @@ private:
     ByteBufferSegmented m_storage;
 
     // Data to be accessed
-    std::vector<T*> m_elements;
+    mimir::vector<T*> m_elements;
 
     // Serialization buffer
-    cista::buf<std::vector<uint8_t>> m_buf;
+    cista::buf<> m_buf;
 
     void range_check(size_t pos) const
     {

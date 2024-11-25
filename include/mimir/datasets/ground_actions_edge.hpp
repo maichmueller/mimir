@@ -33,7 +33,7 @@ namespace mimir
  */
 
 using GroundActionsEdge = Edge<std::span<const GroundAction>>;
-using GroundActionsEdgeList = std::vector<GroundActionsEdge>;
+using GroundActionsEdgeList = vector<GroundActionsEdge>;
 
 inline std::span<const GroundAction> get_actions(const GroundActionsEdge& edge) { return edge.get_property<0>(); }
 

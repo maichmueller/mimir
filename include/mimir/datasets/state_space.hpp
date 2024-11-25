@@ -183,16 +183,16 @@ public:
     create(const fs::path& domain_filepath, const fs::path& problem_filepath, const StateSpaceOptions& options = StateSpaceOptions());
 
     /// @brief Convenience function when sharing parsers, applicable_action_generators, state_repositorys is not relevant.
-    static std::vector<StateSpace>
-    create(const fs::path& domain_filepath, const std::vector<fs::path>& problem_filepaths, const StateSpacesOptions& options = StateSpacesOptions());
+    static vector<StateSpace>
+    create(const fs::path& domain_filepath, const vector<fs::path>& problem_filepaths, const StateSpacesOptions& options = StateSpacesOptions());
 
     /// @brief Try to create a `StateSpaceList` from the given data and the given options.
     /// @param memories External memory to problems, parsers, applicable_action_generators, state_repositorys.
     /// @param options the options.
     /// @return `StateSpaceList` contains the `StateSpace`s for which the construction was successful.
-    static std::vector<StateSpace>
-    create(const std::vector<
-               std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>& memories,
+    static vector<StateSpace>
+    create(const vector<std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>&
+               memories,
            const StateSpacesOptions& options = StateSpacesOptions());
 
     /**
@@ -318,7 +318,7 @@ private:
     std::map<ContinuousCost, IndexList> m_states_by_goal_distance;
 };
 
-using StateSpaceList = std::vector<StateSpace>;
+using StateSpaceList = vector<StateSpace>;
 
 /**
  * Pretty printing

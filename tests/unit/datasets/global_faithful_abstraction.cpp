@@ -30,7 +30,7 @@ TEST(MimirTests, DatasetsGlobalFaithfulAbstractionCreateGripperTest)
     const auto problem_file_1 = fs::path(std::string(DATA_DIR) + "gripper/p-1-0.pddl");
     const auto problem_file_2 = fs::path(std::string(DATA_DIR) + "gripper/p-1-0.pddl");
     const auto problem_file_3 = fs::path(std::string(DATA_DIR) + "gripper/p-2-0.pddl");
-    const auto problem_files = std::vector<fs::path> { problem_file_1, problem_file_2, problem_file_3 };
+    const auto problem_files = vector<fs::path> { problem_file_1, problem_file_2, problem_file_3 };
 
     const auto abstractions = GlobalFaithfulAbstraction::create(domain_file, problem_files);
 
@@ -54,7 +54,7 @@ TEST(MimirTests, DatasetsGlobalFaithfulAbstractionCreateVisitallTest)
     const auto domain_file = fs::path(std::string(DATA_DIR) + "visitall/domain.pddl");
     const auto problem_file_1 = fs::path(std::string(DATA_DIR) + "visitall/instance1.pddl");
     const auto problem_file_2 = fs::path(std::string(DATA_DIR) + "visitall/instance2.pddl");
-    const auto problem_files = std::vector<fs::path> { problem_file_1, problem_file_2 };
+    const auto problem_files = vector<fs::path> { problem_file_1, problem_file_2 };
 
     const auto abstractions = GlobalFaithfulAbstraction::create(domain_file, problem_files);
 
@@ -76,7 +76,7 @@ TEST(MimirTests, DatasetsGlobalFaithfulAbstractionCreateSpannerTest)
     const auto domain_file = fs::path(std::string(DATA_DIR) + "spanner/domain.pddl");
     const auto problem_file_1 = fs::path(std::string(DATA_DIR) + "spanner/p-1-1-2-1.pddl");
     const auto problem_file_2 = fs::path(std::string(DATA_DIR) + "spanner/p-1-1-3-1.pddl");
-    const auto problem_files = std::vector<fs::path> { problem_file_1, problem_file_2 };
+    const auto problem_files = vector<fs::path> { problem_file_1, problem_file_2 };
 
     const auto abstractions = GlobalFaithfulAbstraction::create(domain_file, problem_files);
 
@@ -98,7 +98,7 @@ TEST(MimirTests, DatasetsGlobalFaithfulAbstractionCreateSpannerSccPruningTest)
     const auto domain_file = fs::path(std::string(DATA_DIR) + "spanner/domain.pddl");
     const auto problem_file_1 = fs::path(std::string(DATA_DIR) + "spanner/p-1-1-2-1.pddl");
     const auto problem_file_2 = fs::path(std::string(DATA_DIR) + "spanner/p-1-1-3-1.pddl");
-    const auto problem_files = std::vector<fs::path> { problem_file_1, problem_file_2 };
+    const auto problem_files = vector<fs::path> { problem_file_1, problem_file_2 };
 
     auto options = FaithfulAbstractionsOptions();
     options.fa_options.pruning_strategy = ObjectGraphPruningStrategyEnum::StaticScc;
@@ -124,7 +124,7 @@ TEST(MimirTests, DatasetsGlobalFaithfulAbstractionCreateMiconicSccPruningTest)
     const auto domain_file = fs::path(std::string(DATA_DIR) + "miconic/domain.pddl");
     const auto problem_file_1 = fs::path(std::string(DATA_DIR) + "miconic/test_problem.pddl");
     const auto problem_file_2 = fs::path(std::string(DATA_DIR) + "miconic/test_problem_2.pddl");
-    const auto problem_files = std::vector<fs::path> { problem_file_1, problem_file_2 };
+    const auto problem_files = vector<fs::path> { problem_file_1, problem_file_2 };
 
     auto options = FaithfulAbstractionsOptions();
     options.fa_options.pruning_strategy = ObjectGraphPruningStrategyEnum::StaticScc;

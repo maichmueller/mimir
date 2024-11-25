@@ -40,7 +40,7 @@
 #include <thread>       // std::thread
 #include <type_traits>  // std::conditional_t, std::decay_t, std::invoke_result_t, std::is_void_v, std::remove_const_t (if priority enabled)
 #include <utility>      // std::forward, std::move
-#include <vector>       // std::vector
+#include <vector>       // vector
 
 /**
  * @brief A namespace used by Barak Shoshany's projects.
@@ -173,11 +173,11 @@ inline thread_local thread_info_pool get_pool;
  * @tparam T The return type of the futures.
  */
 template<typename T>
-class [[nodiscard]] multi_future : public std::vector<std::future<T>>
+class [[nodiscard]] multi_future : public mimir::vector<std::future<T>>
 {
 public:
-    // Inherit all constructors from the base class `std::vector`.
-    using std::vector<std::future<T>>::vector;
+    // Inherit all constructors from the base class `vector`.
+    using mimir::vector<std::future<T>>::vector;
 
     // The copy constructor and copy assignment operator are deleted. The elements stored in a `multi_future` are futures, which cannot be copied.
     multi_future(const multi_future&) = delete;
@@ -192,7 +192,7 @@ public:
      *
      * @return If the futures return `void`, this function returns `void` as well. Otherwise, it returns a vector containing the results.
      */
-    [[nodiscard]] std::conditional_t<std::is_void_v<T>, void, std::vector<T>> get()
+    [[nodiscard]] std::conditional_t<std::is_void_v<T>, void, mimir::vector<T>> get()
     {
         if constexpr (std::is_void_v<T>)
         {
@@ -202,7 +202,7 @@ public:
         }
         else
         {
-            std::vector<T> results;
+            mimir::vector<T> results;
             results.reserve(this->size());
             for (std::future<T>& future : *this)
                 results.push_back(future.get());
@@ -366,9 +366,9 @@ public:
      *
      * @return The native thread handles.
      */
-    [[nodiscard]] std::vector<std::thread::native_handle_type> get_native_handles() const
+    [[nodiscard]] vector<std::thread::native_handle_type> get_native_handles() const
     {
-        std::vector<std::thread::native_handle_type> native_handles(thread_count);
+        vector<std::thread::native_handle_type> native_handles(thread_count);
         for (concurrency_t i = 0; i < thread_count; ++i)
         {
             native_handles[i] = threads[i].native_handle();
@@ -423,9 +423,9 @@ public:
      *
      * @return The unique thread identifiers.
      */
-    [[nodiscard]] std::vector<std::thread::id> get_thread_ids() const
+    [[nodiscard]] mimir::vector<std::thread::id> get_thread_ids() const
     {
-        std::vector<std::thread::id> thread_ids(thread_count);
+        mimir::vector<std::thread::id> thread_ids(thread_count);
         for (concurrency_t i = 0; i < thread_count; ++i)
         {
             thread_ids[i] = threads[i].get_id();

@@ -57,7 +57,7 @@ public:
  * Types
  */
 
-using IWAlgorithmStatisticsList = std::vector<IWAlgorithmStatistics>;
+using IWAlgorithmStatisticsList = vector<IWAlgorithmStatistics>;
 
 /**
  * Pretty printing

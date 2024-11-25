@@ -35,11 +35,11 @@ private:
     std::chrono::time_point<std::chrono::high_resolution_clock> m_search_start_time_point;
     std::chrono::time_point<std::chrono::high_resolution_clock> m_search_end_time_point;
 
-    std::vector<double> m_f_values;
-    std::vector<uint64_t> m_num_generated_until_f_value;
-    std::vector<uint64_t> m_num_expanded_until_f_value;
-    std::vector<uint64_t> m_num_deadends_until_f_value;
-    std::vector<uint64_t> m_num_pruned_until_f_value;
+    vector<double> m_f_values;
+    vector<uint64_t> m_num_generated_until_f_value;
+    vector<uint64_t> m_num_expanded_until_f_value;
+    vector<uint64_t> m_num_deadends_until_f_value;
+    vector<uint64_t> m_num_pruned_until_f_value;
 
 public:
     AStarAlgorithmStatistics() :
@@ -86,17 +86,17 @@ public:
         return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - m_search_start_time_point);
     }
 
-    const std::vector<uint64_t>& get_num_generated_until_f_value() const { return m_num_generated_until_f_value; }
-    const std::vector<uint64_t>& get_num_expanded_until_f_value() const { return m_num_expanded_until_f_value; }
-    const std::vector<uint64_t>& get_num_deadends_until_f_value() const { return m_num_deadends_until_f_value; }
-    const std::vector<uint64_t>& get_num_pruned_until_f_value() const { return m_num_pruned_until_f_value; }
+    const vector<uint64_t>& get_num_generated_until_f_value() const { return m_num_generated_until_f_value; }
+    const vector<uint64_t>& get_num_expanded_until_f_value() const { return m_num_expanded_until_f_value; }
+    const vector<uint64_t>& get_num_deadends_until_f_value() const { return m_num_deadends_until_f_value; }
+    const vector<uint64_t>& get_num_pruned_until_f_value() const { return m_num_pruned_until_f_value; }
 };
 
 /**
  * Types
  */
 
-using AStarAlgorithmStatisticsList = std::vector<AStarAlgorithmStatistics>;
+using AStarAlgorithmStatisticsList = vector<AStarAlgorithmStatistics>;
 
 /**
  * Pretty printing

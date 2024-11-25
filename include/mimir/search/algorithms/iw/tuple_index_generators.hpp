@@ -102,7 +102,7 @@ private:
     std::shared_ptr<TupleIndexMapper> tuple_index_mapper;
 
     // Preallocated memory for reuse
-    std::array<std::vector<size_t>, 2> a_index_jumper;
+    std::array<vector<size_t>, 2> a_index_jumper;
     std::array<AtomIndexList, 2> a_atom_indices;
 
     friend class const_iterator;
@@ -116,7 +116,7 @@ public:
         /* External data */
         const TupleIndexMapper* m_tuple_index_mapper;
         const std::array<AtomIndexList, 2>* m_a_atoms;
-        std::array<std::vector<size_t>, 2>* m_a_jumpers;
+        std::array<vector<size_t>, 2>* m_a_jumpers;
 
         /* Internal data */
         std::array<size_t, MAX_ARITY> m_indices;
@@ -146,7 +146,7 @@ public:
 
         const TupleIndexMapper& get_tuple_index_mapper() const;
         const std::array<AtomIndexList, 2>& get_atoms() const;
-        std::array<std::vector<size_t>, 2>& get_jumpers() const;
+        std::array<vector<size_t>, 2>& get_jumpers() const;
 
     public:
         using difference_type = std::ptrdiff_t;
