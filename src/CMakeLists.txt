@@ -65,6 +65,7 @@ endif ()
 
 set(_link_libs
         cista::cista
+        cista::unordered_dense
         loki::loki
         nauty::nauty
         Boost::iostreams
