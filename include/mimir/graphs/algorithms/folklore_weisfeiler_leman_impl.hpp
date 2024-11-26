@@ -40,7 +40,6 @@
 
 namespace mimir
 {
-using mimir::operator<<;
 
 /// @brief `Certificate` encapsulates the final tuple colorings and the decoding tables.
 /// @tparam K is the dimensionality.

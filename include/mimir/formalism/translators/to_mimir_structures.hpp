@@ -95,17 +95,24 @@ private:
     void prepare(const loki::OptimizationMetricImpl& metric);
     void prepare(const loki::ProblemImpl& problem);
 
+private:
+    template<template<typename...> class ReturnType, typename Fn, std::ranges::range Range>
+        requires std::is_pointer_v<std::ranges::range_value_t<Range>>
+    auto _translate_impl(Fn translation_fn, const Range& input)
+    {
+        using ResultT = raw_t<decltype(translation_fn(deref(deref(std::ranges::begin(input)))))>;
+        return input | ranges::views::transform([&](auto& arg) { return translation_fn(*arg); }) | ranges::to<ReturnType<ResultT>>;
+    }
+
+public:
     /**
      * Common translations.
      */
-    template<typename T>
-    auto translate_common(const std::vector<const T*>& input)
+    template<std::ranges::range Range>
+        requires std::is_pointer_v<std::ranges::range_value_t<Range>>
+    auto translate_common(const Range& input)
     {
-        using ReturnType = decltype(this->translate_common(std::declval<T>()));
-        auto output = vector<ReturnType> {};
-        output.reserve(input.size());
-        std::transform(std::begin(input), std::end(input), std::back_inserter(output), [this](auto&& arg) { return this->translate_common(*arg); });
-        return output;
+        return _translate_impl<vector>(AS_CPTR_LAMBDA(translate_common), input);
     }
     VariableList translate_common(const loki::ParameterList& parameters);
     Requirements translate_common(const loki::RequirementsImpl& requirements);
@@ -122,8 +129,7 @@ private:
         requires std::is_pointer_v<std::ranges::range_value_t<Range>>
     auto translate_lifted(const Range& input)
     {
-        using ResultT = raw_t<decltype(translate_lifted(deref(deref(std::ranges::begin(input)))))>;
-        return input | ranges::views::transform([&](auto& arg) { return translate_lifted(*arg); }) | ranges::to<vector<ResultT>>;
+        return _translate_impl<vector>(AS_CPTR_LAMBDA(translate_lifted), input);
     }
     Term translate_lifted(const loki::TermVariableImpl& term);
     Term translate_lifted(const loki::TermObjectImpl& term);
@@ -147,13 +153,11 @@ private:
     /**
      * Grounded translation
      */
-
     template<std::ranges::range Range>
         requires std::is_pointer_v<std::ranges::range_value_t<Range>>
     auto translate_grounded(const Range& input)
     {
-        using ResultT = raw_t<decltype(translate_grounded(deref(deref(std::ranges::begin(input)))))>;
-        return input | ranges::views::transform([&](auto& arg) { return translate_grounded(*arg); }) | ranges::to<vector<ResultT>>;
+        return _translate_impl<vector>(AS_CPTR_LAMBDA(translate_grounded), input);
     }
     Object translate_grounded(const loki::TermImpl& term);
     StaticOrFluentOrDerivedGroundAtom translate_grounded(const loki::AtomImpl& atom);
