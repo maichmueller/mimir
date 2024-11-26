@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "mimir/datasets/declarations.hpp"
 #include "mimir/search/algorithms/brfs.hpp"
 #include "mimir/search/algorithms/iw/event_handlers/interface.hpp"
 
@@ -27,14 +28,17 @@ class IterativeWidthAlgorithm : public IAlgorithm
 {
 public:
     /// @brief Simplest construction
-    IterativeWidthAlgorithm(std::shared_ptr<IApplicableActionGenerator> applicable_action_generator, size_t max_arity);
+    IterativeWidthAlgorithm(const std::shared_ptr<IApplicableActionGenerator>& applicable_action_generator, size_t max_arity);
+
+    /// @brief StateSpace construction
+    IterativeWidthAlgorithm(const StateSpace& state_space, size_t max_arity);
 
     /// @brief Complete construction
-    IterativeWidthAlgorithm(std::shared_ptr<IApplicableActionGenerator> applicable_action_generator,
+    IterativeWidthAlgorithm(const std::shared_ptr<IApplicableActionGenerator>& applicable_action_generator,
                             size_t max_arity,
-                            std::shared_ptr<StateRepository> successor_state_generator,
-                            std::shared_ptr<IBrFSAlgorithmEventHandler> brfs_event_handler,
-                            std::shared_ptr<IIWAlgorithmEventHandler> iw_event_handler);
+                            const std::shared_ptr<StateRepository>& successor_state_generator,
+                            const std::shared_ptr<IBrFSAlgorithmEventHandler>& brfs_event_handler,
+                            const std::shared_ptr<IIWAlgorithmEventHandler>& iw_event_handler);
 
     SearchStatus find_solution(GroundActionList& out_plan) override;
 
