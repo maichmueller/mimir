@@ -1,9 +1,7 @@
-find_package(benchmark "1.8.3" REQUIRED benchmark Main PATHS "${CMAKE_PREFIX_PATH}" NO_DEFAULT_PATH)
 # Set result variables
-find_package(benchmark)
+find_package(benchmark REQUIRED)
 
-#add_executable(mimir-profile "profiling.cpp")
+add_executable(mimir-profile "profiling.cpp")
 
-#target_link_libraries(mimir-profile PRIVATE mimir::mimir benchmark::benchmark)
-
-#set_property(TARGET mimir-profile PROPERTY CXX_STANDARD 17)
+target_compile_definitions(mimir-profile PUBLIC -DDATA_DIR="${DATA_DIR}")
+target_link_libraries(mimir-profile PRIVATE mimir::mimir benchmark::benchmark benchmark::benchmark_main)
