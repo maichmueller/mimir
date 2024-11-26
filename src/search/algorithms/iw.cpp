@@ -18,6 +18,7 @@
 #include "mimir/search/algorithms/iw.hpp"
 
 #include "mimir/common/printers.hpp"
+#include "mimir/datasets/state_space.hpp"
 #include "mimir/search/algorithms/brfs.hpp"
 #include "mimir/search/algorithms/brfs/event_handlers.hpp"
 #include "mimir/search/algorithms/interface.hpp"
@@ -816,7 +817,7 @@ bool ArityKNoveltyPruning::test_prune_successor_state(const State state, const S
 }
 
 /* IterativeWidthAlgorithm */
-IterativeWidthAlgorithm::IterativeWidthAlgorithm(std::shared_ptr<IApplicableActionGenerator> applicable_action_generator, size_t max_arity) :
+IterativeWidthAlgorithm::IterativeWidthAlgorithm(const std::shared_ptr<IApplicableActionGenerator>& applicable_action_generator, size_t max_arity) :
     IterativeWidthAlgorithm(applicable_action_generator,
                             max_arity,
                             std::make_shared<StateRepository>(applicable_action_generator),
@@ -825,11 +826,20 @@ IterativeWidthAlgorithm::IterativeWidthAlgorithm(std::shared_ptr<IApplicableActi
 {
 }
 
-IterativeWidthAlgorithm::IterativeWidthAlgorithm(std::shared_ptr<IApplicableActionGenerator> applicable_action_generator,
+IterativeWidthAlgorithm::IterativeWidthAlgorithm(const StateSpace& state_space, size_t max_arity) :
+    IterativeWidthAlgorithm(state_space.get_applicable_action_generator(),
+                            max_arity,
+                            state_space.get_state_repository(),
+                            std::make_shared<DefaultBrFSAlgorithmEventHandler>(),
+                            std::make_shared<DefaultIWAlgorithmEventHandler>())
+{
+}
+
+IterativeWidthAlgorithm::IterativeWidthAlgorithm(const std::shared_ptr<IApplicableActionGenerator>& applicable_action_generator,
                                                  size_t max_arity,
-                                                 std::shared_ptr<StateRepository> successor_state_generator,
-                                                 std::shared_ptr<IBrFSAlgorithmEventHandler> brfs_event_handler,
-                                                 std::shared_ptr<IIWAlgorithmEventHandler> iw_event_handler) :
+                                                 const std::shared_ptr<StateRepository>& successor_state_generator,
+                                                 const std::shared_ptr<IBrFSAlgorithmEventHandler>& brfs_event_handler,
+                                                 const std::shared_ptr<IIWAlgorithmEventHandler>& iw_event_handler) :
     m_applicable_action_generator(applicable_action_generator),
     m_max_arity(max_arity),
     m_state_repository(successor_state_generator),
@@ -840,8 +850,10 @@ IterativeWidthAlgorithm::IterativeWidthAlgorithm(std::shared_ptr<IApplicableActi
 {
     if (max_arity >= MAX_ARITY)
     {
-        throw std::runtime_error("IterativeWidthAlgorithm::IterativeWidthAlgorithm(...): max_arity (" + std::to_string(max_arity)
-                                 + ") cannot be greater than or equal to MAX_ARITY (" + std::to_string(MAX_ARITY) + ") compile time constant.");
+        throw std::runtime_error(fmt::format(
+            "IterativeWidthAlgorithm::IterativeWidthAlgorithm(...): max_arity ({}) cannot be greater than or equal to MAX_ARITY ({}) compile time constant.",
+            max_arity,
+            MAX_ARITY));
     }
 }
 
