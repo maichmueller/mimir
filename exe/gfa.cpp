@@ -35,7 +35,7 @@ int main(int argc, char** argv)
     const auto max_num_states = std::atoi(argv[3]);
     const auto pruning_strategy = static_cast<ObjectGraphPruningStrategyEnum>(std::atoi(argv[4]));
 
-    auto problem_filepaths = std::vector<fs::path> {};
+    auto problem_filepaths = vector<fs::path> {};
     for (const auto& problem_filepath : fs::directory_iterator(problems_directory))
     {
         std::cout << problem_filepath.path() << std::endl;
@@ -65,7 +65,7 @@ int main(int argc, char** argv)
     std::cout << "Num ss ground axioms: " << num_ss_ground_axioms << std::endl;
 
     auto memories =
-        std::vector<std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>> {};
+        vector<std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>> {};
     for (const auto& state_space : state_spaces)
     {
         memories.emplace_back(state_space.get_problem(),

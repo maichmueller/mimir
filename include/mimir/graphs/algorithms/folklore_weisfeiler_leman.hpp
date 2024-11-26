@@ -35,20 +35,20 @@
 #include <unordered_map>
 #include <vector>
 
-namespace mimir::kfwl
+namespace mimir
 {
 
 /// @brief `Certificate` encapsulates the final tuple colorings and the decoding tables.
 /// @tparam K is the dimensionality.
 template<size_t K>
-class Certificate
+class CertificateFWL
 {
 public:
     /* Compression of new color to map (C(bar{v}), {{(c_1^1, ...,c_k^1), ..., (c_1^r, ...,c_k^r)}}) to an integer color for bar{v} in V^k */
     using ConfigurationCompressionFunction = std::unordered_map<std::pair<Color, vector<ColorArray<K>>>, Color, Hash<std::pair<Color, vector<ColorArray<K>>>>>;
     using CanonicalConfigurationCompressionFunction = std::map<std::pair<Color, vector<ColorArray<K>>>, Color>;
 
-    Certificate(ConfigurationCompressionFunction f, ColorList hash_to_color);
+    CertificateFWL(ConfigurationCompressionFunction f, ColorList hash_to_color);
 
     const CanonicalConfigurationCompressionFunction& get_canonical_configuration_compression_function() const;
     const ColorList& get_canonical_coloring() const;
@@ -68,14 +68,14 @@ using IsomorphismTypeCompressionFunction = std::unordered_map<nauty_wrapper::Cer
 /// @param rhs is the second certificate.
 /// @return Return true iff both certificates are equal.
 template<size_t K>
-bool operator==(const Certificate<K>& lhs, const Certificate<K>& rhs);
+bool operator==(const CertificateFWL<K>& lhs, const CertificateFWL<K>& rhs);
 
 /// @brief Print a certificate to the ostream.
 /// @param out is the ostream.
 /// @param element is the certificate.
 /// @return a reference to the ostream.
 template<size_t K>
-std::ostream& operator<<(std::ostream& out, const Certificate<K>& element);
+std::ostream& operator<<(std::ostream& out, const CertificateFWL<K>& element);
 
 /// @brief Compute the perfect hash of the given k-tuple.
 /// @tparam K is the dimensionality.
@@ -101,14 +101,14 @@ IndexArray<K> hash_to_tuple(size_t hash, size_t num_vertices);
 /// @return the `Certicate`
 template<size_t K, typename G>
     requires IsVertexListGraph<G> && IsIncidenceGraph<G> && IsVertexColoredGraph<G>  //
-Certificate<K> compute_certificate(const G& graph, IsomorphismTypeCompressionFunction& iso_type_function);
+CertificateFWL<K> compute_certificate(const G& graph, IsomorphismTypeCompressionFunction& iso_type_function);
 }
 
 /// @brief std::hash specialization for the certificate.
 template<size_t K>
-struct std::hash<mimir::kfwl::Certificate<K>>
+struct std::hash<mimir::CertificateFWL<K>>
 {
-    size_t operator()(const mimir::kfwl::Certificate<K>& element) const;
+    size_t operator()(const mimir::CertificateFWL<K>& element) const;
 };
 
 #include "mimir/graphs/algorithms/folklore_weisfeiler_leman_impl.hpp"

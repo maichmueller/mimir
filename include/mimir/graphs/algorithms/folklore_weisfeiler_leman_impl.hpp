@@ -38,14 +38,14 @@
 #include <unordered_map>
 #include <vector>
 
-namespace mimir::kfwl
+namespace mimir
 {
 using mimir::operator<<;
 
 /// @brief `Certificate` encapsulates the final tuple colorings and the decoding tables.
 /// @tparam K is the dimensionality.
 template<size_t K>
-Certificate<K>::Certificate(ConfigurationCompressionFunction f, ColorList hash_to_color) :
+CertificateFWL<K>::CertificateFWL(ConfigurationCompressionFunction f, ColorList hash_to_color) :
     m_hash_to_color(std::move(hash_to_color)),
     m_f(f.begin(), f.end()),
     m_coloring_coloring(m_hash_to_color.begin(), m_hash_to_color.end())
@@ -54,19 +54,19 @@ Certificate<K>::Certificate(ConfigurationCompressionFunction f, ColorList hash_t
 }
 
 template<size_t K>
-const Certificate<K>::CanonicalConfigurationCompressionFunction& Certificate<K>::get_canonical_configuration_compression_function() const
+const CertificateFWL<K>::CanonicalConfigurationCompressionFunction& CertificateFWL<K>::get_canonical_configuration_compression_function() const
 {
     return m_f;
 }
 
 template<size_t K>
-const ColorList& Certificate<K>::get_canonical_coloring() const
+const ColorList& CertificateFWL<K>::get_canonical_coloring() const
 {
     return m_coloring_coloring;
 }
 
 template<size_t K>
-bool operator==(const Certificate<K>& lhs, const Certificate<K>& rhs)
+bool operator==(const CertificateFWL<K>& lhs, const CertificateFWL<K>& rhs)
 {
     if (&lhs != &rhs)
     {
@@ -77,11 +77,12 @@ bool operator==(const Certificate<K>& lhs, const Certificate<K>& rhs)
 }
 
 template<size_t K>
-std::ostream& operator<<(std::ostream& out, const Certificate<K>& element)
+std::ostream& operator<<(std::ostream& out, const CertificateFWL<K>& element)
 {
-    out << "Certificate" << K << "FWL(" << "canonical_coloring=" << element.get_canonical_coloring() << ", "
-        << "canonical_configuration_compression_function=" << element.get_canonical_configuration_compression_function() << ")";
-    return out;
+    return out << fmt::format("Certificate{}FWL(canonical_coloring={}, canonical_configuration_compression_function={})",
+                              K,
+                              element.get_canonical_coloring(),
+                              element.get_canonical_configuration_compression_function());
 }
 
 template<size_t K>
@@ -194,7 +195,7 @@ std::pair<ColorList, ColorMap<IndexList>> compute_ordered_isomorphism_types(cons
 
 template<size_t K, typename G>
     requires IsVertexListGraph<G> && IsIncidenceGraph<G> && IsVertexColoredGraph<G>  //
-Certificate<K> compute_certificate(const G& graph, IsomorphismTypeCompressionFunction& iso_type_function)
+CertificateFWL<K> compute_certificate(const G& graph, IsomorphismTypeCompressionFunction& iso_type_function)
 {
     if (!is_undirected_graph(graph))
     {
@@ -235,7 +236,7 @@ Certificate<K> compute_certificate(const G& graph, IsomorphismTypeCompressionFun
     auto L = ColorSet(hash_to_color.begin(), hash_to_color.end());
 
     /* Refine colors of k-tuples. */
-    auto f = typename Certificate<K>::ConfigurationCompressionFunction();
+    auto f = typename CertificateFWL<K>::ConfigurationCompressionFunction();
     auto M = vector<std::pair<Index, ColorArray<K>>>();
     auto M_replaced = vector<std::tuple<Color, vector<ColorArray<K>>, Index>>();
     // (line 3-18): subroutine to find stable coloring
@@ -305,12 +306,12 @@ Certificate<K> compute_certificate(const G& graph, IsomorphismTypeCompressionFun
     }
 
     /* Return the certificate */
-    return Certificate(std::move(f), std::move(hash_to_color));
+    return CertificateFWL(std::move(f), std::move(hash_to_color));
 }
 }
 
 template<size_t K>
-size_t std::hash<mimir::kfwl::Certificate<K>>::operator()(const mimir::kfwl::Certificate<K>& element) const
+size_t std::hash<mimir::CertificateFWL<K>>::operator()(const mimir::CertificateFWL<K>& element) const
 {
     return mimir::hash_combine(element.get_canonical_coloring(), element.get_canonical_configuration_compression_function());
 }

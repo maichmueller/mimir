@@ -152,10 +152,10 @@ void init_pymimir(py::module& m)
     class_<TupleGraphFactory>(m, "TupleGraphFactory");
     class_<ObjectGraphPruningStrategy>(m, "ObjectGraphPruningStrategy");
     class_<color_refinement::Certificate>(m, "CertificateColorRefinement");
-    class_<kfwl::Certificate<2>>(m, "Certificate2FWL");
-    class_<kfwl::Certificate<3>>(m, "Certificate3FWL");
-    class_<kfwl::Certificate<4>>(m, "Certificate4FWL");
-    class_<kfwl::IsomorphismTypeCompressionFunction>(m, "IsomorphismTypeCompressionFunction");
+    class_<CertificateFWL<2>>(m, "Certificate2FWL");
+    class_<CertificateFWL<3>>(m, "Certificate3FWL");
+    class_<CertificateFWL<4>>(m, "Certificate4FWL");
+    class_<IsomorphismTypeCompressionFunction>(m, "IsomorphismTypeCompressionFunction");
 
     py::bind_vector<GroundActionList>(m, "GroundActionList");
     py::bind_vector<EffectComplexList>(m, "EffectComplexList");
@@ -257,7 +257,7 @@ void init_pymimir(py::module& m)
     for_each_index<size_t, 2, 3, 4>(
         [&]<size_t K>(std::integral_constant<size_t, K>, const std::string& class_name = fmt::format("Certificate{}FWL", K))
         {
-            using CertificateK = kfwl::Certificate<K>;
+            using CertificateK = CertificateFWL<K>;
 
             class_<CertificateK>(m, class_name.c_str())
                 .def("__eq__", [](const CertificateK& lhs, const CertificateK& rhs) { return lhs == rhs; })
@@ -275,7 +275,7 @@ void init_pymimir(py::module& m)
                 .def("get_canonical_coloring", &CertificateK::get_canonical_coloring);
         });
 
-    class_<kfwl::IsomorphismTypeCompressionFunction>(m, "IsomorphismTypeCompressionFunction")  //
+    class_<IsomorphismTypeCompressionFunction>(m, "IsomorphismTypeCompressionFunction")  //
         .def(py::init<>());
 
     for_each_index<size_t, 2, 3, 4>(
@@ -283,8 +283,8 @@ void init_pymimir(py::module& m)
         {
             m.def(
                 function_name.c_str(),
-                [](const StaticVertexColoredDigraph& graph, kfwl::IsomorphismTypeCompressionFunction& iso_type_function)
-                { return kfwl::compute_certificate<K>(graph, iso_type_function); },
+                [](const StaticVertexColoredDigraph& graph, IsomorphismTypeCompressionFunction& iso_type_function)
+                { return compute_certificate<K>(graph, iso_type_function); },
                 py::arg("static_vertex_colored_digraph"),
                 py::arg("isomorphism_type_compression_function"));
         });

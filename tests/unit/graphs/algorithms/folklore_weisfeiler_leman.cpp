@@ -29,7 +29,7 @@ TEST(MimirTests, GraphsAlgorithmsFolkloreWeisfeilerLemanTest)
 {
     {
         /* The famous two triangle / sixgon example */
-        auto iso_type_function = kfwl::IsomorphismTypeCompressionFunction();
+        auto iso_type_function = IsomorphismTypeCompressionFunction();
         auto two_triangle = StaticVertexColoredDigraph();
         {
             auto v1 = two_triangle.add_vertex(Color(0));
@@ -45,7 +45,7 @@ TEST(MimirTests, GraphsAlgorithmsFolkloreWeisfeilerLemanTest)
             two_triangle.add_undirected_edge(v5, v6);
             two_triangle.add_undirected_edge(v6, v4);
         }
-        auto two_triangle_certificate = kfwl::compute_certificate<3>(two_triangle, iso_type_function);
+        auto two_triangle_certificate = compute_certificate<3>(two_triangle, iso_type_function);
 
         auto sixgon = StaticVertexColoredDigraph();
         {
@@ -62,21 +62,21 @@ TEST(MimirTests, GraphsAlgorithmsFolkloreWeisfeilerLemanTest)
             sixgon.add_undirected_edge(v5, v6);
             sixgon.add_undirected_edge(v6, v1);
         }
-        auto sixgon_certificate = kfwl::compute_certificate<3>(sixgon, iso_type_function);
+        auto sixgon_certificate = compute_certificate<3>(sixgon, iso_type_function);
 
         EXPECT_NE(two_triangle_certificate, sixgon_certificate);
     }
 
     {
         /* 2-vertex graphs where the order of colors is flipped to test canonical decoding table. */
-        auto iso_type_function = kfwl::IsomorphismTypeCompressionFunction();
+        auto iso_type_function = IsomorphismTypeCompressionFunction();
         auto line_graph_1 = StaticVertexColoredDigraph();
         {
             auto v1 = line_graph_1.add_vertex(Color(1));
             auto v2 = line_graph_1.add_vertex(Color(0));
             line_graph_1.add_undirected_edge(v1, v2);
         }
-        auto line_graph_1_certificate = kfwl::compute_certificate<2>(line_graph_1, iso_type_function);
+        auto line_graph_1_certificate = compute_certificate<2>(line_graph_1, iso_type_function);
 
         auto line_graph_2 = StaticVertexColoredDigraph();
         {
@@ -84,7 +84,7 @@ TEST(MimirTests, GraphsAlgorithmsFolkloreWeisfeilerLemanTest)
             auto v2 = line_graph_2.add_vertex(Color(1));
             line_graph_2.add_undirected_edge(v1, v2);
         }
-        auto line_graph_2_certificate = kfwl::compute_certificate<2>(line_graph_2, iso_type_function);
+        auto line_graph_2_certificate = compute_certificate<2>(line_graph_2, iso_type_function);
 
         EXPECT_EQ(line_graph_1_certificate, line_graph_2_certificate);
     }
@@ -106,11 +106,11 @@ TEST(MimirTests, GraphsAlgorithmsFolkloreWeisfeilerLemanBlocks3opsTest)
         const auto object_graph_1 = create_object_graph(color_function, *abstraction.get_pddl_repositories(), abstraction.get_problem(), state_1, 1);
         const auto object_graph_2 = create_object_graph(color_function, *abstraction.get_pddl_repositories(), abstraction.get_problem(), state_2, 2);
 
-        auto iso_type_function = kfwl::IsomorphismTypeCompressionFunction();
+        auto iso_type_function = IsomorphismTypeCompressionFunction();
 
-        auto certificate_1 = kfwl::compute_certificate<2>(object_graph_1, iso_type_function);
+        auto certificate_1 = compute_certificate<2>(object_graph_1, iso_type_function);
 
-        auto certificate_2 = kfwl::compute_certificate<2>(object_graph_2, iso_type_function);
+        auto certificate_2 = compute_certificate<2>(object_graph_2, iso_type_function);
 
         EXPECT_NE(certificate_1, certificate_2);
     }
