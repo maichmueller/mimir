@@ -57,11 +57,13 @@ class MimirRecipe(ConanFile):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
+        "with_benchmark": [True, False],
     }
 
     default_options = {
         "shared": False,
         "fPIC": True,
+        "with_benchmark": False,
         "cista/*:with_fmt": True,
     }
     default_options.update({f"boost/*:without_{comp}": True for comp in BOOST_COMPS})
@@ -77,6 +79,8 @@ class MimirRecipe(ConanFile):
         requirements = self.conan_data.get("requirements", [])
         for requirement in requirements:
             self.requires(requirement)
+        if self.options.with_benchmark:
+            self.requires("benchmark/1.9.0")
 
     def validate(self):
         # mimir requires C++20
