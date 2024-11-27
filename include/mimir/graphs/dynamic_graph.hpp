@@ -298,15 +298,13 @@ template<typename... EdgeProperties>
     requires HasEdgeProperties<E, EdgeProperties...>
 std::pair<EdgeIndex, EdgeIndex> DynamicGraph<V, E>::add_undirected_edge(VertexIndex source, VertexIndex target, EdgeProperties&&... properties)
 {
-    auto properties_tuple = std::make_tuple(std::forward<EdgeProperties>(properties)...);
+    auto properties_tuple = std::tuple { FWD(properties)... };
     auto properties_tuple_copy = properties_tuple;
 
     const auto forward_edge_index =
-        std::apply([this, source, target](auto&&... args) { return this->add_directed_edge(source, target, std::forward<decltype(args)>(args)...); },
-                   std::move(properties_tuple_copy));
+        std::apply([&](auto&&... args) { return this->add_directed_edge(source, target, FWD(args)...); }, std::move(properties_tuple_copy));
     const auto backward_edge_index =
-        std::apply([this, source, target](auto&&... args) { return this->add_directed_edge(target, source, std::forward<decltype(args)>(args)...); },
-                   std::move(properties_tuple));
+        std::apply([&](auto&&... args) { return this->add_directed_edge(target, source, FWD(args)...); }, std::move(properties_tuple));
 
     return std::make_pair(forward_edge_index, backward_edge_index);
 }
