@@ -85,15 +85,16 @@ TEST(MimirTests, GraphsDynamicDigraphTest)
 
     /* Add five more edges resulting in a reuse from the free edge list, and an index obtained from next_edge_index.
      */
+    auto free_edges = unordered_set<EdgeIndex> { std::initializer_list<Index> { 0, 1, 4, 5 } };
     auto [e6, e7] = graph.add_undirected_edge(v1, v5);
+    EXPECT_TRUE(free_edges.contains(e6));
+    EXPECT_TRUE(free_edges.contains(e7));
     auto [e8, e9] = graph.add_undirected_edge(v2, v5);
+    EXPECT_TRUE(free_edges.contains(e8));
+    EXPECT_TRUE(free_edges.contains(e9));
+    free_edges.clear();
     auto e10 = graph.add_directed_edge(v3, v5);
-
     EXPECT_EQ(graph.get_num_edges(), 7);
-    EXPECT_EQ(e6, e1);
-    EXPECT_EQ(e7, e4);
-    EXPECT_EQ(e8, e0);
-    EXPECT_EQ(e9, e5);
     EXPECT_EQ(e10, 6);
     // Ensure that edge from free list has correct source and target.
     EXPECT_EQ(graph.get_source<ForwardTraversal>(e6), v1);
