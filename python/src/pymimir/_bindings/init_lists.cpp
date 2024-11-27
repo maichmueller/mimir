@@ -27,8 +27,8 @@ void init_lists(py::module& m)
     static_assert(!py::detail::vector_needs_copy<EffectComplexList>::value);  // Ensure return by reference + keep alive
     def_opaque_vector_repr<EffectComplexList>(m, "EffectComplexList");
 
-    static_assert(!py::detail::vector_needs_copy<GroundFunctionExpressionVariantList>::value);  // Ensure return by reference + keep alive
-    def_opaque_vector_repr<GroundFunctionExpressionVariantList>(m, "GroundFunctionExpressionVariantList");
+    static_assert(!py::detail::vector_needs_copy<GroundFunctionExpressionList>::value);  // Ensure return by reference + keep alive
+    def_opaque_vector_repr<GroundFunctionExpressionList>(m, "GroundFunctionExpressionList");
 
     static_assert(!py::detail::vector_needs_copy<StateList>::value);  // Ensure return by reference + keep alive
     def_opaque_vector_repr<StateList>(m, "StateList");
@@ -53,8 +53,8 @@ void init_lists(py::module& m)
     static_assert(!py::detail::vector_needs_copy<DomainList>::value);  // Ensure return by reference + keep alive
     def_opaque_vector_repr<DomainList>(m, "DomainList");
 
-    static_assert(!py::detail::vector_needs_copy<FunctionExpressionVariantList>::value);  // Ensure return by reference + keep alive
-    def_opaque_vector_repr<FunctionExpressionVariantList>(m, "FunctionExpressionVariantList");
+    static_assert(!py::detail::vector_needs_copy<FunctionExpressionList>::value);  // Ensure return by reference + keep alive
+    def_opaque_vector_repr<FunctionExpressionList>(m, "FunctionExpressionList");
 
     static_assert(!py::detail::vector_needs_copy<FunctionSkeletonList>::value);  // Ensure return by reference + keep alive
     def_opaque_vector_repr<FunctionSkeletonList>(m, "FunctionSkeletonList");
@@ -84,8 +84,8 @@ void init_lists(py::module& m)
     }
 
     {
-        static_assert(!py::detail::vector_needs_copy<TermVariantList>::value);  // Ensure return by reference + keep alive
-        def_opaque_vector_repr<TermVariantList>(m, "TermVariantList", [](const TermVariant& elem) { return std::visit(repr_visitor, *elem.term); });
+        static_assert(!py::detail::vector_needs_copy<TermList>::value);  // Ensure return by reference + keep alive
+        def_opaque_vector_repr<TermList>(m, "TermList");
     }
 
     // LiteralList

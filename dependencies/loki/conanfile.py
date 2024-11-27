@@ -47,7 +47,6 @@ BOOST_COMPS = (
 
 class LokiRecipe(ConanFile):
     name = "loki"
-    version = "0.0.8"
     package_type = "static-library"
     settings = "os", "compiler", "build_type", "arch"
     generators = "CMakeDeps"

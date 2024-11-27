@@ -102,7 +102,7 @@ DECLARE_INIT_FUNC(numeric_fluent);
 DECLARE_INIT_FUNC(object);
 DECLARE_INIT_FUNC(variable);
 DECLARE_INIT_FUNC(termvariable);
-DECLARE_INIT_FUNC(termvariant);
+DECLARE_INIT_FUNC(term);
 DECLARE_INIT_FUNC(termobject);
 DECLARE_INIT_FUNC(requirements);
 DECLARE_INIT_FUNC(function);

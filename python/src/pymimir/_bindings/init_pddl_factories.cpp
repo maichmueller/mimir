@@ -4,12 +4,12 @@
 #include "opaque_types.hpp"
 #include "pymimir.hpp"
 #include "utils.hpp"
-#include "variants.hpp"
+GroundFunctionExpressionList
 
 #include <pybind11/pybind11.h>
 #include <range/v3/all.hpp>
 
-namespace py = pybind11;
+    namespace py = pybind11;
 
 using namespace pymimir;
 

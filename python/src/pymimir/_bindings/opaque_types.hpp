@@ -2,12 +2,12 @@
 #pragma once
 
 #include "pymimir.hpp"
-#include "variants.hpp"
+GroundFunctionExpressionList
 
 #include <pybind11/pybind11.h>
 
-/* Formalism */
-PYBIND11_MAKE_OPAQUE(pymimir::ActionList);
+    /* Formalism */
+    PYBIND11_MAKE_OPAQUE(pymimir::ActionList);
 PYBIND11_MAKE_OPAQUE(pymimir::AtomList<pymimir::Static>);
 PYBIND11_MAKE_OPAQUE(pymimir::AtomList<pymimir::Fluent>);
 PYBIND11_MAKE_OPAQUE(pymimir::AtomList<pymimir::Derived>);
@@ -15,13 +15,13 @@ PYBIND11_MAKE_OPAQUE(pymimir::AxiomList);
 PYBIND11_MAKE_OPAQUE(pymimir::DomainList);
 PYBIND11_MAKE_OPAQUE(pymimir::EffectSimpleList);
 PYBIND11_MAKE_OPAQUE(pymimir::EffectComplexList);
-PYBIND11_MAKE_OPAQUE(pymimir::FunctionExpressionVariantList);
+PYBIND11_MAKE_OPAQUE(pymimir::FunctionExpressionList);
 PYBIND11_MAKE_OPAQUE(pymimir::FunctionSkeletonList);
 PYBIND11_MAKE_OPAQUE(pymimir::FunctionList);
 PYBIND11_MAKE_OPAQUE(pymimir::GroundAtomList<pymimir::Static>);
 PYBIND11_MAKE_OPAQUE(pymimir::GroundAtomList<pymimir::Fluent>);
 PYBIND11_MAKE_OPAQUE(pymimir::GroundAtomList<pymimir::Derived>);
-PYBIND11_MAKE_OPAQUE(pymimir::GroundFunctionExpressionVariantList);
+PYBIND11_MAKE_OPAQUE(pymimir::GroundFunctionExpressionList);
 PYBIND11_MAKE_OPAQUE(pymimir::GroundLiteralList<pymimir::Static>);
 PYBIND11_MAKE_OPAQUE(pymimir::GroundLiteralList<pymimir::Fluent>);
 PYBIND11_MAKE_OPAQUE(pymimir::GroundLiteralList<pymimir::Derived>);
@@ -37,7 +37,7 @@ PYBIND11_MAKE_OPAQUE(pymimir::ToPredicateMap<std::string, pymimir::Static>);
 PYBIND11_MAKE_OPAQUE(pymimir::ToPredicateMap<std::string, pymimir::Fluent>);
 PYBIND11_MAKE_OPAQUE(pymimir::ToPredicateMap<std::string, pymimir::Derived>);
 PYBIND11_MAKE_OPAQUE(pymimir::ProblemList);
-PYBIND11_MAKE_OPAQUE(pymimir::TermVariantList);
+PYBIND11_MAKE_OPAQUE(pymimir::TermList);
 PYBIND11_MAKE_OPAQUE(pymimir::VariableList);
 
 /* Search */

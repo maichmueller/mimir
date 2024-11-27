@@ -52,11 +52,16 @@ except Exception as e:
     print(f"Error reading conandata.yml: {e}")
     exit(1)
 
-# define the dependencies to export
-dependencies = ["loki", "nauty", "cista", "unordered_dense_cista"]
+
+dependencies = """
+loki
+nauty
+cista
+"""
+
 
 # export dependencies
-for dep in dependencies:
+for dep in (s.strip() for s in dependencies):
     version = dependency_versions.get(dep)
     if not version:
         print(f"Warning: Version for dependency '{dep}' not found in conandata.yml.")

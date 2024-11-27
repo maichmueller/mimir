@@ -1,10 +1,10 @@
 #include "init_declarations.hpp"
 #include "pymimir.hpp"
 #include "utils.hpp"
-#include "variants.hpp"
+GroundFunctionExpressionList
 
 #include <pybind11/pybind11.h>
-namespace py = pybind11;
+    namespace py = pybind11;
 
 void init_optimization_metric(py::module& m)
 {
@@ -15,6 +15,6 @@ void init_optimization_metric(py::module& m)
         .def("__str__", &OptimizationMetricImpl::str)
         .def("__repr__", &OptimizationMetricImpl::str)
         .def("get_index", &OptimizationMetricImpl::get_index)
-        .def("get_function_expression", [](const OptimizationMetricImpl& metric) { return GroundFunctionExpressionVariant(metric.get_function_expression()); })
+        .def("get_function_expression", &OptimizationMetricImpl::get_function_expression, py::return_value_policy::reference_internal)
         .def("get_optimization_metric", &OptimizationMetricImpl::get_optimization_metric, py::return_value_policy::reference_internal);
 }

@@ -42,7 +42,7 @@ public:
     TermImpl& operator=(TermImpl&& other) = default;
 
     size_t get_index() const;
-    const std::variant<Object, Variable>& get_object_or_variable() const;
+    const std::variant<Object, Variable>& get_variant() const;
 };
 
 extern std::ostream& operator<<(std::ostream& out, const TermImpl& element);
@@ -54,7 +54,4 @@ extern std::ostream& operator<<(std::ostream& out, Term element);
 #include "mimir/common/macros.hpp"
 
 #include <fmt/ostream.h>
-FORMATTABLE(mimir::TermObjectImpl);
-FORMATTABLE(mimir::TermVariableImpl);
-FORMATTABLE(mimir::TermObject);
-FORMATTABLE(mimir::TermVariable);
+FORMATTABLE(mimir::TermImpl);

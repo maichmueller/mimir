@@ -120,7 +120,7 @@ protected:
     void prepare_impl(const VariableImpl& variable) {}
     void prepare_impl(const TermImpl& term)
     {
-        std::visit([this](auto&& arg) { return this->prepare(*arg); }, term.get_object_or_variable());
+        std::visit([this](auto&& arg) { return this->prepare(*arg); }, term.get_variant());
     }
     template<PredicateTag P>
     void prepare_impl(const PredicateImpl<P>& predicate)
@@ -291,7 +291,7 @@ protected:
     FunctionExpression transform_base(const FunctionExpressionFunctionImpl& function_expression) { return self().transform_impl(function_expression); }
     FunctionExpression transform_base(const FunctionExpressionImpl& function_expression)
     {
-        return std::visit([this](auto&& arg) -> FunctionExpression { return this->transform_impl(*arg); }, function_expression.get_function_expression());
+        return std::visit([this](auto&& arg) -> FunctionExpression { return this->transform_impl(*arg); }, function_expression.get_variant());
     }
     GroundFunctionExpression transform_base(const GroundFunctionExpressionNumberImpl& function_expression)
     {
@@ -312,8 +312,7 @@ protected:
     }
     GroundFunctionExpression transform_base(const GroundFunctionExpressionImpl& function_expression)
     {
-        return std::visit([this](auto&& arg) -> GroundFunctionExpression { return this->transform_impl(*arg); },
-                          function_expression.get_ground_function_expression());
+        return std::visit([this](auto&& arg) -> GroundFunctionExpression { return this->transform_impl(*arg); }, function_expression.get_variant());
     }
     FunctionSkeleton transform_base(const FunctionSkeletonImpl& function_skeleton) { return this->self().transform_impl(function_skeleton); }
     Function transform_base(const FunctionImpl& function) { return this->self().transform_impl(function); }
@@ -361,7 +360,7 @@ protected:
                     static_assert(dependent_false<ArgType>::value, "Missing implementation for ArgType.");
                 }
             },
-            term.get_object_or_variable());
+            term.get_variant());
     }
     Predicate<Static> transform_impl(const PredicateImpl<Static>& predicate)
     {
@@ -441,7 +440,7 @@ protected:
     }
     FunctionExpression transform_impl(const FunctionExpressionImpl& function_expression)
     {
-        return std::visit([this](auto&& arg) { return this->transform(*arg); }, function_expression.get_function_expression());
+        return std::visit([this](auto&& arg) { return this->transform(*arg); }, function_expression.get_variant());
     }
     GroundFunctionExpression transform_impl(const GroundFunctionExpressionNumberImpl& function_expression)
     {
@@ -474,7 +473,7 @@ protected:
     }
     GroundFunctionExpression transform_impl(const GroundFunctionExpressionImpl& function_expression)
     {
-        return std::visit([this](auto&& arg) { return this->transform(*arg); }, function_expression.get_ground_function_expression());
+        return std::visit([this](auto&& arg) { return this->transform(*arg); }, function_expression.get_variant());
     }
     FunctionSkeleton transform_impl(const FunctionSkeletonImpl& function_skeleton)
     {

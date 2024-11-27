@@ -4,11 +4,11 @@
 #include "pymimir.hpp"
 #include "trampolines.hpp"
 #include "utils.hpp"
-#include "variants.hpp"
+GroundFunctionExpressionList
 
 #include <pybind11/pybind11.h>
 
-namespace py = pybind11;
+    namespace py = pybind11;
 
 using namespace pymimir;
 
@@ -21,7 +21,7 @@ void init_pymimir(py::module& m)
     class_<VariableImpl>(m, "Variable");
     class_<TermObjectImpl>(m, "TermObject");
     class_<TermVariableImpl>(m, "TermVariable");
-    class_<TermVariant>(m, "Term");
+    class_<TermImpl>(m, "Term");
     class_<PredicateImpl<Static>>(m, "StaticPredicate");
     class_<PredicateImpl<Fluent>>(m, "FluentPredicate");
     class_<PredicateImpl<Derived>>(m, "DerivedPredicate");
@@ -54,8 +54,8 @@ void init_pymimir(py::module& m)
     class_<FunctionExpressionMultiOperatorImpl>(m, "FunctionExpressionMultiOperator");
     class_<FunctionExpressionMinusImpl>(m, "FunctionExpressionMinus");
     class_<FunctionExpressionFunctionImpl>(m, "FunctionExpressionFunction");
-    class_<FunctionExpressionVariant>(m, "FunctionExpression");
-    class_<GroundFunctionExpressionVariant>(m, "GroundFunctionExpression");
+    class_<FunctionExpressionImpl>(m, "FunctionExpression");
+    class_<GroundFunctionExpressionImpl>(m, "GroundFunctionExpression");
     class_<GroundFunctionExpressionNumberImpl>(m, "GroundFunctionExpressionNumber");
     class_<GroundFunctionExpressionBinaryOperatorImpl>(m, "GroundFunctionExpressionBinaryOperator");
     class_<GroundFunctionExpressionMultiOperatorImpl>(m, "GroundFunctionExpressionMultiOperator");
@@ -160,7 +160,7 @@ void init_pymimir(py::module& m)
 
     py::bind_vector<GroundActionList>(m, "GroundActionList");
     py::bind_vector<EffectComplexList>(m, "EffectComplexList");
-    py::bind_vector<GroundFunctionExpressionVariantList>(m, "GroundFunctionExpressionVariantList");
+    py::bind_vector<GroundFunctionExpressionList>(m, "GroundFunctionExpressionList");
     py::bind_vector<StateList>(m, "StateList");
     py::bind_vector<EffectSimpleList>(m, "EffectSimpleList");
     py::bind_vector<ActionList>(m, "ActionList");
@@ -168,13 +168,13 @@ void init_pymimir(py::module& m)
     py::bind_vector<AxiomList>(m, "AxiomList");
     py::bind_vector<VariableList>(m, "VariableList");
     py::bind_vector<DomainList>(m, "DomainList");
-    py::bind_vector<FunctionExpressionVariantList>(m, "FunctionExpressionVariantList");
+    py::bind_vector<FunctionExpressionImplList>(m, "FunctionExpressionList");
     py::bind_vector<FunctionSkeletonList>(m, "FunctionSkeletonList");
     py::bind_vector<FunctionList>(m, "FunctionList");
     py::bind_vector<GroundFunctionList>(m, "GroundFunctionList");
     py::bind_vector<NumericFluentList>(m, "NumericFluentList");
     py::bind_vector<ObjectList>(m, "ObjectList");
-    py::bind_vector<TermVariantList>(m, "TermVariantList");
+    py::bind_vector<TermList>(m, "TermList");
     for_each_tag(
         [&]<typename Tag>(Tag, std::string tag = tag_name<Tag>())
         {
@@ -192,7 +192,7 @@ void init_pymimir(py::module& m)
     init_variable(m);
     init_termobject(m);
     init_termvariable(m);
-    init_termvariant(m);
+    init_term(m);
     init_predicates(m);
     init_atoms(m);
     init_pddl_repositories(m);
