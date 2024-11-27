@@ -273,7 +273,14 @@ EdgeIndex DynamicGraph<V, E>::add_directed_edge(VertexIndex source, VertexIndex 
     vertex_index_check(target, "DynamicGraph<V, E>::add_directed_edge(...): Target vertex does not exist.");
 
     /* Get the edge index */
-    const auto index = m_free_edges.empty() ? m_next_edge_index++ : m_free_edges.back();
+    const auto index = m_free_edges.empty() ? m_next_edge_index++ :
+                                              std::invoke(
+                                                  [&]
+                                                  {
+                                                      auto tmp = m_free_edges.back();
+                                                      m_free_edges.pop_back();
+                                                      return tmp;
+                                                  });
 
     /* Create the edge */
     m_edges.emplace(index, E(index, source, target, FWD(properties)...));
@@ -283,12 +290,6 @@ EdgeIndex DynamicGraph<V, E>::add_directed_edge(VertexIndex source, VertexIndex 
     boost::hana::at_key(m_adjacent_edges, boost::hana::type<BackwardTraversal> {}).at(target).insert(index);
     ++boost::hana::at_key(m_degrees, boost::hana::type<ForwardTraversal> {}).at(source);
     ++boost::hana::at_key(m_degrees, boost::hana::type<BackwardTraversal> {}).at(target);
-
-    if (!m_free_edges.empty())
-    {
-        // If m_free_edges was non-empty, we additionally need to pop_back the used index.
-        m_free_edges.pop_back();
-    }
 
     return index;
 }
@@ -306,7 +307,7 @@ std::pair<EdgeIndex, EdgeIndex> DynamicGraph<V, E>::add_undirected_edge(VertexIn
     const auto backward_edge_index =
         std::apply([&](auto&&... args) { return this->add_directed_edge(target, source, FWD(args)...); }, std::move(properties_tuple));
 
-    return std::make_pair(forward_edge_index, backward_edge_index);
+    return std::pair { forward_edge_index, backward_edge_index };
 }
 
 template<IsVertex V, IsEdge E>
