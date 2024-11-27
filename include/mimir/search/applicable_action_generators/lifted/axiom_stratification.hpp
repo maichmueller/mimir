@@ -30,7 +30,7 @@ private:
     // Axioms without derived literal in the body.
     AxiomSet m_initially_relevant_axioms;
 
-    std::unordered_map<Predicate<Derived>, AxiomSet> m_axioms_by_body_predicates;
+    unordered_map<Predicate<Derived>, AxiomSet> m_axioms_by_body_predicates;
 
 public:
     explicit AxiomPartition(AxiomSet axioms, const PredicateSet<Derived>& derived_predicates, const PredicateSet<Derived>& affected_derived_predicates);

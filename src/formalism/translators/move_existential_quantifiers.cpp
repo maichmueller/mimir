@@ -28,7 +28,7 @@ loki::Condition MoveExistentialQuantifiersTranslator::translate_impl(const loki:
 {
     const auto& translated_nested_conditions = this->translate(condition.get_conditions());
 
-    auto parameters = std::unordered_set<loki::Parameter> {};
+    auto parameters = unordered_set<loki::Parameter> {};
     auto parts = loki::ConditionList {};
     for (const auto translated_nested_condition : translated_nested_conditions)
     {

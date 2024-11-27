@@ -27,7 +27,7 @@ loki::Effect ToENFTranslator::translate_impl(const loki::EffectAndImpl& effect)
     auto translated_nested_effects = this->translate(effect.get_effects());
 
     // Collect type information of nested effects.
-    auto effect_literals = std::unordered_set<loki::Effect> {};
+    auto effect_literals = unordered_set<loki::Effect> {};
     auto effect_when = loki::EffectList {};
     auto other_effects = loki::EffectList {};
     for (const auto& nested_translated_effect : translated_nested_effects)

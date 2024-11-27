@@ -20,7 +20,7 @@
 namespace mimir
 {
 
-using TupleVertexIndexSet = std::unordered_set<TupleVertexIndex>;
+using TupleVertexIndexSet = unordered_set<TupleVertexIndex>;
 
 /**
  * TupleGraphVertex
@@ -218,19 +218,19 @@ private:
 
     TupleIndexSet novel_tuple_indices_set;
     TupleIndexList novel_tuple_indices;
-    std::unordered_map<TupleIndex, StateSet> novel_tuple_index_to_states;
+    unordered_map<TupleIndex, StateSet> novel_tuple_index_to_states;
     StateMap<TupleIndexList> state_to_novel_tuple_indices;
 
     void compute_next_novel_tuple_indices();
 
-    std::unordered_map<TupleIndex, StateSet> cur_novel_tuple_index_to_extended_state;
-    std::unordered_map<TupleIndex, TupleVertexIndexSet> cur_extended_novel_tuple_index_to_prev_vertices;
+    unordered_map<TupleIndex, StateSet> cur_novel_tuple_index_to_extended_state;
+    unordered_map<TupleIndex, TupleVertexIndexSet> cur_extended_novel_tuple_index_to_prev_vertices;
     TupleIndexSet cur_extended_novel_tuple_indices_set;
     TupleIndexList cur_extended_novel_tuple_indices;
 
     void extend_optimal_plans_from_prev_layer();
 
-    std::unordered_map<TupleIndex, TupleIndexSet> tuple_index_to_dominating_tuple_indices;
+    unordered_map<TupleIndex, TupleIndexSet> tuple_index_to_dominating_tuple_indices;
 
     bool instantiate_next_layer();
 

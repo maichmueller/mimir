@@ -45,6 +45,6 @@ using AtomIndexList = vector<AtomIndex>;
 
 using TupleIndex = Index;
 using TupleIndexList = vector<TupleIndex>;
-using TupleIndexSet = std::unordered_set<TupleIndex>;
+using TupleIndexSet = unordered_set<TupleIndex>;
 
 }

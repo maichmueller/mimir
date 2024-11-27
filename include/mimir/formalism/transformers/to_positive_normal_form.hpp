@@ -53,25 +53,25 @@ private:
 
     template<PredicateTag P>
     void transform_conditions(const LiteralList<P>& conditions,
-                              const std::unordered_map<Literal<P>, Literal<Derived>>& negative_transformed_duals,
+                              const unordered_map<Literal<P>, Literal<Derived>>& negative_transformed_duals,
                               LiteralList<P>& ref_transformed_conditions,
                               LiteralList<Derived>& ref_transformed_derived_conditions);
 
     template<PredicateTag P>
     void compute_duals(const DomainImpl& domain,
                        const LiteralSet<P>& negative_conditions,
-                       std::unordered_map<Literal<P>, Literal<Derived>>& out_negative_transformed_duals,
+                       unordered_map<Literal<P>, Literal<Derived>>& out_negative_transformed_duals,
                        PredicateList<Derived>& ref_transformed_derived_predicates);
 
-    std::unordered_map<Literal<Static>, Literal<Derived>> m_negative_static_transformed_duals;
-    std::unordered_map<Literal<Fluent>, Literal<Derived>> m_negative_fluent_transformed_duals;
-    std::unordered_map<Literal<Derived>, Literal<Derived>> m_negative_derived_transformed_duals;
+    unordered_map<Literal<Static>, Literal<Derived>> m_negative_static_transformed_duals;
+    unordered_map<Literal<Fluent>, Literal<Derived>> m_negative_fluent_transformed_duals;
+    unordered_map<Literal<Derived>, Literal<Derived>> m_negative_derived_transformed_duals;
 
     EffectComplex transform_impl(const EffectComplexImpl& effect);
     Action transform_impl(const ActionImpl& action);
 
     template<PredicateTag P>
-    void introduce_axiom_for_dual(const std::unordered_map<Literal<P>, Literal<Derived>>& negative_transformed_duals, AxiomList& ref_axioms);
+    void introduce_axiom_for_dual(const unordered_map<Literal<P>, Literal<Derived>>& negative_transformed_duals, AxiomList& ref_axioms);
 
     Domain transform_impl(const DomainImpl& domain);
 
@@ -85,7 +85,7 @@ public:
 
 template<PredicateTag P>
 void ToPositiveNormalFormTransformer::transform_conditions(const LiteralList<P>& conditions,
-                                                           const std::unordered_map<Literal<P>, Literal<Derived>>& negative_transformed_duals,
+                                                           const unordered_map<Literal<P>, Literal<Derived>>& negative_transformed_duals,
                                                            LiteralList<P>& ref_transformed_conditions,
                                                            LiteralList<Derived>& ref_transformed_derived_conditions)
 {
@@ -114,7 +114,7 @@ void ToPositiveNormalFormTransformer::transform_conditions(const LiteralList<P>&
 template<PredicateTag P>
 void ToPositiveNormalFormTransformer::compute_duals(const DomainImpl& domain,
                                                     const LiteralSet<P>& negative_conditions,
-                                                    std::unordered_map<Literal<P>, Literal<Derived>>& out_negative_transformed_duals,
+                                                    unordered_map<Literal<P>, Literal<Derived>>& out_negative_transformed_duals,
                                                     PredicateList<Derived>& ref_transformed_derived_predicates)
 {
     out_negative_transformed_duals.clear();
@@ -155,7 +155,7 @@ void ToPositiveNormalFormTransformer::compute_duals(const DomainImpl& domain,
 }
 
 template<PredicateTag P>
-void ToPositiveNormalFormTransformer::introduce_axiom_for_dual(const std::unordered_map<Literal<P>, Literal<Derived>>& negative_transformed_duals,
+void ToPositiveNormalFormTransformer::introduce_axiom_for_dual(const unordered_map<Literal<P>, Literal<Derived>>& negative_transformed_duals,
                                                                AxiomList& ref_axioms)
 {
     for (const auto& [negative_literal, transformed_dual_positive_literal] : negative_transformed_duals)

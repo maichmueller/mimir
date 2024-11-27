@@ -60,7 +60,7 @@ using AnyAtomList = vector<AnyAtom>;
 class AxiomImpl;
 using Axiom = const AxiomImpl*;
 using AxiomList = vector<Axiom>;
-using AxiomSet = std::unordered_set<Axiom>;
+using AxiomSet = unordered_set<Axiom>;
 
 class DomainImpl;
 using Domain = const DomainImpl*;
@@ -111,8 +111,8 @@ template<PredicateTag P>
 using GroundAtomSpan = std::span<GroundAtom<P>>;
 using AnyGroundAtomList = vector<AnyGroundAtom>;
 template<PredicateTag P>
-using GroundAtomSet = std::unordered_set<GroundAtom<P>>;
-using AnyGroundAtomSet = std::unordered_set<AnyGroundAtom>;
+using GroundAtomSet = unordered_set<GroundAtom<P>>;
+using AnyGroundAtomSet = unordered_set<AnyGroundAtom>;
 
 class GroundFunctionExpressionNumberImpl;
 using GroundFunctionExpressionNumber = const GroundFunctionExpressionNumberImpl*;
@@ -147,8 +147,8 @@ template<PredicateTag P>
 using GroundLiteralSpan = std::span<GroundLiteral<P>>;
 using AnyGroundLiteralList = vector<AnyGroundLiteral>;
 template<PredicateTag P>
-using GroundLiteralSet = std::unordered_set<GroundLiteral<P>>;
-using AnyGroundLiteralSet = std::unordered_set<AnyGroundLiteral>;
+using GroundLiteralSet = unordered_set<GroundLiteral<P>>;
+using AnyGroundLiteralSet = unordered_set<AnyGroundLiteral>;
 
 template<PredicateTag P>
 class LiteralImpl;
@@ -161,8 +161,8 @@ template<PredicateTag P>
 using LiteralSpan = std::span<Literal<P>>;
 using AnyLiteralList = vector<AnyLiteral>;
 template<PredicateTag P>
-using LiteralSet = std::unordered_set<Literal<P>>;
-using AnyLiteralSet = std::unordered_set<AnyLiteral>;
+using LiteralSet = unordered_set<Literal<P>>;
+using AnyLiteralSet = unordered_set<AnyLiteral>;
 
 class OptimizationMetricImpl;
 using OptimizationMetric = const OptimizationMetricImpl*;
@@ -175,7 +175,7 @@ class ObjectImpl;
 using Object = const ObjectImpl*;
 using ObjectList = vector<Object>;
 template<typename Key, typename Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>>
-using ToObjectMap = std::unordered_map<Key, Object, Hash, KeyEqual>;
+using ToObjectMap = unordered_map<Key, Object, Hash, KeyEqual>;
 
 class PDDLRepositories;
 
@@ -190,10 +190,10 @@ template<PredicateTag P>
 using PredicateSpan = std::span<Predicate<P>>;
 using AnyPredicateList = vector<AnyPredicate>;
 template<PredicateTag P>
-using PredicateSet = std::unordered_set<Predicate<P>>;
-using AnyPredicateSet = std::unordered_set<AnyPredicate>;
+using PredicateSet = unordered_set<Predicate<P>>;
+using AnyPredicateSet = unordered_set<AnyPredicate>;
 template<typename Key, PredicateTag P, typename Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>>
-using ToPredicateMap = std::unordered_map<Key, Predicate<P>, Hash, KeyEqual>;
+using ToPredicateMap = unordered_map<Key, Predicate<P>, Hash, KeyEqual>;
 
 class ProblemImpl;
 using Problem = const ProblemImpl*;
@@ -213,6 +213,6 @@ using TermList = vector<Term>;
 class VariableImpl;
 using Variable = const VariableImpl*;
 using VariableList = vector<Variable>;
-using VariableSet = std::unordered_set<Variable>;
+using VariableSet = unordered_set<Variable>;
 
 }

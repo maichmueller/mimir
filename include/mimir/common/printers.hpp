@@ -52,10 +52,10 @@ template<typename... Ts>
 std::ostream& operator<<(std::ostream& os, const std::tuple<Ts...>& tuple);
 
 template<typename K, typename V>
-std::ostream& operator<<(std::ostream& os, const std::unordered_map<K, V>& map);
+std::ostream& operator<<(std::ostream& os, const unordered_map<K, V>& map);
 
 template<typename T>
-std::ostream& operator<<(std::ostream& os, const std::unordered_set<T>& set);
+std::ostream& operator<<(std::ostream& os, const unordered_set<T>& set);
 
 template<typename T>
 std::ostream& operator<<(std::ostream& os, const vector<T>& vec);
@@ -126,7 +126,7 @@ std::ostream& operator<<(std::ostream& os, const std::tuple<Ts...>& tuple)
 }
 
 template<typename K, typename V>
-std::ostream& operator<<(std::ostream& os, const std::unordered_map<K, V>& map)
+std::ostream& operator<<(std::ostream& os, const unordered_map<K, V>& map)
 {
     os << "{";
     for (auto it = map.begin(); it != map.end(); ++it)
@@ -140,7 +140,7 @@ std::ostream& operator<<(std::ostream& os, const std::unordered_map<K, V>& map)
 }
 
 template<typename T>
-std::ostream& operator<<(std::ostream& os, const std::unordered_set<T>& set)
+std::ostream& operator<<(std::ostream& os, const unordered_set<T>& set)
 {
     os << "{";
     size_t i = 0;

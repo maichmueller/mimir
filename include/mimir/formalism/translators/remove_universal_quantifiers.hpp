@@ -45,12 +45,12 @@ private:
     class Scope
     {
     private:
-        std::unordered_map<loki::Variable, loki::Parameter> m_variable_to_parameter;
+        unordered_map<loki::Variable, loki::Parameter> m_variable_to_parameter;
 
         const Scope* m_parent_scope;
 
     public:
-        Scope(std::unordered_map<loki::Variable, loki::Parameter> variable_to_parameter, const Scope* parent_scope = nullptr);
+        Scope(unordered_map<loki::Variable, loki::Parameter> variable_to_parameter, const Scope* parent_scope = nullptr);
 
         std::optional<loki::Parameter> get_parameter(const loki::Variable& variable) const;
     };
@@ -71,14 +71,14 @@ private:
     ScopeStack m_scopes;
 
     // Track simple and derived predicate names to give unique names
-    std::unordered_set<std::string> m_simple_and_derived_predicate_names;
+    unordered_set<std::string> m_simple_and_derived_predicate_names;
     Index m_next_axiom_index;
 
     // Translation might introduce additional derived predicates and axioms.
-    std::unordered_set<loki::Predicate> m_derived_predicates;
-    std::unordered_set<loki::Axiom> m_axioms;
+    unordered_set<loki::Predicate> m_derived_predicates;
+    unordered_set<loki::Axiom> m_axioms;
     // Cache translations
-    std::unordered_map<const loki::ConditionForallImpl*, loki::Condition> m_condition_to_substituted_condition;
+    unordered_map<const loki::ConditionForallImpl*, loki::Condition> m_condition_to_substituted_condition;
 
     /// @brief Collect all existing simple and derived predicate names.
     void prepare_impl(const loki::PredicateImpl& predicate);

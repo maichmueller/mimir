@@ -114,10 +114,10 @@ std::optional<FaithfulAbstraction> FaithfulAbstraction::create(Problem problem,
     }
 
     auto concrete_to_abstract_state = StateMap<Index> {};
-    auto abstract_states_by_certificate = std::unordered_map<std::shared_ptr<const nauty_wrapper::Certificate>,
-                                                             Index,
-                                                             nauty_wrapper::UniqueCertificateSharedPtrHash,
-                                                             nauty_wrapper::UniqueCertificateSharedPtrEqualTo> {};
+    auto abstract_states_by_certificate = unordered_map<std::shared_ptr<const nauty_wrapper::Certificate>,
+                                                        Index,
+                                                        nauty_wrapper::UniqueCertificateSharedPtrHash,
+                                                        nauty_wrapper::UniqueCertificateSharedPtrEqualTo> {};
 
     /* Initialize for initial state. */
     const auto color_function = ProblemColorFunction(problem);

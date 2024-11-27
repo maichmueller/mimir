@@ -32,7 +32,7 @@
 
 namespace mimir
 {
-using GroundFunctionToValue = std::unordered_map<GroundFunction, double>;
+using GroundFunctionToValue = unordered_map<GroundFunction, double>;
 
 /// @brief `LiftedApplicableActionGenerator` implements lifted applicable action generation
 /// using maximum clique enumeration by Stahlberg (ECAI2023).
@@ -48,13 +48,13 @@ private:
 
     AxiomEvaluator m_axiom_evaluator;
 
-    std::unordered_map<Action, ConditionGrounder> m_action_precondition_grounders;
-    std::unordered_map<Action, vector<consistency_graph::StaticConsistencyGraph>> m_action_complex_effects;
+    unordered_map<Action, ConditionGrounder> m_action_precondition_grounders;
+    unordered_map<Action, vector<consistency_graph::StaticConsistencyGraph>> m_action_complex_effects;
 
     GroundActionImplSet m_flat_actions;
     GroundActionList m_actions_by_index;
     GroundActionImpl m_action_builder;
-    std::unordered_map<Action, GroundingTable<GroundAction>> m_action_groundings;
+    unordered_map<Action, GroundingTable<GroundAction>> m_action_groundings;
 
     GroundFunctionToValue m_ground_function_value_costs;
 

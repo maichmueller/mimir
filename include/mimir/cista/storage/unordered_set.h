@@ -18,6 +18,7 @@
 #pragma once
 
 #include "mimir/cista/storage/byte_buffer_segmented.h"
+#include "mimir/declarations.hpp"
 
 #include <cista/serialization.h>
 #include <unordered_set>
@@ -55,13 +56,13 @@ private:
     ByteBufferSegmented m_storage;
 
     // Data to be accessed
-    std::unordered_set<const T*, Hash, Equal> m_elements;
+    mimir::unordered_set<const T*, Hash, Equal> m_elements;
 
     // Serialization buffer
     cista::buf<mimir::vector<uint8_t>> m_buf;
 
-    using iterator = typename std::unordered_set<const T*, Hash, Equal>::iterator;
-    using const_iterator = typename std::unordered_set<const T*, Hash, Equal>::const_iterator;
+    using iterator = typename mimir::unordered_set<const T*, Hash, Equal>::iterator;
+    using const_iterator = typename mimir::unordered_set<const T*, Hash, Equal>::const_iterator;
 
 public:
     explicit UnorderedSet(size_t initial_num_bytes_per_segment = 1024, size_t maximum_num_bytes_per_segment = 1024 * 1024) {}

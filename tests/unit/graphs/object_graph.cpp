@@ -35,7 +35,7 @@ TEST(MimirTests, GraphsObjectGraphDenseTest)
     const auto state_space = StateSpace::create(domain_file, problem_file).value();
 
     const auto color_function = ProblemColorFunction(state_space.get_problem());
-    auto certificates = std::unordered_set<nauty_wrapper::Certificate> {};
+    auto certificates = unordered_set<nauty_wrapper::Certificate> {};
 
     for (const auto& vertex : state_space.get_graph().get_vertices())
     {
@@ -65,7 +65,7 @@ TEST(MimirTests, GraphsObjectGraphSparseTest)
     const auto state_space = StateSpace::create(domain_file, problem_file).value();
 
     const auto color_function = ProblemColorFunction(state_space.get_problem());
-    auto certificates = std::unordered_set<nauty_wrapper::Certificate> {};
+    auto certificates = unordered_set<nauty_wrapper::Certificate> {};
 
     for (const auto& vertex : state_space.get_graph().get_vertices())
     {
@@ -105,7 +105,7 @@ TEST(MimirTests, GraphsObjectGraphPruningTest)
     };
 
     const auto color_function = ProblemColorFunction(state_space.get_problem());
-    auto certificates = std::unordered_set<nauty_wrapper::Certificate> {};
+    auto certificates = unordered_set<nauty_wrapper::Certificate> {};
 
     for (const auto& vertex : state_space.get_graph().get_vertices())
     {

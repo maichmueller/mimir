@@ -127,10 +127,10 @@ vector<GlobalFaithfulAbstraction> GlobalFaithfulAbstraction::create(
     auto abstractions = vector<GlobalFaithfulAbstraction> {};
     auto faithful_abstractions = FaithfulAbstraction::create(memories, options);
 
-    auto certificate_to_global_state = std::unordered_map<std::shared_ptr<const nauty_wrapper::Certificate>,
-                                                          GlobalFaithfulAbstractState,
-                                                          nauty_wrapper::UniqueCertificateSharedPtrHash,
-                                                          nauty_wrapper::UniqueCertificateSharedPtrEqualTo> {};
+    auto certificate_to_global_state = unordered_map<std::shared_ptr<const nauty_wrapper::Certificate>,
+                                                     GlobalFaithfulAbstractState,
+                                                     nauty_wrapper::UniqueCertificateSharedPtrHash,
+                                                     nauty_wrapper::UniqueCertificateSharedPtrEqualTo> {};
 
     // An abstraction is considered relevant, if it contains at least one non-isomorphic state.
     auto relevant_faithful_abstractions = std::make_shared<FaithfulAbstractionList>();
@@ -293,7 +293,7 @@ const StateMap<Index>& GlobalFaithfulAbstraction::get_concrete_to_abstract_state
     return m_abstractions->at(m_index).get_concrete_to_abstract_state();
 }
 
-const std::unordered_map<Index, Index>& GlobalFaithfulAbstraction::get_global_state_index_to_state_index() const { return m_global_state_index_to_state_index; }
+const unordered_map<Index, Index>& GlobalFaithfulAbstraction::get_global_state_index_to_state_index() const { return m_global_state_index_to_state_index; }
 
 Index GlobalFaithfulAbstraction::get_initial_state_index() const { return m_abstractions->at(m_index).get_initial_state_index(); }
 

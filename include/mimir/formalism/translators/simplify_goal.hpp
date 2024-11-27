@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "mimir/declarations.hpp"
 #include "mimir/formalism/translators/base_cached_recurse.hpp"
 
 namespace mimir
@@ -38,7 +39,7 @@ private:
     /* Computed in prepare step */
 
     // All simple and derived predicate names
-    std::unordered_set<std::string> m_simple_and_derived_predicate_names;
+    mimir::unordered_set<std::string> m_simple_and_derived_predicate_names;
 
     /// @brief Collect all existing simple and derived predicate names.
     void prepare_impl(const loki::PredicateImpl& predicate);

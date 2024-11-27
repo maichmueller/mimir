@@ -32,22 +32,22 @@ namespace mimir
 
 using VertexIndex = Index;
 using VertexIndexList = vector<VertexIndex>;
-using VertexIndexSet = std::unordered_set<VertexIndex>;
+using VertexIndexSet = unordered_set<VertexIndex>;
 
 using EdgeIndex = Index;
 using EdgeIndexList = vector<EdgeIndex>;
-using EdgeIndexSet = std::unordered_set<EdgeIndex>;
+using EdgeIndexSet = unordered_set<EdgeIndex>;
 
 using Degree = uint32_t;
 using DegreeList = vector<Degree>;
-using DegreeMap = std::unordered_map<VertexIndex, Degree>;
+using DegreeMap = unordered_map<VertexIndex, Degree>;
 
 using Color = uint32_t;
 using ColorList = vector<Color>;
 template<size_t K>
 using ColorArray = std::array<Color, K>;
-using ColorSet = std::unordered_set<Color>;
+using ColorSet = unordered_set<Color>;
 template<typename T>
-using ColorMap = std::unordered_map<Color, T>;
+using ColorMap = unordered_map<Color, T>;
 
 }

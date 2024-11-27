@@ -44,7 +44,7 @@ class ArityKNoveltyPruning : public IPruningStrategy
 private:
     DynamicNoveltyTable m_novelty_table;
 
-    std::unordered_set<Index> m_generated_states;
+    unordered_set<Index> m_generated_states;
 
 public:
     ArityKNoveltyPruning(size_t arity, size_t num_atoms);

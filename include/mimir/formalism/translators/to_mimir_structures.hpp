@@ -43,15 +43,15 @@ private:
     /* Computed in prepare step */
 
     // Predicate with an action effect
-    std::unordered_set<std::string> m_fluent_predicates;
+    unordered_set<std::string> m_fluent_predicates;
     // Derived predicates
-    std::unordered_set<std::string> m_derived_predicates;
+    unordered_set<std::string> m_derived_predicates;
 
     // Whether action costs are enabled
     bool m_action_costs_enabled;
 
     // Equality predicate that does not occur in predicates section
-    std::unordered_map<std::string, Predicate<Derived>> m_derived_predicates_by_name;
+    unordered_map<std::string, Predicate<Derived>> m_derived_predicates_by_name;
     Predicate<Static> m_equal_predicate;
 
     /// @brief Prepare all elements in a container.

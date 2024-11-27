@@ -32,7 +32,7 @@ namespace x3 = boost::spirit::x3;
 
 struct error_handler_base
 {
-    std::unordered_map<std::string, std::string> id_map;
+    unordered_map<std::string, std::string> id_map;
 
     error_handler_base() {}
 

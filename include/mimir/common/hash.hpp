@@ -46,22 +46,18 @@ inline void hash_combine(size_t& seed, const Rest&... rest);
 template<typename... Ts>
 inline size_t hash_combine(const Ts&... rest);
 
-/// @brief `Hash` defaults to `std::hash` but allows specializations inside the mimir namespace.
-/// @tparam T
-template<typename T>
-struct Hash
-{
-    size_t operator()(const T& element) const { return ::std::hash<T>()(element); }
-};
+}
 
+namespace std
+{
 /// @brief Hash specialization for a forward range.
 /// @tparam ForwardRange
-template<::std::ranges::input_range R>
-struct Hash<R>
+template<ranges::input_range R>
+struct hash<R>
 {
     size_t operator()(const R& range) const
     {
-        ::std::size_t aggregated_hash = 0;
+        size_t aggregated_hash = 0;
         for (const auto& item : range)
         {
             mimir::hash_combine(aggregated_hash, item);
@@ -74,26 +70,31 @@ struct Hash<R>
 /// @tparam T1
 /// @tparam T2
 template<typename T1, typename T2>
-struct Hash<::std::pair<T1, T2>>
+struct hash<pair<T1, T2>>
 {
-    size_t operator()(const ::std::pair<T1, T2>& pair) const { return mimir::hash_combine(pair.first, pair.second); }
+    size_t operator()(const pair<T1, T2>& pair) const { return mimir::hash_combine(pair.first, pair.second); }
 };
 
 template<typename... Ts>
-struct Hash<::std::tuple<Ts...>>
+struct hash<tuple<Ts...>>
 {
-    size_t operator()(const ::std::tuple<Ts...>& tuple) const
+    size_t operator()(const tuple<Ts...>& tuple) const
     {
         size_t aggregated_hash = sizeof...(Ts);
-        ::std::apply([&aggregated_hash](const Ts&... args) { (hash_combine(aggregated_hash, args), ...); }, tuple);
+        apply([&aggregated_hash](const Ts&... args) { (hash_combine(aggregated_hash, args), ...); }, tuple);
         return aggregated_hash;
     }
 };
 
+}
+
+namespace mimir
+{
+
 template<typename T>
 inline void hash_combine(size_t& seed, const T& value)
 {
-    seed ^= Hash<T>()(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    seed ^= std::hash<T>()(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
 
 template<typename T, typename... Rest>
@@ -120,7 +121,7 @@ struct hash_combiner
 };
 
 /// @brief class to hash the value of a pointer-like object (pointer, reference_wrapper, optional, shared_ptr, unique_ptr, etc...)
-template<typename T, typename Hasher = Hash<raw_t<T>>>
+template<typename T, typename Hasher = std::hash<raw_t<T>>>
 using value_hasher = hof::compose<Hasher, dereffer>;
 
 /// @brief class which imports the operator() overload of each given type to call the actual hasher
@@ -139,7 +140,7 @@ struct multi_hasher<ActualHasher, T> : ActualHasher<T>
 
 /// @brief class which imports the operator() overload of each given type to call their ::std hash
 template<typename... Ts>
-using hasher = multi_hasher<Hash, Ts...>;
+using hasher = multi_hasher<std::hash, Ts...>;
 
 template<template<class> class Hasher, typename T>
 struct variant_hasher;
@@ -149,64 +150,64 @@ struct variant_hasher;
 /// Each individual type T is hashable by their own Hasher< T > class without prior conversion to
 /// the variant type. However, this does necessiate a disambiguation for types that are implicitly
 /// convertible to a T of the variant type. E.g. the call
-///     variant_hasher< ::std::hash, ::std::variant< int, ::std::string >>{}("Char String")
+///     variant_hasher< hash, variant< int, string >>{}("Char String")
 /// would be ambiguous now and would have to be disambiguated by wrapping the character string in
-/// ::std::string("Char String") or variant_type("Char String")
+/// string("Char String") or variant_type("Char String")
 ///
 /// \tparam Hasher, the hash function (template functor) to be used
 /// \tparam Ts, the variant types
 template<template<class> class Hasher, typename... Ts>
-struct variant_hasher<Hasher, ::std::variant<Ts...>> : public multi_hasher<Hasher, Ts...>
+struct variant_hasher<Hasher, std::variant<Ts...>> : public multi_hasher<Hasher, Ts...>
 {
     // allow for heterogenous lookup
-    using is_transparent = ::std::true_type;
+    using is_transparent = std::true_type;
 
     // hashing of the actual variant type
-    auto operator()(const ::std::variant<Ts...>& variant) const noexcept
+    auto operator()(const std::variant<Ts...>& variant) const noexcept
     {
-        return ::std::visit([]<typename VarType>(const VarType& var_element) noexcept { return Hasher<VarType> {}(var_element); }, variant);
+        return std::visit([]<typename VarType>(const VarType& var_element) noexcept { return Hasher<VarType> {}(var_element); }, variant);
     }
     // hashing of the individual variant types by their respective hash functions
     using multi_hasher<Hasher, Ts...>::operator();
 };
 
-template<typename T, typename Hasher = ::std::hash<T>>
-using variant_std_hasher = variant_hasher<::std::hash, T>;
+template<typename T, typename Hasher = std::hash<T>>
+using variant_std_hasher = variant_hasher<std::hash, T>;
 
 // Struct for transparent hashing
 struct StringHashTransparent
 {
-    using is_transparent = ::std::true_type;  // Enable heterogeneous lookup
+    using is_transparent = std::true_type;  // Enable heterogeneous lookup
 
-    ::std::size_t operator()(const ::std::string& key) const { return ::std::hash<::std::string> {}(key); }
+    std::size_t operator()(const std::string& key) const { return std::hash<std::string> {}(key); }
 
-    ::std::size_t operator()(const char* key) const { return ::std::hash<::std::string_view> {}(key); }
+    std::size_t operator()(const char* key) const { return std::hash<std::string_view> {}(key); }
 
-    ::std::size_t operator()(::std::string_view key) const { return ::std::hash<::std::string_view> {}(key); }
+    std::size_t operator()(std::string_view key) const { return std::hash<std::string_view> {}(key); }
 };
 
 // Struct for transparent equality comparison
 struct StringEqualTransparent
 {
-    using is_transparent = ::std::true_type;  // Enable heterogeneous lookup
+    using is_transparent = std::true_type;  // Enable heterogeneous lookup
 
-    bool operator()(const ::std::string& lhs, const ::std::string& rhs) const { return lhs == rhs; }
+    bool operator()(const std::string& lhs, const std::string& rhs) const { return lhs == rhs; }
 
-    bool operator()(const ::std::string& lhs, ::std::string_view rhs) const { return lhs == rhs; }
+    bool operator()(const std::string& lhs, std::string_view rhs) const { return lhs == rhs; }
 
-    bool operator()(::std::string_view lhs, const ::std::string& rhs) const { return lhs == rhs; }
+    bool operator()(std::string_view lhs, const std::string& rhs) const { return lhs == rhs; }
 
-    bool operator()(::std::string_view lhs, ::std::string_view rhs) const { return lhs == rhs; }
+    bool operator()(std::string_view lhs, std::string_view rhs) const { return lhs == rhs; }
 
-    bool operator()(const char* lhs, const ::std::string& rhs) const { return ::std::string_view(lhs) == rhs; }
+    bool operator()(const char* lhs, const std::string& rhs) const { return std::string_view(lhs) == rhs; }
 
-    bool operator()(const char* lhs, ::std::string_view rhs) const { return ::std::string_view(lhs) == rhs; }
+    bool operator()(const char* lhs, std::string_view rhs) const { return std::string_view(lhs) == rhs; }
 
-    bool operator()(const ::std::string& lhs, const char* rhs) const { return lhs == ::std::string_view(rhs); }
+    bool operator()(const std::string& lhs, const char* rhs) const { return lhs == std::string_view(rhs); }
 
-    bool operator()(::std::string_view lhs, const char* rhs) const { return lhs == ::std::string_view(rhs); }
+    bool operator()(std::string_view lhs, const char* rhs) const { return lhs == std::string_view(rhs); }
 
-    bool operator()(const char* lhs, const char* rhs) const { return ::std::string_view(lhs) == ::std::string_view(rhs); }
+    bool operator()(const char* lhs, const char* rhs) const { return std::string_view(lhs) == std::string_view(rhs); }
 };
 
 }  // namespace mimir

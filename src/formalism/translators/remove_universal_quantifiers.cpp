@@ -24,7 +24,7 @@ using namespace std::string_literals;
 
 namespace mimir
 {
-RemoveUniversalQuantifiersTranslator::Scope::Scope(std::unordered_map<loki::Variable, loki::Parameter> variable_to_parameter, const Scope* parent_scope) :
+RemoveUniversalQuantifiersTranslator::Scope::Scope(unordered_map<loki::Variable, loki::Parameter> variable_to_parameter, const Scope* parent_scope) :
     m_variable_to_parameter(std::move(variable_to_parameter)),
     m_parent_scope(parent_scope)
 {
@@ -46,7 +46,7 @@ std::optional<loki::Parameter> RemoveUniversalQuantifiersTranslator::Scope::get_
 
 const RemoveUniversalQuantifiersTranslator::Scope& RemoveUniversalQuantifiersTranslator::ScopeStack::open_scope(const loki::ParameterList& parameters)
 {
-    auto variable_to_parameter = std::unordered_map<loki::Variable, loki::Parameter> {};
+    auto variable_to_parameter = unordered_map<loki::Variable, loki::Parameter> {};
     for (const auto& parameter : parameters)
     {
         variable_to_parameter.emplace(parameter->get_variable(), parameter);

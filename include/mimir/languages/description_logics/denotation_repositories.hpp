@@ -52,7 +52,7 @@ private:
         bool operator()(const Key& left, const Key& right) const;
     };
 
-    std::unordered_map<Key, Denotation<D>, KeyHash, KeyEqual> m_cached_dynamic_denotations;
+    unordered_map<Key, Denotation<D>, KeyHash, KeyEqual> m_cached_dynamic_denotations;
 
 public:
     Denotation<D> insert(Constructor<D> constructor, size_t state_index, const DenotationImpl<D>& denotation);

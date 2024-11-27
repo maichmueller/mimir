@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "mimir/declarations.hpp"
 #include "mimir/formalism/translators/interface.hpp"
 
 #include <deque>
@@ -40,26 +41,26 @@ private:
     constexpr const auto& self() const { return static_cast<const Derived_&>(*this); }
     constexpr auto& self() { return static_cast<Derived_&>(*this); }
 
-    std::unordered_map<loki::Requirements, loki::Requirements> m_translated_requirements;
-    std::unordered_map<loki::Type, loki::Type> m_translated_types;
-    std::unordered_map<loki::Object, loki::Object> m_translated_objects;
-    std::unordered_map<loki::Variable, loki::Variable> m_translated_variables;
-    std::unordered_map<loki::Term, loki::Term> m_translated_terms;
-    std::unordered_map<loki::Parameter, loki::Parameter> m_translated_parameters;
-    std::unordered_map<loki::Predicate, loki::Predicate> m_translated_predicates;
-    std::unordered_map<loki::Atom, loki::Atom> m_translated_atoms;
-    std::unordered_map<loki::Literal, loki::Literal> m_translated_literals;
-    std::unordered_map<loki::NumericFluent, loki::NumericFluent> m_translated_numeric_fluents;
-    std::unordered_map<loki::Condition, loki::Condition> m_translated_conditions;
-    std::unordered_map<loki::Effect, loki::Effect> m_translated_effects;
-    std::unordered_map<loki::FunctionExpression, loki::FunctionExpression> m_translated_function_expressions;
-    std::unordered_map<loki::FunctionSkeleton, loki::FunctionSkeleton> m_translated_function_skeletons;
-    std::unordered_map<loki::Function, loki::Function> m_translated_functions;
-    std::unordered_map<loki::Action, loki::Action> m_translated_actions;
-    std::unordered_map<loki::Axiom, loki::Axiom> m_translated_axioms;
-    std::unordered_map<loki::Domain, loki::Domain> m_translated_domains;
-    std::unordered_map<loki::OptimizationMetric, loki::OptimizationMetric> m_translated_optimization_metrics;
-    std::unordered_map<loki::Problem, loki::Problem> m_translated_problems;
+    unordered_map<loki::Requirements, loki::Requirements> m_translated_requirements;
+    unordered_map<loki::Type, loki::Type> m_translated_types;
+    unordered_map<loki::Object, loki::Object> m_translated_objects;
+    unordered_map<loki::Variable, loki::Variable> m_translated_variables;
+    unordered_map<loki::Term, loki::Term> m_translated_terms;
+    unordered_map<loki::Parameter, loki::Parameter> m_translated_parameters;
+    unordered_map<loki::Predicate, loki::Predicate> m_translated_predicates;
+    unordered_map<loki::Atom, loki::Atom> m_translated_atoms;
+    unordered_map<loki::Literal, loki::Literal> m_translated_literals;
+    unordered_map<loki::NumericFluent, loki::NumericFluent> m_translated_numeric_fluents;
+    unordered_map<loki::Condition, loki::Condition> m_translated_conditions;
+    unordered_map<loki::Effect, loki::Effect> m_translated_effects;
+    unordered_map<loki::FunctionExpression, loki::FunctionExpression> m_translated_function_expressions;
+    unordered_map<loki::FunctionSkeleton, loki::FunctionSkeleton> m_translated_function_skeletons;
+    unordered_map<loki::Function, loki::Function> m_translated_functions;
+    unordered_map<loki::Action, loki::Action> m_translated_actions;
+    unordered_map<loki::Axiom, loki::Axiom> m_translated_axioms;
+    unordered_map<loki::Domain, loki::Domain> m_translated_domains;
+    unordered_map<loki::OptimizationMetric, loki::OptimizationMetric> m_translated_optimization_metrics;
+    unordered_map<loki::Problem, loki::Problem> m_translated_problems;
 
 protected:
     loki::PDDLRepositories& m_pddl_repositories;
@@ -256,7 +257,7 @@ protected:
 
     /// @brief Retrieve or create cache entry of translation to avoid recomputations.
     template<typename Impl, typename TranslateFunc>
-    auto cached_translate_impl(const Impl& impl, std::unordered_map<const Impl*, const Impl*>& cache, const TranslateFunc& translateFunc)
+    auto cached_translate_impl(const Impl& impl, unordered_map<const Impl*, const Impl*>& cache, const TranslateFunc& translateFunc)
     {
         // Access from cache
         auto it = cache.find(&impl);

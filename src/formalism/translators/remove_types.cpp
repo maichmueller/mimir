@@ -22,7 +22,7 @@
 namespace mimir
 {
 
-static void collect_types_from_type_hierarchy_recursively(const loki::Type& type, std::unordered_set<loki::Type>& ref_type_list)
+static void collect_types_from_type_hierarchy_recursively(const loki::Type& type, unordered_set<loki::Type>& ref_type_list)
 {
     // Base case: Skip object types since they do not contribute to give any additional information
     if (type->get_name() != "object")
@@ -38,7 +38,7 @@ static void collect_types_from_type_hierarchy_recursively(const loki::Type& type
 
 static loki::TypeList collect_types_from_type_hierarchy(const loki::TypeList& type_list)
 {
-    std::unordered_set<loki::Type> flat_type_set;
+    unordered_set<loki::Type> flat_type_set;
     for (const auto& type : type_list)
     {
         collect_types_from_type_hierarchy_recursively(type, flat_type_set);
@@ -46,9 +46,8 @@ static loki::TypeList collect_types_from_type_hierarchy(const loki::TypeList& ty
     return loki::TypeList(flat_type_set.begin(), flat_type_set.end());
 }
 
-static loki::Predicate type_to_predicate(const loki::TypeImpl& type,
-                                         loki::PDDLRepositories& pddl_repositories,
-                                         std::unordered_map<loki::Type, loki::Predicate>& type_to_predicate_mapper)
+static loki::Predicate
+type_to_predicate(const loki::TypeImpl& type, loki::PDDLRepositories& pddl_repositories, unordered_map<loki::Type, loki::Predicate>& type_to_predicate_mapper)
 {
     auto it = type_to_predicate_mapper.find(&type);
     if (it != type_to_predicate_mapper.end())
@@ -72,7 +71,7 @@ static loki::Object typed_object_to_untyped_object(const loki::ObjectImpl& objec
 
 static loki::LiteralList typed_object_to_literals(const loki::ObjectImpl& object,
                                                   loki::PDDLRepositories& pddl_repositories,
-                                                  std::unordered_map<loki::Type, loki::Predicate>& type_to_predicate_mapper)
+                                                  unordered_map<loki::Type, loki::Predicate>& type_to_predicate_mapper)
 {
     auto additional_literals = loki::LiteralList {};
     auto translated_term = pddl_repositories.get_or_create_term_object(typed_object_to_untyped_object(object, pddl_repositories));
@@ -95,7 +94,7 @@ static loki::Parameter typed_parameter_to_untyped_parameter(const loki::Paramete
 
 static loki::ConditionList typed_parameter_to_condition_literals(const loki::ParameterImpl& parameter,
                                                                  loki::PDDLRepositories& pddl_repositories,
-                                                                 std::unordered_map<loki::Type, loki::Predicate>& type_to_predicate_mapper)
+                                                                 unordered_map<loki::Type, loki::Predicate>& type_to_predicate_mapper)
 {
     auto conditions = loki::ConditionList {};
     auto types = collect_types_from_type_hierarchy(parameter.get_bases());

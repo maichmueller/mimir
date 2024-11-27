@@ -32,7 +32,7 @@ template<typename G>
 bool is_undirected_graph(const G& graph)
 {
     // Create datastructure for efficient lookup
-    auto directed_edges = std::unordered_set<std::pair<Index, Index>, Hash<std::pair<Index, Index>>>();
+    auto directed_edges = unordered_set<std::pair<Index, Index>>();
     for (const auto& edge : graph.get_edges())
     {
         directed_edges.emplace(edge.get_source(), edge.get_target());
@@ -53,7 +53,7 @@ template<typename G>
     requires IsEdgeListGraph<G>  //
 bool is_multi_graph(const G& graph)
 {
-    auto directed_edges = std::unordered_set<std::pair<Index, Index>, Hash<std::pair<Index, Index>>>();
+    auto directed_edges = unordered_set<std::pair<Index, Index>>();
     for (const auto& edge : graph.get_edges())
     {
         if (!directed_edges.emplace(edge.get_source(), edge.get_target()).second)

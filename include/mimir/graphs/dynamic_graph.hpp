@@ -276,7 +276,7 @@ EdgeIndex DynamicGraph<V, E>::add_directed_edge(VertexIndex source, VertexIndex 
     const auto index = m_free_edges.empty() ? m_next_edge_index++ : m_free_edges.back();
 
     /* Create the edge */
-    m_edges.emplace(index, E(index, source, target, std::forward<EdgeProperties>(properties)...));
+    m_edges.emplace(index, E(index, source, target, FWD(properties)...));
 
     /* Initialize the data structures. */
     boost::hana::at_key(m_adjacent_edges, boost::hana::type<ForwardTraversal> {}).at(source).insert(index);

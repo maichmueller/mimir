@@ -24,7 +24,6 @@
 #include "mimir/graphs/graph_vertex_interface.hpp"
 
 #include <cassert>
-#include <unordered_map>
 #include <unordered_set>
 
 namespace mimir
@@ -86,7 +85,7 @@ class DynamicAdjacentVertexConstIterator
 private:
     const std::unordered_map<VertexIndex, Vertex>* m_vertices;
     const std::unordered_map<EdgeIndex, Edge>* m_edges;
-    std::unordered_set<EdgeIndex>::const_iterator m_slice_iter;
+    unordered_set<EdgeIndex>::const_iterator m_slice_iter;
 
     void advance();
 
@@ -100,7 +99,7 @@ public:
     DynamicAdjacentVertexConstIterator();
     DynamicAdjacentVertexConstIterator(const std::unordered_map<VertexIndex, Vertex>& vertices,
                                        const std::unordered_map<EdgeIndex, Edge>& edges,
-                                       const std::unordered_set<EdgeIndex>& slice,
+                                       const unordered_set<EdgeIndex>& slice,
                                        bool begin);
     reference operator*() const;
     DynamicAdjacentVertexConstIterator& operator++();
@@ -115,7 +114,7 @@ class DynamicAdjacentVertexIndexConstIterator
 private:
     size_t m_pos;
     const std::unordered_map<EdgeIndex, Edge>* m_edges;
-    std::unordered_set<EdgeIndex>::const_iterator m_slice_iter;
+    unordered_set<EdgeIndex>::const_iterator m_slice_iter;
 
     void advance();
 
@@ -127,7 +126,7 @@ public:
     using iterator_category = std::forward_iterator_tag;
 
     DynamicAdjacentVertexIndexConstIterator();
-    DynamicAdjacentVertexIndexConstIterator(const std::unordered_map<EdgeIndex, Edge>& edges, const std::unordered_set<EdgeIndex>& slice, bool begin);
+    DynamicAdjacentVertexIndexConstIterator(const std::unordered_map<EdgeIndex, Edge>& edges, const unordered_set<EdgeIndex>& slice, bool begin);
     value_type operator*() const;
     DynamicAdjacentVertexIndexConstIterator& operator++();
     DynamicAdjacentVertexIndexConstIterator operator++(int);
@@ -141,7 +140,7 @@ class DynamicAdjacentEdgeConstIterator
 private:
     size_t m_pos;
     const std::unordered_map<EdgeIndex, Edge>* m_edges;
-    std::unordered_set<EdgeIndex>::const_iterator m_slice_iter;
+    unordered_set<EdgeIndex>::const_iterator m_slice_iter;
 
     void advance();
 
@@ -153,7 +152,7 @@ public:
     using iterator_category = std::forward_iterator_tag;
 
     DynamicAdjacentEdgeConstIterator();
-    DynamicAdjacentEdgeConstIterator(const std::unordered_map<EdgeIndex, Edge>& edges, const std::unordered_set<EdgeIndex>& slice, bool begin);
+    DynamicAdjacentEdgeConstIterator(const std::unordered_map<EdgeIndex, Edge>& edges, const unordered_set<EdgeIndex>& slice, bool begin);
     reference operator*() const;
     DynamicAdjacentEdgeConstIterator& operator++();
     DynamicAdjacentEdgeConstIterator operator++(int);
@@ -167,7 +166,7 @@ class DynamicAdjacentEdgeIndexConstIterator
 private:
     size_t m_pos;
     const std::unordered_map<EdgeIndex, Edge>* m_edges;
-    std::unordered_set<EdgeIndex>::const_iterator m_slice_iter;
+    unordered_set<EdgeIndex>::const_iterator m_slice_iter;
 
     void advance();
 
@@ -179,7 +178,7 @@ public:
     using iterator_category = std::forward_iterator_tag;
 
     DynamicAdjacentEdgeIndexConstIterator();
-    DynamicAdjacentEdgeIndexConstIterator(const std::unordered_map<EdgeIndex, Edge>& edges, const std::unordered_set<EdgeIndex>& slice, bool begin);
+    DynamicAdjacentEdgeIndexConstIterator(const std::unordered_map<EdgeIndex, Edge>& edges, const unordered_set<EdgeIndex>& slice, bool begin);
     value_type operator*() const;
     DynamicAdjacentEdgeIndexConstIterator& operator++();
     DynamicAdjacentEdgeIndexConstIterator operator++(int);
@@ -317,7 +316,7 @@ DynamicAdjacentVertexConstIterator<Vertex, Edge, Direction>::DynamicAdjacentVert
 template<IsVertex Vertex, IsEdge Edge, IsTraversalDirection Direction>
 DynamicAdjacentVertexConstIterator<Vertex, Edge, Direction>::DynamicAdjacentVertexConstIterator(const std::unordered_map<VertexIndex, Vertex>& vertices,
                                                                                                 const std::unordered_map<EdgeIndex, Edge>& edges,
-                                                                                                const std::unordered_set<EdgeIndex>& slice,
+                                                                                                const unordered_set<EdgeIndex>& slice,
                                                                                                 bool begin) :
     m_vertices(&vertices),
     m_edges(&edges),
@@ -388,7 +387,7 @@ DynamicAdjacentVertexIndexConstIterator<Edge, Direction>::DynamicAdjacentVertexI
 
 template<IsEdge Edge, IsTraversalDirection Direction>
 DynamicAdjacentVertexIndexConstIterator<Edge, Direction>::DynamicAdjacentVertexIndexConstIterator(const std::unordered_map<EdgeIndex, Edge>& edges,
-                                                                                                  const std::unordered_set<EdgeIndex>& slice,
+                                                                                                  const unordered_set<EdgeIndex>& slice,
                                                                                                   bool begin) :
     m_edges(&edges),
     m_slice_iter(begin ? slice.begin() : slice.end())
@@ -457,7 +456,7 @@ DynamicAdjacentEdgeConstIterator<Edge, Direction>::DynamicAdjacentEdgeConstItera
 
 template<IsEdge Edge, IsTraversalDirection Direction>
 DynamicAdjacentEdgeConstIterator<Edge, Direction>::DynamicAdjacentEdgeConstIterator(const std::unordered_map<EdgeIndex, Edge>& edges,
-                                                                                    const std::unordered_set<EdgeIndex>& slice,
+                                                                                    const unordered_set<EdgeIndex>& slice,
                                                                                     bool begin) :
     m_edges(&edges),
     m_slice_iter(begin ? slice.begin() : slice.end())
@@ -514,7 +513,7 @@ DynamicAdjacentEdgeIndexConstIterator<Edge, Direction>::DynamicAdjacentEdgeIndex
 
 template<IsEdge Edge, IsTraversalDirection Direction>
 DynamicAdjacentEdgeIndexConstIterator<Edge, Direction>::DynamicAdjacentEdgeIndexConstIterator(const std::unordered_map<EdgeIndex, Edge>& edges,
-                                                                                              const std::unordered_set<EdgeIndex>& slice,
+                                                                                              const unordered_set<EdgeIndex>& slice,
                                                                                               bool begin) :
     m_edges(&edges),
     m_slice_iter(begin ? slice.begin() : slice.end())

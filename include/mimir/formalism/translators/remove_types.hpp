@@ -35,7 +35,7 @@ private:
     using BaseCachedRecurseTranslator::translate_impl;
 
     // Collect predicates that encode types
-    std::unordered_map<loki::Type, loki::Predicate> m_type_to_predicates;
+    unordered_map<loki::Type, loki::Predicate> m_type_to_predicates;
 
     /**
      * Translate

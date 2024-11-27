@@ -19,6 +19,7 @@
 #define MIMIR_GRAPHS_ALGORITHMS_FOLKLORE_WEISFEILER_LEMAN_IMPL_HPP_
 
 #include "mimir/algorithms/nauty.hpp"
+#include "mimir/common/conversion.hpp"
 #include "mimir/common/equal_to.hpp"
 #include "mimir/common/hash.hpp"
 #include "mimir/common/printers.hpp"
@@ -168,9 +169,9 @@ std::pair<ColorList, ColorMap<IndexList>> compute_ordered_isomorphism_types(cons
         subgraph_coloring.resize(subgraph_num_vertices);
 
         // Instantiate vertex-colored subgraph.
-        for (const auto [v1, i1] : v_to_i)
+        for (const auto& [v1, i1] : v_to_i)
         {
-            for (const auto [v2, i2] : v_to_i)
+            for (const auto& [v2, i2] : v_to_i)
             {
                 if (adj_matrix[v1][v2])
                 {
@@ -232,7 +233,7 @@ CertificateFWL<K> compute_certificate(const G& graph, IsomorphismTypeCompression
     color_to_hashes = std::move(color_to_hashes_);
 
     /* Initialize work list of color. */
-    auto L = ColorSet(hash_to_color.begin(), hash_to_color.end());
+    auto L = to_set<ColorSet>(hash_to_color);
 
     /* Refine colors of k-tuples. */
     auto f = typename CertificateFWL<K>::ConfigurationCompressionFunction();

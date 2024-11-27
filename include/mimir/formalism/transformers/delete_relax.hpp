@@ -28,8 +28,8 @@ private:
     bool m_remove_useless_actions_and_axioms;
 
     // There can be a one to many relationship between relaxed and unrelaxed.
-    std::unordered_map<Action, ActionList> m_delete_to_normal_actions;
-    std::unordered_map<Axiom, AxiomList> m_delete_to_normal_axioms;
+    unordered_map<Action, ActionList> m_delete_to_normal_actions;
+    unordered_map<Axiom, AxiomList> m_delete_to_normal_axioms;
 
     /* Implement BaseTransformer interface. */
     friend class BaseCachedRecurseTransformer<DeleteRelaxTransformer>;

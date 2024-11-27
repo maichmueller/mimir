@@ -28,11 +28,11 @@ namespace mimir::dl::grammar
 
 struct Context
 {
-    std::unordered_map<std::string, DerivationRule<Concept>> m_concept_rules_by_name;
-    std::unordered_map<std::string, DerivationRule<Role>> m_role_rules_by_name;
+    unordered_map<std::string, DerivationRule<Concept>> m_concept_rules_by_name;
+    unordered_map<std::string, DerivationRule<Role>> m_role_rules_by_name;
 
-    std::unordered_map<std::string, NonTerminal<Concept>> m_concept_non_terminal_by_name;
-    std::unordered_map<std::string, NonTerminal<Role>> m_role_non_terminal_by_name;
+    unordered_map<std::string, NonTerminal<Concept>> m_concept_non_terminal_by_name;
+    unordered_map<std::string, NonTerminal<Role>> m_role_non_terminal_by_name;
 };
 
 static Choice<Concept> parse(const dl::ast::Concept& node, Domain domain, ConstructorTagToRepository& ref_grammar_constructor_repos, Context& context)

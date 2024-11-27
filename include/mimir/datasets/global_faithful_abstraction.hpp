@@ -156,7 +156,7 @@ public:
     template<IsTraversalDirection Direction>
     std::ranges::subrange<AdjacentVertexIndexConstIteratorType<Direction>> get_adjacent_state_indices(Index state) const;
     const StateMap<Index>& get_concrete_to_abstract_state() const;
-    const std::unordered_map<Index, Index>& get_global_state_index_to_state_index() const;
+    const unordered_map<Index, Index>& get_global_state_index_to_state_index() const;
     Index get_initial_state_index() const;
     const IndexSet& get_goal_state_indices() const;
     const IndexSet& get_deadend_state_indices() const;
@@ -200,7 +200,7 @@ private:
     size_t m_num_non_isomorphic_states;
 
     /* Additional */
-    std::unordered_map<Index, Index> m_global_state_index_to_state_index;
+    unordered_map<Index, Index> m_global_state_index_to_state_index;
 };
 
 static_assert(IsAbstraction<GlobalFaithfulAbstraction>);

@@ -26,13 +26,13 @@ namespace mimir
  * ObjectGraph
  */
 
-static std::unordered_map<Object, VertexIndex> add_objects_graph_structures(const ProblemColorFunction& color_function,
-                                                                            Problem problem,
-                                                                            Index state_index,
-                                                                            const ObjectGraphPruningStrategy& pruning_strategy,
-                                                                            StaticVertexColoredDigraph& out_digraph)
+static unordered_map<Object, VertexIndex> add_objects_graph_structures(const ProblemColorFunction& color_function,
+                                                                       Problem problem,
+                                                                       Index state_index,
+                                                                       const ObjectGraphPruningStrategy& pruning_strategy,
+                                                                       StaticVertexColoredDigraph& out_digraph)
 {
-    std::unordered_map<Object, VertexIndex> object_to_vertex_index;
+    unordered_map<Object, VertexIndex> object_to_vertex_index;
 
     for (const auto& object : problem->get_objects())
     {
@@ -49,7 +49,7 @@ static std::unordered_map<Object, VertexIndex> add_objects_graph_structures(cons
 
 template<PredicateTag P>
 static void add_ground_atom_graph_structures(const ProblemColorFunction& color_function,
-                                             const std::unordered_map<Object, VertexIndex>& object_to_vertex_index,
+                                             const unordered_map<Object, VertexIndex>& object_to_vertex_index,
                                              GroundAtom<P> atom,
                                              StaticVertexColoredDigraph& out_digraph)
 {
@@ -71,7 +71,7 @@ static void add_ground_atoms_graph_structures(const ProblemColorFunction& color_
                                               State state,
                                               Index state_index,
                                               const ObjectGraphPruningStrategy& pruning_strategy,
-                                              const std::unordered_map<Object, VertexIndex>& object_to_vertex_index,
+                                              const unordered_map<Object, VertexIndex>& object_to_vertex_index,
                                               StaticVertexColoredDigraph& out_digraph)
 {
     for (const auto& atom : pddl_repositories.get_ground_atoms_from_indices<Static>(problem->get_static_initial_positive_atoms_bitset()))
@@ -99,7 +99,7 @@ static void add_ground_atoms_graph_structures(const ProblemColorFunction& color_
 
 template<PredicateTag P>
 static void add_ground_literal_graph_structures(const ProblemColorFunction& color_function,
-                                                const std::unordered_map<Object, VertexIndex>& object_to_vertex_index,
+                                                const unordered_map<Object, VertexIndex>& object_to_vertex_index,
                                                 bool mark_true_goal_literals,
                                                 State state,
                                                 GroundLiteral<P> literal,
@@ -124,7 +124,7 @@ static void add_ground_goal_literals_graph_structures(const ProblemColorFunction
                                                       State state,
                                                       Index state_index,
                                                       const ObjectGraphPruningStrategy& pruning_strategy,
-                                                      const std::unordered_map<Object, VertexIndex>& object_to_vertex_index,
+                                                      const unordered_map<Object, VertexIndex>& object_to_vertex_index,
                                                       StaticVertexColoredDigraph& out_digraph)
 {
     for (const auto& literal : problem->get_goal_condition<Static>())

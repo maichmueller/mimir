@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "mimir/declarations.hpp"
 #include "mimir/formalism/translators/base_recurse.hpp"
 
 #include <deque>
@@ -40,14 +41,14 @@ private:
     /* Prepare step */
 
     // Collect all variables in preparation phase.
-    std::unordered_set<loki::Variable> m_variables;
+    unordered_set<loki::Variable> m_variables;
 
     class PrepareScope
     {
     private:
         PrepareScope* m_parent;
 
-        std::unordered_set<loki::Variable> m_quantified_in_scope_or_child_scopes;
+        unordered_set<loki::Variable> m_quantified_in_scope_or_child_scopes;
 
         bool m_name_conflict_detected;
 
@@ -61,7 +62,7 @@ private:
         void on_conflict_detected();
 
         PrepareScope* get_parent();
-        const std::unordered_set<loki::Variable>& get_quantified_in_scope_or_child_scopes() const;
+        const unordered_set<loki::Variable>& get_quantified_in_scope_or_child_scopes() const;
         bool get_name_conflict_detected() const;
     };
 
@@ -97,7 +98,7 @@ private:
 
     /* Translate step */
 
-    std::unordered_map<loki::Variable, size_t> m_num_quantifications;
+    unordered_map<loki::Variable, size_t> m_num_quantifications;
 
     bool m_renaming_enabled;
 

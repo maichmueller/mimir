@@ -130,8 +130,8 @@ const std::string& ProblemColorFunction::get_color_name(Color color) const
 
 Problem ProblemColorFunction::get_problem() const { return m_problem; }
 
-const std::unordered_map<std::string, Color>& ProblemColorFunction::get_name_to_color() const { return m_name_to_color; }
+const unordered_map<std::string, Color>& ProblemColorFunction::get_name_to_color() const { return m_name_to_color; }
 
-const std::unordered_map<Color, std::string>& ProblemColorFunction::get_color_to_name() const { return m_color_to_name; }
+const unordered_map<Color, std::string>& ProblemColorFunction::get_color_to_name() const { return m_color_to_name; }
 
 }

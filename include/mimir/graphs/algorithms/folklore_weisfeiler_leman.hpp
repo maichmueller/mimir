@@ -45,7 +45,7 @@ class CertificateFWL
 {
 public:
     /* Compression of new color to map (C(bar{v}), {{(c_1^1, ...,c_k^1), ..., (c_1^r, ...,c_k^r)}}) to an integer color for bar{v} in V^k */
-    using ConfigurationCompressionFunction = std::unordered_map<std::pair<Color, vector<ColorArray<K>>>, Color, Hash<std::pair<Color, vector<ColorArray<K>>>>>;
+    using ConfigurationCompressionFunction = unordered_map<std::pair<Color, vector<ColorArray<K>>>, Color>;
     using CanonicalConfigurationCompressionFunction = std::map<std::pair<Color, vector<ColorArray<K>>>, Color>;
 
     CertificateFWL(ConfigurationCompressionFunction f, ColorList hash_to_color);
@@ -61,7 +61,7 @@ private:
 };
 
 /// @brief `IsomorphismTypeCompressionFunction` encapsulates mappings from canonical subgraphs to colors.
-using IsomorphismTypeCompressionFunction = std::unordered_map<nauty_wrapper::Certificate, Color>;
+using IsomorphismTypeCompressionFunction = unordered_map<nauty_wrapper::Certificate, Color>;
 
 /// @brief Compare two certificates for equality.
 /// @param lhs is the first certificate.

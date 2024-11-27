@@ -41,7 +41,7 @@ template<PredicateTag P>
 static vector<size_t> compute_ground_atom_order(const GroundAtomList<P>& atoms, const PDDLRepositories& pddl_repositories)
 {
     auto ground_atoms_order = vector<size_t> {};
-    auto m_ground_atoms_by_predicate = std::unordered_map<Predicate<P>, GroundAtomList<P>> {};
+    auto m_ground_atoms_by_predicate = unordered_map<Predicate<P>, GroundAtomList<P>> {};
     for (const auto& ground_atom : atoms)
     {
         m_ground_atoms_by_predicate[ground_atom->get_predicate()].push_back(ground_atom);

@@ -79,9 +79,10 @@ void replace_tuples(const vector<std::pair<Index, ColorType>>& M,
 /// @param ref_hash_to_color
 /// @param out_color_to_hashes
 /// @param out_L
-template<typename ColorType>
+template<typename ColorType, class Hashmap>
+    requires(std::is_same_v<typename Hashmap::key_type, std::pair<Color, vector<ColorType>>> and std::is_same_v<typename Hashmap::mapped_type, Color>)
 void split_color_classes(const vector<std::tuple<Color, vector<ColorType>, Index>>& M_replaced,
-                         std::unordered_map<std::pair<Color, vector<ColorType>>, Color, Hash<std::pair<Color, vector<ColorType>>>>& ref_f,
+                         Hashmap& ref_f,
                          Color& ref_max_color,
                          ColorList& ref_hash_to_color,
                          ColorMap<IndexList>& out_color_to_hashes,

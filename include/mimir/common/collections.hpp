@@ -95,7 +95,7 @@ extern mimir::unordered_set<std::ranges::range_value_t<Range>> uniquify_elements
 {
     using T = std::ranges::range_value_t<Range>;
     mimir::unordered_set<T> set {};
-    // manual insertion is faster than constructor method (at least for std::unordered_set)
+    // manual insertion is faster than constructor method (at least for unordered_set)
     for (const auto elem : rng)
     {
         set.emplace(elem);

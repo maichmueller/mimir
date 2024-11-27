@@ -43,7 +43,7 @@ void RenameQuantifiedVariablesTranslator::PrepareScope::on_conflict_detected() {
 
 RenameQuantifiedVariablesTranslator::PrepareScope* RenameQuantifiedVariablesTranslator::PrepareScope::get_parent() { return m_parent; }
 
-const std::unordered_set<loki::Variable>& RenameQuantifiedVariablesTranslator::PrepareScope::get_quantified_in_scope_or_child_scopes() const
+const unordered_set<loki::Variable>& RenameQuantifiedVariablesTranslator::PrepareScope::get_quantified_in_scope_or_child_scopes() const
 {
     return m_quantified_in_scope_or_child_scopes;
 }

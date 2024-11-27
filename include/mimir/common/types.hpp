@@ -35,8 +35,8 @@ using IndexList = vector<Index>;
 template<size_t K>
 using IndexArray = std::array<Index, K>;
 template<typename T>
-using IndexMap = std::unordered_map<Index, T>;
-using IndexSet = std::unordered_set<Index>;
+using IndexMap = unordered_map<Index, T>;
+using IndexSet = unordered_set<Index>;
 
 using ContinuousCost = double;
 using ContinuousCostList = vector<ContinuousCost>;

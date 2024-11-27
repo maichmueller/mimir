@@ -77,9 +77,9 @@ const AxiomSet& AxiomPartition::get_initially_relevant_axioms() const { return m
 /// @brief Compute occurrences of predicates in axiom heads
 /// @param axioms a set of axioms
 /// @param predicates the set of all predicates occuring in axioms
-static std::unordered_map<Predicate<Derived>, AxiomList> compute_predicate_head_occurrences(const AxiomList& axioms)
+static unordered_map<Predicate<Derived>, AxiomList> compute_predicate_head_occurrences(const AxiomList& axioms)
 {
-    auto predicate_occurrences = std::unordered_map<Predicate<Derived>, AxiomList> {};
+    auto predicate_occurrences = unordered_map<Predicate<Derived>, AxiomList> {};
     for (const auto& axiom : axioms)
     {
         predicate_occurrences[axiom->get_literal()->get_atom()->get_predicate()].push_back(axiom);
@@ -98,7 +98,7 @@ static vector<PredicateSet<Derived>> compute_stratification(const AxiomList& axi
 {
     const auto head_predicates = compute_predicate_head_occurrences(axioms);
 
-    auto R = std::unordered_map<Predicate<Derived>, std::unordered_map<Predicate<Derived>, StratumStatus>> {};
+    auto R = unordered_map<Predicate<Derived>, unordered_map<Predicate<Derived>, StratumStatus>> {};
 
     // lines 2-4
     for (const auto predicate_1 : derived_predicates)
@@ -154,7 +154,11 @@ static vector<PredicateSet<Derived>> compute_stratification(const AxiomList& axi
     }
 
     auto stratification = vector<PredicateSet<Derived>> {};
-    auto remaining = PredicateSet<Derived>(derived_predicates.begin(), derived_predicates.end());
+    auto remaining = PredicateSet<Derived> {};
+    for (const auto& pred : derived_predicates)
+    {
+        remaining.emplace(pred);
+    }
     while (!remaining.empty())
     {
         auto stratum = PredicateSet<Derived> {};
@@ -162,7 +166,7 @@ static vector<PredicateSet<Derived>> compute_stratification(const AxiomList& axi
         {
             if (std::all_of(remaining.begin(),
                             remaining.end(),
-                            [&R, &predicate_1](const auto& predicate_2) { return R.at(predicate_2).at(predicate_1) != StratumStatus::STRICTLY_LOWER; }))
+                            [&](const auto& predicate_2) { return R.at(predicate_2).at(predicate_1) != StratumStatus::STRICTLY_LOWER; }))
             {
                 stratum.insert(predicate_1);
             }
@@ -183,11 +187,19 @@ vector<AxiomPartition> compute_axiom_partitioning(const AxiomList& axioms, const
 {
     const auto stratification = compute_stratification(axioms, derived_predicates);
 
-    const auto derived_predicate_set = PredicateSet<Derived>(derived_predicates.begin(), derived_predicates.end());
+    auto derived_predicate_set = PredicateSet<Derived> {};
+    for (const auto& pred : derived_predicates)
+    {
+        derived_predicate_set.emplace(pred);
+    }
 
     auto axiom_partitioning = vector<AxiomPartition> {};
 
-    auto remaining_axioms = AxiomSet(axioms.begin(), axioms.end());
+    auto remaining_axioms = AxiomSet {};
+    for (const auto& axiom : axioms)
+    {
+        remaining_axioms.emplace(axiom);
+    }
     auto affected_derived_predicates_in_earlier_partition = PredicateSet<Derived> {};
     for (const auto& stratum : stratification)
     {

@@ -37,7 +37,7 @@ private:
     using BaseRecurseTransformer<EncodeParameterIndexInVariables>::prepare_impl;
     using BaseRecurseTransformer<EncodeParameterIndexInVariables>::transform_impl;
 
-    std::unordered_map<Variable, size_t> m_variable_to_parameter_index;
+    unordered_map<Variable, size_t> m_variable_to_parameter_index;
     bool m_enable_encoding;
 
     Variable transform_impl(const VariableImpl& variable);

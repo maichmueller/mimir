@@ -44,38 +44,38 @@ private:
 protected:
     PDDLRepositories& m_pddl_repositories;
 
-    std::unordered_map<Requirements, Requirements> m_transformed_requirements;
-    std::unordered_map<Object, Object> m_transformed_objects;
-    std::unordered_map<Variable, Variable> m_transformed_variables;
-    std::unordered_map<Term, Term> m_transformed_terms;
-    std::unordered_map<Predicate<Static>, Predicate<Static>> m_transformed_static_predicates;
-    std::unordered_map<Predicate<Fluent>, Predicate<Fluent>> m_transformed_fluent_predicates;
-    std::unordered_map<Predicate<Derived>, Predicate<Derived>> m_transformed_derived_predicates;
-    std::unordered_map<Atom<Static>, Atom<Static>> m_transformed_static_atoms;
-    std::unordered_map<Atom<Fluent>, Atom<Fluent>> m_transformed_fluent_atoms;
-    std::unordered_map<Atom<Derived>, Atom<Derived>> m_transformed_derived_atoms;
-    std::unordered_map<GroundAtom<Static>, GroundAtom<Static>> m_transformed_static_ground_atoms;
-    std::unordered_map<GroundAtom<Fluent>, GroundAtom<Fluent>> m_transformed_fluent_ground_atoms;
-    std::unordered_map<GroundAtom<Derived>, GroundAtom<Derived>> m_transformed_derived_ground_atoms;
-    std::unordered_map<Literal<Static>, Literal<Static>> m_transformed_static_literals;
-    std::unordered_map<Literal<Fluent>, Literal<Fluent>> m_transformed_fluent_literals;
-    std::unordered_map<Literal<Derived>, Literal<Derived>> m_transformed_derived_literals;
-    std::unordered_map<GroundLiteral<Static>, GroundLiteral<Static>> m_transformed_static_ground_literals;
-    std::unordered_map<GroundLiteral<Fluent>, GroundLiteral<Fluent>> m_transformed_fluent_ground_literals;
-    std::unordered_map<GroundLiteral<Derived>, GroundLiteral<Derived>> m_transformed_derived_ground_literals;
-    std::unordered_map<NumericFluent, NumericFluent> m_transformed_numeric_fluents;
-    std::unordered_map<EffectSimple, EffectSimple> m_transformed_simple_effects;
-    std::unordered_map<EffectComplex, EffectComplex> m_transformed_complex_effects;
-    std::unordered_map<FunctionExpression, FunctionExpression> m_transformed_function_expressions;
-    std::unordered_map<GroundFunctionExpression, GroundFunctionExpression> m_transformed_ground_function_expressions;
-    std::unordered_map<FunctionSkeleton, FunctionSkeleton> m_transformed_function_skeletons;
-    std::unordered_map<Function, Function> m_transformed_functions;
-    std::unordered_map<GroundFunction, GroundFunction> m_transformed_ground_functions;
-    std::unordered_map<Action, Action> m_transformed_actions;
-    std::unordered_map<Axiom, Axiom> m_transformed_axioms;
-    std::unordered_map<Domain, Domain> m_transformed_domains;
-    std::unordered_map<OptimizationMetric, OptimizationMetric> m_transformed_optimization_metrics;
-    std::unordered_map<Problem, Problem> m_transformed_problems;
+    unordered_map<Requirements, Requirements> m_transformed_requirements;
+    unordered_map<Object, Object> m_transformed_objects;
+    unordered_map<Variable, Variable> m_transformed_variables;
+    unordered_map<Term, Term> m_transformed_terms;
+    unordered_map<Predicate<Static>, Predicate<Static>> m_transformed_static_predicates;
+    unordered_map<Predicate<Fluent>, Predicate<Fluent>> m_transformed_fluent_predicates;
+    unordered_map<Predicate<Derived>, Predicate<Derived>> m_transformed_derived_predicates;
+    unordered_map<Atom<Static>, Atom<Static>> m_transformed_static_atoms;
+    unordered_map<Atom<Fluent>, Atom<Fluent>> m_transformed_fluent_atoms;
+    unordered_map<Atom<Derived>, Atom<Derived>> m_transformed_derived_atoms;
+    unordered_map<GroundAtom<Static>, GroundAtom<Static>> m_transformed_static_ground_atoms;
+    unordered_map<GroundAtom<Fluent>, GroundAtom<Fluent>> m_transformed_fluent_ground_atoms;
+    unordered_map<GroundAtom<Derived>, GroundAtom<Derived>> m_transformed_derived_ground_atoms;
+    unordered_map<Literal<Static>, Literal<Static>> m_transformed_static_literals;
+    unordered_map<Literal<Fluent>, Literal<Fluent>> m_transformed_fluent_literals;
+    unordered_map<Literal<Derived>, Literal<Derived>> m_transformed_derived_literals;
+    unordered_map<GroundLiteral<Static>, GroundLiteral<Static>> m_transformed_static_ground_literals;
+    unordered_map<GroundLiteral<Fluent>, GroundLiteral<Fluent>> m_transformed_fluent_ground_literals;
+    unordered_map<GroundLiteral<Derived>, GroundLiteral<Derived>> m_transformed_derived_ground_literals;
+    unordered_map<NumericFluent, NumericFluent> m_transformed_numeric_fluents;
+    unordered_map<EffectSimple, EffectSimple> m_transformed_simple_effects;
+    unordered_map<EffectComplex, EffectComplex> m_transformed_complex_effects;
+    unordered_map<FunctionExpression, FunctionExpression> m_transformed_function_expressions;
+    unordered_map<GroundFunctionExpression, GroundFunctionExpression> m_transformed_ground_function_expressions;
+    unordered_map<FunctionSkeleton, FunctionSkeleton> m_transformed_function_skeletons;
+    unordered_map<Function, Function> m_transformed_functions;
+    unordered_map<GroundFunction, GroundFunction> m_transformed_ground_functions;
+    unordered_map<Action, Action> m_transformed_actions;
+    unordered_map<Axiom, Axiom> m_transformed_axioms;
+    unordered_map<Domain, Domain> m_transformed_domains;
+    unordered_map<OptimizationMetric, OptimizationMetric> m_transformed_optimization_metrics;
+    unordered_map<Problem, Problem> m_transformed_problems;
 
     explicit BaseCachedRecurseTransformer(PDDLRepositories& pddl_repositories) : m_pddl_repositories(pddl_repositories) {}
 
@@ -448,7 +448,7 @@ protected:
 
     /// @brief Retrieve or create cache entry of translation to avoid recomputations.
     template<typename Impl, typename TranslateFunc>
-    auto cached_transform_impl(const Impl& impl, std::unordered_map<const Impl*, const Impl*>& cache, const TranslateFunc& transformFunc)
+    auto cached_transform_impl(const Impl& impl, unordered_map<const Impl*, const Impl*>& cache, const TranslateFunc& transformFunc)
     {
         // Access from cache
         auto it = cache.find(&impl);

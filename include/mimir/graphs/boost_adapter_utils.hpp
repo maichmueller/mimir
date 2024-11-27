@@ -68,14 +68,14 @@ template<typename I, typename V>
 class UnorderedMapBasicMatrix
 {
 public:
-    std::unordered_map<I, V>& operator[](I i) { return m_matrix[i]; }
+    unordered_map<I, V>& operator[](I i) { return m_matrix[i]; }
 
-    const std::unordered_map<I, V>& operator[](I i) const { return m_matrix[i]; }
+    const unordered_map<I, V>& operator[](I i) const { return m_matrix[i]; }
 
-    const std::unordered_map<I, std::unordered_map<I, V>>& get_matrix() const { return m_matrix; }
+    const unordered_map<I, unordered_map<I, V>>& get_matrix() const { return m_matrix; }
 
 private:
-    std::unordered_map<I, std::unordered_map<I, V>> m_matrix;
+    unordered_map<I, unordered_map<I, V>> m_matrix;
 };
 
 // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -175,12 +175,12 @@ public:
     using reference = Value;
     using category = boost::read_write_property_map_tag;
 
-    explicit UnorderedMapReadPropertyMap(const std::unordered_map<Key, Value>& distances) : m_distances(distances) {}
+    explicit UnorderedMapReadPropertyMap(const unordered_map<Key, Value>& distances) : m_distances(distances) {}
 
     const Value& get(Key key) const { return m_distances.get().at(key); }
 
 private:
-    std::reference_wrapper<const std::unordered_map<Key, Value>> m_distances;
+    std::reference_wrapper<const unordered_map<Key, Value>> m_distances;
 };
 
 template<typename Key, typename Value>
@@ -200,13 +200,13 @@ public:
     using reference = Value;
     using category = boost::read_write_property_map_tag;
 
-    explicit UnorderedMapReadWritePropertyMap(std::unordered_map<Key, Value>& distances) : m_distances(distances) {}
+    explicit UnorderedMapReadWritePropertyMap(unordered_map<Key, Value>& distances) : m_distances(distances) {}
 
     const Value& get(Key key) const { return m_distances.get()[key]; }
     void set(Key key, Value value) { m_distances.get()[key] = value; }
 
 private:
-    std::reference_wrapper<std::unordered_map<Key, Value>> m_distances;
+    std::reference_wrapper<unordered_map<Key, Value>> m_distances;
 };
 
 template<typename Key, typename Value>

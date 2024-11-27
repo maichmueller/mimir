@@ -27,10 +27,10 @@ namespace mimir
 
 static loki::Condition simplify_goal_condition(const loki::ConditionImpl& goal_condition,
                                                loki::PDDLRepositories& pddl_repositories,
-                                               std::unordered_set<loki::Predicate>& derived_predicates,
-                                               std::unordered_set<loki::Axiom>& axioms,
+                                               unordered_set<loki::Predicate>& derived_predicates,
+                                               unordered_set<loki::Axiom>& axioms,
                                                Index& next_axiom_index,
-                                               std::unordered_set<std::string>& simple_and_derived_predicates)
+                                               unordered_set<std::string>& simple_and_derived_predicates)
 {
     if (std::get_if<loki::ConditionLiteralImpl>(&goal_condition))
     {
@@ -68,8 +68,8 @@ loki::Problem SimplifyGoalTranslator::translate_impl(const loki::ProblemImpl& pr
     auto translated_axioms = this->translate(problem.get_axioms());
 
     // Translate the goal condition which might introduce additional derived predicates and axioms.
-    auto derived_predicates = std::unordered_set<loki::Predicate> {};
-    auto axioms = std::unordered_set<loki::Axiom> {};
+    auto derived_predicates = unordered_set<loki::Predicate> {};
+    auto axioms = unordered_set<loki::Axiom> {};
     auto next_axiom_index = Index { 0 };
     auto translated_goal =
         (problem.get_goal_condition().has_value() ? std::optional<loki::Condition>(simplify_goal_condition(*problem.get_goal_condition().value(),
