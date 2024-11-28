@@ -200,7 +200,7 @@ Certificate compute_certificate(const G& graph)
     while (!L.empty())
     {
         if (debug)
-            std::cout << "L: " << L << std::endl;
+            fmt::println("L: {}", L);
 
         // Clear data structures that are reused.
         M.clear();
