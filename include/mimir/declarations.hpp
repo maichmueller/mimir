@@ -4,6 +4,7 @@
 #include <ankerl/unordered_dense.h>
 #include <cista/containers.h>
 #include <cista/type_hash/static_type_hash.h>
+#include <initializer_list>
 
 namespace mimir
 {
@@ -13,7 +14,17 @@ using string_view = cista::offset::string_view;
 
 template<typename T>
 using vector = cista::offset::vector<T>;
+}  // namespace mimir
 
+namespace cista
+{
+template<typename T, typename... Ts>
+    requires(std::same_as<T, Ts> && ...)
+basic_vector(T, Ts...) -> basic_vector<T, offset::ptr>;
+}
+
+namespace mimir
+{
 template<class Key,  //
          class T,
          class Hash = cista::hash_all,
@@ -56,5 +67,4 @@ using hash = cista::hashing<T>;
 
 template<typename T>
 using equal_to = cista::equal_to<T>;
-
 }
