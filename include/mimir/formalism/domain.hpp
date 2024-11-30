@@ -88,3 +88,9 @@ extern std::ostream& operator<<(std::ostream& out, const DomainImpl& element);
 extern std::ostream& operator<<(std::ostream& out, Domain element);
 
 }
+
+#include "mimir/common/macros.hpp"
+
+#include <fmt/ostream.h>
+FORMATTABLE(mimir::DomainImpl);
+FORMATTABLE(mimir::Domain);

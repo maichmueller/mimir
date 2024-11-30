@@ -24,12 +24,7 @@ namespace mimir
 {
 NumericFluentImpl::NumericFluentImpl(Index index, GroundFunction function, double number) : m_index(index), m_function(std::move(function)), m_number(number) {}
 
-std::string NumericFluentImpl::str() const
-{
-    auto out = std::stringstream();
-    out << *this;
-    return out.str();
-}
+std::string NumericFluentImpl::str() const { return fmt::format("{}", *this); }
 
 Index NumericFluentImpl::get_index() const { return m_index; }
 

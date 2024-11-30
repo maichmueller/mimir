@@ -33,12 +33,7 @@ OptimizationMetricImpl::OptimizationMetricImpl(Index index, loki::OptimizationMe
 {
 }
 
-std::string OptimizationMetricImpl::str() const
-{
-    auto out = std::stringstream();
-    out << *this;
-    return out.str();
-}
+std::string OptimizationMetricImpl::str() const { return fmt::format("{}", *this); }
 
 Index OptimizationMetricImpl::get_index() const { return m_index; }
 

@@ -55,12 +55,7 @@ AxiomImpl::AxiomImpl(Index index,
         std::is_sorted(m_derived_conditions.begin(), m_derived_conditions.end(), [](const auto& l, const auto& r) { return l->get_index() < r->get_index(); }));
 }
 
-std::string AxiomImpl::str() const
-{
-    auto out = std::stringstream();
-    out << *this;
-    return out.str();
-}
+std::string AxiomImpl::str() const { return fmt::format("{}", *this); }
 
 Index AxiomImpl::get_index() const { return m_index; }
 

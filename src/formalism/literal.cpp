@@ -31,9 +31,7 @@ LiteralImpl<P>::LiteralImpl(Index index, bool is_negated, Atom<P> atom) : m_inde
 template<PredicateTag P>
 std::string LiteralImpl<P>::str() const
 {
-    auto out = std::stringstream();
-    out << *this;
-    return out.str();
+    return fmt::format("{}", *this);
 }
 
 template<PredicateTag P>

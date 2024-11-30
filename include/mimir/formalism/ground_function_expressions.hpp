@@ -181,3 +181,18 @@ extern std::ostream& operator<<(std::ostream& out, const GroundFunctionExpressio
 extern std::ostream& operator<<(std::ostream& out, GroundFunctionExpression element);
 
 }
+
+#include "mimir/common/macros.hpp"
+
+#include <fmt/ostream.h>
+FORMATTABLE(mimir::GroundFunctionExpressionNumber);
+FORMATTABLE(mimir::GroundFunctionExpressionNumberImpl);
+FORMATTABLE(mimir::GroundFunctionExpressionBinaryOperator);
+FORMATTABLE(mimir::GroundFunctionExpressionBinaryOperatorImpl);
+FORMATTABLE(mimir::GroundFunctionExpressionMultiOperator);
+FORMATTABLE(mimir::GroundFunctionExpressionMultiOperatorImpl);
+FORMATTABLE(mimir::GroundFunctionExpressionMinus);
+FORMATTABLE(mimir::GroundFunctionExpressionMinusImpl);
+FORMATTABLE(mimir::GroundFunctionExpressionFunction);
+FORMATTABLE(mimir::GroundFunctionExpressionFunctionImpl);
+FORMATTABLE(mimir::GroundFunctionExpression);

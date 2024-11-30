@@ -23,12 +23,7 @@ namespace mimir
 {
 ObjectImpl::ObjectImpl(Index index, std::string name) : m_index(index), m_name(std::move(name)) {}
 
-std::string ObjectImpl::str() const
-{
-    auto out = std::stringstream();
-    out << *this;
-    return out.str();
-}
+std::string ObjectImpl::str() const { return fmt::format("{}", *this); }
 
 Index ObjectImpl::get_index() const { return m_index; }
 

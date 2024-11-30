@@ -103,3 +103,11 @@ extern std::ostream& operator<<(std::ostream& out, EffectSimple element);
 extern std::ostream& operator<<(std::ostream& out, EffectComplex element);
 
 }
+
+#include "mimir/common/macros.hpp"
+
+#include <fmt/ostream.h>
+FORMATTABLE(mimir::EffectSimpleImpl);
+FORMATTABLE(mimir::EffectComplexImpl);
+FORMATTABLE(mimir::EffectSimple);
+FORMATTABLE(mimir::EffectComplex);

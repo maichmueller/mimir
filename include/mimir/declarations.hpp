@@ -9,8 +9,11 @@
 namespace mimir
 {
 
-using string = cista::offset::string;
-using string_view = cista::offset::string_view;
+// using std::string = cista::offset::cstd::string;
+// using std::string_view = cista::offset::std::string_view;
+
+// using string = std::string;
+// using string_view = std::string_view;
 
 template<typename T>
 using vector = cista::offset::vector<T>;

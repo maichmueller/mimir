@@ -80,12 +80,7 @@ ActionImpl::ActionImpl(Index index,
                           }));
 }
 
-std::string ActionImpl::str() const
-{
-    auto out = std::stringstream();
-    out << *this;
-    return out.str();
-}
+std::string ActionImpl::str() const { return fmt::format("{}", *this); }
 
 Index ActionImpl::get_index() const { return m_index; }
 

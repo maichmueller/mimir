@@ -29,12 +29,7 @@ FunctionSkeletonImpl::FunctionSkeletonImpl(Index index, std::string name, Variab
 {
 }
 
-std::string FunctionSkeletonImpl::str() const
-{
-    auto out = std::stringstream();
-    out << *this;
-    return out.str();
-}
+std::string FunctionSkeletonImpl::str() const { return fmt::format("{}", *this); }
 
 Index FunctionSkeletonImpl::get_index() const { return m_index; }
 
@@ -49,10 +44,6 @@ std::ostream& operator<<(std::ostream& out, const FunctionSkeletonImpl& element)
     return out;
 }
 
-std::ostream& operator<<(std::ostream& out, FunctionSkeleton element)
-{
-    out << *element;
-    return out;
-}
+std::ostream& operator<<(std::ostream& out, FunctionSkeleton element) { return out << *element; }
 
 }

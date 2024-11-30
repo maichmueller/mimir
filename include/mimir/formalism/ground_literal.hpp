@@ -64,3 +64,9 @@ extern std::ostream& operator<<(std::ostream& out, const GroundLiteralImpl<P>& e
 template<PredicateTag P>
 extern std::ostream& operator<<(std::ostream& out, GroundLiteral<P> element);
 }
+
+#include "mimir/common/macros.hpp"
+
+#include <fmt/ostream.h>
+FORMATTABLE_EACH_TAG(mimir::GroundLiteral);
+FORMATTABLE_EACH_TAG(mimir::GroundLiteralImpl);

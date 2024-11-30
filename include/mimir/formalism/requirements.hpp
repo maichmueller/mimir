@@ -55,3 +55,9 @@ extern std::ostream& operator<<(std::ostream& out, const RequirementsImpl& eleme
 extern std::ostream& operator<<(std::ostream& out, Requirements element);
 
 }
+
+#include "mimir/common/macros.hpp"
+
+#include <fmt/ostream.h>
+FORMATTABLE(mimir::RequirementsImpl);
+FORMATTABLE(mimir::Requirements);

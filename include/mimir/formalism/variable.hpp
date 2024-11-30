@@ -56,3 +56,9 @@ extern std::ostream& operator<<(std::ostream& out, const VariableImpl& element);
 extern std::ostream& operator<<(std::ostream& out, Variable element);
 
 }
+
+#include "mimir/common/macros.hpp"
+
+#include <fmt/ostream.h>
+FORMATTABLE(mimir::Variable);
+FORMATTABLE(mimir::VariableImpl);

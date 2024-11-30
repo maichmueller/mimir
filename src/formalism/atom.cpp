@@ -32,9 +32,7 @@ AtomImpl<P>::AtomImpl(Index index, Predicate<P> predicate, TermList terms) : m_i
 template<PredicateTag P>
 std::string AtomImpl<P>::str() const
 {
-    auto out = std::stringstream();
-    out << *this;
-    return out.str();
+    return fmt::format("{}", *this);
 }
 
 template<PredicateTag P>

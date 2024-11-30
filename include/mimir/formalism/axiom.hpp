@@ -65,3 +65,9 @@ extern std::ostream& operator<<(std::ostream& out, const AxiomImpl& element);
 extern std::ostream& operator<<(std::ostream& out, Axiom element);
 
 }
+
+#include "mimir/common/macros.hpp"
+
+#include <fmt/ostream.h>
+FORMATTABLE(mimir::AxiomImpl);
+FORMATTABLE(mimir::Axiom);

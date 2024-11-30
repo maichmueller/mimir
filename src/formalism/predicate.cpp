@@ -37,9 +37,7 @@ PredicateImpl<P>::PredicateImpl(Index index, std::string name, VariableList para
 template<PredicateTag P>
 std::string PredicateImpl<P>::str() const
 {
-    auto out = std::stringstream();
-    out << *this;
-    return out.str();
+    return fmt::format("{}", *this);
 }
 
 template<PredicateTag P>

@@ -80,3 +80,11 @@ extern std::ostream& operator<<(std::ostream& out, const TermVariableImpl& eleme
 extern std::ostream& operator<<(std::ostream& out, Term element);
 
 }
+
+#include "mimir/common/macros.hpp"
+
+#include <fmt/ostream.h>
+FORMATTABLE(mimir::TermObjectImpl);
+FORMATTABLE(mimir::TermVariableImpl);
+FORMATTABLE(mimir::TermObject);
+FORMATTABLE(mimir::TermVariable);

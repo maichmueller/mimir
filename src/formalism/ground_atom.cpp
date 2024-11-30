@@ -37,9 +37,7 @@ GroundAtomImpl<P>::GroundAtomImpl(Index index, Predicate<P> predicate, ObjectLis
 template<PredicateTag P>
 std::string GroundAtomImpl<P>::str() const
 {
-    auto out = std::stringstream();
-    out << *this;
-    return out.str();
+    return fmt::format("{}", *this);
 }
 
 template<PredicateTag P>
