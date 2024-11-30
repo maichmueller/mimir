@@ -21,6 +21,8 @@
 #include "mimir/common/hash.hpp"
 #include "mimir/graphs/graph_edge_interface.hpp"
 
+#include <fmt/ostream.h>
+
 namespace mimir
 {
 
@@ -65,12 +67,24 @@ public:
         return std::get<I>(m_properties);
     }
 
+    const EdgePropertiesTypes& get_properties() const { return m_properties; }
+
 private:
     EdgeIndex m_index;
     VertexIndex m_source;
     VertexIndex m_target;
     std::tuple<EdgeProperties...> m_properties;
 };
+
+template<typename... EdgeProperties>
+std::ostream& operator<<(std::ostream& out, const mimir::Edge<EdgeProperties...>& edge)
+{
+    if constexpr (formattable<typename Edge<EdgeProperties...>::EdgePropertiesTypes>)
+        return out << fmt::format("e(i={}, {}->{}, ps={{{}}})", edge.get_index(), edge.get_source(), edge.get_target(), fmt::join(edge.get_properties(), ", "));
+    else
+        return out << fmt::format("e(i={}, {}->{}, ps=?)", edge.get_index(), edge.get_source(), edge.get_target());
+}
+
 }
 
 template<typename... EdgeProperties>
@@ -119,4 +133,12 @@ concept IsEdgeColoredGraph = requires(T::EdgeType edge) {
     { get_color(edge) } -> std::same_as<Color>;
 };
 
+}
+
+namespace fmt
+{
+template<typename... EdgeProperties>
+struct formatter<mimir::Edge<EdgeProperties...>> : public ostream_formatter
+{
+};
 }

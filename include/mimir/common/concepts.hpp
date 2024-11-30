@@ -19,6 +19,7 @@
 
 #include <concepts>
 #include <cstddef>
+#include <fmt/core.h>
 #include <memory>
 #include <ranges>
 #include <type_traits>
@@ -43,5 +44,8 @@ concept IsUnsignedIntegral = std::is_integral_v<T> && std::is_unsigned_v<T>;
 
 template<typename T, typename Value>
 concept IsRangeOver = std::ranges::range<T> && std::same_as<std::ranges::range_value_t<T>, Value>;
+
+template<typename T>
+concept formattable = std::default_initializable<fmt::formatter<std::remove_cvref_t<T>>>;
 
 }

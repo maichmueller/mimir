@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "mimir/common/concepts.hpp"
 #include "mimir/common/equal_to.hpp"
 #include "mimir/common/hash.hpp"
 #include "mimir/graphs/graph_vertex_interface.hpp"
@@ -55,12 +56,22 @@ public:
         return std::get<I>(m_properties);
     }
 
+    const VertexPropertiesTypes& get_properties() const { return m_properties; }
+
 private:
     VertexIndex m_index;
-    std::tuple<VertexProperties...> m_properties;
+    VertexPropertiesTypes m_properties;
 };
-}
 
+template<typename... VertexProperties>
+std::ostream& operator<<(std::ostream& out, const mimir::Vertex<VertexProperties...>& vertex)
+{
+    if constexpr (mimir::formattable<typename mimir::Vertex<VertexProperties...>::VertexPropertiesTypes>)
+        return out << fmt::format("v(i={}, ps={{{}}})", vertex.get_index(), fmt::join(vertex.get_properties(), ", "));
+    else
+        return out << fmt::format("v(i={}, ps=[?])", vertex.get_index());
+}
+}
 template<typename... VertexProperties>
 struct std::hash<mimir::Vertex<VertexProperties...>>
 {
@@ -81,7 +92,6 @@ struct std::hash<mimir::Vertex<VertexProperties...>>
 
 namespace mimir
 {
-
 /**
  * EmptyVertex
  */
@@ -107,4 +117,12 @@ concept IsVertexColoredGraph = requires(T::VertexType vertex) {
     { get_color(vertex) } -> std::same_as<Color>;
 };
 
+}
+
+namespace fmt
+{
+template<typename... Properties>
+struct formatter<mimir::Vertex<Properties...>> : public ostream_formatter
+{
+};
 }

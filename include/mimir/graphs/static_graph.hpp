@@ -25,6 +25,9 @@
 #include "mimir/graphs/static_graph_iterators.hpp"
 
 #include <boost/hana.hpp>
+#include <fmt/ostream.h>
+#include <range/v3/range/conversion.hpp>
+#include <range/v3/view/transform.hpp>
 #include <ranges>
 #include <span>
 #include <vector>
@@ -559,6 +562,33 @@ void StaticGraph<V, E>::edge_index_check(EdgeIndex edge, const std::string& erro
     }
 }
 
+template<IsVertex V, IsEdge E>
+std::ostream& operator<<(std::ostream& out, const StaticGraph<V, E>& graph)
+{
+    return out << fmt::format("Graph(\n  "
+                              "vertices ({}):\n"
+                              "\t{}\n  "
+                              "edges ({}):\n"
+                              "\t{}\n"
+                              ")",
+                              graph.get_vertices().size(),
+                              fmt::join(graph.get_vertices(), "\n\t"),
+                              graph.get_edges().size(),
+                              fmt::join(graph.get_edges(), "\n\t"));
+}
+}
+
+namespace fmt
+{
+template<mimir::IsVertex V, mimir::IsEdge E>
+struct formatter<mimir::StaticGraph<V, E>> : public ostream_formatter
+{
+};
+
+}
+
+namespace mimir
+{
 /* StaticForwardGraph */
 
 /// @brief Groups edge indices by source or target, depending on forward is true or false.
@@ -947,5 +977,4 @@ Degree StaticBidirectionalGraph<G>::get_degree(VertexIndex vertex) const
 {
     return m_graph.template get_degree<Direction>(vertex);
 }
-
 }
