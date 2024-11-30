@@ -40,7 +40,7 @@ namespace mimir::color_refinement
 class Certificate
 {
 public:
-    using CompressionFunction = std::unordered_map<std::pair<Color, ColorList>, Color>;
+    using CompressionFunction = unordered_map<std::pair<Color, ColorList>, Color>;
 
     using CanonicalCompressionFunction = std::map<std::pair<Color, ColorList>, Color>;
 

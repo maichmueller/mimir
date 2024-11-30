@@ -20,6 +20,7 @@
 
 #include "mimir/common/equal_to.hpp"
 #include "mimir/common/hash.hpp"
+#include "mimir/common/itertools.hpp"
 #include "mimir/common/printers.hpp"
 #include "mimir/common/types.hpp"
 #include "mimir/graphs/digraph_vertex_colored.hpp"
@@ -32,23 +33,25 @@
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 #include <map>
+#include <range/v3/view/transform.hpp>
 #include <set>
 #include <unordered_map>
 #include <vector>
 
 namespace mimir::color_refinement
 {
-using mimir::operator<<;
 
 /// @brief Replace tuples by grouping colors with same hash.
 /// @tparam ColorType
 /// @param M
 /// @param hash_to_color
 /// @param out_M_replaced
-template<typename ColorType>
-void replace_tuples(const vector<std::pair<Index, ColorType>>& M,
-                    const ColorList& hash_to_color,
-                    vector<std::tuple<Color, vector<ColorType>, Index>>& out_M_replaced)
+// template<typename ColorType, std::ranges::range Range1>
+//     requires std::same_as<std::ranges::range_value_t<Range1>, std::pair<Index, ColorType>>
+// void replace_tuples(const Range1& M, const ColorList& hash_to_color, std::vector<std::tuple<Color, vector<ColorType>, Index>>& out_M_replaced)
+template<typename ColorType, typename Vector>
+    requires std::same_as<std::ranges::range_value_t<Vector>, std::tuple<Color, vector<ColorType>, Index>>
+void replace_tuples(const std::span<std::pair<Index, ColorType>> M, const ColorList& hash_to_color, Vector& out_M_replaced)
 {
     // Subroutine to construct signatures.
     auto it = M.begin();
@@ -56,7 +59,6 @@ void replace_tuples(const vector<std::pair<Index, ColorType>>& M,
     {
         auto signature = vector<ColorType>();
         const auto hash = it->first;
-
         auto it2 = it;
         while (it2 != M.end() && it2->first == hash)
         {
@@ -79,9 +81,9 @@ void replace_tuples(const vector<std::pair<Index, ColorType>>& M,
 /// @param ref_hash_to_color
 /// @param out_color_to_hashes
 /// @param out_L
-template<typename ColorType, class Hashmap>
+template<typename ColorType, typename Hashmap>
     requires(std::is_same_v<typename Hashmap::key_type, std::pair<Color, vector<ColorType>>> and std::is_same_v<typename Hashmap::mapped_type, Color>)
-void split_color_classes(const vector<std::tuple<Color, vector<ColorType>, Index>>& M_replaced,
+void split_color_classes(const std::span<std::tuple<Color, vector<ColorType>, Index>> M_replaced,
                          Hashmap& ref_f,
                          Color& ref_max_color,
                          ColorList& ref_hash_to_color,
@@ -103,13 +105,16 @@ void split_color_classes(const vector<std::tuple<Color, vector<ColorType>, Index
         {
             // Subroutine to detect split
             const auto& signature = std::get<1>(*it);
+
             while (it2 != M_replaced.end() && old_color == std::get<0>(*it2))
             {
                 if (signature != std::get<1>(*it2))
                 {
                     has_split = true;
+
                     break;
                 }
+
                 ++it2;
             }
         }
@@ -117,6 +122,7 @@ void split_color_classes(const vector<std::tuple<Color, vector<ColorType>, Index
         if (!has_split)
         {
             /* Move to next old color class or the end. */
+
             it = it2;
         }
         else
@@ -146,6 +152,7 @@ void split_color_classes(const vector<std::tuple<Color, vector<ColorType>, Index
                             auto hash = std::get<2>(*it);
                             ref_hash_to_color[hash] = new_color;
                             out_color_to_hashes[new_color].push_back(hash);
+
                             ++it;
                         }
                     }
@@ -194,29 +201,31 @@ Certificate compute_certificate(const G& graph)
 
     // (line 1-2): Initialize multi set.
     auto f = Certificate::CompressionFunction();
-    auto M = vector<std::pair<Index, Color>>();
-    auto M_replaced = vector<std::tuple<Color, ColorList, Index>>();
+    auto M = std::vector<std::pair<Index, Color>>();
+    auto M_replaced = std::vector<std::tuple<Color, ColorList, Index>>();
+    size_t iter = 0;
     // (line 3): Process work list until all vertex colors have stabilized.
     while (!L.empty())
     {
         if (debug)
-            fmt::println("L: {}", L);
-
+        {
+            fmt::println("Iteration: {}", iter);
+            fmt::println("L: {}", sorted(L));
+        }
         // Clear data structures that are reused.
         M.clear();
         M_replaced.clear();
 
+        // Subroutine to compute multiset M.
+        // Note: this computes the stable coloring, not the coarsest stable coloring.
+        fmt::println("{}", graph);
+        for (size_t h = 0; h < num_vertices; ++h)
         {
-            // Subroutine to compute multiset M.
-            // Note: this computes the stable coloring, not the coarsest stable coloring.
-            for (size_t h = 0; h < num_vertices; ++h)
+            for (const auto& outgoing_vertex : graph.template get_adjacent_vertices<ForwardTraversal>(hash_to_vertex.at(h)))
             {
-                for (const auto& outgoing_vertex : graph.template get_adjacent_vertices<ForwardTraversal>(hash_to_vertex.at(h)))
-                {
-                    const auto hash = vertex_to_hash.at(outgoing_vertex.get_index());
+                const auto hash = vertex_to_hash.at(outgoing_vertex.get_index());
 
-                    M.emplace_back(h, hash_to_color.at(hash));
-                }
+                M.emplace_back(h, hash_to_color.at(hash));
             }
         }
 
@@ -227,7 +236,7 @@ Certificate compute_certificate(const G& graph)
             fmt::println("M: {}", M);
 
         // (line 13): Scan M and replace tuples (v,c1),...,(v,cr) with single tuple (C(v),c1,...,cr,v) to construct signatures.
-        replace_tuples(M, hash_to_color, M_replaced);
+        replace_tuples(std::span { M }, hash_to_color, M_replaced);
 
         // (line 14): Perform radix sort of M by old color and neighborhood colors (TODO radix sort)
         std::sort(M_replaced.begin(), M_replaced.end());
@@ -236,7 +245,8 @@ Certificate compute_certificate(const G& graph)
             fmt::println("M_replaced: {}", M_replaced);
 
         /* (line 15): Add new colors to work list */
-        split_color_classes(M_replaced, f, max_color, hash_to_color, color_to_hashes, L);
+        split_color_classes(std::span { M_replaced }, f, max_color, hash_to_color, color_to_hashes, L);
+        iter++;
     }
 
     /* Report final neighborhood structures in the decoding table. */

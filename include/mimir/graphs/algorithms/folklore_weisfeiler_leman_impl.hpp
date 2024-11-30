@@ -287,7 +287,7 @@ CertificateFWL<K> compute_certificate(const G& graph, IsomorphismTypeCompression
 
         // (line 16): Scan M and replace tuples (vec{v},c_1^1,...,c_k^1,...,vec{v},c_1^r,...,c_k^r) with single tuple
         // (C(vec{v}),(c_1^1,...,c_k^1),...,(c_1^r,...,c_k^r))
-        color_refinement::replace_tuples(M, hash_to_color, M_replaced);
+        color_refinement::replace_tuples(std::span { M }, hash_to_color, M_replaced);
 
         // (line 17): Perform radix sort of M
         std::sort(M_replaced.begin(), M_replaced.end());
@@ -296,7 +296,7 @@ CertificateFWL<K> compute_certificate(const G& graph, IsomorphismTypeCompression
             fmt::println("M_replaced: {}", M_replaced);
 
         // (line 18): Split color classes
-        color_refinement::split_color_classes(M_replaced, f, max_color, hash_to_color, color_to_hashes, L);
+        color_refinement::split_color_classes(std::span { M_replaced }, f, max_color, hash_to_color, color_to_hashes, L);
     }
 
     /* Report final neighborhood structures in the decoding table. */

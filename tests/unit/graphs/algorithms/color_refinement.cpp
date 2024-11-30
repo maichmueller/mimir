@@ -20,7 +20,9 @@
 #include "mimir/datasets/faithful_abstraction.hpp"
 #include "mimir/graphs/digraph_vertex_colored.hpp"
 
+#include <fmt/ranges.h>
 #include <gtest/gtest.h>
+#include <range/v3/view/enumerate.hpp>
 
 namespace mimir::tests
 {
@@ -127,39 +129,53 @@ TEST(MimirTests, GraphsAlgorithmsColorRefinementTest)
     }
 }
 
+auto print_states(const FaithfulAbstraction& abstraction)
+{
+    return fmt::format(
+        "States:\n{}",
+        fmt::join(
+            ranges::views::enumerate(abstraction.get_graph().get_vertices())
+                | std::views::transform(
+                    [&](const auto& iv)
+                    {
+                        auto [i, vertex] = iv;
+                        auto state = get_representative_state(vertex);
+                        auto fl_atoms = abstraction.get_pddl_repositories()->get_ground_atoms_from_indices<Fluent>(state->template get_atoms<Fluent>());
+                        return fmt::format("Index: {:<2}, Atoms: {}", i, sorted(fl_atoms | ranges::views::transform([](auto atom) { return atom->str(); })));
+                    }),
+            "\n"));
+}
+
 TEST(MimirTests, GraphsAlgorithmsColorRefinementBlocks3opsTest)
 {
-    {
-        const auto domain_file = fs::path(std::string(DATA_DIR) + "blocks_3/domain.pddl");
-        const auto problem_file = fs::path(std::string(DATA_DIR) + "blocks_3/test_problem2.pddl");
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "blocks_3/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "blocks_3/test_problem2.pddl");
 
-        const auto abstraction = FaithfulAbstraction::create(domain_file, problem_file).value();
+    const auto abstraction = FaithfulAbstraction::create(domain_file, problem_file).value();
 
-        const auto color_function = ProblemColorFunction(abstraction.get_problem());
+    const auto color_function = ProblemColorFunction(abstraction.get_problem());
 
-        const auto& state_1 = get_representative_state(abstraction.get_graph().get_vertices().at(0));
-        const auto& state_2 = get_representative_state(abstraction.get_graph().get_vertices().at(49));
+    const auto& state_1 = get_representative_state(abstraction.get_graph().get_vertices().at(0));
+    const auto& state_2 = get_representative_state(abstraction.get_graph().get_vertices().at(75));
 
-        const auto object_graph_1 = create_object_graph(color_function, *abstraction.get_pddl_repositories(), abstraction.get_problem(), state_1, 1);
-        const auto object_graph_2 = create_object_graph(color_function, *abstraction.get_pddl_repositories(), abstraction.get_problem(), state_2, 2);
+    const auto object_graph_1 = create_object_graph(color_function, *abstraction.get_pddl_repositories(), abstraction.get_problem(), state_1, 1);
+    const auto object_graph_2 = create_object_graph(color_function, *abstraction.get_pddl_repositories(), abstraction.get_problem(), state_2, 2);
 
-        auto certificate_1 = color_refinement::compute_certificate(object_graph_1);
+    auto certificate_1 = color_refinement::compute_certificate(object_graph_1);
+    auto certificate_2 = color_refinement::compute_certificate(object_graph_2);
 
-        auto certificate_2 = color_refinement::compute_certificate(object_graph_2);
+    EXPECT_EQ(certificate_1, certificate_2);
 
-        EXPECT_EQ(certificate_1, certificate_2);
+    const auto& state_3 = get_representative_state(abstraction.get_graph().get_vertices().at(53));
+    const auto& state_4 = get_representative_state(abstraction.get_graph().get_vertices().at(58));
 
-        const auto& state_3 = get_representative_state(abstraction.get_graph().get_vertices().at(53));
-        const auto& state_4 = get_representative_state(abstraction.get_graph().get_vertices().at(58));
+    const auto object_graph_3 = create_object_graph(color_function, *abstraction.get_pddl_repositories(), abstraction.get_problem(), state_3, 3);
+    const auto object_graph_4 = create_object_graph(color_function, *abstraction.get_pddl_repositories(), abstraction.get_problem(), state_4, 4);
 
-        const auto object_graph_3 = create_object_graph(color_function, *abstraction.get_pddl_repositories(), abstraction.get_problem(), state_3, 3);
-        const auto object_graph_4 = create_object_graph(color_function, *abstraction.get_pddl_repositories(), abstraction.get_problem(), state_4, 4);
+    auto certificate_3 = color_refinement::compute_certificate(object_graph_3);
 
-        auto certificate_3 = color_refinement::compute_certificate(object_graph_3);
+    auto certificate_4 = color_refinement::compute_certificate(object_graph_4);
 
-        auto certificate_4 = color_refinement::compute_certificate(object_graph_4);
-
-        EXPECT_NE(certificate_3, certificate_4);
-    }
+    EXPECT_NE(certificate_3, certificate_4);
 }
 }
