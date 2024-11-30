@@ -165,6 +165,8 @@ std::optional<FaithfulAbstraction> FaithfulAbstraction::create(Problem problem,
     auto next_abstract_state_index = Index { 1 };
     stop_watch.start();
 
+    constexpr bool debug = false;
+
     while (!lifo_queue.empty() && !stop_watch.has_finished())
     {
         const auto state = lifo_queue.back();
@@ -193,6 +195,14 @@ std::optional<FaithfulAbstraction> FaithfulAbstraction::create(Problem problem,
             }
 
             // Compute certificate of successor state
+            if (debug)
+            {
+                fmt::println("{} Computing certificate for State:\nIndex: {:<10} Atoms: {}",
+                             __FILE__,
+                             successor_state->get_index(),
+                             std::invoke([fluent_ground_atoms = factories->get_ground_atoms_from_indices<Fluent>(successor_state->get_atoms<Fluent>())]
+                                         { return fluent_ground_atoms | ranges::views::transform([](const auto& atom) { return atom->str(); }); }));
+            }
             const auto object_graph = create_object_graph(color_function,
                                                           *factories,
                                                           problem,
