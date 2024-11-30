@@ -128,4 +128,11 @@ public:
     }
 };
 
+inline auto sorted(const auto& cont)
+{
+    auto sorted = cont | ranges::to_vector;
+    std::ranges::sort(sorted);
+    return sorted;
+}
+
 }

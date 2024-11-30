@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include "mimir/formalism/declarations.hpp"
+
 #include <memory>
 #include <optional>
 #include <type_traits>
@@ -66,5 +68,18 @@ constexpr T* as_mutable(T* value) noexcept
 }
 template<typename T>
 void as_mutable(T const&&) = delete;
+
+void for_each_tag(auto&& f)
+{
+    f(mimir::Static {});
+    f(mimir::Fluent {});
+    f(mimir::Derived {});
+}
+
+template<typename IndexType, IndexType... Is>
+void for_each_index(auto&& f)
+{
+    (f(std::integral_constant<IndexType, Is> {}), ...);
+}
 
 }
