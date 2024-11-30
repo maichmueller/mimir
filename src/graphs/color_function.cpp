@@ -49,9 +49,8 @@ void ProblemColorFunction::initialize_predicates()
     add_predicates(m_problem->get_domain()->get_predicates<Derived>());
 
     // Sort the vector lexicographically by the string in the pair
-    std::sort(lexicographically_sorted_predicates.begin(),
-              lexicographically_sorted_predicates.end(),
-              [](const std::pair<std::string, size_t>& a, const std::pair<std::string, size_t>& b) { return a.first < b.first; });
+    std::ranges::sort(lexicographically_sorted_predicates,
+                      [](const std::pair<std::string, size_t>& a, const std::pair<std::string, size_t>& b) { return a.first < b.first; });
 
     // Object color
     const auto color = m_color_to_name.size();
@@ -68,21 +67,21 @@ void ProblemColorFunction::initialize_predicates()
         {
             // atom
             auto color = m_color_to_name.size();
-            auto name = predicate_name + ":" + std::to_string(pos);
+            auto name = fmt::format("{}:{}", predicate_name, pos);
             m_color_to_name.emplace(color, name);
             m_name_to_color.emplace(name, color);
             // goal atom
             color = m_color_to_name.size();
-            name = predicate_name + ":g:" + std::to_string(pos);
+            name = fmt::format("{}:g:{}", predicate_name, pos);
             m_color_to_name.emplace(color, name);
             m_name_to_color.emplace(name, color);
             // marked goal atoms
             color = m_color_to_name.size();
-            name = predicate_name + ":g:true:" + std::to_string(pos);
+            name = fmt::format("{}:g:true:{}", predicate_name, pos);
             m_color_to_name.emplace(color, name);
             m_name_to_color.emplace(name, color);
             color = m_color_to_name.size();
-            name = predicate_name + ":g:false:" + std::to_string(pos);
+            name = fmt::format("{}:g:false:{}", predicate_name, pos);
             m_color_to_name.emplace(color, name);
             m_name_to_color.emplace(name, color);
         }
@@ -94,7 +93,7 @@ Color ProblemColorFunction::get_color(Object object) const { return m_name_to_co
 template<PredicateTag P>
 Color ProblemColorFunction::get_color(GroundAtom<P> atom, size_t pos) const
 {
-    return m_name_to_color.at(atom->get_predicate()->get_name() + ":" + std::to_string(pos));
+    return m_name_to_color.at(fmt::format("{}:{}", atom->get_predicate()->get_name(), pos));
 }
 
 template Color ProblemColorFunction::get_color(GroundAtom<Static> atom, size_t pos) const;
@@ -105,8 +104,10 @@ template<DynamicPredicateTag P>
 Color ProblemColorFunction::get_color(State state, GroundLiteral<P> literal, size_t pos, bool mark_true_goal_literal) const
 {
     bool is_satisfied_in_goal = state->literal_holds(literal);
-    return m_name_to_color.at(literal->get_atom()->get_predicate()->get_name() + ":g"
-                              + (mark_true_goal_literal ? (is_satisfied_in_goal ? ":true" : ":false") : "") + ":" + std::to_string(pos));
+    return m_name_to_color.at(fmt::format("{}:g{}:{}",
+                                          literal->get_atom()->get_predicate()->get_name(),
+                                          (mark_true_goal_literal ? (is_satisfied_in_goal ? ":true" : ":false") : ""),
+                                          pos));
 }
 
 template Color ProblemColorFunction::get_color(State state, GroundLiteral<Fluent> literal, size_t pos, bool mark_true_goal_literal) const;
@@ -115,8 +116,10 @@ template Color ProblemColorFunction::get_color(State state, GroundLiteral<Derive
 Color ProblemColorFunction::get_color(State state, GroundLiteral<Static> literal, size_t pos, bool mark_true_goal_literal) const
 {
     bool is_satisfied_in_goal = m_problem->static_literal_holds(literal);
-    return m_name_to_color.at(literal->get_atom()->get_predicate()->get_name() + ":g"
-                              + (mark_true_goal_literal ? (is_satisfied_in_goal ? ":true" : ":false") : "") + ":" + std::to_string(pos));
+    return m_name_to_color.at(fmt::format("{}:g{}:{}",
+                                          literal->get_atom()->get_predicate()->get_name(),
+                                          +(mark_true_goal_literal ? (is_satisfied_in_goal ? ":true" : ":false") : ""),
+                                          pos));
 }
 
 const std::string& ProblemColorFunction::get_color_name(Color color) const
