@@ -48,7 +48,7 @@ void ProblemColorFunction::initialize_predicates()
     add_predicates(m_problem->get_domain()->get_predicates<Fluent>());
     add_predicates(m_problem->get_domain()->get_predicates<Derived>());
 
-    // Sort the vector lexicographically by the string in the pair
+    // Sort the vector lexicographically by the std::string in the pair
     std::ranges::sort(lexicographically_sorted_predicates,
                       [](const std::pair<std::string, size_t>& a, const std::pair<std::string, size_t>& b) { return a.first < b.first; });
 
@@ -126,7 +126,7 @@ const std::string& ProblemColorFunction::get_color_name(Color color) const
 {
     if (!m_color_to_name.contains(color))
     {
-        throw std::runtime_error("ProblemColorFunction::get_color_name: failed to map integer color \"" + std::to_string(color) + "\" to string.");
+        throw std::runtime_error("ProblemColorFunction::get_color_name: failed to map integer color \"" + std::to_string(color) + "\" to std::string.");
     }
     return m_color_to_name.at(color);
 }

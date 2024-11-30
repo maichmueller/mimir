@@ -129,3 +129,9 @@ using StateImplSet = cista::storage::UnorderedSet<StateImpl>;
 template<>
 std::ostream& operator<<(std::ostream& os, const std::tuple<Problem, State, const PDDLRepositories&>& data);
 }
+
+#include "mimir/common/macros.hpp"
+
+#include <fmt/ostream.h>
+FORMATTABLE(mimir::State);
+FORMATTABLE(ARG(std::tuple<mimir::Problem, mimir::State, const mimir::PDDLRepositories&>));

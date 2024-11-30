@@ -86,3 +86,9 @@ extern std::ostream& operator<<(std::ostream& out, const ActionImpl& element);
 extern std::ostream& operator<<(std::ostream& out, Action element);
 
 }
+
+#include "mimir/common/macros.hpp"
+
+#include <fmt/ostream.h>
+FORMATTABLE(mimir::ActionImpl);
+FORMATTABLE(mimir::Action);

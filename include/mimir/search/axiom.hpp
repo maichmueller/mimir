@@ -103,3 +103,9 @@ std::ostream& operator<<(std::ostream& os, const std::tuple<SimpleDerivedEffect,
 template<>
 std::ostream& operator<<(std::ostream& os, const std::tuple<GroundAxiom, const PDDLRepositories&>& data);
 }
+
+#include "mimir/common/macros.hpp"
+
+#include <fmt/ostream.h>
+FORMATTABLE(ARG(std::tuple<mimir::SimpleDerivedEffect, const mimir::PDDLRepositories&>));
+FORMATTABLE(ARG(std::tuple<mimir::GroundAxiom, const mimir::PDDLRepositories&>));

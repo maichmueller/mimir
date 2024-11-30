@@ -55,3 +55,9 @@ extern std::ostream& operator<<(std::ostream& out, const NumericFluentImpl& elem
 extern std::ostream& operator<<(std::ostream& out, NumericFluent element);
 
 }
+
+#include "mimir/common/macros.hpp"
+
+#include <fmt/ostream.h>
+FORMATTABLE(mimir::NumericFluentImpl);
+FORMATTABLE(mimir::NumericFluent);

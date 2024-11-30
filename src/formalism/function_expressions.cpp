@@ -28,12 +28,7 @@ namespace mimir
 /* FunctionExpressionNumber */
 FunctionExpressionNumberImpl::FunctionExpressionNumberImpl(Index index, double number) : m_index(index), m_number(number) {}
 
-std::string FunctionExpressionNumberImpl::str() const
-{
-    auto out = std::stringstream();
-    out << *this;
-    return out.str();
-}
+std::string FunctionExpressionNumberImpl::str() const { return fmt::format("{}", *this); }
 
 Index FunctionExpressionNumberImpl::get_index() const { return m_index; }
 
@@ -51,12 +46,7 @@ FunctionExpressionBinaryOperatorImpl::FunctionExpressionBinaryOperatorImpl(Index
 {
 }
 
-std::string FunctionExpressionBinaryOperatorImpl::str() const
-{
-    auto out = std::stringstream();
-    out << *this;
-    return out.str();
-}
+std::string FunctionExpressionBinaryOperatorImpl::str() const { return fmt::format("{}", *this); }
 
 Index FunctionExpressionBinaryOperatorImpl::get_index() const { return m_index; }
 
@@ -83,12 +73,7 @@ FunctionExpressionMultiOperatorImpl::FunctionExpressionMultiOperatorImpl(Index i
                           }));
 }
 
-std::string FunctionExpressionMultiOperatorImpl::str() const
-{
-    auto out = std::stringstream();
-    out << *this;
-    return out.str();
-}
+std::string FunctionExpressionMultiOperatorImpl::str() const { return fmt::format("{}", *this); }
 
 Index FunctionExpressionMultiOperatorImpl::get_index() const { return m_index; }
 
@@ -103,12 +88,7 @@ FunctionExpressionMinusImpl::FunctionExpressionMinusImpl(Index index, FunctionEx
 {
 }
 
-std::string FunctionExpressionMinusImpl::str() const
-{
-    auto out = std::stringstream();
-    out << *this;
-    return out.str();
-}
+std::string FunctionExpressionMinusImpl::str() const { return fmt::format("{}", *this); }
 
 Index FunctionExpressionMinusImpl::get_index() const { return m_index; }
 
@@ -117,12 +97,7 @@ const FunctionExpression& FunctionExpressionMinusImpl::get_function_expression()
 /* FunctionExpressionFunction */
 FunctionExpressionFunctionImpl::FunctionExpressionFunctionImpl(Index index, Function function) : m_index(index), m_function(std::move(function)) {}
 
-std::string FunctionExpressionFunctionImpl::str() const
-{
-    auto out = std::stringstream();
-    out << *this;
-    return out.str();
-}
+std::string FunctionExpressionFunctionImpl::str() const { return fmt::format("{}", *this); }
 
 Index FunctionExpressionFunctionImpl::get_index() const { return m_index; }
 

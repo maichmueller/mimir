@@ -223,3 +223,13 @@ template<>
 std::ostream& operator<<(std::ostream& os, const std::tuple<GroundAction, const PDDLRepositories&, PlanActionFormatterTag>& data);
 
 }
+
+#include "mimir/common/macros.hpp"
+
+#include <fmt/ostream.h>
+FORMATTABLE(ARG(std::tuple<mimir::SimpleFluentEffect, const mimir::PDDLRepositories&>));
+FORMATTABLE(ARG(std::tuple<mimir::StripsActionPrecondition, const mimir::PDDLRepositories&>));
+FORMATTABLE(ARG(std::tuple<mimir::StripsActionEffect, const mimir::PDDLRepositories&>));
+FORMATTABLE(ARG(std::tuple<mimir::ConditionalEffect, const mimir::PDDLRepositories&>));
+FORMATTABLE(ARG(std::tuple<mimir::GroundAction, const mimir::PDDLRepositories&, mimir::FullActionFormatterTag>));
+FORMATTABLE(ARG(std::tuple<mimir::GroundAction, const mimir::PDDLRepositories&, mimir::PlanActionFormatterTag>));

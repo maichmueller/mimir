@@ -28,7 +28,7 @@ class X3ErrorHandler
 {
 private:
     // Order of initialization matters
-    std::ostringstream m_error_stream;
+    std::ostd::stringstream m_error_stream;
     error_handler_type m_error_handler;
 
 public:
@@ -44,8 +44,8 @@ public:
 
     error_handler_type& get_error_handler() { return m_error_handler; }
 
-    const std::ostringstream& get_error_stream() const { return m_error_stream; }
+    const std::ostd::stringstream& get_error_stream() const { return m_error_stream; }
 
-    std::ostringstream& get_error_stream() { return m_error_stream; }
+    std::ostd::stringstream& get_error_stream() { return m_error_stream; }
 };
 }

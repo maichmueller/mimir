@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "mimir/common/macros.hpp"
 #include "mimir/formalism/declarations.hpp"
 
 namespace mimir
@@ -53,3 +54,9 @@ extern std::ostream& operator<<(std::ostream& out, const GroundFunctionImpl& ele
 extern std::ostream& operator<<(std::ostream& out, GroundFunction element);
 
 }
+
+#include "mimir/common/macros.hpp"
+
+#include <fmt/ostream.h>
+FORMATTABLE(mimir::GroundFunctionImpl);
+FORMATTABLE(mimir::GroundFunction);

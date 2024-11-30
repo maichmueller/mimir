@@ -100,3 +100,9 @@ extern std::ostream& operator<<(std::ostream& out, const ProblemImpl& element);
 extern std::ostream& operator<<(std::ostream& out, Problem element);
 
 }
+
+#include "mimir/common/macros.hpp"
+
+#include <fmt/ostream.h>
+FORMATTABLE(mimir::ProblemImpl);
+FORMATTABLE(mimir::Problem);

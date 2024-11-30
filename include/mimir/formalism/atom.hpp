@@ -61,3 +61,9 @@ template<PredicateTag P>
 extern std::ostream& operator<<(std::ostream& out, Atom<P> element);
 
 }
+
+#include "mimir/common/macros.hpp"
+
+#include <fmt/ostream.h>
+FORMATTABLE_EACH_TAG(mimir::AtomImpl);
+FORMATTABLE_EACH_TAG(mimir::Atom);

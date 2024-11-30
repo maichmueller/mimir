@@ -230,3 +230,20 @@ extern std::ostream& operator<<(std::ostream& out, const FunctionExpressionImpl&
 
 extern std::ostream& operator<<(std::ostream& out, FunctionExpression element);
 }
+
+#include "mimir/common/macros.hpp"
+
+#include <fmt/ostream.h>
+
+FORMATTABLE(mimir::FunctionExpressionNumberImpl);
+FORMATTABLE(mimir::FunctionExpressionNumber);
+FORMATTABLE(mimir::FunctionExpressionBinaryOperatorImpl);
+FORMATTABLE(mimir::FunctionExpressionBinaryOperator);
+FORMATTABLE(mimir::FunctionExpressionMultiOperatorImpl);
+FORMATTABLE(mimir::FunctionExpressionMultiOperator);
+FORMATTABLE(mimir::FunctionExpressionMinusImpl);
+FORMATTABLE(mimir::FunctionExpressionMinus);
+FORMATTABLE(mimir::FunctionExpressionFunctionImpl);
+FORMATTABLE(mimir::FunctionExpressionFunction);
+FORMATTABLE(mimir::FunctionExpressionImpl);
+FORMATTABLE(mimir::FunctionExpression);

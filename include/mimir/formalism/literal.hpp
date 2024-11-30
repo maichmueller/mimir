@@ -61,3 +61,9 @@ template<PredicateTag P>
 extern std::ostream& operator<<(std::ostream& out, Literal<P> element);
 
 }
+
+#include "mimir/common/macros.hpp"
+
+#include <fmt/ostream.h>
+FORMATTABLE_EACH_TAG(mimir::LiteralImpl);
+FORMATTABLE_EACH_TAG(mimir::Literal);

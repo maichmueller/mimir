@@ -57,3 +57,9 @@ extern std::ostream& operator<<(std::ostream& out, const OptimizationMetricImpl&
 extern std::ostream& operator<<(std::ostream& out, OptimizationMetric element);
 
 }
+
+#include "mimir/common/macros.hpp"
+
+#include <fmt/ostream.h>
+FORMATTABLE(mimir::OptimizationMetricImpl);
+FORMATTABLE(mimir::OptimizationMetric);

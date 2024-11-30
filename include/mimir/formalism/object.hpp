@@ -54,3 +54,9 @@ extern std::ostream& operator<<(std::ostream& out, const ObjectImpl& element);
 extern std::ostream& operator<<(std::ostream& out, Object element);
 
 }
+
+#include "mimir/common/macros.hpp"
+
+#include <fmt/ostream.h>
+FORMATTABLE(mimir::ObjectImpl);
+FORMATTABLE(mimir::Object);

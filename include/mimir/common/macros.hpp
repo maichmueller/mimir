@@ -1,5 +1,9 @@
 #pragma once
 
+#ifndef ARG
+#define ARG(...) __VA_ARGS__
+#endif  // _
+
 #ifndef FWD
 #define FWD(x) std::forward<decltype(x)>(x)
 #endif  // FWD
@@ -39,3 +43,27 @@
         decltype(auto) operator()(auto&&... args) const noexcept { return func(FWD(args)...); } \
     }
 #endif  // AS_STRUCT
+
+#ifndef FORMATTABLE
+#define FORMATTABLE(type)                                       \
+    template<>                                                  \
+    struct fmt::formatter<type> : public fmt::ostream_formatter \
+    {                                                           \
+    }
+#endif  // FORMATTABLE
+
+#ifndef FORMATTABLE_EACH_TAG
+#define FORMATTABLE_EACH_TAG(type)                                              \
+    template<>                                                                  \
+    struct fmt::formatter<type<mimir::Static>> : public fmt::ostream_formatter  \
+    {                                                                           \
+    };                                                                          \
+    template<>                                                                  \
+    struct fmt::formatter<type<mimir::Fluent>> : public fmt::ostream_formatter  \
+    {                                                                           \
+    };                                                                          \
+    template<>                                                                  \
+    struct fmt::formatter<type<mimir::Derived>> : public fmt::ostream_formatter \
+    {                                                                           \
+    }
+#endif  // FORMATTABLE

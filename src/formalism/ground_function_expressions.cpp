@@ -28,12 +28,7 @@ namespace mimir
 /* FunctionExpressionNumber */
 GroundFunctionExpressionNumberImpl::GroundFunctionExpressionNumberImpl(Index index, double number) : m_index(index), m_number(number) {}
 
-std::string GroundFunctionExpressionNumberImpl::str() const
-{
-    auto out = std::stringstream();
-    out << *this;
-    return out.str();
-}
+std::string GroundFunctionExpressionNumberImpl::str() const { return fmt::format("{}", *this); }
 
 Index GroundFunctionExpressionNumberImpl::get_index() const { return m_index; }
 
@@ -51,12 +46,7 @@ GroundFunctionExpressionBinaryOperatorImpl::GroundFunctionExpressionBinaryOperat
 {
 }
 
-std::string GroundFunctionExpressionBinaryOperatorImpl::str() const
-{
-    auto out = std::stringstream();
-    out << *this;
-    return out.str();
-}
+std::string GroundFunctionExpressionBinaryOperatorImpl::str() const { return fmt::format("{}", *this); }
 
 Index GroundFunctionExpressionBinaryOperatorImpl::get_index() const { return m_index; }
 
@@ -83,12 +73,7 @@ GroundFunctionExpressionMultiOperatorImpl::GroundFunctionExpressionMultiOperator
                           }));
 }
 
-std::string GroundFunctionExpressionMultiOperatorImpl::str() const
-{
-    auto out = std::stringstream();
-    out << *this;
-    return out.str();
-}
+std::string GroundFunctionExpressionMultiOperatorImpl::str() const { return fmt::format("{}", *this); }
 
 Index GroundFunctionExpressionMultiOperatorImpl::get_index() const { return m_index; }
 
@@ -103,12 +88,7 @@ GroundFunctionExpressionMinusImpl::GroundFunctionExpressionMinusImpl(Index index
 {
 }
 
-std::string GroundFunctionExpressionMinusImpl::str() const
-{
-    auto out = std::stringstream();
-    out << *this;
-    return out.str();
-}
+std::string GroundFunctionExpressionMinusImpl::str() const { return fmt::format("{}", *this); }
 
 Index GroundFunctionExpressionMinusImpl::get_index() const { return m_index; }
 
@@ -121,12 +101,7 @@ GroundFunctionExpressionFunctionImpl::GroundFunctionExpressionFunctionImpl(Index
 {
 }
 
-std::string GroundFunctionExpressionFunctionImpl::str() const
-{
-    auto out = std::stringstream();
-    out << *this;
-    return out.str();
-}
+std::string GroundFunctionExpressionFunctionImpl::str() const { return fmt::format("{}", *this); }
 
 Index GroundFunctionExpressionFunctionImpl::get_index() const { return m_index; }
 

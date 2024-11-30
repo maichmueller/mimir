@@ -55,3 +55,9 @@ extern std::ostream& operator<<(std::ostream& out, const FunctionImpl& element);
 extern std::ostream& operator<<(std::ostream& out, Function element);
 
 }
+
+#include "mimir/common/macros.hpp"
+
+#include <fmt/ostream.h>
+FORMATTABLE(mimir::FunctionImpl);
+FORMATTABLE(mimir::Function);
