@@ -42,7 +42,6 @@ void init_actions(py::module& m)
                  return ss.str();
              })
         .def("get_index", CONST_OVERLOAD(GroundActionImpl::get_index))
-        .def("get_cost", CONST_OVERLOAD(GroundActionImpl::get_cost))
         .def("get_action_index", CONST_OVERLOAD(GroundActionImpl::get_action_index), py::return_value_policy::reference_internal)
         .def("get_object_indices", &GroundActionImpl::get_object_indices, py::return_value_policy::copy)
         .def("get_strips_precondition", [](const GroundActionImpl& self) { return StripsActionPrecondition(self.get_strips_precondition()); })

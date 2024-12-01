@@ -16,9 +16,9 @@ void init_algorithms(py::module_& m)
         .def("find_solution",
              [](IAlgorithm& algorithm)
              {
-                 auto out_actions = GroundActionList {};
-                 auto search_status = algorithm.find_solution(out_actions);
-                 return std::make_tuple(search_status, out_actions);
+                 auto plan = std::optional<Plan> {};
+                 auto search_status = algorithm.find_solution(plan);
+                 return std::make_tuple(search_status, plan);
              });
 
     // AStar

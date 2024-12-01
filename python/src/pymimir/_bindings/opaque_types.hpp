@@ -12,7 +12,6 @@ PYBIND11_MAKE_OPAQUE(pymimir::AtomList<pymimir::Fluent>);
 PYBIND11_MAKE_OPAQUE(pymimir::AtomList<pymimir::Derived>);
 PYBIND11_MAKE_OPAQUE(pymimir::AxiomList);
 PYBIND11_MAKE_OPAQUE(pymimir::DomainList);
-PYBIND11_MAKE_OPAQUE(pymimir::EffectSimpleList);
 PYBIND11_MAKE_OPAQUE(pymimir::EffectComplexList);
 PYBIND11_MAKE_OPAQUE(pymimir::FunctionExpressionList);
 PYBIND11_MAKE_OPAQUE(pymimir::FunctionSkeletonList);

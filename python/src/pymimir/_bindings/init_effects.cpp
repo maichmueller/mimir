@@ -14,7 +14,8 @@ void init_effects(py::module& m)
         .def("__str__", &EffectSimpleImpl::str)
         .def("__repr__", &EffectSimpleImpl::str)
         .def("get_index", &EffectSimpleImpl::get_index)
-        .def("get_effect", &EffectSimpleImpl::get_effect, py::return_value_policy::reference_internal);
+        .def("get_effect", &EffectSimpleImpl::get_effect, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_function_expression", &EffectSimpleImpl::get_function_expression, py::return_value_policy::reference_internal);
 
     class_<EffectComplexImpl>(m, "EffectComplex")  //
         .def("__str__", &EffectComplexImpl::str)
@@ -46,7 +47,8 @@ void init_effects(py::module& m)
              [](const StripsActionEffect& self, const PDDLRepositories& factories)
              { return factories.get_ground_atoms_from_indices<mimir::Fluent>(self.get_positive_effects()); })
         .def("get_negative_effect_indices", CONST_OVERLOAD(StripsActionEffect::get_negative_effects), py::return_value_policy::copy)
-        .def("get_negative_effect_indices", CONST_OVERLOAD(StripsActionEffect::get_positive_effects), py::return_value_policy::copy);
+        .def("get_negative_effect_indices", CONST_OVERLOAD(StripsActionEffect::get_positive_effects), py::return_value_policy::copy)
+        .def("get_cost", CONST_OVERLOAD(StripsActionEffect::get_cost), py::return_value_policy::copy);
 
     class_<SimpleFluentEffect>(m, "SimpleFluentEffect")
         .def_readonly("is_negated", &SimpleFluentEffect::is_negated)

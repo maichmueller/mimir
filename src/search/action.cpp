@@ -165,9 +165,9 @@ FlatBitset& StripsActionEffect::get_negative_effects() { return negative_effects
 
 const FlatBitset& StripsActionEffect::get_negative_effects() const { return negative_effects; }
 
-ContinuousCost& StripsActionEffect::get_cost() { return m_cost; }
+ContinuousCost& StripsActionEffect::get_cost() { return cost; }
 
-const ContinuousCost& StripsActionEffect::get_cost() const { return m_cost; }
+const ContinuousCost& StripsActionEffect::get_cost() const { return cost; }
 
 /* ConditionalEffect */
 
@@ -241,13 +241,9 @@ template const FlatIndexList& ConditionalEffect::get_negative_precondition<Stati
 template const FlatIndexList& ConditionalEffect::get_negative_precondition<Fluent>() const;
 template const FlatIndexList& ConditionalEffect::get_negative_precondition<Derived>() const;
 
-SimpleFluentEffect& ConditionalEffect::get_simple_effect() { return effect; }
+ContinuousCost& ConditionalEffect::get_cost() { return cost; }
 
-const SimpleFluentEffect& ConditionalEffect::get_simple_effect() const { return effect; }
-
-ContinuousCost& ConditionalEffect::get_cost() { return m_cost; }
-
-const ContinuousCost& ConditionalEffect::get_cost() const { return m_cost; }
+const ContinuousCost& ConditionalEffect::get_cost() const { return cost; }
 
 template<DynamicPredicateTag P>
 bool ConditionalEffect::is_applicable(State state) const
@@ -285,8 +281,6 @@ Index GroundActionImpl::get_index() const { return index; }
 Index& GroundActionImpl::get_action_index() { return action_index; }
 
 Index GroundActionImpl::get_action_index() const { return action_index; }
-
-FlatIndexList& GroundActionImpl::get_objects() { return m_objects; }
 
 const FlatIndexList& GroundActionImpl::get_object_indices() const { return objects; }
 

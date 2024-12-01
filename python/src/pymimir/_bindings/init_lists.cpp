@@ -35,9 +35,6 @@ void init_lists(py::module& m)
     bind_const_span<std::span<const State>>(m, "StateSpan");
     bind_const_index_grouped_vector<IndexGroupedVector<const State>>(m, "IndexGroupedVector");
 
-    static_assert(!py::detail::vector_needs_copy<EffectSimpleList>::value);  // Ensure return by reference + keep alive
-    def_opaque_vector_repr<EffectSimpleList>(m, "EffectSimpleList");
-
     static_assert(!py::detail::vector_needs_copy<ActionList>::value);  // Ensure return by reference + keep alive
     def_opaque_vector_repr<ActionList>(m, "ActionList");
 

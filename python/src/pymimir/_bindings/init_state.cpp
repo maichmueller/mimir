@@ -139,7 +139,7 @@ void init_state(py::module& m)
         .def("get_or_create_state", &StateRepository::get_or_create_state, py::return_value_policy::reference_internal, py::arg("atoms"))
         .def("get_or_create_successor_state",
              &StateRepository::get_or_create_successor_state,
-             py::return_value_policy::reference_internal,
+             py::return_value_policy::copy,
              py::arg("state"),
              py::arg("action"))
         .def("get_state_count", &StateRepository::get_state_count)

@@ -70,7 +70,7 @@ struct StripsActionEffect
 {
     FlatBitset positive_effects = FlatBitset();
     FlatBitset negative_effects = FlatBitset();
-    ContinuousCost m_cost = ContinuousCost(0.0);
+    ContinuousCost cost = ContinuousCost(0.0);
 
     FlatBitset& get_positive_effects();
     const FlatBitset& get_positive_effects() const;
@@ -101,7 +101,7 @@ struct ConditionalEffect
     FlatIndexList positive_derived_atoms = FlatIndexList();
     FlatIndexList negative_derived_atoms = FlatIndexList();
     SimpleFluentEffect effect = SimpleFluentEffect();
-    ContinuousCost m_cost = ContinuousCost(0.0);
+    ContinuousCost cost = ContinuousCost(0.0);
 
     /* Precondition */
     template<PredicateTag P>

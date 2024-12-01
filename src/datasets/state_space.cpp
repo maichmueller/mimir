@@ -104,25 +104,25 @@ std::optional<StateSpace> StateSpace::create(Problem problem,
     stop_watch.start();
     while (!lifo_queue.empty() && !stop_watch.has_finished())
     {
-        const auto state = lifo_queue.back();
-        const auto state_index = state.get_index();
+        const auto state_vertex = lifo_queue.back();
+        const auto state_index = state_vertex.get_index();
         lifo_queue.pop_back();
-        if (mimir::get_state(state)->literals_hold(problem->get_goal_condition<Fluent>())
-            && mimir::get_state(state)->literals_hold(problem->get_goal_condition<Derived>()))
+        if (mimir::get_state(state_vertex)->literals_hold(problem->get_goal_condition<Fluent>())
+            && mimir::get_state(state_vertex)->literals_hold(problem->get_goal_condition<Derived>()))
         {
             goal_states.insert(state_index);
         }
 
-        applicable_action_generator->generate_applicable_actions(mimir::get_state(state), applicable_actions);
+        applicable_action_generator->generate_applicable_actions(mimir::get_state(state_vertex), applicable_actions);
         for (const auto& action : applicable_actions)
         {
-            const auto [successor_state, costs] = state_repository->get_or_create_successor_state(mimir::get_state(vertex), action);
-            const auto it = state_to_vertex_index.find(successor_state);
-            const bool exists = (it != state_to_vertex_index.end());
+            const auto [successor_state, action_cost] = state_repository->get_or_create_successor_state(mimir::get_state(state_vertex), action);
+            const auto it = state_to_index.find(successor_state);
+            const bool exists = (it != state_to_index.end());
             if (exists)
             {
                 const auto successor_vertex_index = it->second;
-                graph.add_directed_edge(vertex_index, successor_vertex_index, action, costs);
+                graph.add_directed_edge(state_index, successor_vertex_index, action, action_cost);
                 continue;
             }
 
@@ -133,9 +133,9 @@ std::optional<StateSpace> StateSpace::create(Problem problem,
                 return std::nullopt;
             }
 
-            graph.add_directed_edge(vertex_index, successor_vertex_index, action, costs);
-            state_to_vertex_index.emplace(successor_state, successor_vertex_index);
-            lifo_queue.push_back(graph.get_vertices().at(successor_vertex_index));
+            graph.add_directed_edge(state_index, successor_state_index, action, action_cost);
+            state_to_index.emplace(successor_state, successor_state_index);
+            lifo_queue.push_back(graph.get_vertices().at(successor_state_index));
         }
     }
 
