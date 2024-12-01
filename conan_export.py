@@ -3,7 +3,6 @@
 import argparse
 import os
 import subprocess
-import yaml
 
 # Parse arguments
 parser = argparse.ArgumentParser(description="Export dependencies using Conan.")
@@ -24,32 +23,39 @@ def read_versions_from_conandata(file_path):
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"conandata.yml not found at {file_path}")
 
+    dependencies = {}
     with open(file_path, "r") as f:
-        data = yaml.safe_load(f)
-
-    # Extract versions (assuming structure {requirements: {<dep>/<version>}})
-    raw_deps = data.get("requirements", [])
-    dependencies = dict()
-    for dep in raw_deps:
-        name, version = dep.split("/")
-        dependencies[name] = version
+        lines = [l.strip() for l in f.readlines()]
+        try:
+            req_start = lines.index("requirements:")
+        except ValueError:
+            raise ValueError("No 'requirements:' section found in conandata.yml.")
+        for line in lines[req_start + 1 :]:
+            line = line.strip()
+            if not line:
+                break
+            if line.startswith("-"):
+                try:
+                    dep, version = str(line[1:].strip().strip('"')).split("/")
+                    dependencies[dep.strip()] = version.strip()
+                except ValueError:
+                    print(f"Warning: Skipping malformed line: {line}")
     return dependencies
 
 
-# Path to conandata.yml (adjust as needed)
 conandata_path = "conandata.yml"
 
-# Try to load dependency versions
+
 try:
     dependency_versions = read_versions_from_conandata(conandata_path)
 except Exception as e:
     print(f"Error reading conandata.yml: {e}")
     exit(1)
 
-# Define the dependencies to export
+# define the dependencies to export
 dependencies = ["loki", "nauty", "cista", "unordered_dense_cista"]
 
-# Export dependencies
+# export dependencies
 for dep in dependencies:
     version = dependency_versions.get(dep)
     if not version:
