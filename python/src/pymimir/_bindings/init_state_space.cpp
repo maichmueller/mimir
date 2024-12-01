@@ -93,14 +93,14 @@ void init_state_space(py::module& m)
                     py::arg("factories"),
                     py::arg("options") = StateSpaceOptions())
         .def_static("create",
-                    py::overload_cast<const fs::path&, const std::vector<fs::path>&, const StateSpacesOptions&>(&StateSpace::create),
+                    py::overload_cast<const fs::path&, const vector<fs::path>&, const StateSpacesOptions&>(&StateSpace::create),
                     py::arg("domain_filepath"),
                     py::arg("problem_filepaths"),
                     py::arg("options") = StateSpacesOptions())
         .def_static(
             "create",
             py::overload_cast<
-                const std::vector<
+                const vector<
                     std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>&,
                 const StateSpacesOptions&>(&StateSpace::create),
             py::arg("memories"),

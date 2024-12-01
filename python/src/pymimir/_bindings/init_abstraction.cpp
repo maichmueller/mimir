@@ -80,9 +80,9 @@ void init_abstraction(py::module& m)
             py::arg("options") = FaithfulAbstractionOptions())
         .def_static(
             "create",
-            [](const std::string& domain_filepath, const std::vector<std::string>& problem_filepaths, const FaithfulAbstractionsOptions& options)
+            [](const std::string& domain_filepath, const vector<std::string>& problem_filepaths, const FaithfulAbstractionsOptions& options)
             {
-                auto problem_filepaths_ = std::vector<fs::path>(problem_filepaths.begin(), problem_filepaths.end());
+                auto problem_filepaths_ = vector<fs::path>(problem_filepaths.begin(), problem_filepaths.end());
                 return FaithfulAbstraction::create(domain_filepath, problem_filepaths_, options);
             },
             py::arg("domain_filepath"),
@@ -90,7 +90,7 @@ void init_abstraction(py::module& m)
             py::arg("options") = FaithfulAbstractionsOptions())
         .def_static(
             "create",
-            [](const std::vector<
+            [](const vector<
                    std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>&
                    memories,
                const FaithfulAbstractionsOptions& options) { return FaithfulAbstraction::create(memories, options); },
@@ -217,9 +217,9 @@ void init_abstraction(py::module& m)
              })
         .def_static(
             "create",
-            [](const std::string& domain_filepath, const std::vector<std::string>& problem_filepaths, const FaithfulAbstractionsOptions& options)
+            [](const std::string& domain_filepath, const vector<std::string>& problem_filepaths, const FaithfulAbstractionsOptions& options)
             {
-                auto problem_filepaths_ = std::vector<fs::path>(problem_filepaths.begin(), problem_filepaths.end());
+                auto problem_filepaths_ = vector<fs::path>(problem_filepaths.begin(), problem_filepaths.end());
                 return GlobalFaithfulAbstraction::create(domain_filepath, problem_filepaths_, options);
             },
             py::arg("domain_filepath"),
@@ -227,7 +227,7 @@ void init_abstraction(py::module& m)
             py::arg("options") = FaithfulAbstractionsOptions())
         .def_static(
             "create",
-            [](const std::vector<
+            [](const vector<
                    std::tuple<Problem, std::shared_ptr<PDDLRepositories>, std::shared_ptr<IApplicableActionGenerator>, std::shared_ptr<StateRepository>>>&
                    memories,
                const FaithfulAbstractionsOptions& options) { return GlobalFaithfulAbstraction::create(memories, options); },
