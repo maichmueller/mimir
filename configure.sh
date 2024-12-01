@@ -126,16 +126,12 @@ is_valid_build_type() {
 # Check if the provided build type is valid
 if is_valid_build_type "$config"; then
   echo "Selected build type: $config"
-  # Perform further actions with the valid build type
 else
-  # Try to find a near-match
   near_match=$(find_near_match "$config")
-
   if [ -n "$near_match" ]; then
     echo "Did you mean '$near_match'? Auto-adapting..."
     input_build_type=$near_match
     echo "Selected build type: $input_build_type"
-    # Perform further actions with the valid build type
   else
     echo "Error: Invalid build type. Valid build types are: ${valid_build_types[*]}"
     exit 1
@@ -156,12 +152,14 @@ echo "conan_extra_args: ${conan_extra_args[*]}"
 echo "Executing cmake config."
 
 if [ "$use_conan" = true ]; then
-  # first export all custom conan recipes (needed to register them in the local conan cache)
-  current_directory="$(dirname "$(realpath "$0")")"
-  chmod +x "$current_directory"/conan_export.py
-  "$current_directory"/conan_export.py --conan_cmd="$conan_cmd"
+  # Check if custom dependencies are installed
+  if ! $conan_cmd graph info . > /dev/null 2>&1; then
+    echo "Error running conan graph info. Custom dependencies probably not installed yet. Exporting custom recipes."
+    chmod +x "$script_dir/conan_export.py"
+    "$script_dir/conan_export.py" --conan_cmd="$conan_cmd"
+  fi
 
-  # install all dependencies defined for conan
+  # Install all dependencies defined for conan
   conan_args="\
   -s build_type=Release \
   -s:h compiler.cppstd=gnu20 \
@@ -174,9 +172,7 @@ if [ "$use_conan" = true ]; then
 
   action="$conan_cmd install . -of=$cmake_build_folder/conan -g CMakeDeps -s \"&\":build_type=$config $conan_args"
   eval "$action"
-  # append the necessary cmake config to the cmake call
-  cmake_extra_args=("${cmake_extra_args[@]}" \
-  -DCMAKE_TOOLCHAIN_FILE="$toolchain_file")
+  cmake_extra_args+=(-DCMAKE_TOOLCHAIN_FILE="$toolchain_file")
 fi
 
 
