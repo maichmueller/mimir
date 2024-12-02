@@ -58,7 +58,7 @@ TEST(CistaTests, CistaDynamicBitsetTest)
     print_buffer(buf);
 
     // Deserialize.
-    [[maybe_unused]] auto deserialized = cista::deserialize<Bitset>(buf.begin().base(), buf.end().base());
+    [[maybe_unused]] auto deserialized = cista::deserialize<Bitset>(buf);
 }
 
 TEST(CistaTests, CistaDynamicBitsetDefaultConstructorTest)

@@ -51,7 +51,7 @@ public:
         // Convert each element from Python to C++
         for (const auto& item : iterable)
         {
-            value.push_back(item.cast<pymimir::Index>());
+            value.emplace_back(item.cast<pymimir::Index>());
         }
         return true;
     }
