@@ -1,5 +1,5 @@
 # Set result variables
-find_package(benchmark REQUIRED)
+find_package(benchmark REQUIRED COMPONENTS benchmark main)
 
 add_executable(mimir-profile "profiling.cpp")
 
