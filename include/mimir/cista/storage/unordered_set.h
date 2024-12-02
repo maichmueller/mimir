@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "mimir/cista/serialization.hpp"
 #include "mimir/cista/storage/byte_buffer_segmented.h"
 #include "mimir/declarations.hpp"
 
@@ -59,7 +60,7 @@ private:
     mimir::unordered_set<const T*, Hash, Equal> m_elements;
 
     // Serialization buffer
-    cista::buf<mimir::vector<uint8_t>> m_buf;
+    cista::buf<std::vector<uint8_t>> m_buf;
 
     using iterator = typename mimir::unordered_set<const T*, Hash, Equal>::iterator;
     using const_iterator = typename mimir::unordered_set<const T*, Hash, Equal>::const_iterator;
