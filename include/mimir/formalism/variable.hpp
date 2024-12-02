@@ -17,37 +17,22 @@
 
 #pragma once
 
+#include "mimir/declarations.hpp"
 #include "mimir/formalism/declarations.hpp"
 
 namespace mimir
 {
 
-class VariableImpl
+struct VariableImpl
 {
-private:
     Index m_index;
-    std::string m_name;
+    mimir::string m_name;
     size_t m_parameter_index;
-
-    // Below: add additional members if needed and initialize them in the constructor
-
-    VariableImpl(Index index, std::string name, size_t parameter_index);
-
-    // Give access to the constructor.
-    template<typename HolderType, typename Hash, typename EqualTo>
-    friend class loki::SegmentedRepository;
-
-public:
-    // moveable but not copyable
-    VariableImpl(const VariableImpl& other) = delete;
-    VariableImpl& operator=(const VariableImpl& other) = delete;
-    VariableImpl(VariableImpl&& other) = default;
-    VariableImpl& operator=(VariableImpl&& other) = default;
 
     std::string str() const;
 
     Index get_index() const;
-    const std::string& get_name() const;
+    std::string_view get_name() const;
     const size_t get_parameter_index() const;
 };
 

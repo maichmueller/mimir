@@ -150,7 +150,7 @@ public:
     Requirements get_or_create_requirements(loki::RequirementEnumSet requirement_set);
 
     /// @brief Get or create a variable for the given parameters.
-    Variable get_or_create_variable(std::string name, size_t parameter_index);
+    Variable get_or_create_variable(mimir::string name, size_t parameter_index);
 
     /// @brief Get or create a variable term for the given parameters.
     Term get_or_create_term_variable(Variable variable);
@@ -159,7 +159,7 @@ public:
     Term get_or_create_term_object(Object object);
 
     /// @brief Get or create an object for the given parameters.
-    Object get_or_create_object(std::string name);
+    Object get_or_create_object(mimir::string name);
 
     template<PredicateTag P>
     Atom<P> get_or_create_atom(Predicate<P> predicate, TermList terms);

@@ -22,31 +22,15 @@
 namespace mimir
 {
 
-class ObjectImpl
+struct ObjectImpl
 {
-private:
     Index m_index;
-    std::string m_name;
-
-    // Below: add additional members if needed and initialize them in the constructor
-
-    ObjectImpl(Index index, std::string name);
-
-    // Give access to the constructor.
-    template<typename HolderType, typename Hash, typename EqualTo>
-    friend class loki::SegmentedRepository;
-
-public:
-    // moveable but not copyable
-    ObjectImpl(const ObjectImpl& other) = delete;
-    ObjectImpl& operator=(const ObjectImpl& other) = delete;
-    ObjectImpl(ObjectImpl&& other) = default;
-    ObjectImpl& operator=(ObjectImpl&& other) = default;
+    mimir::string m_name;
 
     std::string str() const;
 
     Index get_index() const;
-    const std::string& get_name() const;
+    std::string_view get_name() const;
 };
 
 extern std::ostream& operator<<(std::ostream& out, const ObjectImpl& element);

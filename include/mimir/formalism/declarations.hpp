@@ -171,7 +171,7 @@ class NumericFluentImpl;
 using NumericFluent = const NumericFluentImpl*;
 using NumericFluentList = vector<NumericFluent>;
 
-class ObjectImpl;
+struct ObjectImpl;
 using Object = const ObjectImpl*;
 using ObjectList = vector<Object>;
 template<typename Key, typename Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>>
@@ -210,7 +210,7 @@ using TermImpl = std::variant<TermObjectImpl, TermVariableImpl>;
 using Term = const TermImpl*;
 using TermList = vector<Term>;
 
-class VariableImpl;
+struct VariableImpl;
 using Variable = const VariableImpl*;
 using VariableList = vector<Variable>;
 using VariableSet = unordered_set<Variable>;
