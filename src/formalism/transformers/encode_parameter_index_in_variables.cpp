@@ -29,7 +29,7 @@ Variable EncodeParameterIndexInVariables::transform_impl(const VariableImpl& var
     {
         const auto parameter_index = it->second;
 
-        return m_pddl_repositories.get_or_create_variable(variable.get_name() + "_" + std::to_string(parameter_index), parameter_index);
+        return m_pddl_repositories.get_or_create_variable(fmt::format("{}_{}", variable.get_name(), parameter_index), parameter_index);
     }
     return m_pddl_repositories.get_or_create_variable(variable.get_name(), 0);
 }
