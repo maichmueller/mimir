@@ -58,6 +58,8 @@ public:
 
     const VertexPropertiesTypes& get_properties() const { return m_properties; }
 
+    auto cista_members() const { return std::tuple_cat(std::tuple(m_index), m_properties); }
+
 private:
     VertexIndex m_index;
     VertexPropertiesTypes m_properties;

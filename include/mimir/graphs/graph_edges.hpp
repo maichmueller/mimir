@@ -69,6 +69,8 @@ public:
 
     const EdgePropertiesTypes& get_properties() const { return m_properties; }
 
+    auto cista_members() const { return std::tuple_cat(std::tuple(m_index, m_source, m_target), m_properties); }
+
 private:
     EdgeIndex m_index;
     VertexIndex m_source;
