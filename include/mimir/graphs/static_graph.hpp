@@ -156,6 +156,8 @@ public:
     template<IsTraversalDirection Direction>
     Degree get_degree(VertexIndex vertex) const;
 
+    auto cista_members() const { return std::tie(m_vertices, m_edges, get_degrees<ForwardTraversal>(), get_degrees<BackwardTraversal>(), m_slice); }
+
 private:
     VertexList m_vertices;
     EdgeList m_edges;

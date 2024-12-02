@@ -67,7 +67,7 @@ Requirements PDDLRepositories::get_or_create_requirements(loki::RequirementEnumS
     return boost::hana::at_key(m_repositories, boost::hana::type<RequirementsImpl> {}).template get_or_create<RequirementsImpl>(std::move(requirement_set));
 }
 
-Variable PDDLRepositories::get_or_create_variable(std::string name, size_t parameter_index)
+Variable PDDLRepositories::get_or_create_variable(mimir::string name, size_t parameter_index)
 {
     return boost::hana::at_key(m_repositories, boost::hana::type<VariableImpl> {})
         .template get_or_create<VariableImpl>(std::move(name), std::move(parameter_index));
@@ -83,7 +83,7 @@ Term PDDLRepositories::get_or_create_term_object(Object object)
     return boost::hana::at_key(m_repositories, boost::hana::type<TermImpl> {}).template get_or_create<TermObjectImpl>(std::move(object));
 }
 
-Object PDDLRepositories::get_or_create_object(std::string name)
+Object PDDLRepositories::get_or_create_object(mimir::string name)
 {
     return boost::hana::at_key(m_repositories, boost::hana::type<ObjectImpl> {}).template get_or_create<ObjectImpl>(std::move(name));
 }

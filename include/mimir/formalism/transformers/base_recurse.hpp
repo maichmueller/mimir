@@ -344,10 +344,10 @@ protected:
     {
         return this->m_pddl_repositories.get_or_create_requirements(requirements.get_requirements());
     }
-    Object transform_impl(const ObjectImpl& object) { return this->m_pddl_repositories.get_or_create_object(object.get_name()); }
+    Object transform_impl(const ObjectImpl& object) { return this->m_pddl_repositories.get_or_create_object(mimir::string { object.get_name() }); }
     Variable transform_impl(const VariableImpl& variable)
     {
-        return this->m_pddl_repositories.get_or_create_variable(variable.get_name(), variable.get_parameter_index());
+        return this->m_pddl_repositories.get_or_create_variable(mimir::string { variable.get_name() }, variable.get_parameter_index());
     }
     Term transform_impl(const TermObjectImpl& term) { return this->m_pddl_repositories.get_or_create_term_object(this->transform(*term.get_object())); }
     Term transform_impl(const TermVariableImpl& term) { return this->m_pddl_repositories.get_or_create_term_variable(this->transform(*term.get_variable())); }
