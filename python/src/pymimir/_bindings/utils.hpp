@@ -286,4 +286,11 @@ py::class_<IndexGroupedVector, holder_type> bind_const_index_grouped_vector(py::
     return cl;
 }
 
+template<typename T>
+auto auto_pickler()
+{
+    return py::pickle([](const T& bs) { return cista::serialize(bs); },
+                      [](const cista::byte_buf& buffer) { return T(*cista::deserialize<T, cista::mode::NONE>(buffer)); });
+}
+
 }  // namespace pymimir

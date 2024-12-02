@@ -67,5 +67,7 @@ void init_actions(py::module& m)
         .def("get_strips_effect", [](const GroundActionImpl& self) { return StripsActionEffect(self.get_strips_effect()); })
         .def("get_conditional_effects",
              [](const GroundActionImpl& self)
-             { return insert_into_list(make_range(self.get_conditional_effects().begin(), self.get_conditional_effects().end())); });
+             { return insert_into_list(make_range(self.get_conditional_effects().begin(), self.get_conditional_effects().end())); })
+        .def(auto_pickler<GroundActionImpl>());
+    ;
 }

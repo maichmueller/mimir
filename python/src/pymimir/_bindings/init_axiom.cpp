@@ -34,5 +34,6 @@ void init_axiom(py::module& m)
         .def("get_strips_precondition", CONST_OVERLOAD(GroundAxiomImpl::get_strips_precondition), py::return_value_policy::reference_internal)
         .def("get_derived_effect", CONST_OVERLOAD(GroundAxiomImpl::get_derived_effect), py::return_value_policy::reference_internal)
         .def("is_applicable", &GroundAxiomImpl::is_applicable, py::arg("state_fluent_atoms"), py::arg("state_derived_atoms"), py::arg("static_positive_atoms"))
-        .def("is_statically_applicable", &GroundAxiomImpl::is_statically_applicable, py::arg("static_positive_bitset"));
+        .def("is_statically_applicable", &GroundAxiomImpl::is_statically_applicable, py::arg("static_positive_bitset"))
+        .def(auto_pickler<GroundAxiomImpl>());
 }

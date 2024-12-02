@@ -16,5 +16,6 @@ void init_variable(py::module& m)
         .def("__str__", &VariableImpl::str)
         .def("__repr__", &VariableImpl::str)
         .def("get_index", &VariableImpl::get_index)
-        .def("get_name", &VariableImpl::get_name, py::return_value_policy::reference_internal);
+        .def("get_name", &VariableImpl::get_name, py::return_value_policy::reference_internal)
+        .def(auto_pickler<VariableImpl>());
 }

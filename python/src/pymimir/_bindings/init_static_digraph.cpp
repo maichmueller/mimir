@@ -13,7 +13,8 @@ void init_static_digraph(py::module& m)
     class_<EmptyVertex>(m, "EmptyVertex")
         .def("__eq__", &EmptyVertex::operator==)
         .def("__hash__", [](const EmptyVertex& self) { return std::hash<EmptyVertex>()(self); })
-        .def_property_readonly("index", &EmptyVertex::get_index);
+        .def_property_readonly("index", &EmptyVertex::get_index)
+        .def(auto_pickler<EmptyVertex>());
 
     // EmptyEdge (used in StaticDigraph)
     class_<EmptyEdge>(m, "EmptyEdge")
@@ -21,7 +22,8 @@ void init_static_digraph(py::module& m)
         .def("__hash__", [](const EmptyEdge& self) { return std::hash<EmptyEdge>()(self); })
         .def_property_readonly("index", &EmptyEdge::get_index)
         .def_property_readonly("source", &EmptyEdge::get_source)
-        .def_property_readonly("target", &EmptyEdge::get_target);
+        .def_property_readonly("target", &EmptyEdge::get_target)
+        .def(auto_pickler<EmptyEdge>());
 
     // StaticDigraph
     class_<StaticDigraph>(m, "StaticDigraph")  //
@@ -115,5 +117,6 @@ void init_static_digraph(py::module& m)
         .def("get_vertices", &StaticDigraph::get_vertices, py::return_value_policy::reference_internal)
         .def("get_edges", &StaticDigraph::get_edges, py::return_value_policy::reference_internal)
         .def("get_num_vertices", &StaticDigraph::get_num_vertices)
-        .def("get_num_edges", &StaticDigraph::get_num_edges);
+        .def("get_num_edges", &StaticDigraph::get_num_edges)
+        .def(auto_pickler<StaticDigraph>());
 }

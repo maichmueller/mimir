@@ -16,5 +16,6 @@ void init_object(py::module& m)
         .def("__str__", &ObjectImpl::str)
         .def("__repr__", &ObjectImpl::str)
         .def("get_index", &ObjectImpl::get_index)
-        .def("get_name", &ObjectImpl::get_name, py::return_value_policy::reference_internal);
+        .def("get_name", &ObjectImpl::get_name, py::return_value_policy::reference_internal)
+        .def(auto_pickler<ObjectImpl>());
 }
