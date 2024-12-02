@@ -84,7 +84,7 @@ TEST(MimirTests, GraphsDynamicDigraphTest)
 
     /* Add five more edges resulting in a reuse from the free edge list, and an index obtained from next_edge_index.
      */
-    auto free_edges = unordered_set<EdgeIndex> { std::initializer_list<Index> { 0, 1, 4, 5 } };
+    auto free_edges = std::unordered_set<EdgeIndex> { std::initializer_list<Index> { 0, 1, 4, 5 } };
     auto [e6, e7] = graph.add_undirected_edge(v1, v5);
     EXPECT_TRUE(free_edges.contains(e6));
     EXPECT_TRUE(free_edges.contains(e7));

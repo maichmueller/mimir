@@ -20,6 +20,8 @@
 #include "mimir/formalism/repositories.hpp"
 
 #include <loki/loki.hpp>
+#include <range/v3/range/conversion.hpp>
+#include <range/v3/view/transform.hpp>
 #include <unordered_map>
 #include <variant>
 
@@ -110,7 +112,7 @@ public:
         requires std::is_pointer_v<std::ranges::range_value_t<Range>>
     auto translate_common(const Range& input)
     {
-        return _translate_impl<vector>(AS_CPTR_LAMBDA(translate_common), input);
+        return _translate_impl<std::vector>(AS_CPTR_LAMBDA(translate_common), input);
     }
     VariableList translate_common(const loki::ParameterList& parameters);
     Requirements translate_common(const loki::RequirementsImpl& requirements);
@@ -126,7 +128,7 @@ public:
     template<typename T>
     auto translate_lifted(const std::vector<const T*>& input)
     {
-        return _translate_impl<vector>(AS_CPTR_LAMBDA(translate_lifted), input);
+        return _translate_impl<std::vector>(AS_CPTR_LAMBDA(translate_lifted), input);
     }
     Term translate_lifted(const loki::TermVariableImpl& term);
     Term translate_lifted(const loki::TermObjectImpl& term);
@@ -154,7 +156,7 @@ public:
         requires std::is_pointer_v<std::ranges::range_value_t<Range>>
     auto translate_grounded(const Range& input)
     {
-        return _translate_impl<vector>(AS_CPTR_LAMBDA(translate_grounded), input);
+        return _translate_impl<std::vector>(AS_CPTR_LAMBDA(translate_grounded), input);
     }
     Object translate_grounded(const loki::TermImpl& term);
     StaticOrFluentOrDerivedGroundAtom translate_grounded(const loki::AtomImpl& atom);

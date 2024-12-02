@@ -1,4 +1,5 @@
 #include "init_declarations.hpp"
+#include "mimir/common/itertools.hpp"
 #include "opaque_types.hpp"
 #include "pymimir.hpp"
 #include "trampolines.hpp"

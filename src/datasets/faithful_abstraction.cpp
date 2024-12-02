@@ -27,6 +27,7 @@
 #include <cstdlib>
 #include <deque>
 #include <pthread.h>
+#include <range/v3/view/transform.hpp>
 #include <thread>
 
 namespace mimir

@@ -1,4 +1,5 @@
 #include "init_declarations.hpp"
+#include "mimir/common/itertools.hpp"
 
 #include <pybind11/pybind11.h>
 namespace py = pybind11;

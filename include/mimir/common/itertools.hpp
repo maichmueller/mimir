@@ -128,4 +128,25 @@ public:
     }
 };
 
+void for_each_tag(auto&& f)
+{
+    f(Static {});
+    f(Fluent {});
+    f(Derived {});
+}
+
+template<typename IndexType, IndexType... Is>
+void for_each_index(auto&& f)
+{
+    (f(std::integral_constant<IndexType, Is> {}), ...);
+}
+
+template<std::ranges::range Range, typename Comp = std::less<>>
+auto sorted(Range&& range, Comp comp = {})
+{
+    auto result = FWD(range) | ranges::to_vector;
+    std::ranges::sort(result, comp);
+    return result;
+}
+
 }

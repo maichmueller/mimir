@@ -1,7 +1,9 @@
 #include "init_declarations.hpp"
+#include "mimir/common/itertools.hpp"
 #include "opaque_types.hpp"
 
 #include <pybind11/pybind11.h>
+
 namespace py = pybind11;
 
 using namespace pymimir;

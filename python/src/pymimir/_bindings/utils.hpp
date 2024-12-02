@@ -1,8 +1,9 @@
 
 #pragma once
 
-#include <pybind11/pybind11.h>
 #include "pymimir.hpp"
+
+#include <pybind11/pybind11.h>
 
 namespace py = pybind11;
 
@@ -154,19 +155,6 @@ py::list all_atoms_from_conditions(const Self& self, const py::object& py_factor
 
 constexpr auto cast_visitor = AS_LAMBDA(py::cast);
 constexpr auto repr_visitor = AS_LAMBDA([](const auto& arg) { return arg.str(); });
-
-void for_each_tag(auto&& f)
-{
-    f(Static {});
-    f(Fluent {});
-    f(Derived {});
-}
-
-template<typename IndexType, IndexType... Is>
-void for_each_index(auto&& f)
-{
-    (f(std::integral_constant<IndexType, Is> {}), ...);
-}
 
 template<PredicateTag P>
 constexpr std::string tag_name()

@@ -17,10 +17,13 @@
 
 #include "mimir/graphs/algorithms/color_refinement.hpp"
 
+#include "mimir/common/itertools.hpp"
 #include "mimir/datasets/faithful_abstraction.hpp"
 #include "mimir/graphs/digraph_vertex_colored.hpp"
 
 #include <gtest/gtest.h>
+#include <range/v3/view/enumerate.hpp>
+#include <range/v3/view/transform.hpp>
 
 namespace mimir::tests
 {

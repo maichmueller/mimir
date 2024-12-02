@@ -24,6 +24,7 @@
 #include "mimir/graphs/graph_vertex_interface.hpp"
 
 #include <boost/hana.hpp>
+#include <functional>
 #include <iostream>
 #include <ranges>
 #include <unordered_map>

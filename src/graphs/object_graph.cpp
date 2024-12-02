@@ -17,6 +17,7 @@
 
 #include "mimir/graphs/object_graph.hpp"
 
+#include "mimir/common/itertools.hpp"
 #include "mimir/formalism/repositories.hpp"
 
 #include <fmt/ranges.h>

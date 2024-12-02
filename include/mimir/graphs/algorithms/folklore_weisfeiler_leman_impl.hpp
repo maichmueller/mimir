@@ -76,9 +76,9 @@ bool operator==(const Certificate<K>& lhs, const Certificate<K>& rhs)
 template<size_t K>
 std::ostream& operator<<(std::ostream& out, const Certificate<K>& element)
 {
-    out << "Certificate" << K << "FWL(" << "canonical_coloring=" << element.get_canonical_coloring() << ", "
-        << "canonical_configuration_compression_function=" << element.get_canonical_configuration_compression_function() << ")";
-    return out;
+    return out << fmt::format("CertificateColorRefinement(canonical_coloring={}, canonical_configuration_compression_function={})",
+                              element.get_canonical_coloring(),
+                              element.get_canonical_configuration_compression_function());
 }
 
 template<size_t K>
@@ -240,7 +240,7 @@ Certificate<K> compute_certificate(const G& graph, IsomorphismTypeCompressionFun
     while (!L.empty())
     {
         if (debug)
-            std::cout << "L: " << L << std::endl;
+            fmt::print("L: {}\n", L);
 
         // Clear data structures that are reused.
         M.clear();
@@ -279,7 +279,7 @@ Certificate<K> compute_certificate(const G& graph, IsomorphismTypeCompressionFun
         std::sort(M.begin(), M.end());
 
         if (debug)
-            std::cout << "M: " << M << std::endl;
+            fmt::print("M: {}\n", M);
 
         // (line 16): Scan M and replace tuples (vec{v},c_1^1,...,c_k^1,...,vec{v},c_1^r,...,c_k^r) with single tuple
         // (C(vec{v}),(c_1^1,...,c_k^1),...,(c_1^r,...,c_k^r))
@@ -289,7 +289,7 @@ Certificate<K> compute_certificate(const G& graph, IsomorphismTypeCompressionFun
         std::sort(M_replaced.begin(), M_replaced.end());
 
         if (debug)
-            std::cout << "M_replaced: " << M_replaced << std::endl;
+            fmt::print("M_replaced: {}\n", M_replaced);
 
         // (line 18): Split color classes
         color_refinement::split_color_classes(M_replaced, f, max_color, hash_to_color, color_to_hashes, L);
