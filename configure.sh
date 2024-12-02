@@ -156,7 +156,12 @@ echo "conan_extra_args: ${conan_extra_args[*]}"
 echo "Executing cmake config."
 
 if [ "$use_conan" = true ]; then
-  # install all dependencies defined for conan first
+  # first export all custom conan recipes (needed to register them in the local conan cache)
+  current_directory="$(dirname "$(realpath "$0")")"
+  chmod +x "$current_directory"/conan_export.py
+  "$current_directory"/conan_export.py --conan_cmd="$conan_cmd"
+
+  # install all dependencies defined for conan
   conan_args="\
   -s build_type=Release \
   -s:h compiler.cppstd=gnu20 \
