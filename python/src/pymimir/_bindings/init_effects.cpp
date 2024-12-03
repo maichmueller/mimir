@@ -14,7 +14,7 @@ void init_effects(py::module& m)
         .def("__str__", &EffectStripsImpl::str)
         .def("__repr__", &EffectStripsImpl::str)
         .def("get_index", &EffectStripsImpl::get_index)
-        .def("get_effect", &EffectStripsImpl::get_effect, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_effects", &EffectStripsImpl::get_effects, py::keep_alive<0, 1>(), py::return_value_policy::copy)
         .def("get_function_expression", &EffectStripsImpl::get_function_expression, py::return_value_policy::reference_internal);
 
     class_<EffectConditionalImpl>(m, "EffectComplex")  //
@@ -37,7 +37,7 @@ void init_effects(py::module& m)
             "get_derived_conditions",
             [](const EffectConditionalImpl& self) { return LiteralList<Derived>(self.get_conditions<Derived>()); },
             py::keep_alive<0, 1>())
-        .def("get_effect", &EffectConditionalImpl::get_effect, py::return_value_policy::reference_internal);
+        .def("get_effects", &EffectConditionalImpl::get_effects, py::return_value_policy::reference_internal);
 
     class_<GroundEffectStrips>(m, "GroundEffectStrips")
         .def("get_negative_effects",

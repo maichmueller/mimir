@@ -185,7 +185,7 @@ protected:
     void prepare_impl(const NumericFluentImpl& numeric_fluent) { this->prepare(*numeric_fluent.get_function()); }
     void prepare_impl(const EffectStripsImpl& effect)
     {
-        this->prepare(effect.get_effect());
+        this->prepare(effect.get_effects());
         this->prepare(*effect.get_function_expression());
     }
     void prepare_impl(const EffectConditionalImpl& effect)
@@ -194,7 +194,7 @@ protected:
         this->prepare(effect.get_conditions<Static>());
         this->prepare(effect.get_conditions<Fluent>());
         this->prepare(effect.get_conditions<Derived>());
-        this->prepare(effect.get_effect());
+        this->prepare(effect.get_effects());
         this->prepare(*effect.get_function_expression());
     }
     void prepare_impl(const FunctionExpressionNumberImpl& function_expression) {}
@@ -540,7 +540,7 @@ protected:
     }
     EffectStrips transform_impl(const EffectStripsImpl& effect)
     {
-        return this->m_pddl_repositories.get_or_create_strips_effect(this->transform(effect.get_effect()), this->transform(*effect.get_function_expression()));
+        return this->m_pddl_repositories.get_or_create_strips_effect(this->transform(effect.get_effects()), this->transform(*effect.get_function_expression()));
     }
     EffectConditional transform_impl(const EffectConditionalImpl& effect)
     {
@@ -548,7 +548,7 @@ protected:
                                                                           this->transform(effect.get_conditions<Static>()),
                                                                           this->transform(effect.get_conditions<Fluent>()),
                                                                           this->transform(effect.get_conditions<Derived>()),
-                                                                          this->transform(effect.get_effect()),
+                                                                          this->transform(effect.get_effects()),
                                                                           this->transform(*effect.get_function_expression()));
     }
     FunctionExpression transform_impl(const FunctionExpressionNumberImpl& function_expression)

@@ -1,6 +1,8 @@
 #include "init_declarations.hpp"
+#include "mimir/common/itertools.hpp"
 #include "opaque_types.hpp"
 #include "pymimir.hpp"
+#include "trampolines.hpp"
 
 #include <pybind11/pybind11.h>
 namespace py = pybind11;
@@ -152,7 +154,9 @@ void register_classes(py::module& m)
 
     py::bind_vector<GroundActionList>(m, "GroundActionList");
     py::bind_vector<EffectConditionalList>(m, "EffectConditionalList");
+    py::bind_vector<GroundEffectConditionalList>(m, "GroundEffectConditionalList");
     py::bind_vector<GroundFunctionExpressionList>(m, "GroundFunctionExpressionList");
+    py::bind_vector<GroundEffectFluentLiteralList>(m, "GroundEffectFluentLiteralList");
     py::bind_vector<StateList>(m, "StateList");
     py::bind_vector<ActionList>(m, "ActionList");
     py::bind_vector<ProblemList>(m, "ProblemList");
