@@ -156,7 +156,7 @@ if [ "$use_conan" = true ]; then
   if ! $conan_cmd graph info . > /dev/null 2>&1; then
     echo "Error running conan graph info. Custom dependencies probably not installed yet. Exporting custom recipes."
     chmod +x "$script_dir/conan_export.py"
-    "$script_dir/conan_export.py" --conan_cmd="$conan_cmd"
+    python "$script_dir/conan_export.py" --conan_cmd="$conan_cmd"
   fi
 
   # Install all dependencies defined for conan
@@ -170,12 +170,6 @@ if [ "$use_conan" = true ]; then
   --options=nauty/*:fPIC=True \
   ${conan_extra_args[*]}"
 
-  action="$conan_cmd export dependencies/loki --version=0.0.7"
-  eval "$action"
-  action="$conan_cmd export dependencies/nauty --version=2.8.8"
-  eval "$action"
-  action="$conan_cmd export dependencies/cista --version=2024.10.22"
-  eval "$action"
   action="$conan_cmd install . -of=$cmake_build_folder/conan -g CMakeDeps -s \"&\":build_type=$config $conan_args"
   eval "$action"
   cmake_extra_args+=(-DCMAKE_TOOLCHAIN_FILE="$toolchain_file")
