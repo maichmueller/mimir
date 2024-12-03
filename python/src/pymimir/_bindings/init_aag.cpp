@@ -21,7 +21,7 @@ void init_applicable_action_generator(py::module_& m)
              py::arg("fluent_literals"),
              py::arg("derived_literals"),
              py::arg("pddl_repositories"))
-        .def("ground", &LiftedConjunctionGrounder::ground, py::keep_alive<0, 1>(), py::arg("state"));
+        .def("ground", &LiftedConjunctionGrounder::ground, py::arg("state"));
 
     /* ApplicableActionGenerators */
 
