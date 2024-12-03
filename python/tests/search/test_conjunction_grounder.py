@@ -34,7 +34,7 @@ def test_lifted_conjunction_grounder():
     )
     state_repository = StateRepository(applicable_action_generator)
     initial_state = state_repository.get_or_create_initial_state()
-    goal_bindings = conjunction_grounder.ground(initial_state)
+    goal_bindings = conjunction_grounder.ground(initial_state, 1_000_000)
 
     del state_repository
     del applicable_action_generator
