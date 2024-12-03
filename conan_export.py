@@ -61,7 +61,7 @@ cista
 
 
 # export dependencies
-for dep in (s.strip() for s in dependencies):
+for dep in (dep.strip() for dep in dependencies.splitlines() if dep):
     version = dependency_versions.get(dep)
     if not version:
         print(f"Warning: Version for dependency '{dep}' not found in conandata.yml.")
