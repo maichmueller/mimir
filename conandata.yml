@@ -7,6 +7,6 @@ requirements:
   - "boost/[>=1.74.0]"
   - "gtest/1.15.0"
   - "pybind11/2.13.6"
-  - "cista/2024.10.22"
+  - "cista/2024.12.01"
   - "nauty/2.8.8"
   - "loki/0.0.9"

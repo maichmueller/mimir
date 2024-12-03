@@ -1,4 +1,8 @@
 sources:
+  "2024.12.01":
+    - url: "https://github.com/maichmueller/cista.git"
+      commit: "c0fe432ce64a835d7af9c96adddf0234a8da86ab"
+      type: "git"
   "2024.10.22":
     - url: "https://github.com/felixguendling/cista.git"
       commit: "56e9191ad64cbd4176aef32a631562ca92f5bd4a"
