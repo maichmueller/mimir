@@ -24,8 +24,8 @@ void init_lists(py::module& m)
             def_opaque_vector_repr<AtomList<Tag>>(m, class_name);
         });
 
-    static_assert(!py::detail::vector_needs_copy<EffectComplexList>::value);  // Ensure return by reference + keep alive
-    def_opaque_vector_repr<EffectComplexList>(m, "EffectComplexList");
+    static_assert(!py::detail::vector_needs_copy<EffectConditionalList>::value);  // Ensure return by reference + keep alive
+    def_opaque_vector_repr<EffectConditionalList>(m, "EffectConditionalList");
 
     static_assert(!py::detail::vector_needs_copy<GroundFunctionExpressionList>::value);  // Ensure return by reference + keep alive
     def_opaque_vector_repr<GroundFunctionExpressionList>(m, "GroundFunctionExpressionList");

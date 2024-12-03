@@ -10,47 +10,47 @@ using namespace pymimir;
 
 void init_effects(py::module& m)
 {
-    class_<EffectSimpleImpl>(m, "EffectSimple")  //
-        .def("__str__", &EffectSimpleImpl::str)
-        .def("__repr__", &EffectSimpleImpl::str)
-        .def("get_index", &EffectSimpleImpl::get_index)
-        .def("get_effect", &EffectSimpleImpl::get_effect, py::keep_alive<0, 1>(), py::return_value_policy::copy)
-        .def("get_function_expression", &EffectSimpleImpl::get_function_expression, py::return_value_policy::reference_internal);
+    class_<EffectStripsImpl>(m, "EffectSimple")  //
+        .def("__str__", &EffectStripsImpl::str)
+        .def("__repr__", &EffectStripsImpl::str)
+        .def("get_index", &EffectStripsImpl::get_index)
+        .def("get_effect", &EffectStripsImpl::get_effect, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_function_expression", &EffectStripsImpl::get_function_expression, py::return_value_policy::reference_internal);
 
-    class_<EffectComplexImpl>(m, "EffectComplex")  //
-        .def("__str__", &EffectComplexImpl::str)
-        .def("__repr__", &EffectComplexImpl::str)
-        .def("get_index", &EffectComplexImpl::get_index)
+    class_<EffectConditionalImpl>(m, "EffectComplex")  //
+        .def("__str__", &EffectConditionalImpl::str)
+        .def("__repr__", &EffectConditionalImpl::str)
+        .def("get_index", &EffectConditionalImpl::get_index)
         .def(
             "get_parameters",
-            [](const EffectComplexImpl& self) { return VariableList(self.get_parameters()); },
+            [](const EffectConditionalImpl& self) { return VariableList(self.get_parameters()); },
             py::keep_alive<0, 1>())
         .def(
             "get_static_conditions",
-            [](const EffectComplexImpl& self) { return LiteralList<Static>(self.get_conditions<Static>()); },
+            [](const EffectConditionalImpl& self) { return LiteralList<Static>(self.get_conditions<Static>()); },
             py::keep_alive<0, 1>())
         .def(
             "get_fluent_conditions",
-            [](const EffectComplexImpl& self) { return LiteralList<Fluent>(self.get_conditions<Fluent>()); },
+            [](const EffectConditionalImpl& self) { return LiteralList<Fluent>(self.get_conditions<Fluent>()); },
             py::keep_alive<0, 1>())
         .def(
             "get_derived_conditions",
-            [](const EffectComplexImpl& self) { return LiteralList<Derived>(self.get_conditions<Derived>()); },
+            [](const EffectConditionalImpl& self) { return LiteralList<Derived>(self.get_conditions<Derived>()); },
             py::keep_alive<0, 1>())
-        .def("get_effect", &EffectComplexImpl::get_effect, py::return_value_policy::reference_internal);
+        .def("get_effect", &EffectConditionalImpl::get_effect, py::return_value_policy::reference_internal);
 
-    class_<StripsActionEffect>(m, "StripsActionEffect")
+    class_<GroundEffectStrips>(m, "GroundEffectStrips")
         .def("get_negative_effects",
-             [](const StripsActionEffect& self, const PDDLRepositories& factories)
+             [](const GroundEffectStrips& self, const PDDLRepositories& factories)
              { return factories.get_ground_atoms_from_indices<mimir::Fluent>(self.get_negative_effects()); })
         .def("get_positive_effects",
-             [](const StripsActionEffect& self, const PDDLRepositories& factories)
+             [](const GroundEffectStrips& self, const PDDLRepositories& factories)
              { return factories.get_ground_atoms_from_indices<mimir::Fluent>(self.get_positive_effects()); })
-        .def("get_negative_effect_indices", CONST_OVERLOAD(StripsActionEffect::get_negative_effects), py::return_value_policy::copy)
-        .def("get_negative_effect_indices", CONST_OVERLOAD(StripsActionEffect::get_positive_effects), py::return_value_policy::copy)
-        .def("get_cost", CONST_OVERLOAD(StripsActionEffect::get_cost), py::return_value_policy::copy);
+        .def("get_negative_effect_indices", CONST_OVERLOAD(GroundEffectStrips::get_negative_effects), py::return_value_policy::copy)
+        .def("get_negative_effect_indices", CONST_OVERLOAD(GroundEffectStrips::get_positive_effects), py::return_value_policy::copy)
+        .def("get_cost", CONST_OVERLOAD(GroundEffectStrips::get_cost), py::return_value_policy::copy);
 
-    class_<SimpleFluentEffect>(m, "SimpleFluentEffect")
-        .def_readonly("is_negated", &SimpleFluentEffect::is_negated)
-        .def_readonly("atom_index", &SimpleFluentEffect::atom_index);
+    class_<GroundEffectFluentLiteral>(m, "GroundEffectFluentLiteral")
+        .def_readonly("is_negated", &GroundEffectFluentLiteral::is_negated)
+        .def_readonly("atom_index", &GroundEffectFluentLiteral::atom_index);
 }

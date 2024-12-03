@@ -32,10 +32,10 @@ void register_classes(py::module& m)
     class_<AxiomImpl>(m, "Axiom");
     class_<GroundAxiomImpl>(m, "GroundAxiomImpl");
     class_<NumericFluentImpl>(m, "NumericFluent");
-    class_<EffectSimpleImpl>(m, "EffectSimple");
-    class_<EffectComplexImpl>(m, "EffectComplex");
-    class_<StripsActionEffect>(m, "StripsActionEffect");
-    class_<SimpleFluentEffect>(m, "SimpleFluentEffect");
+    class_<EffectStripsImpl>(m, "EffectSimple");
+    class_<EffectConditionalImpl>(m, "EffectComplex");
+    class_<GroundEffectStrips>(m, "GroundEffectStrips");
+    class_<GroundEffectFluentLiteral>(m, "GroundEffectFluentLiteral");
     class_<FlatBitset>(m, "FlatBitset");
     class_<FunctionSkeletonImpl>(m, "FunctionSkeleton");
     class_<FunctionImpl>(m, "Function");
@@ -61,8 +61,8 @@ void register_classes(py::module& m)
     class_<PDDLParser>(m, "PDDLParser");
     class_<StateImpl>(m, "State");
     class_<StateRepository, std::shared_ptr<StateRepository>>(m, "StateRepository");
-    class_<StripsActionPrecondition>(m, "StripsActionPrecondition");
-    class_<ConditionalEffect>(m, "ConditionalEffect");
+    class_<GroundConditionStrips>(m, "GroundConditionStrips");
+    class_<GroundEffectConditional>(m, "GroundEffectConditional");
     class_<LiftedConjunctionGrounder, std::shared_ptr<LiftedConjunctionGrounder>>(m, "LiftedConjunctionGrounder");
     class_<IApplicableActionGenerator, std::shared_ptr<IApplicableActionGenerator>>(m, "IApplicableActionGenerator");
     class_<ILiftedApplicableActionGeneratorEventHandler, std::shared_ptr<ILiftedApplicableActionGeneratorEventHandler>>(
@@ -151,7 +151,7 @@ void register_classes(py::module& m)
     class_<kfwl::IsomorphismTypeCompressionFunction>(m, "IsomorphismTypeCompressionFunction");
 
     py::bind_vector<GroundActionList>(m, "GroundActionList");
-    py::bind_vector<EffectComplexList>(m, "EffectComplexList");
+    py::bind_vector<EffectConditionalList>(m, "EffectConditionalList");
     py::bind_vector<GroundFunctionExpressionList>(m, "GroundFunctionExpressionList");
     py::bind_vector<StateList>(m, "StateList");
     py::bind_vector<ActionList>(m, "ActionList");

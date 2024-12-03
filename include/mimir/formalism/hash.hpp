@@ -114,15 +114,15 @@ struct UniquePDDLHasher<Domain>
 };
 
 template<>
-struct UniquePDDLHasher<EffectSimple>
+struct UniquePDDLHasher<EffectStrips>
 {
-    size_t operator()(EffectSimple e) const;
+    size_t operator()(EffectStrips e) const;
 };
 
 template<>
-struct UniquePDDLHasher<EffectComplex>
+struct UniquePDDLHasher<EffectConditional>
 {
-    size_t operator()(EffectComplex e) const;
+    size_t operator()(EffectConditional e) const;
 };
 
 template<>

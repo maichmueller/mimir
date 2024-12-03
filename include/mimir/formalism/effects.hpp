@@ -25,7 +25,7 @@ namespace mimir
 /**
  * Type 1 effects
  */
-class EffectSimpleImpl
+class EffectStripsImpl
 {
 private:
     Index m_index;
@@ -34,7 +34,7 @@ private:
 
     // Below: add additional members if needed and initialize them in the constructor
 
-    EffectSimpleImpl(Index index, LiteralList<Fluent> effects, FunctionExpression function_expression);
+    EffectStripsImpl(Index index, LiteralList<Fluent> effects, FunctionExpression function_expression);
 
     // Give access to the constructor.
     template<typename HolderType, typename Hash, typename EqualTo>
@@ -42,10 +42,10 @@ private:
 
 public:
     // moveable but not copyable
-    EffectSimpleImpl(const EffectSimpleImpl& other) = delete;
-    EffectSimpleImpl& operator=(const EffectSimpleImpl& other) = delete;
-    EffectSimpleImpl(EffectSimpleImpl&& other) = default;
-    EffectSimpleImpl& operator=(EffectSimpleImpl&& other) = default;
+    EffectStripsImpl(const EffectStripsImpl& other) = delete;
+    EffectStripsImpl& operator=(const EffectStripsImpl& other) = delete;
+    EffectStripsImpl(EffectStripsImpl&& other) = default;
+    EffectStripsImpl& operator=(EffectStripsImpl&& other) = default;
 
     std::string str() const;
 
@@ -57,7 +57,7 @@ public:
 /**
  * Type 2 effects
  */
-class EffectComplexImpl
+class EffectConditionalImpl
 {
 private:
     Index m_index;
@@ -70,13 +70,13 @@ private:
 
     // Below: add additional members if needed and initialize them in the constructor
 
-    EffectComplexImpl(Index index,
-                      VariableList quantified_variables,
-                      LiteralList<Static> static_conditions,
-                      LiteralList<Fluent> fluent_conditions,
-                      LiteralList<Derived> derived_conditions,
-                      LiteralList<Fluent> effects,
-                      FunctionExpression function_expression);
+    EffectConditionalImpl(Index index,
+                          VariableList quantified_variables,
+                          LiteralList<Static> static_conditions,
+                          LiteralList<Fluent> fluent_conditions,
+                          LiteralList<Derived> derived_conditions,
+                          LiteralList<Fluent> effects,
+                          FunctionExpression function_expression);
 
     // Give access to the constructor.
     template<typename HolderType, typename Hash, typename EqualTo>
@@ -84,10 +84,10 @@ private:
 
 public:
     // moveable but not copyable
-    EffectComplexImpl(const EffectComplexImpl& other) = delete;
-    EffectComplexImpl& operator=(const EffectComplexImpl& other) = delete;
-    EffectComplexImpl(EffectComplexImpl&& other) = default;
-    EffectComplexImpl& operator=(EffectComplexImpl&& other) = default;
+    EffectConditionalImpl(const EffectConditionalImpl& other) = delete;
+    EffectConditionalImpl& operator=(const EffectConditionalImpl& other) = delete;
+    EffectConditionalImpl(EffectConditionalImpl&& other) = default;
+    EffectConditionalImpl& operator=(EffectConditionalImpl&& other) = default;
 
     std::string str() const;
 
@@ -101,18 +101,18 @@ public:
     size_t get_arity() const;
 };
 
-extern std::ostream& operator<<(std::ostream& out, const EffectSimpleImpl& element);
-extern std::ostream& operator<<(std::ostream& out, const EffectComplexImpl& element);
+extern std::ostream& operator<<(std::ostream& out, const EffectStripsImpl& element);
+extern std::ostream& operator<<(std::ostream& out, const EffectConditionalImpl& element);
 
-extern std::ostream& operator<<(std::ostream& out, EffectSimple element);
-extern std::ostream& operator<<(std::ostream& out, EffectComplex element);
+extern std::ostream& operator<<(std::ostream& out, EffectStrips element);
+extern std::ostream& operator<<(std::ostream& out, EffectConditional element);
 
 }
 
 #include "mimir/common/macros.hpp"
 
 #include <fmt/ostream.h>
-FORMATTABLE(mimir::EffectSimpleImpl);
-FORMATTABLE(mimir::EffectComplexImpl);
-FORMATTABLE(mimir::EffectSimple);
-FORMATTABLE(mimir::EffectComplex);
+FORMATTABLE(mimir::EffectStripsImpl);
+FORMATTABLE(mimir::EffectConditionalImpl);
+FORMATTABLE(mimir::EffectStrips);
+FORMATTABLE(mimir::EffectConditional);

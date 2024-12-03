@@ -30,7 +30,7 @@
 namespace mimir
 {
 
-struct SimpleDerivedEffect
+struct GroundEffectDerivedLiteral
 {
     bool is_negated = false;
     Index atom_index = Index(0);
@@ -44,8 +44,8 @@ struct GroundAxiomImpl
     Index index = Index(0);
     Index axiom_index = Index(0);
     FlatIndexList objects = FlatIndexList();
-    StripsActionPrecondition strips_precondition = StripsActionPrecondition();
-    SimpleDerivedEffect effect = SimpleDerivedEffect();
+    GroundConditionStrips strips_precondition = GroundConditionStrips();
+    GroundEffectDerivedLiteral effect = GroundEffectDerivedLiteral();
 
     Index& get_index();
     Index get_index() const;
@@ -57,12 +57,12 @@ struct GroundAxiomImpl
     const FlatIndexList& get_objects() const;
 
     /* STRIPS part */
-    StripsActionPrecondition& get_strips_precondition();
-    const StripsActionPrecondition& get_strips_precondition() const;
+    GroundConditionStrips& get_strips_precondition();
+    const GroundConditionStrips& get_strips_precondition() const;
 
     /* Effect*/
-    SimpleDerivedEffect& get_derived_effect();
-    const SimpleDerivedEffect& get_derived_effect() const;
+    GroundEffectDerivedLiteral& get_derived_effect();
+    const GroundEffectDerivedLiteral& get_derived_effect() const;
 
     // TODO: pass state instead of separated fluent and derived atoms?
     bool is_applicable(const FlatBitset& state_fluent_atoms, const FlatBitset& state_derived_atoms, const FlatBitset& static_positive_atoms) const;
@@ -98,7 +98,7 @@ using GroundAxiomImplSet = cista::storage::UnorderedSet<GroundAxiomImpl>;
  */
 
 template<>
-std::ostream& operator<<(std::ostream& os, const std::tuple<SimpleDerivedEffect, const PDDLRepositories&>& data);
+std::ostream& operator<<(std::ostream& os, const std::tuple<GroundEffectDerivedLiteral, const PDDLRepositories&>& data);
 
 template<>
 std::ostream& operator<<(std::ostream& os, const std::tuple<GroundAxiom, const PDDLRepositories&>& data);
@@ -107,5 +107,5 @@ std::ostream& operator<<(std::ostream& os, const std::tuple<GroundAxiom, const P
 #include "mimir/common/macros.hpp"
 
 #include <fmt/ostream.h>
-FORMATTABLE(ARG(std::tuple<mimir::SimpleDerivedEffect, const mimir::PDDLRepositories&>));
+FORMATTABLE(ARG(std::tuple<mimir::GroundEffectDerivedLiteral, const mimir::PDDLRepositories&>));
 FORMATTABLE(ARG(std::tuple<mimir::GroundAxiom, const mimir::PDDLRepositories&>));

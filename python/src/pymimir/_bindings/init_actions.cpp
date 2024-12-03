@@ -20,8 +20,8 @@ void init_actions(py::module& m)
         .def("get_static_conditions", &ActionImpl::get_conditions<Static>, py::keep_alive<0, 1>(), py::return_value_policy::copy)
         .def("get_fluent_conditions", &ActionImpl::get_conditions<Fluent>, py::keep_alive<0, 1>(), py::return_value_policy::copy)
         .def("get_derived_conditions", &ActionImpl::get_conditions<Derived>, py::keep_alive<0, 1>(), py::return_value_policy::copy)
-        .def("get_simple_effects", &ActionImpl::get_simple_effects, py::keep_alive<0, 1>(), py::return_value_policy::copy)
-        .def("get_complex_effects", &ActionImpl::get_complex_effects, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_strips_effect", &ActionImpl::get_strips_effect, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_conditional_effects", &ActionImpl::get_conditional_effects, py::keep_alive<0, 1>(), py::return_value_policy::copy)
         .def("get_arity", &ActionImpl::get_arity);
 
     class_<GroundActionImpl>(m, "GroundAction")  //
@@ -44,8 +44,8 @@ void init_actions(py::module& m)
         .def("get_index", CONST_OVERLOAD(GroundActionImpl::get_index))
         .def("get_action_index", CONST_OVERLOAD(GroundActionImpl::get_action_index), py::return_value_policy::reference_internal)
         .def("get_object_indices", &GroundActionImpl::get_object_indices, py::return_value_policy::copy)
-        .def("get_strips_precondition", [](const GroundActionImpl& self) { return StripsActionPrecondition(self.get_strips_precondition()); })
-        .def("get_strips_effect", [](const GroundActionImpl& self) { return StripsActionEffect(self.get_strips_effect()); })
+        .def("get_strips_precondition", [](const GroundActionImpl& self) { return GroundConditionStrips(self.get_strips_precondition()); })
+        .def("get_strips_effect", [](const GroundActionImpl& self) { return GroundEffectStrips(self.get_strips_effect()); })
         .def("get_conditional_effects",
              [](const GroundActionImpl& self)
              { return insert_into_list(make_range(self.get_conditional_effects().begin(), self.get_conditional_effects().end())); });
