@@ -3,13 +3,13 @@
 #include "utils.hpp"
 
 #include <pybind11/pybind11.h>
+
 namespace py = pybind11;
+
+using namespace pymimir;
 
 void init_optimization_metric(py::module& m)
 {
-    using namespace pymimir;
-
-    // dependent on ground function expression bindings!
     class_<OptimizationMetricImpl>(m, "OptimizationMetric")  //
         .def("__str__", [](const OptimizationMetricImpl& self) { return fmt::format("{}", self); })
         .def("__str__", [](const OptimizationMetricImpl& self) { return fmt::format("{}", self); })
