@@ -33,7 +33,6 @@ private:
     LiteralList<Derived> m_derived_conditions;
     EffectSimple m_simple_effect;
     EffectComplexList m_complex_effects;
-    FunctionExpression m_function_expression;
 
     // Below: add additional members if needed and initialize them in the constructor
 
@@ -45,8 +44,7 @@ private:
                LiteralList<Fluent> fluent_conditions,
                LiteralList<Derived> derived_conditions,
                EffectSimple simple_effects,
-               EffectComplexList complex_effects,
-               FunctionExpression function_expression);
+               EffectComplexList complex_effects);
 
     // Give access to the constructor.
     template<typename HolderType, typename Hash, typename EqualTo>
@@ -69,7 +67,6 @@ public:
     const LiteralList<P>& get_conditions() const;
     const EffectSimple& get_simple_effects() const;
     const EffectComplexList& get_complex_effects() const;
-    const FunctionExpression& get_function_expression() const;
 
     size_t get_arity() const;
 };

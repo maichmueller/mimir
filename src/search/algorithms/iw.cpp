@@ -29,6 +29,7 @@
 #include "mimir/search/algorithms/iw/tuple_index_mapper.hpp"
 #include "mimir/search/algorithms/iw/types.hpp"
 #include "mimir/search/algorithms/strategies/goal_strategy.hpp"
+#include "mimir/search/plan.hpp"
 #include "mimir/search/state_repository.hpp"
 
 #include <sstream>
@@ -857,22 +858,22 @@ IterativeWidthAlgorithm::IterativeWidthAlgorithm(const std::shared_ptr<IApplicab
     }
 }
 
-SearchStatus IterativeWidthAlgorithm::find_solution(GroundActionList& out_plan) { return find_solution(m_initial_state, out_plan); }
+SearchStatus IterativeWidthAlgorithm::find_solution(std::optional<Plan>& out_plan) { return find_solution(m_initial_state, out_plan); }
 
-SearchStatus IterativeWidthAlgorithm::find_solution(State start_state, GroundActionList& out_plan)
+SearchStatus IterativeWidthAlgorithm::find_solution(State start_state, std::optional<Plan>& out_plan)
 {
     std::optional<State> unused_out_state = std::nullopt;
     return find_solution(start_state, std::make_unique<ProblemGoal>(m_applicable_action_generator->get_problem()), out_plan, unused_out_state);
 }
 
-SearchStatus IterativeWidthAlgorithm::find_solution(State start_state, GroundActionList& out_plan, std::optional<State>& out_goal_state)
+SearchStatus IterativeWidthAlgorithm::find_solution(State start_state, std::optional<Plan>& out_plan, std::optional<State>& out_goal_state)
 {
     return find_solution(start_state, std::make_unique<ProblemGoal>(m_applicable_action_generator->get_problem()), out_plan, out_goal_state);
 }
 
 SearchStatus IterativeWidthAlgorithm::find_solution(State start_state,
                                                     std::unique_ptr<IGoalStrategy>&& goal_strategy,
-                                                    GroundActionList& out_plan,
+                                                    std::optional<Plan>& out_plan,
                                                     std::optional<State>& out_goal_state)
 {
     const auto problem = m_applicable_action_generator->get_problem();
@@ -902,7 +903,7 @@ SearchStatus IterativeWidthAlgorithm::find_solution(State start_state,
             {
                 m_applicable_action_generator->on_end_search();
             }
-            m_iw_event_handler->on_solved(out_plan, *m_applicable_action_generator->get_pddl_repositories());
+            m_iw_event_handler->on_solved(out_plan.value(), *m_applicable_action_generator->get_pddl_repositories());
             return SearchStatus::SOLVED;
         }
         else if (search_status == SearchStatus::UNSOLVABLE)
