@@ -339,6 +339,22 @@ std::ostream& operator<<(std::ostream& os, const std::tuple<SimpleFluentEffect, 
     return os;
 }
 
+std::ostream& operator<<(std::ostream& os, const std::tuple<SimpleFluentEffectList, const PDDLRepositories&>& data)
+{
+    const auto& [simple_effects, pddl_repositories] = data;
+
+    os << "(and";
+
+    for (const auto& simple_effect : simple_effects)
+    {
+        os << " " << std::make_tuple(simple_effect, std::cref(pddl_repositories));
+    }
+
+    os << ")";
+
+    return os;
+}
+
 template<>
 std::ostream& operator<<(std::ostream& os, const std::tuple<StripsActionPrecondition, const PDDLRepositories&>& data)
 {

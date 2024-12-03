@@ -88,6 +88,8 @@ struct SimpleFluentEffect
     Index atom_index = Index(0);
 };
 
+using SimpleFluentEffectList = cista::offset::vector<SimpleFluentEffect>;
+
 struct ConditionalEffect
 {
     FlatIndexList positive_static_atoms = FlatIndexList();
@@ -113,9 +115,9 @@ struct ConditionalEffect
     const FlatIndexList& get_negative_precondition() const;
 
     /* Simple effects */
-    SimpleFluentEffect& get_simple_effect();
+    SimpleFluentEffectList& get_simple_effect();
 
-    const SimpleFluentEffect& get_simple_effect() const;
+    const SimpleFluentEffectList& get_simple_effect() const;
 
     template<DynamicPredicateTag P>
     bool is_applicable(State state) const;
@@ -199,6 +201,9 @@ using GroundActionImplSet = cista::storage::UnorderedSet<GroundActionImpl>;
 
 template<>
 std::ostream& operator<<(std::ostream& os, const std::tuple<SimpleFluentEffect, const PDDLRepositories&>& data);
+
+template<>
+std::ostream& operator<<(std::ostream& os, const std::tuple<SimpleFluentEffectList, const PDDLRepositories&>& data);
 
 template<>
 std::ostream& operator<<(std::ostream& os, const std::tuple<StripsActionPrecondition, const PDDLRepositories&>& data);
