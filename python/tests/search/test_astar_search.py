@@ -68,6 +68,7 @@ class CustomAStarAlgorithmEventHandler(AStarAlgorithmEventHandlerBase):
         self,
         state: State,
         action: GroundAction,
+        action_cost: float,
         problem: Problem,
         pddl_repositories: PDDLRepositories,
     ):
@@ -77,6 +78,7 @@ class CustomAStarAlgorithmEventHandler(AStarAlgorithmEventHandlerBase):
         self,
         state: State,
         action: GroundAction,
+        action_cost: float,
         problem: Problem,
         pddl_repositories: PDDLRepositories,
     ):
@@ -86,6 +88,7 @@ class CustomAStarAlgorithmEventHandler(AStarAlgorithmEventHandlerBase):
         self,
         state: State,
         action: GroundAction,
+        action_cost: float,
         problem: Problem,
         pddl_repositories: PDDLRepositories,
     ):
