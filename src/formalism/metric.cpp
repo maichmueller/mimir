@@ -33,8 +33,6 @@ OptimizationMetricImpl::OptimizationMetricImpl(Index index, loki::OptimizationMe
 {
 }
 
-std::string OptimizationMetricImpl::str() const { return fmt::format("{}", *this); }
-
 Index OptimizationMetricImpl::get_index() const { return m_index; }
 
 loki::OptimizationMetricEnum OptimizationMetricImpl::get_optimization_metric() const { return m_optimization_metric; }

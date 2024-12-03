@@ -134,17 +134,18 @@ auto print_states(const FaithfulAbstraction& abstraction)
 {
     return fmt::format(
         "States:\n{}",
-        fmt::join(
-            ranges::views::enumerate(abstraction.get_graph().get_vertices())
-                | std::views::transform(
-                    [&](const auto& iv)
-                    {
-                        auto [i, vertex] = iv;
-                        auto state = get_representative_state(vertex);
-                        auto fl_atoms = abstraction.get_pddl_repositories()->get_ground_atoms_from_indices<Fluent>(state->template get_atoms<Fluent>());
-                        return fmt::format("Index: {:<2}, Atoms: {}", i, sorted(fl_atoms | ranges::views::transform([](auto atom) { return atom->str(); })));
-                    }),
-            "\n"));
+        fmt::join(ranges::views::enumerate(abstraction.get_graph().get_vertices())
+                      | std::views::transform(
+                          [&](const auto& iv)
+                          {
+                              auto [i, vertex] = iv;
+                              auto state = get_representative_state(vertex);
+                              auto fl_atoms = abstraction.get_pddl_repositories()->get_ground_atoms_from_indices<Fluent>(state->template get_atoms<Fluent>());
+                              return fmt::format("Index: {:<2}, Atoms: {}",
+                                                 i,
+                                                 sorted(fl_atoms | ranges::views::transform([](auto atom) { return fmt::format("{}", *atom); })));
+                          }),
+                  "\n"));
 }
 
 TEST(MimirTests, GraphsAlgorithmsColorRefinementBlocks3opsTest)

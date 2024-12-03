@@ -28,8 +28,6 @@ namespace mimir
 /* FunctionExpressionNumber */
 FunctionExpressionNumberImpl::FunctionExpressionNumberImpl(Index index, double number) : m_index(index), m_number(number) {}
 
-std::string FunctionExpressionNumberImpl::str() const { return fmt::format("{}", *this); }
-
 Index FunctionExpressionNumberImpl::get_index() const { return m_index; }
 
 double FunctionExpressionNumberImpl::get_number() const { return m_number; }
@@ -49,8 +47,6 @@ FunctionExpressionBinaryOperatorImpl::FunctionExpressionBinaryOperatorImpl(Index
         assert(m_left_function_expression->get_index() < m_right_function_expression->get_index());
     }
 }
-
-std::string FunctionExpressionBinaryOperatorImpl::str() const { return fmt::format("{}", *this); }
 
 Index FunctionExpressionBinaryOperatorImpl::get_index() const { return m_index; }
 
@@ -74,8 +70,6 @@ FunctionExpressionMultiOperatorImpl::FunctionExpressionMultiOperatorImpl(Index i
                           [](const auto& l, const auto& r) { return l->get_index() < r->get_index(); }));
 }
 
-std::string FunctionExpressionMultiOperatorImpl::str() const { return fmt::format("{}", *this); }
-
 Index FunctionExpressionMultiOperatorImpl::get_index() const { return m_index; }
 
 loki::MultiOperatorEnum FunctionExpressionMultiOperatorImpl::get_multi_operator() const { return m_multi_operator; }
@@ -89,16 +83,12 @@ FunctionExpressionMinusImpl::FunctionExpressionMinusImpl(Index index, FunctionEx
 {
 }
 
-std::string FunctionExpressionMinusImpl::str() const { return fmt::format("{}", *this); }
-
 Index FunctionExpressionMinusImpl::get_index() const { return m_index; }
 
 const FunctionExpression& FunctionExpressionMinusImpl::get_function_expression() const { return m_function_expression; }
 
 /* FunctionExpressionFunction */
 FunctionExpressionFunctionImpl::FunctionExpressionFunctionImpl(Index index, Function function) : m_index(index), m_function(std::move(function)) {}
-
-std::string FunctionExpressionFunctionImpl::str() const { return fmt::format("{}", *this); }
 
 Index FunctionExpressionFunctionImpl::get_index() const { return m_index; }
 

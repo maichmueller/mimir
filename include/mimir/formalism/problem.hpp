@@ -73,8 +73,6 @@ public:
     ProblemImpl(ProblemImpl&& other) = default;
     ProblemImpl& operator=(ProblemImpl&& other) = default;
 
-    std::string str() const;
-
     Index get_index() const;
     const std::optional<fs::path>& get_filepath() const;
     const Domain& get_domain() const;

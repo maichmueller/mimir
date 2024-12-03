@@ -47,8 +47,6 @@ public:
     EffectStripsImpl(EffectStripsImpl&& other) = default;
     EffectStripsImpl& operator=(EffectStripsImpl&& other) = default;
 
-    std::string str() const;
-
     Index get_index() const;
     const LiteralList<Fluent>& get_effects() const;
     const FunctionExpression& get_function_expression() const;
@@ -88,8 +86,6 @@ public:
     EffectConditionalImpl& operator=(const EffectConditionalImpl& other) = delete;
     EffectConditionalImpl(EffectConditionalImpl&& other) = default;
     EffectConditionalImpl& operator=(EffectConditionalImpl&& other) = default;
-
-    std::string str() const;
 
     Index get_index() const;
     const VariableList& get_parameters() const;

@@ -289,6 +289,8 @@ Index& GroundActionImpl::get_action_index() { return action_index; }
 
 Index GroundActionImpl::get_action_index() const { return action_index; }
 
+FlatIndexList& GroundActionImpl::get_object_indices() { return objects; }
+
 const FlatIndexList& GroundActionImpl::get_object_indices() const { return objects; }
 
 GroundConditionStrips& GroundActionImpl::get_strips_precondition() { return strips_precondition; }

@@ -151,10 +151,10 @@ struct GroundActionImpl
 
     Index& get_index();
     Index& get_action_index();
-    FlatIndexList& get_objects();
 
     Index get_index() const;
     Index get_action_index() const;
+    FlatIndexList& get_object_indices();
     const FlatIndexList& get_object_indices() const;
 
     /* STRIPS part */

@@ -1,4 +1,5 @@
 #include "init_declarations.hpp"
+#include "mimir/common/printers.hpp"
 #include "opaque_types.hpp"
 #include "pymimir.hpp"
 #include "utils.hpp"
@@ -12,8 +13,8 @@ void init_actions(py::module& m)
 {
     /* Action */
     class_<ActionImpl>(m, "Action")  //
-        .def("__str__", &ActionImpl::str)
-        .def("__repr__", &ActionImpl::str)
+        .def("__str__", [](const ActionImpl& self) { return fmt::format("{}", self); })
+        .def("__str__", [](const ActionImpl& self) { return fmt::format("{}", self); })
         .def("get_index", &ActionImpl::get_index)
         .def("get_name", &ActionImpl::get_name, py::return_value_policy::copy)
         .def("get_parameters", &ActionImpl::get_parameters, py::keep_alive<0, 1>(), py::return_value_policy::copy)
@@ -43,7 +44,7 @@ void init_actions(py::module& m)
              })
         .def("get_index", CONST_OVERLOAD(GroundActionImpl::get_index))
         .def("get_action_index", CONST_OVERLOAD(GroundActionImpl::get_action_index), py::return_value_policy::reference_internal)
-        .def("get_object_indices", &GroundActionImpl::get_object_indices, py::return_value_policy::copy)
+        .def("get_object_indices", CONST_OVERLOAD(GroundActionImpl::get_object_indices), py::return_value_policy::copy)
         .def("get_strips_precondition", [](const GroundActionImpl& self) { return GroundConditionStrips(self.get_strips_precondition()); })
         .def("get_strips_effect", [](const GroundActionImpl& self) { return GroundEffectStrips(self.get_strips_effect()); })
         .def("get_conditional_effects",

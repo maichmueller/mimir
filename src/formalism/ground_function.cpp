@@ -30,8 +30,6 @@ GroundFunctionImpl::GroundFunctionImpl(Index index, FunctionSkeleton function_sk
 {
 }
 
-std::string GroundFunctionImpl::str() const { return fmt::format("{}", *this); }
-
 Index GroundFunctionImpl::get_index() const { return m_index; }
 
 const FunctionSkeleton& GroundFunctionImpl::get_function_skeleton() const { return m_function_skeleton; }

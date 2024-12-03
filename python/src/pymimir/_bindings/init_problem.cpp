@@ -9,8 +9,8 @@ void init_problem(py::module& m)
 {
     using namespace pymimir;
     class_<ProblemImpl>(m, "Problem")  //
-        .def("__str__", &ProblemImpl::str)
-        .def("__repr__", &ProblemImpl::str)
+        .def("__str__", [](const ProblemImpl& self) { return fmt::format("{}", self); })
+        .def("__str__", [](const ProblemImpl& self) { return fmt::format("{}", self); })
         .def("get_index", &ProblemImpl::get_index)
         .def(
             "get_filepath",

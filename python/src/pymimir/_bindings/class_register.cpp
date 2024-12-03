@@ -163,6 +163,7 @@ void register_classes(py::module& m)
     py::bind_vector<AxiomList>(m, "AxiomList");
     py::bind_vector<VariableList>(m, "VariableList");
     py::bind_vector<DomainList>(m, "DomainList");
+    py::bind_vector<FlatIndexList>(m, "FlatIndexList");
     py::bind_vector<FunctionExpressionList>(m, "FunctionExpressionList");
     py::bind_vector<FunctionSkeletonList>(m, "FunctionSkeletonList");
     py::bind_vector<FunctionList>(m, "FunctionList");

@@ -12,8 +12,8 @@ using namespace pymimir;
 void init_numeric_fluent(py::module& m)
 {
     class_<NumericFluentImpl>(m, "NumericFluent")  //
-        .def("__str__", &NumericFluentImpl::str)
-        .def("__repr__", &NumericFluentImpl::str)
+        .def("__str__", [](const NumericFluentImpl& self) { return fmt::format("{}", self); })
+        .def("__str__", [](const NumericFluentImpl& self) { return fmt::format("{}", self); })
         .def("get_index", &NumericFluentImpl::get_index)
         .def("get_function", &NumericFluentImpl::get_function, py::return_value_policy::reference_internal)
         .def("get_number", &NumericFluentImpl::get_number);

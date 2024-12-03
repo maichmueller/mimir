@@ -41,6 +41,9 @@ void init_lists(py::module& m)
     static_assert(!py::detail::vector_needs_copy<ActionList>::value);  // Ensure return by reference + keep alive
     def_opaque_vector_repr<ActionList>(m, "ActionList");
 
+    static_assert(!py::detail::vector_needs_copy<FlatIndexList>::value);  // Ensure return by reference + keep alive
+    def_opaque_vector_repr<FlatIndexList>(m, "FlatIndexList");
+
     static_assert(!py::detail::vector_needs_copy<ProblemList>::value);  // Ensure return by reference + keep alive
     def_opaque_vector_repr<ProblemList>(m, "ProblemList");
 

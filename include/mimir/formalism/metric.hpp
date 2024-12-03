@@ -39,8 +39,6 @@ private:
     friend class loki::SegmentedRepository;
 
 public:
-    std::string str() const;
-
     // moveable but not copyable
     OptimizationMetricImpl(const OptimizationMetricImpl& other) = delete;
     OptimizationMetricImpl& operator=(const OptimizationMetricImpl& other) = delete;

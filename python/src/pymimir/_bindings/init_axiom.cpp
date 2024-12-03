@@ -1,4 +1,5 @@
 #include "init_declarations.hpp"
+#include "pymimir.hpp"
 
 #include <pybind11/pybind11.h>
 namespace py = pybind11;
@@ -8,8 +9,8 @@ using namespace pymimir;
 void init_axiom(py::module& m)
 {
     class_<AxiomImpl>(m, "Axiom")  //
-        .def("__str__", &AxiomImpl::str)
-        .def("__repr__", &AxiomImpl::str)
+        .def("__str__", [](const AxiomImpl& self) { return fmt::format("{}", self); })
+        .def("__str__", [](const AxiomImpl& self) { return fmt::format("{}", self); })
         .def("get_index", &AxiomImpl::get_index)
         .def("get_literal", &AxiomImpl::get_literal, py::return_value_policy::reference_internal)
         .def("get_static_conditions", &AxiomImpl::get_conditions<Static>, py::keep_alive<0, 1>(), py::return_value_policy::copy)

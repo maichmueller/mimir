@@ -35,12 +35,6 @@ GroundAtomImpl<P>::GroundAtomImpl(Index index, Predicate<P> predicate, ObjectLis
 }
 
 template<PredicateTag P>
-std::string GroundAtomImpl<P>::str() const
-{
-    return fmt::format("{}", *this);
-}
-
-template<PredicateTag P>
 Index GroundAtomImpl<P>::get_index() const
 {
     return m_index;

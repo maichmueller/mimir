@@ -29,12 +29,6 @@ LiteralImpl<P>::LiteralImpl(Index index, bool is_negated, Atom<P> atom) : m_inde
 }
 
 template<PredicateTag P>
-std::string LiteralImpl<P>::str() const
-{
-    return fmt::format("{}", *this);
-}
-
-template<PredicateTag P>
 Index LiteralImpl<P>::get_index() const
 {
     return m_index;

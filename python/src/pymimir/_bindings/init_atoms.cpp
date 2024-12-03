@@ -1,6 +1,7 @@
 #include "init_declarations.hpp"
 #include "mimir/common/itertools.hpp"
 #include "opaque_types.hpp"
+#include "pymimir.hpp"
 
 #include <pybind11/pybind11.h>
 
@@ -14,8 +15,8 @@ void init_atoms(py::module& m)
         [&]<typename Tag>(Tag, const std::string& class_name = tag_name<Tag>() + "Atom")
         {
             class_<AtomImpl<Tag>>(m, class_name.c_str())
-                .def("__str__", &AtomImpl<Tag>::str)
-                .def("__repr__", &AtomImpl<Tag>::str)
+                .def("__str__", [](const AtomImpl<Tag>& self) { return fmt::format("{}", self); })
+                .def("__str__", [](const AtomImpl<Tag>& self) { return fmt::format("{}", self); })
                 .def("get_index", &AtomImpl<Tag>::get_index)
                 .def("get_predicate", &AtomImpl<Tag>::get_predicate, py::return_value_policy::reference_internal)
                 .def("get_variables", &AtomImpl<Tag>::get_variables, py::return_value_policy::reference_internal)

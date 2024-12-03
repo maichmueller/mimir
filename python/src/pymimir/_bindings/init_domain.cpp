@@ -11,8 +11,8 @@ void init_domain(py::module& m)
     using namespace pymimir;
 
     class_<DomainImpl>(m, "Domain")  //
-        .def("__str__", &DomainImpl::str)
-        .def("__repr__", &DomainImpl::str)
+        .def("__str__", [](const DomainImpl& self) { return fmt::format("{}", self); })
+        .def("__str__", [](const DomainImpl& self) { return fmt::format("{}", self); })
         .def("get_index", &DomainImpl::get_index)
         .def(
             "get_filepath",

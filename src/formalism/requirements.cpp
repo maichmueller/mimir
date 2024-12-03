@@ -28,8 +28,6 @@ RequirementsImpl::RequirementsImpl(Index index, loki::RequirementEnumSet require
 
 bool RequirementsImpl::test(loki::RequirementEnum requirement) const { return m_requirements.count(requirement); }
 
-std::string RequirementsImpl::str() const { return fmt::format("{}", *this); }
-
 Index RequirementsImpl::get_index() const { return m_index; }
 
 const loki::RequirementEnumSet& RequirementsImpl::get_requirements() const { return m_requirements; }

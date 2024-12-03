@@ -197,11 +197,12 @@ std::optional<FaithfulAbstraction> FaithfulAbstraction::create(Problem problem,
             // Compute certificate of successor state
             if (debug)
             {
-                fmt::println("{} Computing certificate for State:\nIndex: {:<10} Atoms: {}",
-                             __FILE__,
-                             successor_state->get_index(),
-                             std::invoke([fluent_ground_atoms = factories->get_ground_atoms_from_indices<Fluent>(successor_state->get_atoms<Fluent>())]
-                                         { return fluent_ground_atoms | ranges::views::transform([](const auto& atom) { return atom->str(); }); }));
+                fmt::println(
+                    "{} Computing certificate for State:\nIndex: {:<10} Atoms: {}",
+                    __FILE__,
+                    successor_state->get_index(),
+                    std::invoke([fluent_ground_atoms = factories->get_ground_atoms_from_indices<Fluent>(successor_state->get_atoms<Fluent>())]
+                                { return fluent_ground_atoms | ranges::views::transform([](const auto& atom) { return fmt::format("{}", *atom); }); }));
             }
             const auto object_graph = create_object_graph(color_function,
                                                           *factories,

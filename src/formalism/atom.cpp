@@ -30,12 +30,6 @@ AtomImpl<P>::AtomImpl(Index index, Predicate<P> predicate, TermList terms) : m_i
 }
 
 template<PredicateTag P>
-std::string AtomImpl<P>::str() const
-{
-    return fmt::format("{}", *this);
-}
-
-template<PredicateTag P>
 Index AtomImpl<P>::get_index() const
 {
     return m_index;
