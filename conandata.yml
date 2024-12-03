@@ -9,4 +9,4 @@ requirements:
   - "pybind11/2.13.6"
   - "cista/2024.10.22"
   - "nauty/2.8.8"
-  - "loki/0.0.7"
+  - "loki/0.0.8"
