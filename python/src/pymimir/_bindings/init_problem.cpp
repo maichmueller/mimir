@@ -20,35 +20,14 @@ void init_problem(py::module& m)
         .def("get_name", &ProblemImpl::get_name, py::return_value_policy::copy)
         .def("get_domain", &ProblemImpl::get_domain, py::return_value_policy::reference_internal)
         .def("get_requirements", &ProblemImpl::get_requirements, py::return_value_policy::reference_internal)
-        .def(
-            "get_objects",
-            [](const ProblemImpl& self) { return ObjectList(self.get_objects()); },
-            py::keep_alive<0, 1>())
-        .def(
-            "get_static_initial_literals",
-            [](const ProblemImpl& self) { return GroundLiteralList<Static>(self.get_static_initial_literals()); },
-            py::keep_alive<0, 1>())
-        .def(
-            "get_fluent_initial_literals",
-            [](const ProblemImpl& self) { return GroundLiteralList<Fluent>(self.get_fluent_initial_literals()); },
-            py::keep_alive<0, 1>())
-        .def(
-            "get_numeric_fluents",
-            [](const ProblemImpl& self) { return NumericFluentList(self.get_numeric_fluents()); },
-            py::keep_alive<0, 1>())
+        .def("get_objects", &ProblemImpl::get_objects, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_static_initial_literals", &ProblemImpl::get_static_initial_literals, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_fluent_initial_literals", &ProblemImpl::get_fluent_initial_literals, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_numeric_fluents", &ProblemImpl::get_numeric_fluents, py::keep_alive<0, 1>(), py::return_value_policy::copy)
         .def("get_optimization_metric", &ProblemImpl::get_optimization_metric, py::return_value_policy::reference_internal)
-        .def(
-            "get_static_goal_condition",
-            [](const ProblemImpl& self) { return GroundLiteralList<Static>(self.get_goal_condition<Static>()); },
-            py::keep_alive<0, 1>())
-        .def(
-            "get_fluent_goal_condition",
-            [](const ProblemImpl& self) { return GroundLiteralList<Fluent>(self.get_goal_condition<Fluent>()); },
-            py::keep_alive<0, 1>())
-        .def(
-            "get_derived_goal_condition",
-            [](const ProblemImpl& self) { return GroundLiteralList<Derived>(self.get_goal_condition<Derived>()); },
-            py::keep_alive<0, 1>())
+        .def("get_static_goal_condition", &ProblemImpl::get_goal_condition<Static>, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_fluent_goal_condition", &ProblemImpl::get_goal_condition<Fluent>, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_derived_goal_condition", &ProblemImpl::get_goal_condition<Derived>, py::keep_alive<0, 1>(), py::return_value_policy::copy)
         .def("get_goal_condition",
              [](const py::object& py_problem)
              {

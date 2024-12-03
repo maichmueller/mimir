@@ -19,22 +19,12 @@ void init_domain(py::module& m)
             [](const DomainImpl& self) { return (self.get_filepath().has_value()) ? std::optional<std::string>(self.get_filepath()->string()) : std::nullopt; },
             py::return_value_policy::copy)
         .def("get_name", &DomainImpl::get_name, py::return_value_policy::copy)
-        .def(
-            "get_constants",
-            [](const DomainImpl& self) { return ObjectList(self.get_constants()); },
-            py::keep_alive<0, 1>())
-        .def(
-            "get_static_predicates",
-            [](const DomainImpl& self) { return PredicateList<Static>(self.get_predicates<Static>()); },
-            py::keep_alive<0, 1>())
-        .def(
-            "get_fluent_predicates",
-            [](const DomainImpl& self) { return PredicateList<Fluent>(self.get_predicates<Fluent>()); },
-            py::keep_alive<0, 1>())
-        .def(
-            "get_derived_predicates",
-            [](const DomainImpl& self) { return PredicateList<Derived>(self.get_predicates<Derived>()); },
-            py::keep_alive<0, 1>())
+        .def("get_constants", &DomainImpl::get_constants, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_static_predicates", &DomainImpl::get_predicates<Static>, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_fluent_predicates", &DomainImpl::get_predicates<Fluent>, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_derived_predicates", &DomainImpl::get_predicates<Derived>, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_functions", &DomainImpl::get_functions, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_actions", &DomainImpl::get_actions, py::keep_alive<0, 1>(), py::return_value_policy::copy)
         .def("get_predicates",
              [](const py::object& py_domain)
              {
@@ -47,25 +37,8 @@ void init_domain(py::module& m)
                  insert_into_list(py_domain, all_predicates, self.get_predicates<Derived>(), i);
                  return all_predicates;
              })
-        .def(
-            "get_functions",
-            [](const DomainImpl& self) { return FunctionSkeletonList(self.get_functions()); },
-            py::keep_alive<0, 1>())
-        .def(
-            "get_actions",
-            [](const DomainImpl& self) { return ActionList(self.get_actions()); },
-            py::keep_alive<0, 1>())
         .def("get_requirements", &DomainImpl::get_requirements, py::return_value_policy::reference_internal)
-        .def(
-            "get_name_to_static_predicate",
-            [](const DomainImpl& self) { return ToPredicateMap<std::string, Static>(self.get_name_to_predicate<Static>()); },
-            py::keep_alive<0, 1>())
-        .def(
-            "get_name_to_fluent_predicate",
-            [](const DomainImpl& self) { return ToPredicateMap<std::string, Fluent>(self.get_name_to_predicate<Fluent>()); },
-            py::keep_alive<0, 1>())
-        .def(
-            "get_name_to_derived_predicate",
-            [](const DomainImpl& self) { return ToPredicateMap<std::string, Derived>(self.get_name_to_predicate<Derived>()); },
-            py::keep_alive<0, 1>());
+        .def("get_name_to_static_predicate", &DomainImpl::get_name_to_predicate<Static>, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_name_to_fluent_predicate", &DomainImpl::get_name_to_predicate<Fluent>, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_name_to_derived_predicate", &DomainImpl::get_name_to_predicate<Derived>, py::keep_alive<0, 1>(), py::return_value_policy::copy);
 }

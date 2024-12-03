@@ -21,7 +21,7 @@ void init_applicable_action_generator(py::module_& m)
              py::arg("fluent_literals"),
              py::arg("derived_literals"),
              py::arg("pddl_repositories"))
-        .def("ground", &LiftedConjunctionGrounder::ground, py::arg("state"));
+        .def("ground", &LiftedConjunctionGrounder::ground, py::keep_alive<0, 1>(), py::arg("state"));
 
     /* ApplicableActionGenerators */
 
@@ -36,23 +36,9 @@ void init_applicable_action_generator(py::module_& m)
             },
             py::keep_alive<0, 1>(),
             py::arg("state"))
-        .def(
-            "get_ground_actions",
-            [](const IApplicableActionGenerator& self)
-            {
-                auto actions = self.get_ground_actions();
-                return actions;
-            },
-            py::keep_alive<0, 1>())
+        .def("get_ground_actions", &IApplicableActionGenerator::get_ground_actions, py::keep_alive<0, 1>(), py::return_value_policy::copy)
         .def("get_ground_action", &IApplicableActionGenerator::get_ground_action, py::keep_alive<0, 1>(), py::arg("action_index"))
-        .def(
-            "get_ground_axioms",
-            [](const IApplicableActionGenerator& self)
-            {
-                auto axioms = self.get_ground_axioms();
-                return axioms;
-            },
-            py::keep_alive<0, 1>())
+        .def("get_ground_axioms", &IApplicableActionGenerator::get_ground_axioms, py::keep_alive<0, 1>(), py::return_value_policy::copy)
         .def("get_ground_action", &IApplicableActionGenerator::get_ground_axiom, py::keep_alive<0, 1>(), py::arg("axiom_index"))
         .def("get_problem", &IApplicableActionGenerator::get_problem, py::return_value_policy::reference_internal)
         .def("get_pddl_repositories", &IApplicableActionGenerator::get_pddl_repositories);

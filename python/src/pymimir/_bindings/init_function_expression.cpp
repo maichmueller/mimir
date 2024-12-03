@@ -1,11 +1,10 @@
 #include "init_declarations.hpp"
 #include "pymimir.hpp"
 #include "utils.hpp"
-GroundFunctionExpressionList
 
 #include <pybind11/pybind11.h>
 
-    namespace py = pybind11;
+namespace py = pybind11;
 
 using namespace pymimir;
 
@@ -22,11 +21,9 @@ void init_function_expression(py::module& m)
         .def("__repr__", &FunctionExpressionBinaryOperatorImpl::str)
         .def("get_index", &FunctionExpressionBinaryOperatorImpl::get_index)
         .def("get_binary_operator", &FunctionExpressionBinaryOperatorImpl::get_binary_operator)
-        .def("get_left_function_expression",
-             &GroundFunctionExpressionBinaryOperatorImpl::get_left_function_expression,
-             py::return_value_policy::reference_internal)
+        .def("get_left_function_expression", &FunctionExpressionBinaryOperatorImpl::get_left_function_expression, py::return_value_policy::reference_internal)
         .def("get_right_function_expression",
-             &GroundFunctionExpressionBinaryOperatorImpl::get_right_function_expression,
+             &FunctionExpressionBinaryOperatorImpl::get_right_function_expression,
              py::return_value_policy::reference_internal);
 
     class_<FunctionExpressionMultiOperatorImpl>(m, "FunctionExpressionMultiOperator")  //
@@ -34,10 +31,7 @@ void init_function_expression(py::module& m)
         .def("__repr__", &FunctionExpressionMultiOperatorImpl::str)
         .def("get_index", &FunctionExpressionMultiOperatorImpl::get_index)
         .def("get_multi_operator", &FunctionExpressionMultiOperatorImpl::get_multi_operator)
-        .def("get_function_expressions",
-             &GroundFunctionExpressionMultiOperatorImpl::get_function_expressions,
-             py::keep_alive<0, 1>(),
-             py::return_value_policy::copy);
+        .def("get_function_expressions", &FunctionExpressionMultiOperatorImpl::get_function_expressions, py::return_value_policy::reference_internal);
 
     class_<FunctionExpressionMinusImpl>(m, "FunctionExpressionMinus")  //
         .def("__str__", &FunctionExpressionMinusImpl::str)
@@ -55,5 +49,5 @@ void init_function_expression(py::module& m)
         .def(
             "get",
             [](const FunctionExpressionImpl& fexpr) -> py::object { return std::visit([](auto&& arg) { return py::cast(arg); }, fexpr.get_variant()); },
-            py::return_value_policy::reference_internal);
+            py::keep_alive<0, 1>());
 }

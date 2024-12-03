@@ -16,30 +16,12 @@ void init_actions(py::module& m)
         .def("__repr__", &ActionImpl::str)
         .def("get_index", &ActionImpl::get_index)
         .def("get_name", &ActionImpl::get_name, py::return_value_policy::copy)
-        .def(
-            "get_parameters",
-            [](const ActionImpl& self) { return VariableList(self.get_parameters()); },
-            py::keep_alive<0, 1>())
-        .def(
-            "get_static_conditions",
-            [](const ActionImpl& self) { return LiteralList<Static>(self.get_conditions<Static>()); },
-            py::keep_alive<0, 1>())
-        .def(
-            "get_fluent_conditions",
-            [](const ActionImpl& self) { return LiteralList<Fluent>(self.get_conditions<Fluent>()); },
-            py::keep_alive<0, 1>())
-        .def(
-            "get_derived_conditions",
-            [](const ActionImpl& self) { return LiteralList<Derived>(self.get_conditions<Derived>()); },
-            py::keep_alive<0, 1>())
-        .def(
-            "get_simple_effects",
-            [](const ActionImpl& self) { return EffectSimpleList(self.get_simple_effects()); },
-            py::keep_alive<0, 1>())
-        .def(
-            "get_complex_effects",
-            [](const ActionImpl& self) { return EffectComplexList(self.get_complex_effects()); },
-            py::keep_alive<0, 1>())
+        .def("get_parameters", &ActionImpl::get_parameters, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_static_conditions", &ActionImpl::get_conditions<Static>, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_fluent_conditions", &ActionImpl::get_conditions<Fluent>, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_derived_conditions", &ActionImpl::get_conditions<Derived>, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_simple_effects", &ActionImpl::get_simple_effects, py::keep_alive<0, 1>(), py::return_value_policy::copy)
+        .def("get_complex_effects", &ActionImpl::get_complex_effects, py::keep_alive<0, 1>(), py::return_value_policy::copy)
         .def("get_arity", &ActionImpl::get_arity);
 
     class_<GroundActionImpl>(m, "GroundAction")  //

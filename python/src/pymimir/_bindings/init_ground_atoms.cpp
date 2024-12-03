@@ -18,6 +18,6 @@ void init_ground_atoms(py::module& m)
                 .def("get_index", &GroundAtomImpl<Tag>::get_index)
                 .def("get_arity", &GroundAtomImpl<Tag>::get_arity)
                 .def("get_predicate", &GroundAtomImpl<Tag>::get_predicate, py::return_value_policy::reference_internal)
-                .def("get_objects", [](const GroundAtomImpl<Tag>& self) { return ObjectList(self.get_objects()); }, py::keep_alive<0, 1>());
+                .def("get_objects", &GroundAtomImpl<Tag>::get_objects, py::keep_alive<0, 1>(), py::return_value_policy::copy);
         });
 }

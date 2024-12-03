@@ -4,11 +4,10 @@
 #include "pymimir.hpp"
 #include "trampolines.hpp"
 #include "utils.hpp"
-GroundFunctionExpressionList
 
 #include <pybind11/pybind11.h>
 
-    namespace py = pybind11;
+namespace py = pybind11;
 
 using namespace pymimir;
 
@@ -19,8 +18,6 @@ void init_pymimir(py::module& m)
     class_<RequirementsImpl>(m, "Requirements");
     class_<ObjectImpl>(m, "Object");
     class_<VariableImpl>(m, "Variable");
-    class_<TermObjectImpl>(m, "TermObject");
-    class_<TermVariableImpl>(m, "TermVariable");
     class_<TermImpl>(m, "Term");
     class_<PredicateImpl<Static>>(m, "StaticPredicate");
     class_<PredicateImpl<Fluent>>(m, "FluentPredicate");
@@ -168,7 +165,7 @@ void init_pymimir(py::module& m)
     py::bind_vector<AxiomList>(m, "AxiomList");
     py::bind_vector<VariableList>(m, "VariableList");
     py::bind_vector<DomainList>(m, "DomainList");
-    py::bind_vector<FunctionExpressionImplList>(m, "FunctionExpressionList");
+    py::bind_vector<FunctionExpressionList>(m, "FunctionExpressionList");
     py::bind_vector<FunctionSkeletonList>(m, "FunctionSkeletonList");
     py::bind_vector<FunctionList>(m, "FunctionList");
     py::bind_vector<GroundFunctionList>(m, "GroundFunctionList");
@@ -190,8 +187,6 @@ void init_pymimir(py::module& m)
     init_requirements(m);
     init_object(m);
     init_variable(m);
-    init_termobject(m);
-    init_termvariable(m);
     init_term(m);
     init_predicates(m);
     init_atoms(m);

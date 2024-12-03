@@ -2,12 +2,11 @@
 #pragma once
 
 #include "pymimir.hpp"
-GroundFunctionExpressionList
 
 #include <pybind11/pybind11.h>
 
-    /* Formalism */
-    PYBIND11_MAKE_OPAQUE(pymimir::ActionList);
+/* Formalism */
+PYBIND11_MAKE_OPAQUE(pymimir::ActionList);
 PYBIND11_MAKE_OPAQUE(pymimir::AtomList<pymimir::Static>);
 PYBIND11_MAKE_OPAQUE(pymimir::AtomList<pymimir::Fluent>);
 PYBIND11_MAKE_OPAQUE(pymimir::AtomList<pymimir::Derived>);

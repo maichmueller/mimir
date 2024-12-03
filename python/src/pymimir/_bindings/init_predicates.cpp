@@ -16,10 +16,7 @@ void init_predicates(py::module& m)
                 .def("__repr__", &PredicateImpl<Tag>::str)
                 .def("get_index", &PredicateImpl<Tag>::get_index)
                 .def("get_name", &PredicateImpl<Tag>::get_name, py::return_value_policy::reference_internal)
-                .def(
-                    "get_parameters",
-                    [](const PredicateImpl<Tag>& self) { return VariableList(self.get_parameters()); },
-                    py::keep_alive<0, 1>())
+                .def("get_parameters", &PredicateImpl<Tag>::get_parameters, py::keep_alive<0, 1>(), py::return_value_policy::copy)
                 .def("get_arity", &PredicateImpl<Tag>::get_arity);
         });
 }
