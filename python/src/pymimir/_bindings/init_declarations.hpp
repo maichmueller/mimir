@@ -80,6 +80,12 @@ inline auto def_opaque_vector_repr(py::module_& m, const std::string& class_name
 //
 // init - declarations:
 //
+
+/// the main class register, where each class has to be instantiated once for the module.
+/// Note:
+///     This is needed so that the stubgen can generate the correct type hints without requiring developers to always maintain class init orders.
+void register_classes(pybind11::module_& m);
+
 #ifndef DECLARE_INIT_FUNC
 #define DECLARE_INIT_FUNC(name) void init_##name(pybind11::module_& m)
 #endif
@@ -103,6 +109,7 @@ DECLARE_INIT_FUNC(object);
 DECLARE_INIT_FUNC(variable);
 DECLARE_INIT_FUNC(term);
 DECLARE_INIT_FUNC(requirements);
+DECLARE_INIT_FUNC(plan);
 DECLARE_INIT_FUNC(function);
 DECLARE_INIT_FUNC(function_expression);
 DECLARE_INIT_FUNC(ground_function_expression);
