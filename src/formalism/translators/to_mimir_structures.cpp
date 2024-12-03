@@ -484,10 +484,10 @@ std::tuple<LiteralList<Static>, LiteralList<Fluent>, LiteralList<Derived>> ToMim
     throw std::logic_error("Expected conjunctive condition.");
 }
 
-std::tuple<EffectSimpleList, EffectComplexList, FunctionExpression> ToMimirStructures::translate_lifted(const loki::EffectImpl& effect)
+std::tuple<EffectSimple, EffectComplexList, FunctionExpression> ToMimirStructures::translate_lifted(const loki::EffectImpl& effect)
 {
     const auto translate_effect_func = [&](const loki::Effect& effect,
-                                           EffectSimpleList& ref_simple_effects,
+                                           LiteralList<Fluent>& ref_simple_effects,
                                            EffectComplexList& ref_complex_effects,
                                            FunctionExpressionList& ref_result_function_expressions)
     {
@@ -539,6 +539,10 @@ std::tuple<EffectSimpleList, EffectComplexList, FunctionExpression> ToMimirStruc
                 ref_simple_effects.emplace_back(m_pddl_repositories.get_or_create_simple_effect(fluent_effect));
             }
         }
+        else if (const auto& effect_and = std::get_if<loki::EffectAnd>(&tmp_effect->get_effect()))
+        {
+            for (const auto& literal : (*effect_and)->get_effects()) {}
+        }
         else if (const auto& effect_numeric = std::get_if<loki::EffectNumeric>(&tmp_effect->get_effect()))
         {
             assert((*effect_numeric)->get_assign_operator() == loki::AssignOperatorEnum::INCREASE);
@@ -556,7 +560,7 @@ std::tuple<EffectSimpleList, EffectComplexList, FunctionExpression> ToMimirStruc
 
     auto effect_ptr = &effect;
 
-    auto simple_effects = EffectSimpleList {};
+    auto simple_effects = LiteralList<Fluent> {};
     auto complex_effects = EffectComplexList {};
     auto result_function_expressions = FunctionExpressionList {};
 
@@ -586,7 +590,7 @@ std::tuple<EffectSimpleList, EffectComplexList, FunctionExpression> ToMimirStruc
                 this->m_pddl_repositories.get_or_create_function_expression_multi_operator(loki::MultiOperatorEnum::PLUS, result_function_expressions)) :
             result_function_expressions.front();
 
-    return std::make_tuple(simple_effects, complex_effects, cost_function_expression);
+    return std::make_tuple(EffectSimple(), complex_effects, cost_function_expression);
 }
 
 Action ToMimirStructures::translate_lifted(const loki::ActionImpl& action)
@@ -604,16 +608,16 @@ Action ToMimirStructures::translate_lifted(const loki::ActionImpl& action)
     }
 
     // 2. Translate effects
-    auto simple_effects = EffectSimpleList {};
+    // auto simple_effects = EffectSimpleList {};
     auto complex_effects = EffectComplexList {};
     auto function_expression = this->m_pddl_repositories.get_or_create_function_expression(m_pddl_repositories.get_or_create_function_expression_number(1));
-    if (action.get_effect().has_value())
-    {
-        const auto [simple_effects_, complex_effects_, function_expression_] = translate_lifted(*action.get_effect().value());
-        simple_effects = simple_effects_;
-        complex_effects = complex_effects_;
-        function_expression = function_expression_;
-    }
+    // if (action.get_effect().has_value())
+    //{
+    //    const auto [simple_effects_, complex_effects_, function_expression_] = translate_lifted(*action.get_effect().value());
+    //    simple_effects = simple_effects_;
+    //    complex_effects = complex_effects_;
+    //    function_expression = function_expression_;
+    //}
 
     return m_pddl_repositories.get_or_create_action(action.get_name(),
                                                     action.get_original_arity(),
@@ -621,7 +625,7 @@ Action ToMimirStructures::translate_lifted(const loki::ActionImpl& action)
                                                     static_literals,
                                                     fluent_literals,
                                                     derived_literals,
-                                                    simple_effects,
+                                                    EffectSimple(),
                                                     complex_effects,
                                                     function_expression);
 }
