@@ -51,6 +51,7 @@ public:
     Index get_index() const;
     Predicate<P> get_predicate() const;
     const TermList& get_terms() const;
+    VariableList get_variables() const;
     size_t get_arity() const;
 };
 
