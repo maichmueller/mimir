@@ -17,6 +17,7 @@
 
 #include "mimir/search/search_node.hpp"
 
+#include <cista/serialization.h>
 #include <gtest/gtest.h>
 
 namespace mimir::tests
