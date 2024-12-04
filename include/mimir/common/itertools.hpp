@@ -135,16 +135,21 @@ void for_each_tag(auto&& f)
     f(Derived {});
 }
 
-template<typename IndexType, IndexType... Is>
+template<size_t... Is>
 void for_each_index(auto&& f)
 {
-    (f(std::integral_constant<IndexType, Is> {}), ...);
+    (f(std::integral_constant<size_t, Is> {}), ...);
+}
+template<typename IntegerType, IntegerType... Is>
+void for_each_integral(auto&& f)
+{
+    (f(std::integral_constant<IntegerType, Is> {}), ...);
 }
 
 template<std::ranges::range Range, typename Comp = std::less<>>
 auto sorted(Range&& range, Comp comp = {})
 {
-    auto result = FWD(range) | ranges::to_vector;
+    auto result = ranges::to_vector(FWD(range));
     std::ranges::sort(result, comp);
     return result;
 }

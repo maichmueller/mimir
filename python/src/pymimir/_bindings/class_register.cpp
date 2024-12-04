@@ -15,21 +15,7 @@ void register_classes(py::module& m)
     class_<ObjectImpl>(m, "Object");
     class_<VariableImpl>(m, "Variable");
     class_<TermImpl>(m, "Term");
-    class_<PredicateImpl<Static>>(m, "StaticPredicate");
-    class_<PredicateImpl<Fluent>>(m, "FluentPredicate");
-    class_<PredicateImpl<Derived>>(m, "DerivedPredicate");
-    class_<AtomImpl<Static>>(m, "StaticAtom");
-    class_<AtomImpl<Fluent>>(m, "FluentAtom");
-    class_<AtomImpl<Derived>>(m, "DerivedAtom");
     class_<PDDLRepositories, std::shared_ptr<PDDLRepositories>>(m, "PDDLRepositories");
-    class_<GroundAtomImpl<Static>>(m, "StaticGroundAtom");
-    class_<GroundAtomImpl<Fluent>>(m, "FluentGroundAtom");
-    class_<GroundAtomImpl<Derived>>(m, "DerivedGroundAtom");
-    class_<GroundLiteralImpl<Static>>(m, "StaticGroundLiteral");
-    class_<GroundLiteralImpl<Fluent>>(m, "FluentGroundLiteral");
-    class_<GroundLiteralImpl<Derived>>(m, "DerivedGroundLiteral");
-    class_<LiteralImpl<Static>>(m, "StaticLiteral");
-    class_<LiteralImpl<Fluent>>(m, "FluentLiteral");
     class_<AxiomImpl>(m, "Axiom");
     class_<GroundAxiomImpl>(m, "GroundAxiomImpl");
     class_<NumericFluentImpl>(m, "NumericFluent");
@@ -145,9 +131,6 @@ void register_classes(py::module& m)
     class_<TupleGraphFactory>(m, "TupleGraphFactory");
     class_<ObjectGraphPruningStrategy>(m, "ObjectGraphPruningStrategy");
     class_<color_refinement::Certificate>(m, "CertificateColorRefinement");
-    class_<kfwl::Certificate<2>>(m, "Certificate2FWL");
-    class_<kfwl::Certificate<3>>(m, "Certificate3FWL");
-    class_<kfwl::Certificate<4>>(m, "Certificate4FWL");
     class_<kfwl::IsomorphismTypeCompressionFunction>(m, "IsomorphismTypeCompressionFunction");
 
     py::bind_vector<GroundActionList>(m, "GroundActionList");
@@ -171,6 +154,11 @@ void register_classes(py::module& m)
     for_each_tag(
         [&]<typename Tag>(Tag, std::string tag = tag_name<Tag>())
         {
+            class_<PredicateImpl<Tag>>(m, tag + "Predicate");
+            class_<AtomImpl<Tag>>(m, tag + "Atom");
+            class_<GroundAtomImpl<Tag>>(m, tag + "GroundAtom");
+            class_<GroundLiteralImpl<Tag>>(m, tag + "GroundLiteral");
+            class_<LiteralImpl<Tag>>(m, tag + "Literal");
             class_<GroundEffectLiteral<Tag>>(m, "GroundEffect" + tag + "Literal");
             py::bind_vector<GroundEffectLiteralList<Tag>>(m, "GroundEffect" + tag + "LiteralList");
             py::bind_vector<AtomList<Tag>>(m, tag + "AtomList");
@@ -180,4 +168,5 @@ void register_classes(py::module& m)
             py::bind_vector<PredicateList<Tag>>(m, tag + "PredicateList");
             py::bind_map<ToPredicateMap<std::string, Tag>>(m, "StringTo" + tag + "PredicateMap");
         });
+    for_each_index<2, 3, 4>([&]<size_t I>(std::integral_constant<size_t, I>) { class_<kfwl::Certificate<I>>(m, fmt::format("Certificate{}FWL", I)); });
 }

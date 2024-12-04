@@ -103,6 +103,7 @@ DECLARE_INIT_FUNC(cista_types);
 DECLARE_INIT_FUNC(algorithms);
 DECLARE_INIT_FUNC(literals);
 DECLARE_INIT_FUNC(axiom);
+DECLARE_INIT_FUNC(color_refinement);
 DECLARE_INIT_FUNC(predicates);
 DECLARE_INIT_FUNC(numeric_fluent);
 DECLARE_INIT_FUNC(object);
