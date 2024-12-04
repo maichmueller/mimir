@@ -11,14 +11,14 @@ using namespace pymimir;
 
 void init_effects(py::module& m)
 {
-    class_<EffectStripsImpl>(m, "EffectSimple")  //
+    class_<EffectStripsImpl>(m, "EffectStrips")  //
         .def("__str__", [](const EffectStripsImpl& self) { return fmt::format("{}", self); })
         .def("__str__", [](const EffectStripsImpl& self) { return fmt::format("{}", self); })
         .def("get_index", &EffectStripsImpl::get_index)
         .def("get_effects", &EffectStripsImpl::get_effects, py::keep_alive<0, 1>(), py::return_value_policy::copy)
         .def("get_function_expression", &EffectStripsImpl::get_function_expression, py::return_value_policy::reference_internal);
 
-    class_<EffectConditionalImpl>(m, "EffectComplex")  //
+    class_<EffectConditionalImpl>(m, "EffectConditional")  //
         .def("__str__", [](const EffectConditionalImpl& self) { return fmt::format("{}", self); })
         .def("__str__", [](const EffectConditionalImpl& self) { return fmt::format("{}", self); })
         .def("get_index", &EffectConditionalImpl::get_index)

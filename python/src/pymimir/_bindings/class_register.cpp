@@ -34,8 +34,8 @@ void register_classes(py::module& m)
     class_<AxiomImpl>(m, "Axiom");
     class_<GroundAxiomImpl>(m, "GroundAxiomImpl");
     class_<NumericFluentImpl>(m, "NumericFluent");
-    class_<EffectStripsImpl>(m, "EffectSimple");
-    class_<EffectConditionalImpl>(m, "EffectComplex");
+    class_<EffectStripsImpl>(m, "EffectStrips");
+    class_<EffectConditionalImpl>(m, "EffectConditional");
     class_<GroundEffectStrips>(m, "GroundEffectStrips");
     class_<GroundEffectFluentLiteral>(m, "GroundEffectFluentLiteral");
     class_<FlatBitset>(m, "FlatBitset");
