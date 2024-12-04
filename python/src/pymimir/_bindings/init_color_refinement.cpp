@@ -9,6 +9,18 @@ using namespace pymimir;
 
 void init_color_refinement(py::module& m)
 {
+    // ObjectGraph
+    m.def("create_object_graph",
+          &create_object_graph,
+          py::arg("color_function"),
+          py::arg("pddl_repositories"),
+          py::arg("problem"),
+          py::arg("state"),
+          py::arg("state_index") = 0,
+          py::arg("mark_true_goal_literals") = false,
+          py::arg("pruning_strategy") = ObjectGraphPruningStrategy(),
+          "Creates an object graph based on the provided parameters");
+
     class_<kfwl::IsomorphismTypeCompressionFunction>(m, "IsomorphismTypeCompressionFunction")  //
         .def(py::init<>());
 
@@ -41,4 +53,9 @@ void init_color_refinement(py::module& m)
                 py::arg("static_vertex_colored_digraph"),
                 py::arg("isomorphism_type_compression_function"));
         });
+
+    m.def("compute_certificate_color_refinement",
+          &color_refinement::compute_certificate<StaticVertexColoredDigraph>,
+          py::arg("graph"),
+          "Creates color refinement certificate");
 }

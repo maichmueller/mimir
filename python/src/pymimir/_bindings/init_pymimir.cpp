@@ -36,6 +36,7 @@ void init_pymimir(py::module& m)
     init_function_expression(m);
     init_ground_function_expression(m);
     init_optimization_metric(m);
+    init_plan(m);
     init_actions(m);
     init_domain(m);
     init_problem(m);
@@ -52,35 +53,4 @@ void init_pymimir(py::module& m)
     init_nauty_wrappers(m);
     init_static_vertexcolored_graph(m);
     init_tuple_graph(m);
-
-    // ObjectGraph
-    m.def("create_object_graph",
-          &create_object_graph,
-          py::arg("color_function"),
-          py::arg("pddl_repositories"),
-          py::arg("problem"),
-          py::arg("state"),
-          py::arg("state_index") = 0,
-          py::arg("mark_true_goal_literals") = false,
-          py::arg("pruning_strategy") = ObjectGraphPruningStrategy(),
-          "Creates an object graph based on the provided parameters");
-    // Color Refinement
-    class_<color_refinement::Certificate>(m, "CertificateColorRefinement")
-        .def("__eq__", [](const color_refinement::Certificate& lhs, const color_refinement::Certificate& rhs) { return lhs == rhs; })
-        .def("__hash__", [](const color_refinement::Certificate& self) { return std::hash<color_refinement::Certificate>()(self); })
-        .def("__str__",
-             [](const color_refinement::Certificate& self)
-             {
-                 auto os = std::stringstream();
-                 os << self;
-                 return os.str();
-             })
-        // Returning canonical compression functions does not work due to unhashable type list.
-        //.def("get_canonical_configuration_compression_function", &color_refinement::Certificate::get_canonical_compression_function)
-        .def("get_canonical_coloring", &color_refinement::Certificate::get_canonical_coloring);
-
-    m.def("compute_certificate_color_refinement",
-          &color_refinement::compute_certificate<StaticVertexColoredDigraph>,
-          py::arg("graph"),
-          "Creates color refinement certificate");
 }
