@@ -20,6 +20,7 @@
 // Do not include headers with transitive dependencies.
 #include "mimir/common/types.hpp"
 
+#include <cista/containers/vector.h>
 #include <memory>
 #include <unordered_set>
 #include <vector>
@@ -29,6 +30,12 @@ namespace mimir
 
 // StateRepository
 class StateRepository;
+
+// Action
+template<PredicateTag P>
+struct GroundEffectLiteral;
+template<PredicateTag P>
+using GroundEffectLiteralList = cista::offset::vector<GroundEffectLiteral<P>>;
 
 // GroundAction
 struct GroundActionImpl;

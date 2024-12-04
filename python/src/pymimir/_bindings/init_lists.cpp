@@ -27,8 +27,11 @@ void init_lists(py::module& m)
     static_assert(!py::detail::vector_needs_copy<EffectConditionalList>::value);  // Ensure return by reference + keep alive
     def_opaque_vector_repr<EffectConditionalList>(m, "EffectConditionalList");
 
-    static_assert(!py::detail::vector_needs_copy<EffectConditionalList>::value);  // Ensure return by reference + keep alive
-    def_opaque_vector_repr<GroundEffectFluentLiteralList>(m, "GroundEffectFluentLiteralList");
+    static_assert(!py::detail::vector_needs_copy<GroundEffectLiteralList<Fluent>>::value);  // Ensure return by reference + keep alive
+    def_opaque_vector_repr<GroundEffectLiteralList<Fluent>>(m, "GroundEffectFluentLiteralList");
+
+    static_assert(!py::detail::vector_needs_copy<GroundEffectLiteralList<Derived>>::value);  // Ensure return by reference + keep alive
+    def_opaque_vector_repr<GroundEffectLiteralList<Derived>>(m, "GroundEffectDerivedLiteralList");
 
     static_assert(!py::detail::vector_needs_copy<GroundFunctionExpressionList>::value);  // Ensure return by reference + keep alive
     def_opaque_vector_repr<GroundFunctionExpressionList>(m, "GroundFunctionExpressionList");

@@ -37,13 +37,13 @@
 // utilities
 //
 template<typename Class_, typename... Options>
-py::class_<Class_, Options...> class_(pybind11::module_& m, const char* cls_name)
+py::class_<Class_, Options...> class_(pybind11::module_& m, std::string_view cls_name)
 {
-    if (py::hasattr(m, cls_name))
+    if (py::hasattr(m, cls_name.data()))
     {
-        return py::class_<Class_, Options...>(m.attr(cls_name));
+        return py::class_<Class_, Options...>(m.attr(cls_name.data()));
     }
-    return py::class_<Class_, Options...>(m, cls_name);
+    return py::class_<Class_, Options...>(m, cls_name.data());
 }
 
 struct default_elem_repr

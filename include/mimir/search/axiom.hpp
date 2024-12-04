@@ -30,12 +30,6 @@
 namespace mimir
 {
 
-struct GroundEffectDerivedLiteral
-{
-    bool is_negated = false;
-    Index atom_index = Index(0);
-};
-
 /**
  * GroundAxiom
  */
@@ -45,7 +39,7 @@ struct GroundAxiomImpl
     Index axiom_index = Index(0);
     FlatIndexList objects = FlatIndexList();
     GroundConditionStrips strips_precondition = GroundConditionStrips();
-    GroundEffectDerivedLiteral effect = GroundEffectDerivedLiteral();
+    GroundEffectLiteral<Derived> effect = GroundEffectLiteral<Derived>();
 
     Index& get_index();
     Index get_index() const;
@@ -61,8 +55,8 @@ struct GroundAxiomImpl
     const GroundConditionStrips& get_strips_precondition() const;
 
     /* Effect*/
-    GroundEffectDerivedLiteral& get_derived_effect();
-    const GroundEffectDerivedLiteral& get_derived_effect() const;
+    GroundEffectLiteral<Derived>& get_derived_effect();
+    const GroundEffectLiteral<Derived>& get_derived_effect() const;
 
     // TODO: pass state instead of separated fluent and derived atoms?
     bool is_applicable(const FlatBitset& state_fluent_atoms, const FlatBitset& state_derived_atoms, const FlatBitset& static_positive_atoms) const;
@@ -98,7 +92,7 @@ using GroundAxiomImplSet = cista::storage::UnorderedSet<GroundAxiomImpl>;
  */
 
 template<>
-std::ostream& operator<<(std::ostream& os, const std::tuple<GroundEffectDerivedLiteral, const PDDLRepositories&>& data);
+std::ostream& operator<<(std::ostream& os, const std::tuple<GroundEffectLiteral<Derived>, const PDDLRepositories&>& data);
 
 template<>
 std::ostream& operator<<(std::ostream& os, const std::tuple<GroundAxiom, const PDDLRepositories&>& data);
@@ -107,5 +101,5 @@ std::ostream& operator<<(std::ostream& os, const std::tuple<GroundAxiom, const P
 #include "mimir/common/macros.hpp"
 
 #include <fmt/ostream.h>
-FORMATTABLE(ARG(std::tuple<mimir::GroundEffectDerivedLiteral, const mimir::PDDLRepositories&>));
+FORMATTABLE(ARG(std::tuple<mimir::GroundEffectLiteral<mimir::Derived>, const mimir::PDDLRepositories&>));
 FORMATTABLE(ARG(std::tuple<mimir::GroundAxiom, const mimir::PDDLRepositories&>));

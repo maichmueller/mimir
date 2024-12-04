@@ -30,14 +30,12 @@ void register_classes(py::module& m)
     class_<GroundLiteralImpl<Derived>>(m, "DerivedGroundLiteral");
     class_<LiteralImpl<Static>>(m, "StaticLiteral");
     class_<LiteralImpl<Fluent>>(m, "FluentLiteral");
-    class_<LiteralImpl<Derived>>(m, "DerivedLiteral");
     class_<AxiomImpl>(m, "Axiom");
     class_<GroundAxiomImpl>(m, "GroundAxiomImpl");
     class_<NumericFluentImpl>(m, "NumericFluent");
     class_<EffectStripsImpl>(m, "EffectStrips");
     class_<EffectConditionalImpl>(m, "EffectConditional");
     class_<GroundEffectStrips>(m, "GroundEffectStrips");
-    class_<GroundEffectFluentLiteral>(m, "GroundEffectFluentLiteral");
     class_<FlatBitset>(m, "FlatBitset");
     class_<FunctionSkeletonImpl>(m, "FunctionSkeleton");
     class_<FunctionImpl>(m, "Function");
@@ -156,7 +154,6 @@ void register_classes(py::module& m)
     py::bind_vector<EffectConditionalList>(m, "EffectConditionalList");
     py::bind_vector<GroundEffectConditionalList>(m, "GroundEffectConditionalList");
     py::bind_vector<GroundFunctionExpressionList>(m, "GroundFunctionExpressionList");
-    py::bind_vector<GroundEffectFluentLiteralList>(m, "GroundEffectFluentLiteralList");
     py::bind_vector<StateList>(m, "StateList");
     py::bind_vector<ActionList>(m, "ActionList");
     py::bind_vector<ProblemList>(m, "ProblemList");
@@ -174,6 +171,8 @@ void register_classes(py::module& m)
     for_each_tag(
         [&]<typename Tag>(Tag, std::string tag = tag_name<Tag>())
         {
+            class_<GroundEffectLiteral<Tag>>(m, "GroundEffect" + tag + "Literal");
+            py::bind_vector<GroundEffectLiteralList<Tag>>(m, "GroundEffect" + tag + "LiteralList");
             py::bind_vector<AtomList<Tag>>(m, tag + "AtomList");
             py::bind_vector<LiteralList<Tag>>(m, tag + "LiteralList");
             py::bind_vector<GroundLiteralList<Tag>>(m, tag + "GroundLiteralList");

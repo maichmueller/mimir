@@ -1,4 +1,5 @@
 #include "init_declarations.hpp"
+#include "mimir/common/itertools.hpp"
 #include "mimir/common/printers.hpp"
 #include "opaque_types.hpp"
 #include "utils.hpp"
@@ -51,7 +52,12 @@ void init_effects(py::module& m)
         .def("get_negative_effect_indices", CONST_OVERLOAD(GroundEffectStrips::get_positive_effects), py::return_value_policy::copy)
         .def("get_cost", CONST_OVERLOAD(GroundEffectStrips::get_cost), py::return_value_policy::copy);
 
-    class_<GroundEffectFluentLiteral>(m, "GroundEffectFluentLiteral")
-        .def_readonly("is_negated", &GroundEffectFluentLiteral::is_negated)
-        .def_readonly("atom_index", &GroundEffectFluentLiteral::atom_index);
+    for_each_tag(
+        [&]<typename Tag>(Tag, std::string tag = tag_name<Tag>())
+        {
+            const std::string class_name = "GroundEffect" + tag + "Literal";
+            class_<GroundEffectLiteral<Tag>>(m, class_name.c_str())
+                .def_readonly("is_negated", &GroundEffectLiteral<Tag>::is_negated)
+                .def_readonly("atom_index", &GroundEffectLiteral<Tag>::atom_index);
+        });
 }

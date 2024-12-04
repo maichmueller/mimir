@@ -22,6 +22,7 @@
 #include "mimir/common/printers.hpp"
 #include "mimir/common/types_cista.hpp"
 #include "mimir/formalism/declarations.hpp"
+#include "mimir/formalism/predicate_tag.hpp"
 #include "mimir/search/declarations.hpp"
 
 #include <cista/containers/tuple.h>
@@ -84,13 +85,12 @@ struct GroundEffectStrips
 
 /// @brief `GroundEffectFluentLiteral` encapsulates the effect on a single grounded atom.
 /// We cannot consistently use cista::tuple since nested tuples will automatically be flattened.
-struct GroundEffectFluentLiteral
+template<PredicateTag P>
+struct GroundEffectLiteral
 {
     bool is_negated = false;
     Index atom_index = Index(0);
 };
-
-using GroundEffectFluentLiteralList = cista::offset::vector<GroundEffectFluentLiteral>;
 
 struct GroundEffectConditional
 {
@@ -100,7 +100,7 @@ struct GroundEffectConditional
     FlatIndexList negative_fluent_atoms = FlatIndexList();
     FlatIndexList positive_derived_atoms = FlatIndexList();
     FlatIndexList negative_derived_atoms = FlatIndexList();
-    GroundEffectFluentLiteralList effect = GroundEffectFluentLiteralList();
+    GroundEffectLiteralList<Fluent> effect = GroundEffectLiteralList<Fluent>();
     ContinuousCost cost = ContinuousCost(0.0);
 
     /* Precondition */
@@ -115,8 +115,8 @@ struct GroundEffectConditional
     const FlatIndexList& get_negative_precondition() const;
 
     /* Simple effects */
-    GroundEffectFluentLiteralList& get_fluent_effect_literals();
-    const GroundEffectFluentLiteralList& get_fluent_effect_literals() const;
+    GroundEffectLiteralList<Fluent>& get_fluent_effect_literals();
+    const GroundEffectLiteralList<Fluent>& get_fluent_effect_literals() const;
 
     /* Costs */
     ContinuousCost& get_cost();
@@ -201,10 +201,10 @@ using GroundActionImplSet = cista::storage::UnorderedSet<GroundActionImpl>;
  */
 
 template<>
-std::ostream& operator<<(std::ostream& os, const std::tuple<GroundEffectFluentLiteral, const PDDLRepositories&>& data);
+std::ostream& operator<<(std::ostream& os, const std::tuple<GroundEffectLiteral<Fluent>, const PDDLRepositories&>& data);
 
 template<>
-std::ostream& operator<<(std::ostream& os, const std::tuple<GroundEffectFluentLiteralList, const PDDLRepositories&>& data);
+std::ostream& operator<<(std::ostream& os, const std::tuple<GroundEffectLiteral<Fluent>, const PDDLRepositories&>& data);
 
 template<>
 std::ostream& operator<<(std::ostream& os, const std::tuple<GroundConditionStrips, const PDDLRepositories&>& data);
@@ -233,7 +233,7 @@ std::ostream& operator<<(std::ostream& os, const std::tuple<GroundAction, const 
 #include "mimir/common/macros.hpp"
 
 #include <fmt/ostream.h>
-FORMATTABLE(ARG(std::tuple<mimir::GroundEffectFluentLiteral, const mimir::PDDLRepositories&>));
+FORMATTABLE(ARG(std::tuple<mimir::GroundEffectLiteral<mimir::Fluent>, const mimir::PDDLRepositories&>));
 FORMATTABLE(ARG(std::tuple<mimir::GroundConditionStrips, const mimir::PDDLRepositories&>));
 FORMATTABLE(ARG(std::tuple<mimir::GroundEffectStrips, const mimir::PDDLRepositories&>));
 FORMATTABLE(ARG(std::tuple<mimir::GroundEffectConditional, const mimir::PDDLRepositories&>));

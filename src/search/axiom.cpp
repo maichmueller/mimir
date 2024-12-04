@@ -60,9 +60,9 @@ GroundConditionStrips& GroundAxiomImpl::get_strips_precondition() { return strip
 
 const GroundConditionStrips& GroundAxiomImpl::get_strips_precondition() const { return strips_precondition; }
 
-GroundEffectDerivedLiteral& GroundAxiomImpl::get_derived_effect() { return effect; }
+GroundEffectLiteral<Derived>& GroundAxiomImpl::get_derived_effect() { return effect; }
 
-const GroundEffectDerivedLiteral& GroundAxiomImpl::get_derived_effect() const { return effect; }
+const GroundEffectLiteral<Derived>& GroundAxiomImpl::get_derived_effect() const { return effect; }
 
 bool GroundAxiomImpl::is_applicable(const FlatBitset& state_fluent_atoms, const FlatBitset& state_derived_atoms, const FlatBitset& static_positive_atoms) const
 {  //
@@ -78,7 +78,7 @@ bool GroundAxiomImpl::is_statically_applicable(const FlatBitset& static_positive
  * Pretty printing
  */
 
-std::ostream& operator<<(std::ostream& os, const std::tuple<GroundEffectDerivedLiteral, const PDDLRepositories&>& data)
+std::ostream& operator<<(std::ostream& os, const std::tuple<GroundEffectLiteral<Derived>, const PDDLRepositories&>& data)
 {
     const auto [derived_effect, pddl_repositories] = data;
 

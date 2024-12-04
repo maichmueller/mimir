@@ -241,9 +241,9 @@ template const FlatIndexList& GroundEffectConditional::get_negative_precondition
 template const FlatIndexList& GroundEffectConditional::get_negative_precondition<Fluent>() const;
 template const FlatIndexList& GroundEffectConditional::get_negative_precondition<Derived>() const;
 
-GroundEffectFluentLiteralList& GroundEffectConditional::get_fluent_effect_literals() { return effect; }
+GroundEffectLiteralList<Fluent>& GroundEffectConditional::get_fluent_effect_literals() { return effect; }
 
-const GroundEffectFluentLiteralList& GroundEffectConditional::get_fluent_effect_literals() const { return effect; }
+const GroundEffectLiteralList<Fluent>& GroundEffectConditional::get_fluent_effect_literals() const { return effect; }
 
 ContinuousCost& GroundEffectConditional::get_cost() { return cost; }
 
@@ -325,7 +325,7 @@ bool GroundActionImpl::is_applicable(Problem problem, State state) const
  */
 
 template<>
-std::ostream& operator<<(std::ostream& os, const std::tuple<GroundEffectFluentLiteral, const PDDLRepositories&>& data)
+std::ostream& operator<<(std::ostream& os, const std::tuple<GroundEffectLiteral<Fluent>, const PDDLRepositories&>& data)
 {
     const auto& [simple_effect, pddl_repositories] = data;
 
@@ -346,7 +346,7 @@ std::ostream& operator<<(std::ostream& os, const std::tuple<GroundEffectFluentLi
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const std::tuple<GroundEffectFluentLiteralList, const PDDLRepositories&>& data)
+std::ostream& operator<<(std::ostream& os, const std::tuple<GroundEffectLiteralList<Fluent>, const PDDLRepositories&>& data)
 {
     const auto& [simple_effects, pddl_repositories] = data;
 

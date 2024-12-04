@@ -131,7 +131,7 @@ GroundAction LiftedApplicableActionGenerator::ground_action(Action action, Objec
 
     const auto fill_effects = [this](const LiteralList<Fluent>& lifted_effect_literals,  //
                                      const ObjectList& binding,
-                                     GroundEffectFluentLiteralList& out_grounded_effect_literals)
+                                     GroundEffectLiteralList<Fluent>& out_grounded_effect_literals)
     {
         out_grounded_effect_literals.clear();
 
