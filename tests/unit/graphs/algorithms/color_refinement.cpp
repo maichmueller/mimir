@@ -18,6 +18,7 @@
 #include "mimir/graphs/algorithms/color_refinement.hpp"
 
 #include "mimir/common/itertools.hpp"
+#include "mimir/common/views_extension.hpp"
 #include "mimir/datasets/faithful_abstraction.hpp"
 #include "mimir/graphs/digraph_vertex_colored.hpp"
 
@@ -132,18 +133,20 @@ TEST(MimirTests, GraphsAlgorithmsColorRefinementTest)
 
 auto print_states(const FaithfulAbstraction& abstraction)
 {
+    const auto& vertices = abstraction.get_graph().get_vertices();
     return fmt::format(
         "States:\n{}",
-        fmt::join(ranges::views::enumerate(abstraction.get_graph().get_vertices())
-                      | std::views::transform(
-                          [&](const auto& iv)
+        fmt::join(vertices
+                      | ranges::views::transform(
+                          [&, i = 0ul](const auto& vertex) mutable
                           {
-                              auto [i, vertex] = iv;
                               auto state = get_representative_state(vertex);
                               auto fl_atoms = abstraction.get_pddl_repositories()->get_ground_atoms_from_indices<Fluent>(state->template get_atoms<Fluent>());
-                              return fmt::format("Index: {:<2}, Atoms: {}",
-                                                 i,
-                                                 sorted(fl_atoms | ranges::views::transform([](auto atom) { return fmt::format("{}", *atom); })));
+                              auto str = fmt::format("Index: {:<3}, Atoms: {}",
+                                                     i,
+                                                     sorted(fl_atoms | std::views::transform([](const auto& atom) { return fmt::format("{}", deref(atom)); })));
+                              ++i;
+                              return str;
                           }),
                   "\n"));
 }
