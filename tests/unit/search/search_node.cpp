@@ -38,10 +38,10 @@ TEST(MimirTests, SearchSearchNodeTest)
     set_property<0>(&node, 3.14);
 
     auto buf = cista::buf<std::vector<uint8_t>> {};
-    cista::serialize(buf, node);
+    cista::serialize<cista::mode::NONE>(buf, node);
     EXPECT_EQ(buf.size(), 24);
 
-    auto deserialized_node = cista::deserialize<SearchNodeType>(buf.base(), buf.base() + buf.size());
+    auto deserialized_node = cista::deserialize<SearchNodeType, cista::mode::NONE>(buf.base(), buf.base() + buf.size());
     EXPECT_EQ(get_status(deserialized_node), SearchNodeStatus::NEW);
     EXPECT_EQ(get_parent_state(deserialized_node), 2);
     EXPECT_EQ(get_creating_action(deserialized_node), 3);
