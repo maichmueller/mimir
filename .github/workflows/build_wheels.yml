@@ -98,9 +98,18 @@ jobs:
           output-dir: wheelhouse
           config-file: "{package}/pyproject.toml"
 
+      - name: Sanitize skip name
+        run: |
+          if [ -z "${{ matrix.skip }}" ]; then
+            echo "sanitized_name=none" >> $GITHUB_ENV
+          else
+            sanitized_name=$(echo "${{ matrix.skip }}" | sed 's/\*/not_/' | sed 's/\*//')
+            echo "sanitized_name=$sanitized_name" >> $GITHUB_ENV
+          fi
+
       - uses: actions/upload-artifact@v4
         with:
-          name: cibw-wheels-${{ runner.os }}-${{ matrix.arch }}-${{ matrix.skip }}
+          name: cibw-wheels-${{ runner.os }}-${{ matrix.arch }}-${{ env.sanitized_name }}
           path: ./wheelhouse/*.whl
 
       # merge the wheels of manylinux and musllinux into one artifact (will only rename for other platforms)
