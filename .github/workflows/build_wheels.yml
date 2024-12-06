@@ -3,32 +3,19 @@ name: Build Wheels
 on: [ push ]
 
 jobs:
+  config_reader:
+    uses: ./.github/workflows/read-matrix-file.yml
+    with:
+      matrix_file: 'wheels-matrix.json'
+
   build_wheels:
     name: Build wheels • ${{ matrix.os }} • ${{ matrix.arch }}
+    needs: config_reader
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        # macos-13 is x86_64, macos-14 is arm64
-        include:
-          - os: macos-13
-            arch: x86_64
-          - os: macos-14
-            arch: arm64
-            # revisit this when github actions provides aarch64 linux runners at the end of 2024
-            # (emulation for cross compilation takes too long)
-            # - os: ubuntu-latest
-            #   arch: aarch64
-            #   skip: '*musllinux*'
-            # - os: ubuntu-latest
-            #   arch: aarch64
-            #   skip: '*manylinux*'
-          - os: ubuntu-latest
-            arch: x86_64
-            skip: '*musllinux*'
-          - os: ubuntu-latest
-            arch: x86_64
-            skip: '*manylinux*'
+        include: ${{ fromJson(needs.matrix-setup.outputs.matrix) }}
 
     steps:
       - name: Checkout repository
@@ -112,7 +99,16 @@ jobs:
           name: cibw-wheels-${{ runner.os }}-${{ matrix.arch }}-${{ env.sanitized_name }}
           path: ./wheelhouse/*.whl
 
-      # merge the wheels of manylinux and musllinux into one artifact (will only rename for other platforms)
+  # merge the wheels of manylinux and musllinux into one artifact (will only rename for other platforms)
+  merge_wheels:
+    name: Merge wheels • ${{ matrix.os }} • ${{ matrix.arch }}
+    needs: build_wheels
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.matrix-setup.outputs.matrix) }}
+    steps:
       - name: Merge artifacts
         uses: actions/upload-artifact/merge@v4
         with:

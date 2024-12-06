@@ -4,7 +4,9 @@ on: [ push, pull_request ]
 
 jobs:
   config_reader:
-    uses: ./.github/workflows/read-build-matrix.yml
+    uses: ./.github/workflows/read-matrix-file.yml
+    with:
+      matrix_file: 'build-matrix.json'
 
   test:
     needs: config_reader
