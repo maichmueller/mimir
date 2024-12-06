@@ -1,7 +1,7 @@
 sources:
-  "2024.12.01":
-    - url: "https://github.com/maichmueller/cista.git"
-      commit: "c0fe432ce64a835d7af9c96adddf0234a8da86ab"
+  "2024.12.06":
+    - url: "https://github.com/felixguendling/cista.git"
+      commit: "989b7d5ac376fe90c702b19ede55b028c878e951"
       type: "git"
   "2024.10.22":
     - url: "https://github.com/felixguendling/cista.git"
