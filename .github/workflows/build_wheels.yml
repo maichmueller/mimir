@@ -19,8 +19,16 @@ jobs:
             # (emulation for cross compilation takes too long)
             # - os: ubuntu-latest
             #   arch: aarch64
+            #   skip: '*musllinux*'
+            # - os: ubuntu-latest
+            #   arch: aarch64
+            #   skip: '*manylinux*'
           - os: ubuntu-latest
             arch: x86_64
+            skip: '*musllinux*'
+          - os: ubuntu-latest
+            arch: x86_64
+            skip: '*manylinux*'
 
     steps:
       - name: Checkout repository
@@ -76,6 +84,7 @@ jobs:
         uses: pypa/cibuildwheel@v2.21.3
         env:
           CIBW_ARCHS: ${{ matrix.arch }}
+          CIBW_SKIP: ${{ matrix.skip }}
           CIBW_ENVIRONMENT_LINUX: >
             CONAN_HOME="${{ env.CONAN_HOME }}"
             CONAN_CENTER_CLONE_PATH="${{ env.CONAN_CENTER_PATH }}"
@@ -91,5 +100,29 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: cibw-wheels-${{ runner.os }}-${{ matrix.arch }}
+          name: cibw-wheels-${{ runner.os }}-${{ matrix.arch }}-${{ matrix.skip }}
           path: ./wheelhouse/*.whl
+
+      # merge the wheels of manylinux and musllinux into one artifact (will only rename for other platforms)
+      - name: Merge artifacts
+        uses: actions/upload-artifact/merge@v4
+        with:
+          # The name of the artifact that the artifacts will be merged into
+          # Optional. Default is 'merged-artifacts'
+          name: cibw-wheels-${{ runner.os }}-${{ matrix.arch }}
+          # A glob pattern matching the artifacts that should be merged.
+          # Optional. Default is '*'
+          pattern: cibw-wheels-${{ runner.os }}-${{ matrix.arch }}-*
+          # If true, the artifacts will be merged into separate directories.
+          # If false, the artifacts will be merged into the root of the destination.
+          # Optional. Default is 'false'
+          separate-directories: false
+          # If true, the artifacts that were merged will be deleted.
+          # If false, the artifacts will still exist.
+          # Optional. Default is 'false'
+          delete-merged: true
+          # The level of compression for Zlib to be applied to the artifact archive.
+          # The value can range from 0 to 9.
+          # For large files that are not easily compressed, a value of 0 is recommended for significantly faster uploads.
+          # Optional. Default is '6'
+          compression-level: 9
