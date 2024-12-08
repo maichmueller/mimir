@@ -43,7 +43,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 ##############################################################
 
 option(BUILD_PYMIMIR "Build" OFF)
-option(BUILD_TESTS "Build" OFF)
+option(BUILD_TESTING "Build" OFF)
 option(BUILD_PROFILING "Build" OFF)
 
 
@@ -117,7 +117,7 @@ endif ()
 # -----------
 # Target Test
 # -----------
-if (BUILD_TESTS)
+if (BUILD_TESTING)
     add_subdirectory(tests)
 endif ()
 

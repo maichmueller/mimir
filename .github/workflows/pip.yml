@@ -3,18 +3,18 @@ name: PIP Install & Test
 on: [ push ]
 
 jobs:
-  config_reader:
+  load-config:
     uses: ./.github/workflows/read-matrix-file.yml
     with:
       matrix_file: 'build-matrix.json'
 
   build:
-    needs: config_reader
+    needs: load-config
     name: ${{ matrix.config.os }} • Py-${{ matrix.python-version }} • ${{ matrix.config.cc }}-${{ matrix.config.compiler_version }} • ${{ matrix.config.build_type }}
     strategy:
       fail-fast: false
       matrix:
-        config: ${{ fromJson(needs.config_reader.outputs.matrix) }}
+        config: ${{ fromJson(needs.load-config.outputs.matrix) }}
         python-version: [ "3.8", "3.9", "3.10", "3.11", "3.12" ]
     runs-on: ${{ matrix.config.os }}
 

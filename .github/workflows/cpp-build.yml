@@ -3,19 +3,19 @@ name: Build CPP Library
 on: [ push, pull_request ]
 
 jobs:
-  config_reader:
+  load-config:
     uses: ./.github/workflows/read-matrix-file.yml
     with:
       matrix_file: 'build-matrix.json'
 
   build:
-    needs: config_reader
+    needs: load-config
     name: ${{ matrix.config.os }} • ${{ matrix.config.cc }}-${{ matrix.config.compiler_version }} • ${{ matrix.config.build_type }}
     runs-on: ${{ matrix.config.os }}
     strategy:
       fail-fast: false
       matrix:
-        config: ${{ fromJson(needs.config_reader.outputs.matrix) }}
+        config: ${{ fromJson(needs.load-config.outputs.matrix) }}
 
     steps:
       - uses: actions/checkout@v4
@@ -27,4 +27,4 @@ jobs:
           cxx: ${{ matrix.config.cxx }}
           compiler_version: ${{ matrix.config.compiler_version }}
           build_type: ${{ matrix.config.build_type }}
-          with_tests: 'ON'
+          skip_testing: True

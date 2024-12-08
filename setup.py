@@ -104,7 +104,7 @@ class CMakeBuild(build_ext):
             "--conan_extra_args",
             conan_extra_args,
             f"-DBUILD_PYMIMIR=ON",
-            f"-DBUILD_TESTS=OFF",
+            f"-DBUILD_TESTING=OFF",
             f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={output_directory}",
             f"-DPYTHON_EXECUTABLE={sys.executable}",
         ]

@@ -17,14 +17,18 @@ inputs:
   build_type:
     description: "Build type (e.g., Release, Debug)"
     required: true
-  with_tests:
-    description: "Whether to build with tests"
+  build_tests:
+    description: "Whether to build tests"
     required: false
-    default: "OFF"
-  with_pymimir:
-    description: "Whether to build with Python bindings"
+    default: "True"
+  skip_testing:
+    description: "Whether to execute tests"
     required: false
-    default: "OFF"
+    default: "True"
+  skip_pymimir:
+    description: "Whether to skip building Python bindings"
+    required: false
+    default: "True"
 
 runs:
   using: "composite"
@@ -50,8 +54,9 @@ runs:
           --source . \
           --build build \
           --config=${{ inputs.build_type }} \
-          -DBUILD_TESTS=${{ inputs.with_tests }} \
-          -DBUILD_PYMIMIR=${{ inputs.with_pymimir }}
+          --conan_extra_args=-c tools.build:skip_test=${{ inputs.skip_tests }} \
+          --conan_extra_args=-o pymimir/*:with_pybindings=${{ (inputs.skip_pymimir == 'False') }} \
+          -DBUILD_TESTING=${{ (inputs.build_tests == 'True') || (inputs.skip_testing == 'False') }} \
 
     - name: Build Mimir
       shell: bash

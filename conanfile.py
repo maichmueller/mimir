@@ -57,12 +57,14 @@ class MimirRecipe(ConanFile):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
+        "with_pybindings": [True, False],
         "with_benchmark": [True, False],
     }
 
     default_options = {
         "shared": False,
         "fPIC": True,
+        "with_pybindings": False,
         "with_benchmark": False,
         "cista/*:with_fmt": True,
     }
@@ -76,6 +78,9 @@ class MimirRecipe(ConanFile):
         )
 
     def requirements(self):
+        self.test_requires("gtest/1.15.0")
+        if self.options.with_pybindings:
+            self.requires("pybind11/2.13.6")
         requirements = self.conan_data.get("requirements", [])
         for requirement in requirements:
             self.requires(requirement)
@@ -90,6 +95,12 @@ class MimirRecipe(ConanFile):
         cmake = CMake(self)
         cmake.configure()
         cmake.build()
+        # testing
+        if not self.conf.get("tools.build:skip_test", default=False):
+            test_folder = Path(self.build_folder) / "tests"
+            if self.settings.os == "Windows":
+                test_folder = os.path.join("tests", str(self.settings.build_type))
+            self.run(test_folder / "unit")
 
     def layout(self):
         cmake_layout(self)
