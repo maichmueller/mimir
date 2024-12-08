@@ -3,19 +3,19 @@ name: Build Wheels
 on: [ push ]
 
 jobs:
-  config_reader:
+  load-config:
     uses: ./.github/workflows/read-matrix-file.yml
     with:
       matrix_file: 'wheels-matrix.json'
 
   build_wheels:
     name: Build wheels • ${{ matrix.os }} • ${{ matrix.arch }}
-    needs: config_reader
+    needs: load-config
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJson(needs.matrix-setup.outputs.matrix) }}
+        include: ${{ fromJson(needs.load-config.outputs.matrix) }}
 
     steps:
       - name: Checkout repository
@@ -98,36 +98,58 @@ jobs:
         with:
           name: cibw-wheels-${{ runner.os }}-${{ matrix.arch }}-${{ env.sanitized_name }}
           path: ./wheelhouse/*.whl
+          
+  reload-config:
+    needs: build_wheels
+    uses: ./.github/workflows/read-matrix-file.yml
+    with:
+      matrix_file: 'wheels-matrix.json'
+
+  merge-matrix-setup:
+    name: Setup Matrix-Strategy for Artifact Merging
+    needs: [reload-config]
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.clean-matrix.outputs.cleaned_matrix }}
+    steps:
+      - name: Modify Matrix
+        id: clean-matrix
+        run: |
+          # Clean the matrix
+          CLEANED_MATRIX=$(jq -c 'map(del(.skip)) | unique_by(.os + "-" + .arch)' <<< '${{ needs.reload-config.outputs.matrix }}')
+          
+          # Validate and export the cleaned matrix
+          if [ -z "$CLEANED_MATRIX" ]; then
+            echo "Error: Cleaned Matrix is empty!"
+            exit 1
+          fi
+          
+          echo "Cleaned Matrix: $CLEANED_MATRIX"
+          echo "cleaned_matrix=$CLEANED_MATRIX" >> $GITHUB_OUTPUT
 
   # merge the wheels of manylinux and musllinux into one artifact (will only rename for other platforms)
   merge_wheels:
     name: Merge wheels • ${{ matrix.os }} • ${{ matrix.arch }}
-    needs: build_wheels
+    needs: merge-matrix-setup
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJson(needs.matrix-setup.outputs.matrix) }}
+        include: ${{ fromJson(needs.merge-matrix-setup.outputs.matrix) }}
     steps:
       - name: Merge artifacts
         uses: actions/upload-artifact/merge@v4
         with:
           # The name of the artifact that the artifacts will be merged into
-          # Optional. Default is 'merged-artifacts'
           name: cibw-wheels-${{ runner.os }}-${{ matrix.arch }}
           # A glob pattern matching the artifacts that should be merged.
-          # Optional. Default is '*'
           pattern: cibw-wheels-${{ runner.os }}-${{ matrix.arch }}-*
           # If true, the artifacts will be merged into separate directories.
           # If false, the artifacts will be merged into the root of the destination.
-          # Optional. Default is 'false'
           separate-directories: false
           # If true, the artifacts that were merged will be deleted.
           # If false, the artifacts will still exist.
-          # Optional. Default is 'false'
           delete-merged: true
           # The level of compression for Zlib to be applied to the artifact archive.
           # The value can range from 0 to 9.
-          # For large files that are not easily compressed, a value of 0 is recommended for significantly faster uploads.
-          # Optional. Default is '6'
           compression-level: 9
