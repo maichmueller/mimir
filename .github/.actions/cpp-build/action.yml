@@ -54,6 +54,7 @@ runs:
           --source . \
           --build build \
           --config=${{ inputs.build_type }} \
+          --conan_extra_args='--build=missing' \
           --conan_extra_args='-c tools.build:skip_test=${{ inputs.skip_tests }}' \
           --conan_extra_args='-o pymimir/*:with_pybindings=${{ (inputs.skip_pymimir == 'False') }}' \
           -DBUILD_TESTING=${{ (inputs.build_tests == 'True') || (inputs.skip_testing == 'False') }} \
