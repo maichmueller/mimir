@@ -42,7 +42,12 @@ def get_conan_path():
 
 
 conan_cmd = get_conan_path()
-conan_extra_args = "--build=missing"
+conan_extra_args = [
+    "--build=missing",
+    "-o mimir/*:with_pybindings=True",
+    "-o mimir/*:with_benchmark=False",
+    "-c tools.build:skip_test=True",
+]
 
 
 # A CMakeExtension needs a sourcedir instead of a file list.
@@ -101,8 +106,7 @@ class CMakeBuild(build_ext):
             config,
             "--conan_cmd",
             conan_cmd,
-            "--conan_extra_args",
-            conan_extra_args,
+            *(f"--conan_extra_args='{arg}'" for arg in conan_extra_args),
             f"-DBUILD_PYMIMIR=ON",
             f"-DBUILD_TESTING=OFF",
             f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={output_directory}",
