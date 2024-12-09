@@ -30,7 +30,7 @@ jobs:
           cxx: ${{ matrix.config.cxx }}
           compiler_version: ${{ matrix.config.compiler_version }}
           build_type: ${{ matrix.config.build_type }}
-          skip_testing: False
+          skip_testing: 'False'
 
       - name: Upload lib test result artifacts
         uses: actions/upload-artifact@v4
@@ -42,7 +42,7 @@ jobs:
 
       - name: Create Mimir Conan Package
         run: >
-          conan create . -c tools.build:skip_test=True
+          conan create . -c tools.build:skip_test='True'
 
       - name: Configure Integration Tests
         shell: bash

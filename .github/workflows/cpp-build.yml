@@ -27,4 +27,5 @@ jobs:
           cxx: ${{ matrix.config.cxx }}
           compiler_version: ${{ matrix.config.compiler_version }}
           build_type: ${{ matrix.config.build_type }}
-          skip_testing: True
+          skip_testing: 'True'
+          skip_pymimir: 'True'
