@@ -20,7 +20,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/.actions/setup-environment
+      - name: Run .github/.actions/setup-environment
+        uses: ./.github/.actions/setup-environment
         with:
           os: ${{ matrix.config.os }}
           cc: ${{ matrix.config.cc }}

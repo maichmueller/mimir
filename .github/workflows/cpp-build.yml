@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Run Composite Action for Build
+      - name: Run .github/.actions/cpp-build
         uses: ./.github/.actions/cpp-build
         with:
           os: ${{ matrix.config.os }}
