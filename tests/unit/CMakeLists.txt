@@ -1,4 +1,5 @@
 enable_testing()
+include(CTest)
 
 find_package(GTest REQUIRED COMPONENTS GTest Main)
 

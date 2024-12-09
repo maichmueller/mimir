@@ -43,7 +43,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 ##############################################################
 
 option(BUILD_PYMIMIR "Build" OFF)
-option(BUILD_TESTING "Build" OFF)
+option(BUILD_TESTING "Build" ON)
 option(BUILD_PROFILING "Build" OFF)
 
 

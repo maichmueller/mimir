@@ -42,12 +42,6 @@ def get_conan_path():
 
 
 conan_cmd = get_conan_path()
-conan_extra_args = [
-    "--build=missing",
-    "-o mimir/*:with_pybindings=True",
-    "-o mimir/*:with_benchmark=False",
-    "-c tools.build:skip_test=True",
-]
 
 
 # A CMakeExtension needs a sourcedir instead of a file list.
@@ -78,6 +72,13 @@ class CMakeBuild(build_ext):
 
         # Create the temporary build directory, if it does not already exist
         os.makedirs(temp_directory, exist_ok=True)
+
+        conan_extra_args = [
+            "--build=missing",
+            "-o mimir/*:with_pybindings=True",
+            "-o mimir/*:with_benchmark=False",
+            "-c tools.build:skip_test=True",
+        ]
 
         if os.getenv("CIBUILDWHEEL") == "1":
             sys.path.append(str(HERE))  # needed to find conan_ci.py

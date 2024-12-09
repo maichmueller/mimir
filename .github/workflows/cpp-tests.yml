@@ -21,19 +21,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Run .github/.actions/cpp-build
+      - name: Build & Test
         uses: ./.github/.actions/cpp-build
         with:
+          env: "GTEST_OUTPUT=xml:test-results GTEST_COLOR=1"
           os: ${{ matrix.config.os }}
           cc: ${{ matrix.config.cc }}
           cxx: ${{ matrix.config.cxx }}
           compiler_version: ${{ matrix.config.compiler_version }}
           build_type: ${{ matrix.config.build_type }}
           skip_testing: False
-
-      - name: Run Unit Tests
-        working-directory: build/tests/unit
-        run: GTEST_OUTPUT=xml:test-results GTEST_COLOR=1 ctest -V
 
       - name: Upload lib test result artifacts
         uses: actions/upload-artifact@v4
@@ -43,28 +40,15 @@ jobs:
           path: ./build/**/test-results.xml
           retention-days: 1
 
-      - name: Install Mimir
+      - name: Create Mimir Conan Package
         run: >
-          cmake 
-          --install build 
-          --prefix $(pwd)/install 
+          conan create . -c tools.build:skip_test=True
 
       - name: Configure Integration Tests
         shell: bash
         run: >
-          cmake 
-          -S tests/integration 
-          -B tests/integration/build
-          -DCMAKE_PREFIX_PATH="$(pwd)/install"
-
-      - name: Build Integration Tests
-        run: |
-          cmake --build tests/integration/build
-
-      - name: Run Integration Tests
-        working-directory: tests/integration/build
-        run: |
-          GTEST_COLOR=1 ctest -V
+          conan test tests/integration "mimir/*"
+#          GTEST_COLOR=1 ctest -V
 
   publish-gtest-results:
     name: "Publish GTest Results"

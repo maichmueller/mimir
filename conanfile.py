@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+import conans.util.files
 from conan import ConanFile
 from conan.tools.build import check_min_cppstd
 from conan.tools.cmake import CMake, cmake_layout, CMakeToolchain
@@ -96,11 +97,8 @@ class MimirRecipe(ConanFile):
         cmake.configure()
         cmake.build()
         # testing
-        if not self.conf.get("tools.build:skip_test", default=False):
-            test_folder = Path(self.build_folder) / "tests"
-            if self.settings.os == "Windows":
-                test_folder = os.path.join("tests", str(self.settings.build_type))
-            self.run(test_folder / "unit")
+        test_folder = Path(self.build_folder) / "tests" / "unit"
+        cmake.ctest(cli_args=[f"--test-dir {test_folder}"])
 
     def layout(self):
         cmake_layout(self)

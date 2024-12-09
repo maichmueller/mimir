@@ -2,6 +2,9 @@ name: "Build Mimir C++ Library"
 description: "Composite action to build Mimir C++ library with individual configuration inputs"
 
 inputs:
+  env:
+    description: "Environment variables"
+    required: false
   os:
     description: "Operating system"
     required: true
@@ -47,21 +50,12 @@ runs:
         use-cache: true
         set-env-vars: true
 
-    - name: Configure Mimir
-      shell: bash
-      run: |
-        ./configure.sh \
-          --source . \
-          --build build \
-          --config=${{ inputs.build_type }} \
-          --conan_extra_args='--build=missing' \
-          --conan_extra_args='-c tools.build:skip_test=${{ inputs.skip_tests }}' \
-          --conan_extra_args='-o pymimir/*:with_pybindings=${{ (inputs.skip_pymimir == 'False') }}' \
-          -DBUILD_TESTING=${{ (inputs.build_tests == 'True') || (inputs.skip_testing == 'False') }} \
-
     - name: Build Mimir
       shell: bash
-      run: >
-        cmake 
-        --build build 
-        --target all
+      env: ${{ inputs.env }}
+      run: |
+        conan \
+        build . \
+        --build=missing \
+        -c tools.build:skip_test=${{ inputs.skip_tests }} \
+        -o pymimir/*:with_pybindings=${{ (inputs.skip_pymimir == 'False') }}

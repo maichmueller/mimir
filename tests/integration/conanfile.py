@@ -28,6 +28,7 @@ class MimirIntergrationTestRecipe(ConanFile):
         cmake = CMake(self)
         cmake.configure()
         cmake.build()
+        cmake.ctest()
 
     def layout(self):
         cmake_layout(self)
