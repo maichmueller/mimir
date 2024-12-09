@@ -58,5 +58,5 @@ runs:
         build . \
         --build=missing \
         -s compiler.cppstd=gnu20 \
-        -c tools.build:skip_test=${{ inputs.skip_tests }} \
-        -o pymimir/*:with_pybindings=${{ (inputs.skip_pymimir == 'False') }}
+        -c tools.build:skip_test='${{ inputs.skip_tests }}' \
+        -o pymimir/*:with_pybindings='${{ (inputs.skip_pymimir == 'False') }}'
