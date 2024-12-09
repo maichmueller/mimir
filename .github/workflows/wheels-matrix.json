@@ -8,12 +8,12 @@
     "arch": "arm64"
   },
   {
-    "os": "ubuntu-latest",
+    "os": "ubuntu-22.04",
     "arch": "x86_64",
     "skip": "*musllinux*"
   },
   {
-    "os": "ubuntu-latest",
+    "os": "ubuntu-22.04",
     "arch": "x86_64",
     "skip": "*manylinux*"
   }
