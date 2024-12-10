@@ -48,7 +48,7 @@ runs:
 
     - name: Build Mimir
       shell: bash
-      env: ${{ inputs.env }}
+      env: '${{ inputs.env }}'
       run: |
         conan \
         build . \
