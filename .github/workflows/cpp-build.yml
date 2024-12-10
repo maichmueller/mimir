@@ -4,7 +4,7 @@ on: [ push, pull_request ]
 
 jobs:
   load-config:
-    uses: ./.github/workflows/read-matrix-file.yml
+    uses: .github/workflows/read-matrix-file.yml
     with:
       matrix_file: 'build-matrix.json'
 
@@ -20,12 +20,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run .github/.actions/cpp-build
-        uses: ./.github/.actions/cpp-build
+        uses: .github/.actions/cpp-build
         with:
           os: ${{ matrix.config.os }}
           cc: ${{ matrix.config.cc }}
           cxx: ${{ matrix.config.cxx }}
           compiler_version: ${{ matrix.config.compiler_version }}
           build_type: ${{ matrix.config.build_type }}
-          skip_testing: 'True'
-          skip_pymimir: 'True'
+          skip_testing: 'true'
+          skip_pymimir: 'true'

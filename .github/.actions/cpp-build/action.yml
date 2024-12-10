@@ -20,18 +20,14 @@ inputs:
   build_type:
     description: "Build type (e.g., Release, Debug)"
     required: true
-  build_tests:
-    description: "Whether to build tests"
-    required: false
-    default: "True"
   skip_testing:
     description: "Whether to execute tests"
     required: false
-    default: "True"
+    default: "true"
   skip_pymimir:
     description: "Whether to skip building Python bindings"
     required: false
-    default: "True"
+    default: "true"
 
 runs:
   using: "composite"
@@ -40,7 +36,7 @@ runs:
       uses: actions/checkout@v4
 
     - name: Setup Environment
-      uses: ./.github/.actions/setup-environment
+      uses: .github/.actions/setup-environment
       with:
         os: ${{ inputs.os }}
         cc: ${{ inputs.cc }}
@@ -58,5 +54,5 @@ runs:
         build . \
         --build=missing \
         -s compiler.cppstd=gnu20 \
-        -c tools.build:skip_test='${{ inputs.skip_tests }}' \
-        -o pymimir/*:with_pybindings='${{ (inputs.skip_pymimir == 'False') }}'
+        -c tools.build:skip_test='${{ inputs.skip_testing }}' \
+        -o pymimir/*:with_pybindings='${{ (inputs.skip_pymimir == 'false') }}'
