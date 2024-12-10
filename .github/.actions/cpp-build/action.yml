@@ -5,6 +5,11 @@ inputs:
   env:
     description: "Environment variables"
     required: false
+    default: ""
+  verbose:
+    description: "Verbose output"
+    required: false
+    default: 0
   os:
     description: "Operating system"
     required: true
@@ -48,7 +53,7 @@ runs:
 
     - name: Build Mimir
       shell: bash
-      env: '${{ inputs.env }}'
+      env: 'VERBOSE=${{ inputs.verbose }} ${{ inputs.env }}'
       run: |
         conan \
         build . \
