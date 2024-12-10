@@ -4,7 +4,7 @@ on: [ push ]
 
 jobs:
   load-config:
-    uses: .github/workflows/read-matrix-file.yml
+    uses: ./.github/workflows/read-matrix-file.yml
     with:
       matrix_file: 'build-matrix.json'
 
@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run .github/.actions/setup-environment
-        uses: .github/.actions/setup-environment
+        uses: ./.github/.actions/setup-environment
         with:
           os: ${{ matrix.config.os }}
           cc: ${{ matrix.config.cc }}
