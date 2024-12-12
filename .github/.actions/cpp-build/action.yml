@@ -51,9 +51,14 @@ runs:
         use-cache: true
         set-env-vars: true
 
+    - name: Set Environment Variables
+      if: ${{ inputs.env != '' }}
+      run: echo "${{ inputs.env }}" >> $GITHUB_ENV
+
     - name: Build Mimir
       shell: bash
-      env: 'VERBOSE=${{ inputs.verbose }} ${{ inputs.env }}'
+      env:
+        VERBOSE: ${{ inputs.verbose }}
       run: |
         conan \
         build . \
