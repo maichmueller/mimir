@@ -43,8 +43,12 @@ jobs:
           retention-days: 1
 
       - name: Create Mimir Conan Package
-        run: >
-          conan create . -c tools.build:skip_test=True -o pymimir/*:with_pybindings=False
+        run: |
+          conan \
+          create . \
+          -c tools.build:skip_test=True \
+          -o pymimir/*:with_pybindings=False \ 
+          -s compiler.cppstd=gnu20
 
       - name: Configure Integration Tests
         shell: bash
