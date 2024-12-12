@@ -52,6 +52,7 @@ runs:
         set-env-vars: true
 
     - name: Set Environment Variables
+      shell: bash
       if: ${{ inputs.env != '' }}
       run: echo "${{ inputs.env }}" >> $GITHUB_ENV
 
