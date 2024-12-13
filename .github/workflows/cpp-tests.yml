@@ -44,6 +44,8 @@ jobs:
 
       - name: Create Mimir Conan Package
         shell: bash
+        env:
+          VERBOSE: "1"
         run: |
           conan create . \
           -c 'tools.build:skip_test=True' \
