@@ -43,6 +43,7 @@ jobs:
           retention-days: 1
 
       - name: Create Mimir Conan Package
+        shell: bash
         run: |
           conan create . \
           -c 'tools.build:skip_test=True' \
