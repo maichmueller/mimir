@@ -46,9 +46,9 @@ jobs:
         run: |
           conan \
           create . \
-          -c tools.build:skip_test=True \
-          -o pymimir/*:with_pybindings=False \ 
-          -s compiler.cppstd=gnu20
+          -c 'tools.build:skip_test=True' \
+          -o 'pymimir/*:with_pybindings=False' \ 
+          -s 'compiler.cppstd=gnu20'
 
       - name: Configure Integration Tests
         shell: bash
