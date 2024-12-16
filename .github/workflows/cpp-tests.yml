@@ -51,10 +51,11 @@ jobs:
           VERBOSE: "1"
         run: |
           ls -lR . && \
-          conan create . \
+          conan create \
           -c 'tools.build:skip_test=True' \
           -o 'pymimir/*:with_pybindings=False' \ 
           -s 'compiler.cppstd=gnu20'
+          .
 
       - name: Configure Integration Tests
         shell: bash
