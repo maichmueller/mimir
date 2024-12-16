@@ -34,6 +34,9 @@ jobs:
           skip_testing: 'false'
           skip_pymimir: 'true'
 
+      - name: ls build
+        run: ls build
+
       - name: Upload lib test result artifacts
         uses: actions/upload-artifact@v4
         if: success()

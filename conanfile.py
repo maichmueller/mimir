@@ -49,6 +49,10 @@ BOOST_COMPS = (
 )
 
 
+def cmake_option(option: bool) -> str:
+    return "ON" if option else "OFF"
+
+
 class MimirRecipe(ConanFile):
     name = "mimir"
     package_type = "library"
@@ -106,6 +110,8 @@ class MimirRecipe(ConanFile):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.user_presets_path = False
+        tc.variables["BUILD_PYMIMIR"] = cmake_option(self.options.with_pybindings)
+        tc.variables["BUILD_PROFILING"] = cmake_option(self.options.with_benchmark)
         tc.generate()
 
     def package(self):
