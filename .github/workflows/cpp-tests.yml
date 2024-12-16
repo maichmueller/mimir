@@ -50,7 +50,7 @@ jobs:
         env:
           VERBOSE: "1"
         run: |
-          ls -lR . && \
+          echo "$pwd" && ls -lR . && \
           conan create \
           -c 'tools.build:skip_test=True' \
           -o 'pymimir/*:with_pybindings=False' \ 
