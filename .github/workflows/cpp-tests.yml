@@ -35,7 +35,7 @@ jobs:
           skip_pymimir: 'true'
 
       - name: ls build
-        run: ls ./**/*
+        run: ls -lR .
 
       - name: Upload lib test result artifacts
         uses: actions/upload-artifact@v4
