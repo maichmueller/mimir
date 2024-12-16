@@ -35,7 +35,7 @@ jobs:
           skip_pymimir: 'true'
 
       - name: ls build
-        run: ls build
+        run: ls ./**/*
 
       - name: Upload lib test result artifacts
         uses: actions/upload-artifact@v4
@@ -44,8 +44,6 @@ jobs:
           name: gtest-results-${{ matrix.config.os }}-${{ matrix.config.cc }}-${{ matrix.config.compiler_version }}
           path: ./build/**/test-results.xml
           retention-days: 1
-          
-      - uses: actions/checkout@v4
 
       - name: Create Mimir Conan Package
         shell: bash
