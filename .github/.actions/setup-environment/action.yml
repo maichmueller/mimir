@@ -85,3 +85,8 @@ runs:
       with:
         path: ${{ env.CONAN_HOME }}
         key: ${{ runner.os }}-cache-conan-deps-${{ inputs.build-type }}-${{ inputs.cc }}-${{ inputs.compiler-version }}-${{ hashFiles('conandata.yml') }}-${{ hashFiles('**/conanfile.py') }}
+
+    - name: Export Custom Conan Packages
+      shell: bash
+      run: |
+          ./conan_export.py
