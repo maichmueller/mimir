@@ -168,5 +168,5 @@ void register_classes(py::module& m)
             py::bind_vector<PredicateList<Tag>>(m, tag + "PredicateList");
             py::bind_map<ToPredicateMap<std::string, Tag>>(m, "StringTo" + tag + "PredicateMap");
         });
-    for_each_index<2, 3, 4>([&]<size_t I>(std::integral_constant<size_t, I>) { class_<kfwl::Certificate<I>>(m, fmt::format("Certificate{}FWL", I)); });
+    for_each_index<2, 3, 4>([&]<size_t I>(constexpr_index<I>) { class_<kfwl::Certificate<I>>(m, fmt::format("Certificate{}FWL", I)); });
 }

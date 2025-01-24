@@ -25,7 +25,7 @@ void init_color_refinement(py::module& m)
         .def(py::init<>());
 
     for_each_index<2, 3, 4>(
-        [&]<size_t K>(std::integral_constant<size_t, K>)
+        [&]<size_t K>(constexpr_index<K>)
         {
             using CertificateK = kfwl::Certificate<K>;
 

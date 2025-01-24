@@ -104,4 +104,7 @@ concept pointer_like_to = requires(T t) {
     requires std::same_as<U, raw_t<decltype(*t)>>;
 };
 
+template<size_t T>
+using constexpr_index = std::integral_constant<size_t, T>;
+
 }
