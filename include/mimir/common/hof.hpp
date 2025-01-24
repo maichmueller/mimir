@@ -18,28 +18,25 @@ constexpr bool unpack_v = unpack<T>::value;
 template<typename F, typename... Fs>
 struct compose
 {
+    static constexpr auto inner_f = compose<Fs...> {};
+    static constexpr auto f = F {};
+
     template<typename... Args>
-    constexpr decltype(auto) operator()(Args&&... args)
+    constexpr decltype(auto) operator()(Args&&... args) const
     {
-        using result_t = raw_t<std::invoke_result_t<compose<Fs...>, Args...>>;
-        if constexpr ((is_specialization_v<result_t, std::tuple> or is_specialization_v<result_t, std::pair>) and unpack_v<F>)
-        {
-            return std::apply(F {}, compose<Fs...> {}(FWD(args)...));
-        }
-        else
-        {
-            return F {}(compose<Fs...> {}(FWD(args)...));
-        }
+        return std::apply(f, inner_f(FWD(args)...));
     }
 };
 
 template<typename F>
 struct compose<F>
 {
+    static constexpr auto f = F {};
+
     template<typename... Args>
-    constexpr decltype(auto) operator()(Args&&... args)
+    constexpr decltype(auto) operator()(Args&&... args) const
     {
-        return F {}(FWD(args)...);
+        return f(FWD(args)...);
     }
 };
 
@@ -90,7 +87,7 @@ struct fork
 
 private:
     template<typename T, std::size_t... Is>
-    constexpr auto as_tuple(T value, std::index_sequence<Is...>)
+    constexpr auto as_tuple(T value, std::index_sequence<Is...>) const
     {
         return std::tuple<detail::T_for_each_index<Is, T>...> { (static_cast<void>(Is), value)... };
     }
@@ -100,9 +97,10 @@ template<typename F>
 struct map
 {
     template<typename... Args>
-    constexpr auto operator()(Args&&... args)
+    constexpr auto operator()(Args&&... args) const
     {
-        return std::tuple(F {}(FWD(args))...);
+        constexpr auto f = F {};
+        return std::forward_as_tuple(std::invoke(f, FWD(args))...);
     }
 };
 
@@ -110,14 +108,14 @@ template<typename... Fs>
 struct zip_map
 {
     template<typename... Args>
-    constexpr auto operator()(Args&&... args)
+    constexpr auto operator()(Args&&... args) const
     {
-        return zip_apply_impl(std::make_index_sequence<sizeof...(Args)>(), std::forward_as_tuple(FWD(args)...));
+        return zip_apply_impl(std::index_sequence_for<Args...>(), std::forward_as_tuple(FWD(args)...));
     }
 
 private:
     template<std::size_t... Is, typename... Args>
-    constexpr auto zip_apply_impl(std::index_sequence<Is...>, Args&&... args)
+    constexpr auto zip_apply_impl(std::index_sequence<Is...>, Args&&... args) const
     {
         return std::forward_as_tuple(Fs {}(project<Is> {}(FWD(args)))...);
     }

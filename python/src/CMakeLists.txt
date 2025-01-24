@@ -1,6 +1,4 @@
-find_package(pybind11 CONFIG REQUIRED PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
-# Set result variables
-find_package(pybind11)
+find_package(pybind11 CONFIG REQUIRED)
 
 file(GLOB PYTHON_MODULE_SOURCES "${PROJECT_SOURCE_DIR}/python/src/pymimir/_bindings/*.cpp" )
 

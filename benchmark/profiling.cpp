@@ -14,7 +14,7 @@ static void BM_iw(benchmark::State& state)
     for (auto _ : state)
     {
         IWAlgorithm iw { state_space, 4 };
-        GroundActionList out_plan {};
+        Plan out_plan {};
         iw.find_solution(out_plan);
     }
 }
