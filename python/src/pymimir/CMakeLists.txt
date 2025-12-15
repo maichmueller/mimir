@@ -11,6 +11,7 @@ endif()
 
 
 nanobind_add_module(pymimir
+    FREE_THREADED  # opt-in for free-threading
     NB_DOMAIN pymimir_abi_domain
     advanced/main.cpp
     advanced/common/bindings.cpp
