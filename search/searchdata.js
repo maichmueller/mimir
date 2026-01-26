@@ -5,11 +5,11 @@ var indexSectionsWithContent =
   2: "bm",
   3: "abcdefgiklmnoprstuv",
   4: "abcdefghiklmnoprstuv~",
-  5: "bcdegimnoprstuw",
+  5: "bcdefgimnoprstuw",
   6: "abcdefghiklmnoprstuv",
   7: "gs",
   8: "cefiosu",
-  9: "cdeloprs",
+  9: "cdelmoprs",
   10: "m"
 };
 

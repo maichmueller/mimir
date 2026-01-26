@@ -80,12 +80,18 @@ $(function() {
   <div class="headertitle"><div class="title">consistency_graph.hpp File Reference</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &quot;mimir/common/bounds.hpp&quot;</code><br />
-<code>#include &quot;mimir/common/printers.hpp&quot;</code><br />
-<code>#include &quot;<a class="el" href="common_2types_8hpp_source.html">mimir/common/types.hpp</a>&quot;</code><br />
+<div class="textblock"><code>#include &quot;mimir/algorithms/shared_object_pool.hpp&quot;</code><br />
+<code>#include &quot;mimir/common/closed_interval.hpp&quot;</code><br />
+<code>#include &quot;mimir/common/declarations.hpp&quot;</code><br />
+<code>#include &quot;mimir/common/formatter.hpp&quot;</code><br />
 <code>#include &quot;mimir/common/types_cista.hpp&quot;</code><br />
+<code>#include &quot;<a class="el" href="assignment__set_8hpp_source.html">mimir/formalism/assignment_set.hpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="formalism_2conjunctive__condition_8hpp_source.html">mimir/formalism/conjunctive_condition.hpp</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="formalism_2declarations_8hpp_source.html">mimir/formalism/declarations.hpp</a>&quot;</code><br />
+<code>#include &quot;mimir/formalism/problem_details.hpp&quot;</code><br />
+<code>#include &lt;boost/dynamic_bitset/dynamic_bitset.hpp&gt;</code><br />
 <code>#include &lt;optional&gt;</code><br />
+<code>#include &lt;ranges&gt;</code><br />
 <code>#include &lt;sstream&gt;</code><br />
 <code>#include &lt;vector&gt;</code><br />
 </div>
@@ -94,7 +100,6 @@ $(function() {
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
 Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1formalism_1_1StaticConsistencyGraph.html">mimir::formalism::StaticConsistencyGraph</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">The <a class="el" href="classmimir_1_1formalism_1_1StaticConsistencyGraph.html" title="The StaticConsistencyGraph encodes the assignments to static conditions, and hence,...">StaticConsistencyGraph</a> encodes the assignments to static conditions, and hence, it is an overapproximation of the actual consistency graph.  <a href="classmimir_1_1formalism_1_1StaticConsistencyGraph.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1formalism_1_1StaticConsistencyGraph_1_1Vertex.html">mimir::formalism::StaticConsistencyGraph::Vertex</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">A vertex [parameter_index/object_index] in the consistency graph.  <a href="classmimir_1_1formalism_1_1StaticConsistencyGraph_1_1Vertex.html#details">More...</a><br /></td></tr>
@@ -112,9 +117,9 @@ Namespaces</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a392f286cceedfe48b988e3a2d57c2b70"><td class="memItemLeft" align="right" valign="top">template&lt;&gt; </td></tr>
-<tr class="memitem:a392f286cceedfe48b988e3a2d57c2b70"><td class="memTemplItemLeft" align="right" valign="top">std::ostream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacemimir.html#a392f286cceedfe48b988e3a2d57c2b70">mimir::operator&lt;&lt;</a> (std::ostream &amp;out, const std::tuple&lt; const formalism::StaticConsistencyGraph &amp;, const formalism::ProblemImpl &amp; &gt; &amp;data)</td></tr>
-<tr class="separator:a392f286cceedfe48b988e3a2d57c2b70"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aae18cfc4120bb456526dea9bbc025d91"><td class="memItemLeft" align="right" valign="top">template&lt;&gt; </td></tr>
+<tr class="memitem:aae18cfc4120bb456526dea9bbc025d91"><td class="memTemplItemLeft" align="right" valign="top">std::ostream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacemimir.html#aae18cfc4120bb456526dea9bbc025d91">mimir::print</a> (std::ostream &amp;out, const std::tuple&lt; const formalism::StaticConsistencyGraph &amp;, const formalism::ProblemImpl &amp; &gt; &amp;data)</td></tr>
+<tr class="separator:aae18cfc4120bb456526dea9bbc025d91"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 </div><!-- contents -->
 <!-- start footer part -->

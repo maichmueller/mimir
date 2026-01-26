@@ -99,7 +99,7 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a61f7199be8d172290d1d137f249c6621"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad73ecaeae7c89f06154efb4161574902"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classmimir_1_1formalism_1_1ConjunctiveConditionImpl.html">ConjunctiveConditionImpl</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1formalism_1_1ConjunctiveConditionImpl.html#ad73ecaeae7c89f06154efb4161574902">operator=</a> (<a class="el" href="classmimir_1_1formalism_1_1ConjunctiveConditionImpl.html">ConjunctiveConditionImpl</a> &amp;&amp;other)=default</td></tr>
 <tr class="separator:ad73ecaeae7c89f06154efb4161574902"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab1c92266d9f93d8f65b7e0a87879eb22"><td class="memItemLeft" align="right" valign="top"><a class="el" href="namespacemimir.html#ab800c69cfcabbde81050b3d05b9c2fa4">Index</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1formalism_1_1ConjunctiveConditionImpl.html#ab1c92266d9f93d8f65b7e0a87879eb22">get_index</a> () const</td></tr>
+<tr class="memitem:ab1c92266d9f93d8f65b7e0a87879eb22"><td class="memItemLeft" align="right" valign="top">Index&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1formalism_1_1ConjunctiveConditionImpl.html#ab1c92266d9f93d8f65b7e0a87879eb22">get_index</a> () const</td></tr>
 <tr class="separator:ab1c92266d9f93d8f65b7e0a87879eb22"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afefaa86b36d768b60487371f5776376b"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="namespacemimir_1_1formalism.html#ad52fa81851b22b6d2a540186890d61c1">ParameterList</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1formalism_1_1ConjunctiveConditionImpl.html#afefaa86b36d768b60487371f5776376b">get_parameters</a> () const</td></tr>
 <tr class="separator:afefaa86b36d768b60487371f5776376b"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -115,11 +115,13 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:aa6368c108c5590b3b892ed23c7d50148"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1b3cf956d1065f8e9cefe59b407756a7"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="namespacemimir_1_1formalism.html#a0889d2be2ff494dbf81378be0f4f9b50">NumericConstraintList</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1formalism_1_1ConjunctiveConditionImpl.html#a1b3cf956d1065f8e9cefe59b407756a7">get_numeric_constraints</a> () const</td></tr>
 <tr class="separator:a1b3cf956d1065f8e9cefe59b407756a7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8056027b4390312487a2583558e395b0"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="namespacemimir_1_1formalism.html#ad276de9b4f9ba0c96fea3d89c3993268">GroundNumericConstraintList</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1formalism_1_1ConjunctiveConditionImpl.html#a8056027b4390312487a2583558e395b0">get_nullary_ground_numeric_constraints</a> () const</td></tr>
+<tr class="separator:a8056027b4390312487a2583558e395b0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a96d676b764455f197bbafa7b797011d0"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1formalism_1_1ConjunctiveConditionImpl.html#a96d676b764455f197bbafa7b797011d0">get_arity</a> () const</td></tr>
 <tr class="separator:a96d676b764455f197bbafa7b797011d0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acb8052c1373369dafa9b3af17430807e"><td class="memItemLeft" align="right" valign="top">auto&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1formalism_1_1ConjunctiveConditionImpl.html#acb8052c1373369dafa9b3af17430807e">identifying_members</a> () const</td></tr>
-<tr class="memdesc:acb8052c1373369dafa9b3af17430807e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Return a tuple of const references to the members that uniquely identify an object. This enables the automatic generation of <code>loki::Hash</code> and <code>loki::EqualTo</code> specializations.  <br /></td></tr>
-<tr class="separator:acb8052c1373369dafa9b3af17430807e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3da70274866b0ede2cc824fa71fc935d"><td class="memItemLeft" align="right" valign="top">auto&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1formalism_1_1ConjunctiveConditionImpl.html#a3da70274866b0ede2cc824fa71fc935d">identifying_members</a> () const noexcept</td></tr>
+<tr class="memdesc:a3da70274866b0ede2cc824fa71fc935d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Return a tuple of const references to the members that uniquely identify an object. This enables the automatic generation of <code>loki::Hash</code> and <code>loki::EqualTo</code> specializations.  <br /></td></tr>
+<tr class="separator:a3da70274866b0ede2cc824fa71fc935d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
 Friends</h2></td></tr>
@@ -254,7 +256,7 @@ Friends</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="namespacemimir.html#ab800c69cfcabbde81050b3d05b9c2fa4">Index</a> mimir::formalism::ConjunctiveConditionImpl::get_index </td>
+          <td class="memname">Index mimir::formalism::ConjunctiveConditionImpl::get_index </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td> const</td>
@@ -302,6 +304,23 @@ template&lt;IsStaticOrFluentOrDerivedTag P&gt; </div>
 
 </div>
 </div>
+<a id="a8056027b4390312487a2583558e395b0" name="a8056027b4390312487a2583558e395b0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8056027b4390312487a2583558e395b0">&#9670;&#160;</a></span>get_nullary_ground_numeric_constraints()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const <a class="el" href="namespacemimir_1_1formalism.html#ad276de9b4f9ba0c96fea3d89c3993268">GroundNumericConstraintList</a> &amp; mimir::formalism::ConjunctiveConditionImpl::get_nullary_ground_numeric_constraints </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a1b3cf956d1065f8e9cefe59b407756a7" name="a1b3cf956d1065f8e9cefe59b407756a7"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a1b3cf956d1065f8e9cefe59b407756a7">&#9670;&#160;</a></span>get_numeric_constraints()</h2>
 
@@ -336,8 +355,8 @@ template&lt;IsStaticOrFluentOrDerivedTag P&gt; </div>
 
 </div>
 </div>
-<a id="acb8052c1373369dafa9b3af17430807e" name="acb8052c1373369dafa9b3af17430807e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#acb8052c1373369dafa9b3af17430807e">&#9670;&#160;</a></span>identifying_members()</h2>
+<a id="a3da70274866b0ede2cc824fa71fc935d" name="a3da70274866b0ede2cc824fa71fc935d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3da70274866b0ede2cc824fa71fc935d">&#9670;&#160;</a></span>identifying_members()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -354,7 +373,7 @@ template&lt;IsStaticOrFluentOrDerivedTag P&gt; </div>
       </table>
   </td>
   <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">noexcept</span></span>  </td>
   </tr>
 </table>
 </div><div class="memdoc">
