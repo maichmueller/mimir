@@ -43,8 +43,8 @@ jobs:
         CIBW_ARCHS: "${{ matrix.architecture }}"
         CIBW_BUILD_VERBOSITY: "1"
 
-    - name: Upload to PyPI
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-      run: twine upload --skip-existing --repository-url https://upload.pypi.org/legacy/ wheelhouse/*
+#    - name: Upload to PyPI
+#      env:
+#        TWINE_USERNAME: __token__
+#        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+#      run: twine upload --skip-existing --repository-url https://upload.pypi.org/legacy/ wheelhouse/*
