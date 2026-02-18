@@ -15,13 +15,18 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v6
 
-    - name: Cache built dependencies
-      uses: actions/cache@v4
+    - name: Set cache platform bucket
+      run: echo "CACHE_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET:-11.0}" >> "$GITHUB_ENV"
+
+    - name: Restore wheel dependency cache
+      id: wheel-deps-cache
+      uses: actions/cache/restore@v4
       with:
         path: .cibw-dependencies
-        key: ${{ runner.os }}-${{ matrix.python-version }}-deps-${{ hashFiles('setup.py', 'CMakeLists.txt', 'dependencies/**/CMakeLists.txt') }}
+        key: wheel-deps-${{ runner.os }}-${{ runner.arch }}-${{ env.CACHE_DEPLOYMENT_TARGET }}-${{ hashFiles('setup.py', 'CMakeLists.txt', 'dependencies/**/CMakeLists.txt') }}
         restore-keys: |
-          ${{ runner.os }}-${{ matrix.python-version }}-deps-
+          wheel-deps-${{ runner.os }}-${{ runner.arch }}-${{ env.CACHE_DEPLOYMENT_TARGET }}-
+          wheel-deps-${{ runner.os }}-${{ runner.arch }}-
 
     - name: Set up Python
       uses: actions/setup-python@v6
@@ -40,7 +45,14 @@ jobs:
         CIBW_BUILD: "${{ matrix.python-version }}-*"
         CIBW_ARCHS: "arm64"  # Only build for Apple Silicon
         CIBW_BUILD_VERBOSITY: "1"
-        CIBW_ENVIRONMENT: "PYMIMIR_DEPENDENCY_PREFIX=.cibw-dependencies/${{ matrix.python-version }}"
+        CIBW_ENVIRONMENT: "PYMIMIR_DEPENDENCY_PREFIX=.cibw-dependencies/wheels"
+
+    - name: Save wheel dependency cache
+      if: matrix.python-version == 'cp312' && steps.wheel-deps-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: .cibw-dependencies
+        key: wheel-deps-${{ runner.os }}-${{ runner.arch }}-${{ env.CACHE_DEPLOYMENT_TARGET }}-${{ hashFiles('setup.py', 'CMakeLists.txt', 'dependencies/**/CMakeLists.txt') }}
 
     - name: Upload to PyPI
       if: github.ref == 'refs/heads/main' && github.repository_owner == 'simon-stahlberg'
