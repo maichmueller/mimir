@@ -23,7 +23,7 @@ jobs:
       uses: actions/cache/restore@v4
       with:
         path: .cibw-dependencies
-        key: wheel-deps-${{ runner.os }}-${{ runner.arch }}-${{ env.CACHE_DEPLOYMENT_TARGET }}-${{ hashFiles('setup.py', 'CMakeLists.txt', 'dependencies/**/CMakeLists.txt') }}
+        key: wheel-deps-${{ runner.os }}-${{ runner.arch }}-${{ env.CACHE_DEPLOYMENT_TARGET }}-${{ hashFiles('setup.py', 'CMakeLists.txt', 'dependencies/**/CMakeLists.txt', 'cmake/*.cmake') }}
         restore-keys: |
           wheel-deps-${{ runner.os }}-${{ runner.arch }}-${{ env.CACHE_DEPLOYMENT_TARGET }}-
           wheel-deps-${{ runner.os }}-${{ runner.arch }}-
@@ -52,7 +52,7 @@ jobs:
       uses: actions/cache/save@v4
       with:
         path: .cibw-dependencies
-        key: wheel-deps-${{ runner.os }}-${{ runner.arch }}-${{ env.CACHE_DEPLOYMENT_TARGET }}-${{ hashFiles('setup.py', 'CMakeLists.txt', 'dependencies/**/CMakeLists.txt') }}
+        key: wheel-deps-${{ runner.os }}-${{ runner.arch }}-${{ env.CACHE_DEPLOYMENT_TARGET }}-${{ hashFiles('setup.py', 'CMakeLists.txt', 'dependencies/**/CMakeLists.txt', 'cmake/*.cmake') }}
 
     - name: Upload to PyPI
       if: github.ref == 'refs/heads/main' && github.repository_owner == 'simon-stahlberg'

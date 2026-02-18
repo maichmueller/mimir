@@ -25,7 +25,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .dependencies/installs
-          key: test-deps-${{ runner.os }}-${{ runner.arch }}-${{ env.CACHE_DEPLOYMENT_TARGET }}-${{ hashFiles('setup.py', 'CMakeLists.txt', 'dependencies/**/CMakeLists.txt') }}
+          key: test-deps-${{ runner.os }}-${{ runner.arch }}-${{ env.CACHE_DEPLOYMENT_TARGET }}-${{ hashFiles('setup.py', 'CMakeLists.txt', 'dependencies/**/CMakeLists.txt', 'cmake/*.cmake') }}
           restore-keys: |
             test-deps-${{ runner.os }}-${{ runner.arch }}-${{ env.CACHE_DEPLOYMENT_TARGET }}-
             test-deps-${{ runner.os }}-${{ runner.arch }}-
@@ -50,7 +50,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .dependencies/installs
-          key: test-deps-${{ runner.os }}-${{ runner.arch }}-${{ env.CACHE_DEPLOYMENT_TARGET }}-${{ hashFiles('setup.py', 'CMakeLists.txt', 'dependencies/**/CMakeLists.txt') }}
+          key: test-deps-${{ runner.os }}-${{ runner.arch }}-${{ env.CACHE_DEPLOYMENT_TARGET }}-${{ hashFiles('setup.py', 'CMakeLists.txt', 'dependencies/**/CMakeLists.txt', 'cmake/*.cmake') }}
 
       - name: Test
         run: pytest python/tests

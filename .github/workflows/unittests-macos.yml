@@ -23,7 +23,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: dependencies/installs
-        key: ${{ runner.os }}-unittests-deps-${{ hashFiles('CMakeLists.txt', 'dependencies/**/CMakeLists.txt') }}
+        key: ${{ runner.os }}-unittests-deps-${{ hashFiles('CMakeLists.txt', 'dependencies/**/CMakeLists.txt', 'cmake/*.cmake') }}
         restore-keys: |
           ${{ runner.os }}-unittests-deps-
 
