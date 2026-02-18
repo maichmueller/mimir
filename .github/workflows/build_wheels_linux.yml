@@ -26,7 +26,7 @@ jobs:
     - name: Cache built dependencies
       uses: actions/cache@v4
       with:
-        path: build/temp*/dependencies/installs
+        path: .cibw-dependencies
         key: ${{ runner.os }}-${{ matrix.architecture }}-${{ matrix.python-version }}-deps-${{ hashFiles('setup.py', 'CMakeLists.txt', 'dependencies/**/CMakeLists.txt') }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.architecture }}-${{ matrix.python-version }}-deps-
@@ -48,6 +48,7 @@ jobs:
         CIBW_BUILD: "${{ matrix.python-version }}-*"
         CIBW_ARCHS: "${{ matrix.architecture }}"
         CIBW_BUILD_VERBOSITY: "1"
+        CIBW_ENVIRONMENT: "PYMIMIR_DEPENDENCY_PREFIX=.cibw-dependencies/${{ matrix.python-version }}"
 
 #    - name: Upload to PyPI
 #      env:
