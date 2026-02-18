@@ -19,6 +19,14 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install typing_extensions
 
+    - name: Cache built dependencies
+      uses: actions/cache@v4
+      with:
+        path: dependencies/installs
+        key: ${{ runner.os }}-unittests-deps-${{ hashFiles('CMakeLists.txt', 'dependencies/**/CMakeLists.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-unittests-deps-
+
     - name: Configure, Build, and Install Dependencies
       run: |
         cd dependencies
