@@ -24,8 +24,6 @@ jobs:
       with:
         path: dependencies/installs
         key: ${{ runner.os }}-unittests-deps-${{ hashFiles('CMakeLists.txt', 'dependencies/**/CMakeLists.txt', 'cmake/*.cmake') }}
-        restore-keys: |
-          ${{ runner.os }}-unittests-deps-
 
     - name: Configure, Build, and Install Dependencies
       run: |
