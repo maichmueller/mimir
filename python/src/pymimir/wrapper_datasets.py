@@ -42,6 +42,7 @@ class StateLabel:
         self.is_dead_end = is_dead_end
 
 
+
 class StateSpaceSampler:
     """
     A class representing a state space, which is a collection of states.
