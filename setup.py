@@ -3,7 +3,6 @@ import sys
 import subprocess
 import multiprocessing
 import shutil
-import sysconfig
 
 from pathlib import Path
 
@@ -46,10 +45,11 @@ class CMakeBuild(build_ext):
             dependency_prefix = Path(dependency_prefix)
             if not dependency_prefix.is_absolute():
                 dependency_prefix = (Path.cwd() / dependency_prefix).resolve()
-            dependency_scope = os.environ.get("AUDITWHEEL_PLAT")
+            dependency_scope = os.environ.get("PYMIMIR_DEPENDENCY_SCOPE")
             if not dependency_scope:
-                dependency_scope = sysconfig.get_platform()
-            dependency_prefix = dependency_prefix / dependency_scope
+                dependency_scope = os.environ.get("AUDITWHEEL_PLAT")
+            if dependency_scope:
+                dependency_prefix = dependency_prefix / dependency_scope
         else:
             dependency_prefix = temp_directory / "dependencies" / "installs"
 
