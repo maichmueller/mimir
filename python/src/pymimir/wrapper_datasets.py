@@ -11,7 +11,6 @@ from .wrapper_formalism import GroundAction, Problem, State
 # Datasets
 # --------
 
-
 class StateLabel:
     def __init__(
         self,
