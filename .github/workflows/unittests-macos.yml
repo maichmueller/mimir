@@ -23,12 +23,12 @@ jobs:
       uses: actions/cache@v4
       with:
         path: dependencies/installs
-        key: ${{ runner.os }}-unittests-deps-${{ hashFiles('CMakeLists.txt', 'dependencies/**/CMakeLists.txt', 'cmake/*.cmake') }}
+        key: ${{ runner.os }}-unittests-deps-v3-${{ hashFiles('CMakeLists.txt', 'dependencies/**/CMakeLists.txt', 'cmake/*.cmake') }}
 
     - name: Configure, Build, and Install Dependencies
       run: |
         cd dependencies
-        cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/dependencies/installs
+        cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/dependencies/installs -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dependencies/installs
         cmake --build build
         cmake --install build/
 
