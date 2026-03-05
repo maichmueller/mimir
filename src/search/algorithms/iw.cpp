@@ -904,6 +904,128 @@ bool ArityKNoveltyPruningStrategyImpl::test_prune_successor_state(const State& s
     return !m_novelty_table.test_novelty_and_update_table(state, succ_state);
 }
 
+ProjectiveArityOneNoveltyPruningStrategyImpl::ProjectiveArityOneNoveltyPruningStrategyImpl(formalism::Problem problem) :
+    m_problem(std::move(problem))
+{
+}
+
+PruningStrategy ProjectiveArityOneNoveltyPruningStrategyImpl::create(formalism::Problem problem)
+{
+    return std::make_shared<ProjectiveArityOneNoveltyPruningStrategyImpl>(std::move(problem));
+}
+
+bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_atom_novelty_and_update_table(AtomIndex atom_index)
+{
+    const auto ground_atom = m_problem->get_repositories().get_ground_atom<FluentTag>(atom_index);
+
+    if (ground_atom->get_arity() <= 1)
+    {
+        return m_seen_projected_atoms.emplace(0, atom_index, 0, 0).second;
+    }
+
+    const auto predicate_index = ground_atom->get_predicate()->get_index();
+    const auto& objects = ground_atom->get_objects();
+
+    bool is_novel = false;
+    for (size_t position = 0; position < objects.size(); ++position)
+    {
+        if (m_seen_projected_atoms.emplace(1, predicate_index, static_cast<Index>(position), objects.at(position)->get_index()).second)
+        {
+            is_novel = true;
+        }
+    }
+    return is_novel;
+}
+
+bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_state_novelty_and_update_table(const State& state)
+{
+    const auto& fluent_atoms = state.get_atoms<FluentTag>();
+
+    bool is_novel = false;
+    for (const auto atom_index : fluent_atoms)
+    {
+        const auto atom_is_novel = test_atom_novelty_and_update_table(atom_index);
+        if (!is_novel && atom_is_novel)
+        {
+            is_novel = true;
+        }
+    }
+    return is_novel;
+}
+
+bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_transition_novelty_and_update_table(const State& state, const State& succ_state)
+{
+    const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
+    const auto& succ_state_fluent_atoms = succ_state.get_atoms<FluentTag>();
+
+    bool is_novel = false;
+
+    auto it_state = state_fluent_atoms.begin();
+    auto it_succ_state = succ_state_fluent_atoms.begin();
+
+    while (it_state != state_fluent_atoms.end() && it_succ_state != succ_state_fluent_atoms.end())
+    {
+        if (*it_succ_state < *it_state)
+        {
+            const auto atom_is_novel = test_atom_novelty_and_update_table(*it_succ_state);
+            if (!is_novel && atom_is_novel)
+            {
+                is_novel = true;
+            }
+            ++it_succ_state;
+        }
+        else if (*it_state < *it_succ_state)
+        {
+            ++it_state;
+        }
+        else
+        {
+            ++it_state;
+            ++it_succ_state;
+        }
+    }
+
+    for (; it_succ_state != succ_state_fluent_atoms.end(); ++it_succ_state)
+    {
+        const auto atom_is_novel = test_atom_novelty_and_update_table(*it_succ_state);
+        if (!is_novel && atom_is_novel)
+        {
+            is_novel = true;
+        }
+    }
+
+    return is_novel;
+}
+
+bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_initial_state(const State& state)
+{
+    if (m_generated_states.count(state.get_index()))
+    {
+        assert(!test_state_novelty_and_update_table(state));
+        return true;
+    }
+    m_generated_states.insert(state.get_index());
+
+    return !test_state_novelty_and_update_table(state);
+}
+
+bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ)
+{
+    if (state == succ_state)
+    {
+        return true;
+    }
+
+    if (m_generated_states.count(succ_state.get_index()))
+    {
+        assert(!test_transition_novelty_and_update_table(state, succ_state));
+        return true;
+    }
+    m_generated_states.insert(succ_state.get_index());
+
+    return !test_transition_novelty_and_update_table(state, succ_state);
+}
+
 /* IterativeWidthAlgorithm */
 
 SearchResult find_solution(const SearchContext& context, const Options& options)

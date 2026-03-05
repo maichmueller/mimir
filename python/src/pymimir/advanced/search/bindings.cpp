@@ -733,6 +733,10 @@ void bind_module_definitions(nb::module_& m)
         .def(nb::init<size_t, size_t>(), "arity"_a, "num_atoms"_a)
         .def_static("create", &iw::ArityKNoveltyPruningStrategyImpl::create, "arity"_a, "num_atoms"_a);
 
+    nb::class_<iw::ProjectiveArityOneNoveltyPruningStrategyImpl, IPruningStrategy>(m, "ProjectiveArityOneNoveltyPruningStrategy")  //
+        .def(nb::init<Problem>(), "problem"_a)
+        .def_static("create", &iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create, "problem"_a);
+
     // ExplorationStrategy
     nb::class_<IExplorationStrategy, IPyExplorationStrategy>(m, "IExplorationStrategy")
         .def(nb::init<>())

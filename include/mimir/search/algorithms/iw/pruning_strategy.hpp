@@ -24,6 +24,7 @@
 #include "mimir/search/declarations.hpp"
 
 #include <memory>
+#include <tuple>
 #include <unordered_set>
 
 namespace mimir::search::iw
@@ -53,6 +54,26 @@ public:
     ArityKNoveltyPruningStrategyImpl(size_t arity, size_t num_atoms);
 
     static PruningStrategy create(size_t arity, size_t num_atoms);
+
+    bool test_prune_initial_state(const State& state) override;
+    bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;
+};
+
+class ProjectiveArityOneNoveltyPruningStrategyImpl : public IPruningStrategy
+{
+private:
+    formalism::Problem m_problem;
+    std::unordered_set<Index> m_generated_states;
+    UnorderedSet<std::tuple<Index, Index, Index, Index>> m_seen_projected_atoms;
+
+    bool test_atom_novelty_and_update_table(AtomIndex atom_index);
+    bool test_state_novelty_and_update_table(const State& state);
+    bool test_transition_novelty_and_update_table(const State& state, const State& succ_state);
+
+public:
+    explicit ProjectiveArityOneNoveltyPruningStrategyImpl(formalism::Problem problem);
+
+    static PruningStrategy create(formalism::Problem problem);
 
     bool test_prune_initial_state(const State& state) override;
     bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;

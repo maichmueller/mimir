@@ -21,6 +21,7 @@
 #include "mimir/formalism/repositories.hpp"
 #include "mimir/search/algorithms.hpp"
 #include "mimir/search/algorithms/iw/event_handlers.hpp"
+#include "mimir/search/algorithms/iw/pruning_strategy.hpp"
 #include "mimir/search/algorithms/iw/tuple_index_generators.hpp"
 #include "mimir/search/algorithms/iw/tuple_index_mapper.hpp"
 #include "mimir/search/applicable_action_generators.hpp"
@@ -31,6 +32,9 @@
 #include "mimir/search/state_repository.hpp"
 
 #include <gtest/gtest.h>
+
+#include <algorithm>
+#include <stdexcept>
 
 using namespace mimir::search;
 using namespace mimir::formalism;
@@ -143,6 +147,63 @@ public:
 
     const GroundedAxiomEvaluatorImpl::Statistics& get_axiom_evaluator_statistics() const { return m_axiom_evaluator_event_handler->get_statistics(); }
 };
+
+static std::pair<GroundAtomList<FluentTag>, GroundAtom<FluentTag>> find_projective_iw1_candidate(const Problem& problem)
+{
+    auto fluent_atoms = GroundAtomList<FluentTag> {};
+    for (const auto& atom : problem->get_repositories().get_ground_atoms<FluentTag>())
+    {
+        fluent_atoms.push_back(&atom);
+    }
+
+    for (const auto& target_atom : fluent_atoms)
+    {
+        if (target_atom->get_arity() <= 1)
+        {
+            continue;
+        }
+
+        auto covering_atoms_by_position = std::vector<GroundAtom<FluentTag>>(target_atom->get_arity(), nullptr);
+        const auto& target_objects = target_atom->get_objects();
+
+        for (const auto& candidate_atom : fluent_atoms)
+        {
+            if ((candidate_atom == target_atom) || (candidate_atom->get_predicate() != target_atom->get_predicate()))
+            {
+                continue;
+            }
+
+            const auto& candidate_objects = candidate_atom->get_objects();
+            for (size_t position = 0; position < target_objects.size(); ++position)
+            {
+                if (!covering_atoms_by_position[position] && (candidate_objects[position] == target_objects[position]))
+                {
+                    covering_atoms_by_position[position] = candidate_atom;
+                }
+            }
+        }
+
+        if (!std::ranges::all_of(covering_atoms_by_position, [](const auto atom) { return atom != nullptr; }))
+        {
+            continue;
+        }
+
+        auto covering_atoms = GroundAtomList<FluentTag> {};
+        for (const auto atom : covering_atoms_by_position)
+        {
+            if (std::ranges::find(covering_atoms, atom) == covering_atoms.end())
+            {
+                covering_atoms.push_back(atom);
+            }
+        }
+
+        std::ranges::sort(covering_atoms, [](const auto lhs, const auto rhs) { return lhs->get_index() < rhs->get_index(); });
+
+        return { covering_atoms, target_atom };
+    }
+
+    throw std::runtime_error("SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyTest: Could not find suitable projected-atom test candidate.");
+}
 
 TEST(MimirTests, SearchAlgorithmsIWSingleStateTupleIndexGeneratorWidth0Test)
 {
@@ -324,6 +385,38 @@ TEST(MimirTests, SearchAlgorithmsIWStatePairTupleIndexGeneratorWidth2Test3)
     EXPECT_EQ("(2,3,)", tuple_index_mapper.tuple_index_to_string(*(++iter)));
 
     EXPECT_EQ(++iter, generator.end());
+}
+
+TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyTest)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "gripper/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl");
+    const auto problem = ProblemImpl::create(domain_file, problem_file);
+
+    const auto search_context = SearchContextImpl::create(problem, SearchContextImpl::Options(SearchContextImpl::LiftedOptions()));
+    auto& state_repository = *search_context->get_state_repository();
+
+    auto [covering_atoms, target_atom] = find_projective_iw1_candidate(problem);
+    const auto numeric_values = problem->get_initial_function_to_value<FluentTag>();
+
+    const auto [state, state_metric_value] = state_repository.get_or_create_state(covering_atoms, numeric_values);
+    [[maybe_unused]] const auto ignored_state_metric_value = state_metric_value;
+
+    covering_atoms.push_back(target_atom);
+    std::sort(covering_atoms.begin(), covering_atoms.end(), [](const auto lhs, const auto rhs) { return lhs->get_index() < rhs->get_index(); });
+    covering_atoms.erase(std::unique(covering_atoms.begin(), covering_atoms.end()), covering_atoms.end());
+
+    const auto [succ_state, succ_state_metric_value] = state_repository.get_or_create_state(covering_atoms, numeric_values);
+    [[maybe_unused]] const auto ignored_succ_state_metric_value = succ_state_metric_value;
+
+    const auto projective_iw1 = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem);
+    const auto iw1 = iw::ArityKNoveltyPruningStrategyImpl::create(1, iw::INITIAL_TABLE_ATOMS);
+
+    EXPECT_FALSE(projective_iw1->test_prune_initial_state(state));
+    EXPECT_FALSE(iw1->test_prune_initial_state(state));
+
+    EXPECT_TRUE(projective_iw1->test_prune_successor_state(state, succ_state, true));
+    EXPECT_FALSE(iw1->test_prune_successor_state(state, succ_state, true));
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
