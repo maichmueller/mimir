@@ -20,7 +20,7 @@ def main():
     brfs_options.start_state = start_state
     brfs_options.event_handler = search.DefaultBrFSEventHandler(problem)
     brfs_options.goal_strategy = search.ProblemGoalStrategy.create(problem)
-    brfs_options.pruning_strategy = search.ProjectiveArityOneNoveltyPruningStrategy.create(problem)
+    brfs_options.pruning_strategy = search.ProjectiveArityOneNoveltyPruningStrategy.create(problem, typed_projection=False)
 
     result = search.find_solution_brfs(search_context, brfs_options)
 

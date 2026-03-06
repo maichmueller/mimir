@@ -904,14 +904,19 @@ bool ArityKNoveltyPruningStrategyImpl::test_prune_successor_state(const State& s
     return !m_novelty_table.test_novelty_and_update_table(state, succ_state);
 }
 
-ProjectiveArityOneNoveltyPruningStrategyImpl::ProjectiveArityOneNoveltyPruningStrategyImpl(formalism::Problem problem) :
-    m_problem(std::move(problem))
+ProjectiveArityOneNoveltyPruningStrategyImpl::ProjectiveArityOneNoveltyPruningStrategyImpl(formalism::Problem problem, bool typed_projection) :
+    m_problem(std::move(problem)),
+    m_typed_projection(typed_projection)
 {
+    if (m_typed_projection && !m_problem->get_requirements()->test(loki::RequirementEnum::TYPING))
+    {
+        throw std::runtime_error("ProjectiveArityOneNoveltyPruningStrategyImpl: typed_projection requires the :typing requirement.");
+    }
 }
 
-PruningStrategy ProjectiveArityOneNoveltyPruningStrategyImpl::create(formalism::Problem problem)
+PruningStrategy ProjectiveArityOneNoveltyPruningStrategyImpl::create(formalism::Problem problem, bool typed_projection)
 {
-    return std::make_shared<ProjectiveArityOneNoveltyPruningStrategyImpl>(std::move(problem));
+    return std::make_shared<ProjectiveArityOneNoveltyPruningStrategyImpl>(std::move(problem), typed_projection);
 }
 
 bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_atom_novelty_and_update_table(AtomIndex atom_index)
@@ -920,7 +925,7 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_atom_novelty_and_update_
 
     if (ground_atom->get_arity() <= 1)
     {
-        return m_seen_projected_atoms.emplace(0, atom_index, 0, 0).second;
+        return m_seen_projected_atoms.emplace(0, atom_index, 0, 0, 0).second;
     }
 
     const auto predicate_index = ground_atom->get_predicate()->get_index();
@@ -929,9 +934,38 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_atom_novelty_and_update_
     bool is_novel = false;
     for (size_t position = 0; position < objects.size(); ++position)
     {
-        if (m_seen_projected_atoms.emplace(1, predicate_index, static_cast<Index>(position), objects.at(position)->get_index()).second)
+        const auto object = objects.at(position);
+
+        if (!m_typed_projection)
         {
-            is_novel = true;
+            if (m_seen_projected_atoms.emplace(1, predicate_index, static_cast<Index>(position), object->get_index(), 0).second)
+            {
+                is_novel = true;
+            }
+            continue;
+        }
+
+        const auto& object_types = object->get_bases();
+        if (object_types.empty())
+        {
+            if (m_seen_projected_atoms.emplace(2, predicate_index, static_cast<Index>(position), object->get_index(), MAX_INDEX).second)
+            {
+                is_novel = true;
+            }
+            continue;
+        }
+
+        for (const auto& object_type : object_types)
+        {
+            if (m_seen_projected_atoms.emplace(2,
+                                              predicate_index,
+                                              static_cast<Index>(position),
+                                              object->get_index(),
+                                              object_type->get_index())
+                    .second)
+            {
+                is_novel = true;
+            }
         }
     }
     return is_novel;

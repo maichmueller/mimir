@@ -63,17 +63,18 @@ class ProjectiveArityOneNoveltyPruningStrategyImpl : public IPruningStrategy
 {
 private:
     formalism::Problem m_problem;
+    bool m_typed_projection;
     std::unordered_set<Index> m_generated_states;
-    UnorderedSet<std::tuple<Index, Index, Index, Index>> m_seen_projected_atoms;
+    UnorderedSet<std::tuple<Index, Index, Index, Index, Index>> m_seen_projected_atoms;
 
     bool test_atom_novelty_and_update_table(AtomIndex atom_index);
     bool test_state_novelty_and_update_table(const State& state);
     bool test_transition_novelty_and_update_table(const State& state, const State& succ_state);
 
 public:
-    explicit ProjectiveArityOneNoveltyPruningStrategyImpl(formalism::Problem problem);
+    explicit ProjectiveArityOneNoveltyPruningStrategyImpl(formalism::Problem problem, bool typed_projection = false);
 
-    static PruningStrategy create(formalism::Problem problem);
+    static PruningStrategy create(formalism::Problem problem, bool typed_projection = false);
 
     bool test_prune_initial_state(const State& state) override;
     bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;

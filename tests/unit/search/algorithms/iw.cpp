@@ -409,7 +409,7 @@ TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyTest)
     const auto [succ_state, succ_state_metric_value] = state_repository.get_or_create_state(covering_atoms, numeric_values);
     [[maybe_unused]] const auto ignored_succ_state_metric_value = succ_state_metric_value;
 
-    const auto projective_iw1 = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem);
+    const auto projective_iw1 = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem, false);
     const auto iw1 = iw::ArityKNoveltyPruningStrategyImpl::create(1, iw::INITIAL_TABLE_ATOMS);
 
     EXPECT_FALSE(projective_iw1->test_prune_initial_state(state));
@@ -417,6 +417,43 @@ TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyTest)
 
     EXPECT_TRUE(projective_iw1->test_prune_successor_state(state, succ_state, true));
     EXPECT_FALSE(iw1->test_prune_successor_state(state, succ_state, true));
+}
+
+TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyTypedProjectionRequiresTypingTest)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "gripper/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl");
+    const auto problem = ProblemImpl::create(domain_file, problem_file);
+
+    EXPECT_THROW(iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem, true), std::runtime_error);
+}
+
+TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyTypedProjectionTest)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "driverlog/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "driverlog/test_problem.pddl");
+    const auto problem = ProblemImpl::create(domain_file, problem_file);
+
+    const auto search_context = SearchContextImpl::create(problem, SearchContextImpl::Options(SearchContextImpl::LiftedOptions()));
+    auto& state_repository = *search_context->get_state_repository();
+
+    auto [covering_atoms, target_atom] = find_projective_iw1_candidate(problem);
+    const auto numeric_values = problem->get_initial_function_to_value<FluentTag>();
+
+    const auto [state, state_metric_value] = state_repository.get_or_create_state(covering_atoms, numeric_values);
+    [[maybe_unused]] const auto ignored_state_metric_value = state_metric_value;
+
+    covering_atoms.push_back(target_atom);
+    std::sort(covering_atoms.begin(), covering_atoms.end(), [](const auto lhs, const auto rhs) { return lhs->get_index() < rhs->get_index(); });
+    covering_atoms.erase(std::unique(covering_atoms.begin(), covering_atoms.end()), covering_atoms.end());
+
+    const auto [succ_state, succ_state_metric_value] = state_repository.get_or_create_state(covering_atoms, numeric_values);
+    [[maybe_unused]] const auto ignored_succ_state_metric_value = succ_state_metric_value;
+
+    const auto typed_projective_iw1 = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem, true);
+
+    EXPECT_FALSE(typed_projective_iw1->test_prune_initial_state(state));
+    EXPECT_TRUE(typed_projective_iw1->test_prune_successor_state(state, succ_state, true));
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
