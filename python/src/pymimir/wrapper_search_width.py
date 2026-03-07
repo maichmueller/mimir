@@ -101,6 +101,7 @@ def iw(problem: 'Problem',
 def projective_iw(problem: 'Problem',
                   start_state: 'State',
                   typed_projection: bool = False,
+                  keep_depth_one_novel: bool = True,
                   on_expand_state: 'Union[Callable[[State], None], None]' = None,
                   on_expand_goal_state: 'Union[Callable[[State], None], None]' = None,
                   on_generate_state: 'Union[Callable[[State, GroundAction, float, State], None], None]' = None,
@@ -109,6 +110,7 @@ def projective_iw(problem: 'Problem',
     assert isinstance(problem, Problem), "Problem must be an instance of Problem."
     assert isinstance(start_state, State), "Start state must be an instance of State."
     assert isinstance(typed_projection, bool), "typed_projection must be a boolean."
+    assert isinstance(keep_depth_one_novel, bool), "keep_depth_one_novel must be a boolean."
     # Define the event handler with the provided callback functions.
     class EventHandler(AdvancedBrFSEventHandler):
         def __init__(self) -> None:
@@ -163,7 +165,9 @@ def projective_iw(problem: 'Problem',
     advanced_options = AdvancedBrFSOptions()
     advanced_options.start_state = start_state._advanced_state
     advanced_options.event_handler = EventHandler()
-    advanced_options.pruning_strategy = AdvancedProjectiveArityOneNoveltyPruningStrategy.create(problem._advanced_problem, typed_projection)
+    advanced_options.pruning_strategy = AdvancedProjectiveArityOneNoveltyPruningStrategy.create(problem._advanced_problem,
+                                                                                                typed_projection,
+                                                                                                keep_depth_one_novel)
     result = advanced_brfs(problem._search_context, advanced_options)
     status = result.status.name.lower()
     solution = [GroundAction(x, problem) for x in result.plan.get_actions()] if result.plan else None

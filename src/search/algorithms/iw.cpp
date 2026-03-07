@@ -904,9 +904,12 @@ bool ArityKNoveltyPruningStrategyImpl::test_prune_successor_state(const State& s
     return !m_novelty_table.test_novelty_and_update_table(state, succ_state);
 }
 
-ProjectiveArityOneNoveltyPruningStrategyImpl::ProjectiveArityOneNoveltyPruningStrategyImpl(formalism::Problem problem, bool typed_projection) :
+ProjectiveArityOneNoveltyPruningStrategyImpl::ProjectiveArityOneNoveltyPruningStrategyImpl(formalism::Problem problem,
+                                                                                           bool typed_projection,
+                                                                                           bool keep_depth_one_novel) :
     m_problem(std::move(problem)),
-    m_typed_projection(typed_projection)
+    m_typed_projection(typed_projection),
+    m_keep_depth_one_novel(keep_depth_one_novel)
 {
     if (m_typed_projection && !m_problem->get_requirements()->test(loki::RequirementEnum::TYPING))
     {
@@ -914,9 +917,11 @@ ProjectiveArityOneNoveltyPruningStrategyImpl::ProjectiveArityOneNoveltyPruningSt
     }
 }
 
-PruningStrategy ProjectiveArityOneNoveltyPruningStrategyImpl::create(formalism::Problem problem, bool typed_projection)
+PruningStrategy ProjectiveArityOneNoveltyPruningStrategyImpl::create(formalism::Problem problem,
+                                                                     bool typed_projection,
+                                                                     bool keep_depth_one_novel)
 {
-    return std::make_shared<ProjectiveArityOneNoveltyPruningStrategyImpl>(std::move(problem), typed_projection);
+    return std::make_shared<ProjectiveArityOneNoveltyPruningStrategyImpl>(std::move(problem), typed_projection, keep_depth_one_novel);
 }
 
 bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_atom_novelty_and_update_table(AtomIndex atom_index)
@@ -1033,6 +1038,11 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_transition_novelty_and_u
 
 bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_initial_state(const State& state)
 {
+    if (!m_root_state_index)
+    {
+        m_root_state_index = state.get_index();
+    }
+
     if (m_generated_states.count(state.get_index()))
     {
         assert(!test_state_novelty_and_update_table(state));
@@ -1057,7 +1067,13 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_successor_state(co
     }
     m_generated_states.insert(succ_state.get_index());
 
-    return !test_transition_novelty_and_update_table(state, succ_state);
+    const auto is_novel = test_transition_novelty_and_update_table(state, succ_state);
+    if (m_keep_depth_one_novel && m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
+    {
+        return false;
+    }
+
+    return !is_novel;
 }
 
 /* IterativeWidthAlgorithm */
