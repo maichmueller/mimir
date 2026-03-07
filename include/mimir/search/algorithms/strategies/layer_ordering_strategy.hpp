@@ -34,6 +34,12 @@ class ILayerOrderingStrategy
 public:
     virtual ~ILayerOrderingStrategy() = default;
 
+    virtual bool supports_eager_scoring() const;
+
+    virtual ContinuousCost score_state(const State& state, DiscreteCost g_value) const;
+
+    virtual bool prefer_higher_scores() const;
+
     virtual void order_layer(StateList& states, DiscreteCost g_value) = 0;
 };
 
@@ -74,6 +80,12 @@ class GoalCountLayerOrderingStrategyImpl : public ILayerOrderingStrategy
 
 public:
     explicit GoalCountLayerOrderingStrategyImpl(formalism::Problem problem, bool prefer_more_satisfied_goals = true);
+
+    bool supports_eager_scoring() const override;
+
+    ContinuousCost score_state(const State& state, DiscreteCost g_value) const override;
+
+    bool prefer_higher_scores() const override;
 
     void order_layer(StateList& states, DiscreteCost g_value) override;
 

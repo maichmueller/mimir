@@ -30,6 +30,7 @@ struct Options
     brfs::EventHandler brfs_event_handler = nullptr;
     GoalStrategy goal_strategy = nullptr;
     LayerOrderingStrategy layer_ordering_strategy = nullptr;
+    uint32_t max_next_layer_states = std::numeric_limits<uint32_t>::max();
     size_t max_arity = MAX_ARITY - 1;
 
     Options() = default;

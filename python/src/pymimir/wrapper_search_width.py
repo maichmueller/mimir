@@ -28,6 +28,7 @@ def iw(problem: 'Problem',
        start_state: 'State',
        max_arity: int,
        layer_ordering_strategy: 'Union[AdvancedILayerOrderingStrategy, None]' = None,
+       max_next_layer_states: int = -1,
        on_expand_state: 'Union[Callable[[State], None], None]' = None,
        on_expand_goal_state: 'Union[Callable[[State], None], None]' = None,
        on_generate_state: 'Union[Callable[[State, GroundAction, float, State], None], None]' = None,
@@ -37,6 +38,7 @@ def iw(problem: 'Problem',
     assert isinstance(start_state, State), "Start state must be an instance of State."
     assert isinstance(max_arity, int), "Max arity must be an integer."
     assert max_arity > 0, "Max arity must be positive."
+    assert isinstance(max_next_layer_states, int), "max_next_layer_states must be an int."
     assert layer_ordering_strategy is None or isinstance(layer_ordering_strategy, AdvancedILayerOrderingStrategy), \
         "layer_ordering_strategy must be an advanced ILayerOrderingStrategy or None."
     # Define the event handler with the provided callback functions.
@@ -94,6 +96,7 @@ def iw(problem: 'Problem',
     advanced_options.start_state = start_state._advanced_state
     advanced_options.brfs_event_handler = EventHandler()
     advanced_options.layer_ordering_strategy = layer_ordering_strategy
+    if max_next_layer_states > 0: advanced_options.max_next_layer_states = max_next_layer_states
     advanced_options.max_arity = max_arity
     result = advanced_iw(problem._search_context, advanced_options)
     status = result.status.name.lower()
@@ -108,6 +111,7 @@ def projective_iw(problem: 'Problem',
                   typed_projection: bool = False,
                   keep_depth_one_novel: bool = True,
                   layer_ordering_strategy: 'Union[AdvancedILayerOrderingStrategy, None]' = None,
+                  max_next_layer_states: int = -1,
                   on_expand_state: 'Union[Callable[[State], None], None]' = None,
                   on_expand_goal_state: 'Union[Callable[[State], None], None]' = None,
                   on_generate_state: 'Union[Callable[[State, GroundAction, float, State], None], None]' = None,
@@ -117,6 +121,7 @@ def projective_iw(problem: 'Problem',
     assert isinstance(start_state, State), "Start state must be an instance of State."
     assert isinstance(typed_projection, bool), "typed_projection must be a boolean."
     assert isinstance(keep_depth_one_novel, bool), "keep_depth_one_novel must be a boolean."
+    assert isinstance(max_next_layer_states, int), "max_next_layer_states must be an int."
     assert layer_ordering_strategy is None or isinstance(layer_ordering_strategy, AdvancedILayerOrderingStrategy), \
         "layer_ordering_strategy must be an advanced ILayerOrderingStrategy or None."
     # Define the event handler with the provided callback functions.
@@ -174,6 +179,7 @@ def projective_iw(problem: 'Problem',
     advanced_options.start_state = start_state._advanced_state
     advanced_options.event_handler = EventHandler()
     advanced_options.layer_ordering_strategy = layer_ordering_strategy
+    if max_next_layer_states > 0: advanced_options.max_next_layer_states = max_next_layer_states
     advanced_options.pruning_strategy = AdvancedProjectiveArityOneNoveltyPruningStrategy.create(problem._advanced_problem,
                                                                                                 typed_projection,
                                                                                                 keep_depth_one_novel)

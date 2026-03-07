@@ -22,6 +22,7 @@
 #include "mimir/search/state.hpp"
 
 #include <algorithm>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -29,6 +30,17 @@ using namespace mimir::formalism;
 
 namespace mimir::search
 {
+
+bool ILayerOrderingStrategy::supports_eager_scoring() const { return false; }
+
+ContinuousCost ILayerOrderingStrategy::score_state(const State& state, DiscreteCost g_value) const
+{
+    [[maybe_unused]] const auto& ignored_state = state;
+    [[maybe_unused]] const auto ignored_g_value = g_value;
+    throw std::logic_error("ILayerOrderingStrategy does not support eager scoring.");
+}
+
+bool ILayerOrderingStrategy::prefer_higher_scores() const { return true; }
 
 void InOrderLayerOrderingStrategyImpl::order_layer(StateList& states, DiscreteCost g_value)
 {
@@ -65,6 +77,16 @@ GoalCountLayerOrderingStrategyImpl::GoalCountLayerOrderingStrategyImpl(formalism
     m_prefer_more_satisfied_goals(prefer_more_satisfied_goals)
 {
 }
+
+bool GoalCountLayerOrderingStrategyImpl::supports_eager_scoring() const { return true; }
+
+ContinuousCost GoalCountLayerOrderingStrategyImpl::score_state(const State& state, DiscreteCost g_value) const
+{
+    [[maybe_unused]] const auto ignored_g_value = g_value;
+    return static_cast<ContinuousCost>(count_satisfied_goal_literals(state));
+}
+
+bool GoalCountLayerOrderingStrategyImpl::prefer_higher_scores() const { return m_prefer_more_satisfied_goals; }
 
 size_t GoalCountLayerOrderingStrategyImpl::count_satisfied_goal_literals(const State& state) const
 {

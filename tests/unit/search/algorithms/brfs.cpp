@@ -29,6 +29,7 @@
 
 #include <algorithm>
 #include <optional>
+#include <stdexcept>
 #include <gtest/gtest.h>
 
 using namespace mimir::search;
@@ -220,6 +221,38 @@ public:
 
     const StateList& get_root_generated_states() const { return m_root_generated_states; }
     const StateList& get_expanded_states() const { return m_expanded_states; }
+};
+
+class RecordingScoringLayerOrderingStrategy : public ILayerOrderingStrategy
+{
+private:
+    mutable ContinuousCost m_next_score;
+    mutable std::vector<Index> m_first_layer_scored_state_indices;
+
+public:
+    RecordingScoringLayerOrderingStrategy() : m_next_score(0.0), m_first_layer_scored_state_indices() {}
+
+    bool supports_eager_scoring() const override { return true; }
+
+    ContinuousCost score_state(const State& state, DiscreteCost g_value) const override
+    {
+        if (g_value == 1)
+        {
+            m_first_layer_scored_state_indices.push_back(state.get_index());
+        }
+
+        return ++m_next_score;
+    }
+
+    bool prefer_higher_scores() const override { return true; }
+
+    void order_layer(StateList& states, DiscreteCost g_value) override
+    {
+        [[maybe_unused]] auto& ignored_states = states;
+        [[maybe_unused]] const auto ignored_g_value = g_value;
+    }
+
+    const std::vector<Index>& get_first_layer_scored_state_indices() const { return m_first_layer_scored_state_indices; }
 };
 
 static std::vector<Index> get_state_indices(const StateList& states)
@@ -622,6 +655,56 @@ TEST(MimirTests, SearchAlgorithmsBrFSReverseLayerOrderingReordersFirstLayer)
     const auto actual_first_layer_indices =
         std::vector<Index>(expanded_indices.begin() + 1, expanded_indices.begin() + 1 + expected_indices.size());
     EXPECT_EQ(actual_first_layer_indices, expected_indices);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSNextLayerLimitRequiresLayerOrderingStrategy)
+{
+    auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+
+    auto options = brfs::Options();
+    options.max_next_layer_states = 2;
+    options.stop_if_goal = false;
+
+    EXPECT_THROW(brfs::find_solution(brfs.get_search_context(), options), std::invalid_argument);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSCappedLayerUsesEagerScoringAndStopsEarly)
+{
+    auto baseline_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+    auto baseline_event_handler = std::make_shared<RecordingBrFSEventHandler>(baseline_brfs.get_problem());
+
+    auto baseline_options = brfs::Options();
+    baseline_options.event_handler = baseline_event_handler;
+    baseline_options.stop_if_goal = false;
+
+    const auto baseline_result = brfs::find_solution(baseline_brfs.get_search_context(), baseline_options);
+    EXPECT_EQ(baseline_result.status, SearchStatus::EXHAUSTED);
+
+    const auto baseline_generated_indices = get_state_indices(baseline_event_handler->get_root_generated_states());
+    ASSERT_GT(baseline_generated_indices.size(), 2);
+
+    auto capped_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+    auto capped_event_handler = std::make_shared<RecordingBrFSEventHandler>(capped_brfs.get_problem());
+    auto capped_strategy = std::make_shared<RecordingScoringLayerOrderingStrategy>();
+
+    auto capped_options = brfs::Options();
+    capped_options.event_handler = capped_event_handler;
+    capped_options.layer_ordering_strategy = capped_strategy;
+    capped_options.max_next_layer_states = 2;
+    capped_options.stop_if_goal = false;
+
+    const auto capped_result = brfs::find_solution(capped_brfs.get_search_context(), capped_options);
+    EXPECT_EQ(capped_result.status, SearchStatus::EXHAUSTED);
+
+    const auto capped_generated_indices = get_state_indices(capped_event_handler->get_root_generated_states());
+    const auto capped_expanded_indices = get_state_indices(capped_event_handler->get_expanded_states());
+    ASSERT_EQ(capped_generated_indices.size(), 2);
+    EXPECT_EQ(capped_generated_indices,
+              std::vector<Index>(baseline_generated_indices.begin(), baseline_generated_indices.begin() + capped_generated_indices.size()));
+    EXPECT_EQ(capped_strategy->get_first_layer_scored_state_indices(), capped_generated_indices);
+
+    ASSERT_GE(capped_expanded_indices.size(), 2);
+    EXPECT_EQ(capped_expanded_indices[1], capped_generated_indices.back());
 }
 
 /**

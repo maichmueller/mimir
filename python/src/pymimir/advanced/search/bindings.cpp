@@ -37,7 +37,13 @@ public:
 class IPyLayerOrderingStrategy : public ILayerOrderingStrategy
 {
 public:
-    NB_TRAMPOLINE(ILayerOrderingStrategy, 1);
+    NB_TRAMPOLINE(ILayerOrderingStrategy, 4);
+
+    bool supports_eager_scoring() const override { NB_OVERRIDE(supports_eager_scoring); }
+
+    ContinuousCost score_state(const State& state, DiscreteCost g_value) const override { NB_OVERRIDE(score_state, state, g_value); }
+
+    bool prefer_higher_scores() const override { NB_OVERRIDE(prefer_higher_scores); }
 
     void order_layer(StateList& states, DiscreteCost g_value) override { NB_OVERRIDE_PURE(order_layer, states, g_value); }
 };
@@ -721,6 +727,9 @@ void bind_module_definitions(nb::module_& m)
 
     nb::class_<ILayerOrderingStrategy, IPyLayerOrderingStrategy>(m, "ILayerOrderingStrategy")
         .def(nb::init<>())
+        .def("supports_eager_scoring", &ILayerOrderingStrategy::supports_eager_scoring)
+        .def("score_state", &ILayerOrderingStrategy::score_state, "state"_a, "g_value"_a)
+        .def("prefer_higher_scores", &ILayerOrderingStrategy::prefer_higher_scores)
         .def("order_layer", &ILayerOrderingStrategy::order_layer, "states"_a, "g_value"_a);
 
     nb::class_<InOrderLayerOrderingStrategyImpl, ILayerOrderingStrategy>(m, "InOrderLayerOrderingStrategy")
@@ -918,6 +927,7 @@ void bind_module_definitions(nb::module_& m)
         .def_rw("goal_strategy", &brfs::Options::goal_strategy)
         .def_rw("pruning_strategy", &brfs::Options::pruning_strategy)
         .def_rw("layer_ordering_strategy", &brfs::Options::layer_ordering_strategy)
+        .def_rw("max_next_layer_states", &brfs::Options::max_next_layer_states)
         .def_rw("stop_if_goal", &brfs::Options::stop_if_goal)
         .def_rw("max_num_states", &brfs::Options::max_num_states)
         .def_rw("max_time_in_ms", &brfs::Options::max_time_in_ms);
@@ -1097,6 +1107,7 @@ void bind_module_definitions(nb::module_& m)
         .def_rw("brfs_event_handler", &iw::Options::brfs_event_handler)
         .def_rw("goal_strategy", &iw::Options::goal_strategy)
         .def_rw("layer_ordering_strategy", &iw::Options::layer_ordering_strategy)
+        .def_rw("max_next_layer_states", &iw::Options::max_next_layer_states)
         .def_rw("max_arity", &iw::Options::max_arity);
 
     m.def("find_solution_iw", &iw::find_solution, "search_context"_a, "options"_a);

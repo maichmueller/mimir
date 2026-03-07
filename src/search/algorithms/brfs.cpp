@@ -33,7 +33,9 @@
 #include "mimir/search/search_space.hpp"
 #include "mimir/search/state_repository.hpp"
 
+#include <algorithm>
 #include <deque>
+#include <stdexcept>
 
 using namespace mimir::formalism;
 
@@ -81,6 +83,18 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
     const auto goal_strategy = (options.goal_strategy) ? options.goal_strategy : ProblemGoalStrategyImpl::create(context->get_problem());
     const auto pruning_strategy = (options.pruning_strategy) ? options.pruning_strategy : DuplicatePruningStrategyImpl::create();
     const auto layer_ordering_strategy = options.layer_ordering_strategy;
+    const auto max_next_layer_states = options.max_next_layer_states;
+    const auto use_next_layer_limit = (max_next_layer_states < std::numeric_limits<uint32_t>::max());
+
+    if (use_next_layer_limit && (max_next_layer_states == 0))
+    {
+        throw std::invalid_argument("BrFS::Options.max_next_layer_states must be positive.");
+    }
+
+    if (use_next_layer_limit && !layer_ordering_strategy)
+    {
+        throw std::invalid_argument("BrFS::Options.max_next_layer_states requires a layer_ordering_strategy.");
+    }
 
     auto result = SearchResult();
     auto search_nodes = SearchNodeVector();
@@ -216,12 +230,24 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
     }
     else
     {
+        struct ScoredState
+        {
+            State state;
+            ContinuousCost score;
+        };
+
+        const auto use_eager_successor_scoring = use_next_layer_limit && layer_ordering_strategy->supports_eager_scoring();
+        const auto prefer_higher_scores = use_eager_successor_scoring && layer_ordering_strategy->prefer_higher_scores();
+
         auto current_layer = StateList {};
         auto next_layer = StateList {};
+        auto scored_next_layer = std::vector<ScoredState> {};
         current_layer.push_back(start_state);
 
         while (!current_layer.empty())
         {
+            auto next_layer_limit_reached = false;
+
             for (const auto& state : current_layer)
             {
                 if (stopwatch.has_finished())
@@ -285,14 +311,52 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
                     successor_search_node.parent_state = state.get_index();
                     successor_search_node.g_value = search_node.g_value + 1;
 
-                    next_layer.emplace_back(successor_state);
+                    if (use_eager_successor_scoring)
+                    {
+                        const auto successor_score = layer_ordering_strategy->score_state(successor_state, successor_search_node.g_value);
+                        const auto insert_it = std::upper_bound(scored_next_layer.begin(),
+                                                               scored_next_layer.end(),
+                                                               successor_score,
+                                                               [prefer_higher_scores](ContinuousCost lhs, const ScoredState& rhs)
+                                                               {
+                                                                   return prefer_higher_scores ? (lhs > rhs.score) : (lhs < rhs.score);
+                                                               });
+                        scored_next_layer.insert(insert_it, ScoredState { successor_state, successor_score });
+                        next_layer_limit_reached = (scored_next_layer.size() >= max_next_layer_states);
+                    }
+                    else
+                    {
+                        next_layer.emplace_back(successor_state);
+                        next_layer_limit_reached = use_next_layer_limit && (next_layer.size() >= max_next_layer_states);
+                    }
 
                     if (search_nodes.size() >= options.max_num_states)
                     {
                         result.status = SearchStatus::OUT_OF_STATES;
                         return result;
                     }
+
+                    if (next_layer_limit_reached)
+                    {
+                        break;
+                    }
                 }
+
+                if (next_layer_limit_reached)
+                {
+                    break;
+                }
+            }
+
+            if (use_eager_successor_scoring)
+            {
+                next_layer.clear();
+                next_layer.reserve(scored_next_layer.size());
+                for (auto& scored_state : scored_next_layer)
+                {
+                    next_layer.emplace_back(std::move(scored_state.state));
+                }
+                scored_next_layer.clear();
             }
 
             if (next_layer.empty())

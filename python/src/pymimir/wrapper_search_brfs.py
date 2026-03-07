@@ -22,6 +22,7 @@ def brfs(problem: 'Problem',
          max_time_seconds: float = -1,
          max_num_states: int = -1,
          layer_ordering_strategy: 'Union[AdvancedILayerOrderingStrategy, None]' = None,
+         max_next_layer_states: int = -1,
          on_expand_state: 'Union[Callable[[State], None], None]' = None,
          on_expand_goal_state: 'Union[Callable[[State], None], None]' = None,
          on_generate_state: 'Union[Callable[[State, GroundAction, float, State], None], None]' = None,
@@ -41,6 +42,8 @@ def brfs(problem: 'Problem',
     :type max_num_states: int
     :param layer_ordering_strategy: Optional advanced layer ordering strategy used to reorder each frontier layer before expansion.
     :type layer_ordering_strategy: AdvancedILayerOrderingStrategy | None
+    :param max_next_layer_states: Optional cap on how many successor states are admitted into the next layer when using ordered-layer expansion.
+    :type max_next_layer_states: int
     :param on_expand_state: Callback function called when a state is expanded.
     :type on_expand_state: Callable[[State], None]
     :param on_expand_goal_state: Callback function called when a goal state is expanded.
@@ -60,6 +63,7 @@ def brfs(problem: 'Problem',
     assert isinstance(start_state, State), "Start state must be an instance of State."
     assert isinstance(max_time_seconds, (int, float)), "max_time_seconds must be an int or float."
     assert isinstance(max_num_states, int), "max_num_states must be an int."
+    assert isinstance(max_next_layer_states, int), "max_next_layer_states must be an int."
     assert layer_ordering_strategy is None or isinstance(layer_ordering_strategy, AdvancedILayerOrderingStrategy), \
         "layer_ordering_strategy must be an advanced ILayerOrderingStrategy or None."
     # Define the event handler with the provided callback functions.
@@ -122,6 +126,7 @@ def brfs(problem: 'Problem',
     advanced_options = AdvancedBrFSOptions()
     if max_time_seconds > 0: advanced_options.max_time_in_ms = int(max_time_seconds * 1000)
     if max_num_states > 0: advanced_options.max_num_states = max_num_states
+    if max_next_layer_states > 0: advanced_options.max_next_layer_states = max_next_layer_states
     advanced_options.start_state = start_state._advanced_state
     advanced_options.event_handler = EventHandler()
     advanced_options.layer_ordering_strategy = layer_ordering_strategy
