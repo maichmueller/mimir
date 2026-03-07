@@ -29,6 +29,7 @@ struct Options
     EventHandler iw_event_handler = nullptr;
     brfs::EventHandler brfs_event_handler = nullptr;
     GoalStrategy goal_strategy = nullptr;
+    LayerOrderingStrategy layer_ordering_strategy = nullptr;
     size_t max_arity = MAX_ARITY - 1;
 
     Options() = default;

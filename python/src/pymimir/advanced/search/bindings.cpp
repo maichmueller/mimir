@@ -34,6 +34,14 @@ public:
     }
 };
 
+class IPyLayerOrderingStrategy : public ILayerOrderingStrategy
+{
+public:
+    NB_TRAMPOLINE(ILayerOrderingStrategy, 1);
+
+    void order_layer(StateList& states, DiscreteCost g_value) override { NB_OVERRIDE_PURE(order_layer, states, g_value); }
+};
+
 class IPyExplorationStrategy : public IExplorationStrategy
 {
 public:
@@ -711,6 +719,26 @@ void bind_module_definitions(nb::module_& m)
     nb::class_<ProblemGoalStrategyImpl, IGoalStrategy>(m, "ProblemGoalStrategy")  //
         .def_static("create", &ProblemGoalStrategyImpl::create, "problem"_a);
 
+    nb::class_<ILayerOrderingStrategy, IPyLayerOrderingStrategy>(m, "ILayerOrderingStrategy")
+        .def(nb::init<>())
+        .def("order_layer", &ILayerOrderingStrategy::order_layer, "states"_a, "g_value"_a);
+
+    nb::class_<InOrderLayerOrderingStrategyImpl, ILayerOrderingStrategy>(m, "InOrderLayerOrderingStrategy")
+        .def(nb::init<>())
+        .def_static("create", &InOrderLayerOrderingStrategyImpl::create);
+
+    nb::class_<ReverseOrderLayerOrderingStrategyImpl, ILayerOrderingStrategy>(m, "ReverseOrderLayerOrderingStrategy")
+        .def(nb::init<>())
+        .def_static("create", &ReverseOrderLayerOrderingStrategyImpl::create);
+
+    nb::class_<RandomizedLayerOrderingStrategyImpl, ILayerOrderingStrategy>(m, "RandomizedLayerOrderingStrategy")
+        .def(nb::init<std::optional<uint64_t>>(), "seed"_a = std::nullopt)
+        .def_static("create", &RandomizedLayerOrderingStrategyImpl::create, "seed"_a = std::nullopt);
+
+    nb::class_<GoalCountLayerOrderingStrategyImpl, ILayerOrderingStrategy>(m, "GoalCountLayerOrderingStrategy")
+        .def(nb::init<Problem, bool>(), "problem"_a, "prefer_more_satisfied_goals"_a = true)
+        .def_static("create", &GoalCountLayerOrderingStrategyImpl::create, "problem"_a, "prefer_more_satisfied_goals"_a = true);
+
     // PruningStrategy
     nb::class_<IPruningStrategy, IPyPruningStrategy>(m, "IPruningStrategy")
         .def(nb::init<>())
@@ -889,6 +917,7 @@ void bind_module_definitions(nb::module_& m)
         .def_rw("event_handler", &brfs::Options::event_handler)
         .def_rw("goal_strategy", &brfs::Options::goal_strategy)
         .def_rw("pruning_strategy", &brfs::Options::pruning_strategy)
+        .def_rw("layer_ordering_strategy", &brfs::Options::layer_ordering_strategy)
         .def_rw("stop_if_goal", &brfs::Options::stop_if_goal)
         .def_rw("max_num_states", &brfs::Options::max_num_states)
         .def_rw("max_time_in_ms", &brfs::Options::max_time_in_ms);
@@ -1067,6 +1096,7 @@ void bind_module_definitions(nb::module_& m)
         .def_rw("iw_event_handler", &iw::Options::iw_event_handler)
         .def_rw("brfs_event_handler", &iw::Options::brfs_event_handler)
         .def_rw("goal_strategy", &iw::Options::goal_strategy)
+        .def_rw("layer_ordering_strategy", &iw::Options::layer_ordering_strategy)
         .def_rw("max_arity", &iw::Options::max_arity);
 
     m.def("find_solution_iw", &iw::find_solution, "search_context"_a, "options"_a);

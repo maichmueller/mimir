@@ -260,7 +260,7 @@ inline size_t count_set_difference(const Range1& lhs, const Range2& rhs)
 /// @return
 template<std::ranges::input_range Range1, std::ranges::input_range Range2>
     requires IsRangeOver<Range1, Index> && IsRangeOver<Range2, Index>
-inline size_t count_set_intersection(const Range1& lhs, const Range2& rhs)
+size_t count_set_intersection(const Range1& lhs, const Range2& rhs)
 {
     assert(std::is_sorted(lhs.begin(), lhs.end()));
     assert(std::is_sorted(rhs.begin(), rhs.end()));

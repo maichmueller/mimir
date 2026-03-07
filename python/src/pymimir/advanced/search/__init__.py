@@ -59,6 +59,12 @@ from pymimir.pymimir.advanced.search import (
     IGoalStrategy,
     ProblemGoalStrategy,
 
+    ILayerOrderingStrategy,
+    InOrderLayerOrderingStrategy,
+    ReverseOrderLayerOrderingStrategy,
+    RandomizedLayerOrderingStrategy,
+    GoalCountLayerOrderingStrategy,
+
     IPruningStrategy,
     NoPruningStrategy,
     DuplicatePruningStrategy,

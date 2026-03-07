@@ -23,6 +23,7 @@
 #include "mimir/search/algorithms/brfs/event_handlers.hpp"
 #include "mimir/search/algorithms/brfs/event_handlers/interface.hpp"
 #include "mimir/search/algorithms/strategies/goal_strategy.hpp"
+#include "mimir/search/algorithms/strategies/layer_ordering_strategy.hpp"
 #include "mimir/search/algorithms/strategies/pruning_strategy.hpp"
 #include "mimir/search/applicable_action_generators/interface.hpp"
 #include "mimir/search/axiom_evaluators/interface.hpp"
@@ -79,10 +80,10 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
     const auto event_handler = (options.event_handler) ? options.event_handler : DefaultEventHandlerImpl::create(context->get_problem());
     const auto goal_strategy = (options.goal_strategy) ? options.goal_strategy : ProblemGoalStrategyImpl::create(context->get_problem());
     const auto pruning_strategy = (options.pruning_strategy) ? options.pruning_strategy : DuplicatePruningStrategyImpl::create();
+    const auto layer_ordering_strategy = options.layer_ordering_strategy;
 
     auto result = SearchResult();
     auto search_nodes = SearchNodeVector();
-    auto queue = std::deque<PackedState>();
 
     auto& start_search_node = get_or_create_search_node(start_state.get_index(), search_nodes);
     start_search_node.status = SearchNodeStatus::OPEN;
@@ -109,8 +110,6 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
         return result;
     }
 
-    queue.emplace_back(start_state.get_packed_state());
-
     auto g_value = DiscreteCost(0);
 
     event_handler->on_finish_g_layer(g_value);
@@ -118,94 +117,197 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
     auto stopwatch = StopWatch(options.max_time_in_ms);
     stopwatch.start();
 
-    while (!queue.empty())
+    // Preserve the original FIFO BrFS path when no explicit layer ordering is requested.
+    if (!layer_ordering_strategy)
     {
-        if (stopwatch.has_finished())
+        auto queue = std::deque<PackedState>();
+        queue.emplace_back(start_state.get_packed_state());
+
+        while (!queue.empty())
         {
-            result.status = SearchStatus::OUT_OF_TIME;
-            return result;
+            if (stopwatch.has_finished())
+            {
+                result.status = SearchStatus::OUT_OF_TIME;
+                return result;
+            }
+
+            const auto state = state_repository.get_state(*queue.front());
+            queue.pop_front();
+
+            auto& search_node = get_or_create_search_node(state.get_index(), search_nodes);
+
+            /* Close state. */
+
+            if (search_node.status == SearchNodeStatus::CLOSED || search_node.status == SearchNodeStatus::DEAD_END)
+            {
+                continue;
+            }
+
+            if (search_node.g_value > g_value)
+            {
+                applicable_action_generator.on_finish_search_layer();
+                state_repository.get_axiom_evaluator()->on_finish_search_layer();
+                event_handler->on_finish_g_layer(g_value);
+                g_value = search_node.g_value;
+            }
+
+            if (goal_strategy->test_dynamic_goal(state))
+            {
+                event_handler->on_expand_goal_state(state);
+
+                if (options.stop_if_goal)
+                {
+                    event_handler->on_end_search(state_repository.get_reached_fluent_ground_atoms_bitset().count(),
+                                                 state_repository.get_reached_derived_ground_atoms_bitset().count(),
+                                                 state_repository.get_state_count(),
+                                                 search_nodes.size(),
+                                                 ground_action_repository.size(),
+                                                 ground_axiom_repository.size());
+
+                    applicable_action_generator.on_end_search();
+                    state_repository.get_axiom_evaluator()->on_end_search();
+
+                    result.goal_state = state;
+                    result.plan = extract_total_ordered_plan(start_state, start_g_value, search_node, state.get_index(), search_nodes, context);
+                    result.status = SearchStatus::SOLVED;
+
+                    event_handler->on_solved(result.plan.value());
+
+                    return result;
+                }
+            }
+
+            /* Expand the successors of the state. */
+
+            event_handler->on_expand_state(state);
+
+            /* Ensure that the state is closed */
+
+            search_node.status = SearchNodeStatus::CLOSED;
+
+            for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
+            {
+                /* Open state. */
+                const auto [successor_state, successor_state_metric_value] = state_repository.get_or_create_successor_state(state, action, search_node.g_value);
+                auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
+                auto action_cost = successor_state_metric_value - search_node.g_value;
+
+                event_handler->on_generate_state(state, action, action_cost, successor_state);
+                if (pruning_strategy->test_prune_successor_state(state, successor_state, (successor_search_node.status == SearchNodeStatus::NEW)))
+                {
+                    event_handler->on_generate_state_not_in_search_tree(state, action, action_cost, successor_state);
+                    continue;
+                }
+                event_handler->on_generate_state_in_search_tree(state, action, action_cost, successor_state);
+
+                successor_search_node.status = SearchNodeStatus::OPEN;
+                successor_search_node.parent_state = state.get_index();
+                successor_search_node.g_value = search_node.g_value + 1;
+
+                queue.emplace_back(successor_state.get_packed_state());
+
+                if (search_nodes.size() >= options.max_num_states)
+                {
+                    result.status = SearchStatus::OUT_OF_STATES;
+                    return result;
+                }
+            }
         }
+    }
+    else
+    {
+        auto current_layer = StateList {};
+        auto next_layer = StateList {};
+        current_layer.push_back(start_state);
 
-        const auto state = state_repository.get_state(*queue.front());
-        queue.pop_front();
-
-        auto& search_node = get_or_create_search_node(state.get_index(), search_nodes);
-
-        /* Close state. */
-
-        if (search_node.status == SearchNodeStatus::CLOSED || search_node.status == SearchNodeStatus::DEAD_END)
+        while (!current_layer.empty())
         {
-            continue;
-        }
+            for (const auto& state : current_layer)
+            {
+                if (stopwatch.has_finished())
+                {
+                    result.status = SearchStatus::OUT_OF_TIME;
+                    return result;
+                }
 
-        if (search_node.g_value > g_value)
-        {
+                auto& search_node = get_or_create_search_node(state.get_index(), search_nodes);
+
+                if (search_node.status == SearchNodeStatus::CLOSED || search_node.status == SearchNodeStatus::DEAD_END)
+                {
+                    continue;
+                }
+
+                if (goal_strategy->test_dynamic_goal(state))
+                {
+                    event_handler->on_expand_goal_state(state);
+
+                    if (options.stop_if_goal)
+                    {
+                        event_handler->on_end_search(state_repository.get_reached_fluent_ground_atoms_bitset().count(),
+                                                     state_repository.get_reached_derived_ground_atoms_bitset().count(),
+                                                     state_repository.get_state_count(),
+                                                     search_nodes.size(),
+                                                     ground_action_repository.size(),
+                                                     ground_axiom_repository.size());
+
+                        applicable_action_generator.on_end_search();
+                        state_repository.get_axiom_evaluator()->on_end_search();
+
+                        result.goal_state = state;
+                        result.plan = extract_total_ordered_plan(start_state, start_g_value, search_node, state.get_index(), search_nodes, context);
+                        result.status = SearchStatus::SOLVED;
+
+                        event_handler->on_solved(result.plan.value());
+
+                        return result;
+                    }
+                }
+
+                event_handler->on_expand_state(state);
+                search_node.status = SearchNodeStatus::CLOSED;
+
+                for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
+                {
+                    const auto [successor_state, successor_state_metric_value] =
+                        state_repository.get_or_create_successor_state(state, action, search_node.g_value);
+                    auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
+                    auto action_cost = successor_state_metric_value - search_node.g_value;
+
+                    event_handler->on_generate_state(state, action, action_cost, successor_state);
+                    if (pruning_strategy->test_prune_successor_state(state, successor_state, (successor_search_node.status == SearchNodeStatus::NEW)))
+                    {
+                        event_handler->on_generate_state_not_in_search_tree(state, action, action_cost, successor_state);
+                        continue;
+                    }
+                    event_handler->on_generate_state_in_search_tree(state, action, action_cost, successor_state);
+
+                    successor_search_node.status = SearchNodeStatus::OPEN;
+                    successor_search_node.parent_state = state.get_index();
+                    successor_search_node.g_value = search_node.g_value + 1;
+
+                    next_layer.emplace_back(successor_state);
+
+                    if (search_nodes.size() >= options.max_num_states)
+                    {
+                        result.status = SearchStatus::OUT_OF_STATES;
+                        return result;
+                    }
+                }
+            }
+
+            if (next_layer.empty())
+            {
+                break;
+            }
+
             applicable_action_generator.on_finish_search_layer();
             state_repository.get_axiom_evaluator()->on_finish_search_layer();
             event_handler->on_finish_g_layer(g_value);
-            g_value = search_node.g_value;
-        }
 
-        if (goal_strategy->test_dynamic_goal(state))
-        {
-            event_handler->on_expand_goal_state(state);
-
-            if (options.stop_if_goal)
-            {
-                event_handler->on_end_search(state_repository.get_reached_fluent_ground_atoms_bitset().count(),
-                                             state_repository.get_reached_derived_ground_atoms_bitset().count(),
-                                             state_repository.get_state_count(),
-                                             search_nodes.size(),
-                                             ground_action_repository.size(),
-                                             ground_axiom_repository.size());
-
-                applicable_action_generator.on_end_search();
-                state_repository.get_axiom_evaluator()->on_end_search();
-
-                result.goal_state = state;
-                result.plan = extract_total_ordered_plan(start_state, start_g_value, search_node, state.get_index(), search_nodes, context);
-                result.status = SearchStatus::SOLVED;
-
-                event_handler->on_solved(result.plan.value());
-
-                return result;
-            }
-        }
-
-        /* Expand the successors of the state. */
-
-        event_handler->on_expand_state(state);
-
-        /* Ensure that the state is closed */
-
-        search_node.status = SearchNodeStatus::CLOSED;
-
-        for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
-        {
-            /* Open state. */
-            const auto [successor_state, successor_state_metric_value] = state_repository.get_or_create_successor_state(state, action, search_node.g_value);
-            auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
-            auto action_cost = successor_state_metric_value - search_node.g_value;
-
-            event_handler->on_generate_state(state, action, action_cost, successor_state);
-            if (pruning_strategy->test_prune_successor_state(state, successor_state, (successor_search_node.status == SearchNodeStatus::NEW)))
-            {
-                event_handler->on_generate_state_not_in_search_tree(state, action, action_cost, successor_state);
-                continue;
-            }
-            event_handler->on_generate_state_in_search_tree(state, action, action_cost, successor_state);
-
-            successor_search_node.status = SearchNodeStatus::OPEN;
-            successor_search_node.parent_state = state.get_index();
-            successor_search_node.g_value = search_node.g_value + 1;
-
-            queue.emplace_back(successor_state.get_packed_state());
-
-            if (search_nodes.size() >= options.max_num_states)
-            {
-                result.status = SearchStatus::OUT_OF_STATES;
-                return result;
-            }
+            ++g_value;
+            layer_ordering_strategy->order_layer(next_layer, g_value);
+            current_layer = std::move(next_layer);
+            next_layer.clear();
         }
     }
 

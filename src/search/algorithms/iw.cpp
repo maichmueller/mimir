@@ -1108,6 +1108,7 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
         options_i.start_state = start_state;
         options_i.event_handler = brfs_event_handler;
         options_i.goal_strategy = goal_strategy;
+        options_i.layer_ordering_strategy = options.layer_ordering_strategy;
         options_i.pruning_strategy = (cur_arity > 0) ? ArityKNoveltyPruningStrategyImpl::create(cur_arity, INITIAL_TABLE_ATOMS) :
                                                        ArityZeroNoveltyPruningStrategyImpl::create(start_state);
 

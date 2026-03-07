@@ -7,6 +7,7 @@ from pymimir.advanced.search import BrFSOptions as AdvancedBrFSOptions
 # from pymimir.advanced.search import BrFSStatistics as AdvancedBrFSStatistics
 from pymimir.advanced.search import find_solution_brfs as advanced_brfs
 from pymimir.advanced.search import IBrFSEventHandler as AdvancedBrFSEventHandler
+from pymimir.advanced.search import ILayerOrderingStrategy as AdvancedILayerOrderingStrategy
 
 from .wrapper_formalism import GroundAction, Problem, State
 from .wrapper_search import SearchResult
@@ -20,6 +21,7 @@ def brfs(problem: 'Problem',
          start_state: 'State',
          max_time_seconds: float = -1,
          max_num_states: int = -1,
+         layer_ordering_strategy: 'Union[AdvancedILayerOrderingStrategy, None]' = None,
          on_expand_state: 'Union[Callable[[State], None], None]' = None,
          on_expand_goal_state: 'Union[Callable[[State], None], None]' = None,
          on_generate_state: 'Union[Callable[[State, GroundAction, float, State], None], None]' = None,
@@ -37,6 +39,8 @@ def brfs(problem: 'Problem',
     :type max_time_seconds: float
     :param max_num_states: Maximum number of states to explore. Default is -1 (no limit).
     :type max_num_states: int
+    :param layer_ordering_strategy: Optional advanced layer ordering strategy used to reorder each frontier layer before expansion.
+    :type layer_ordering_strategy: AdvancedILayerOrderingStrategy | None
     :param on_expand_state: Callback function called when a state is expanded.
     :type on_expand_state: Callable[[State], None]
     :param on_expand_goal_state: Callback function called when a goal state is expanded.
@@ -56,6 +60,8 @@ def brfs(problem: 'Problem',
     assert isinstance(start_state, State), "Start state must be an instance of State."
     assert isinstance(max_time_seconds, (int, float)), "max_time_seconds must be an int or float."
     assert isinstance(max_num_states, int), "max_num_states must be an int."
+    assert layer_ordering_strategy is None or isinstance(layer_ordering_strategy, AdvancedILayerOrderingStrategy), \
+        "layer_ordering_strategy must be an advanced ILayerOrderingStrategy or None."
     # Define the event handler with the provided callback functions.
     class EventHandler(AdvancedBrFSEventHandler):
         def __init__(self) -> None:
@@ -118,6 +124,7 @@ def brfs(problem: 'Problem',
     if max_num_states > 0: advanced_options.max_num_states = max_num_states
     advanced_options.start_state = start_state._advanced_state
     advanced_options.event_handler = EventHandler()
+    advanced_options.layer_ordering_strategy = layer_ordering_strategy
     # Invoke the BrFS search algorithm
     result = advanced_brfs(problem._search_context, advanced_options)
     status = result.status.name.lower()

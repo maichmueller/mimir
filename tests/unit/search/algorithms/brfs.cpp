@@ -17,6 +17,7 @@
 
 #include "mimir/search/algorithms/brfs.hpp"
 
+#include "mimir/search/algorithms/strategies/layer_ordering_strategy.hpp"
 #include "mimir/formalism/repositories.hpp"
 #include "mimir/search/algorithms.hpp"
 #include "mimir/search/applicable_action_generators.hpp"
@@ -26,6 +27,8 @@
 #include "mimir/search/search_context.hpp"
 #include "mimir/search/state_repository.hpp"
 
+#include <algorithm>
+#include <optional>
 #include <gtest/gtest.h>
 
 using namespace mimir::search;
@@ -125,7 +128,112 @@ public:
     }
 
     const GroundedAxiomEvaluatorImpl::Statistics& get_axiom_evaluator_statistics() const { return m_axiom_evaluator_event_handler->get_statistics(); }
+
+    const Problem& get_problem() const { return m_problem; }
+    const SearchContext& get_search_context() const { return m_search_context; }
 };
+
+class RecordingBrFSEventHandler : public brfs::EventHandlerBase<RecordingBrFSEventHandler>
+{
+private:
+    std::optional<State> m_start_state;
+    StateList m_root_generated_states;
+    StateList m_expanded_states;
+
+    friend class brfs::EventHandlerBase<RecordingBrFSEventHandler>;
+
+    void on_expand_state_impl(const State& state) { m_expanded_states.push_back(state); }
+
+    void on_expand_goal_state_impl(const State& state)
+    {
+        [[maybe_unused]] const auto& ignored_state = state;
+    }
+
+    void on_generate_state_impl(const State& state, formalism::GroundAction action, ContinuousCost action_cost, const State& successor_state)
+    {
+        [[maybe_unused]] const auto& ignored_state = state;
+        [[maybe_unused]] const auto& ignored_action = action;
+        [[maybe_unused]] const auto ignored_action_cost = action_cost;
+        [[maybe_unused]] const auto& ignored_successor_state = successor_state;
+    }
+
+    void on_generate_state_in_search_tree_impl(const State& state,
+                                               formalism::GroundAction action,
+                                               ContinuousCost action_cost,
+                                               const State& successor_state)
+    {
+        [[maybe_unused]] const auto& ignored_action = action;
+        [[maybe_unused]] const auto ignored_action_cost = action_cost;
+
+        if (m_start_state.has_value() && (state.get_index() == m_start_state->get_index()))
+        {
+            m_root_generated_states.push_back(successor_state);
+        }
+    }
+
+    void on_generate_state_not_in_search_tree_impl(const State& state,
+                                                   formalism::GroundAction action,
+                                                   ContinuousCost action_cost,
+                                                   const State& successor_state)
+    {
+        [[maybe_unused]] const auto& ignored_state = state;
+        [[maybe_unused]] const auto& ignored_action = action;
+        [[maybe_unused]] const auto ignored_action_cost = action_cost;
+        [[maybe_unused]] const auto& ignored_successor_state = successor_state;
+    }
+
+    void on_finish_g_layer_impl(uint32_t g_value, uint64_t num_expanded_states, uint64_t num_generated_states)
+    {
+        [[maybe_unused]] const auto ignored_g_value = g_value;
+        [[maybe_unused]] const auto ignored_num_expanded_states = num_expanded_states;
+        [[maybe_unused]] const auto ignored_num_generated_states = num_generated_states;
+    }
+
+    void on_start_search_impl(const State& start_state) { m_start_state = start_state; }
+
+    void on_end_search_impl(uint64_t num_reached_fluent_atoms,
+                            uint64_t num_reached_derived_atoms,
+                            uint64_t num_states,
+                            uint64_t num_nodes,
+                            uint64_t num_actions,
+                            uint64_t num_axioms)
+    {
+        [[maybe_unused]] const auto ignored_num_reached_fluent_atoms = num_reached_fluent_atoms;
+        [[maybe_unused]] const auto ignored_num_reached_derived_atoms = num_reached_derived_atoms;
+        [[maybe_unused]] const auto ignored_num_states = num_states;
+        [[maybe_unused]] const auto ignored_num_nodes = num_nodes;
+        [[maybe_unused]] const auto ignored_num_actions = num_actions;
+        [[maybe_unused]] const auto ignored_num_axioms = num_axioms;
+    }
+
+    void on_solved_impl(const Plan& plan)
+    {
+        [[maybe_unused]] const auto& ignored_plan = plan;
+    }
+
+    void on_unsolvable_impl() {}
+
+    void on_exhausted_impl() {}
+
+public:
+    explicit RecordingBrFSEventHandler(formalism::Problem problem) : EventHandlerBase(problem, false) {}
+
+    const StateList& get_root_generated_states() const { return m_root_generated_states; }
+    const StateList& get_expanded_states() const { return m_expanded_states; }
+};
+
+static std::vector<Index> get_state_indices(const StateList& states)
+{
+    auto indices = std::vector<Index> {};
+    indices.reserve(states.size());
+
+    for (const auto& state : states)
+    {
+        indices.push_back(state.get_index());
+    }
+
+    return indices;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Classical planning
@@ -466,6 +574,54 @@ TEST(MimirTests, SearchAlgorithmsBrFSLiftedGripperTest)
 
     EXPECT_EQ(brfs_statistics.get_num_generated_until_g_value().back(), 44);
     EXPECT_EQ(brfs_statistics.get_num_expanded_until_g_value().back(), 12);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSDefaultLayerOrderingUsesGenerationOrder)
+{
+    auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+    auto event_handler = std::make_shared<RecordingBrFSEventHandler>(brfs.get_problem());
+
+    auto options = brfs::Options();
+    options.event_handler = event_handler;
+    options.stop_if_goal = false;
+
+    const auto result = brfs::find_solution(brfs.get_search_context(), options);
+    EXPECT_EQ(result.status, SearchStatus::EXHAUSTED);
+
+    const auto generated_indices = get_state_indices(event_handler->get_root_generated_states());
+    const auto expanded_indices = get_state_indices(event_handler->get_expanded_states());
+
+    ASSERT_GE(generated_indices.size(), 2);
+    ASSERT_GE(expanded_indices.size(), generated_indices.size() + 1);
+
+    const auto actual_first_layer_indices =
+        std::vector<Index>(expanded_indices.begin() + 1, expanded_indices.begin() + 1 + generated_indices.size());
+    EXPECT_EQ(actual_first_layer_indices, generated_indices);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSReverseLayerOrderingReordersFirstLayer)
+{
+    auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+    auto event_handler = std::make_shared<RecordingBrFSEventHandler>(brfs.get_problem());
+
+    auto options = brfs::Options();
+    options.event_handler = event_handler;
+    options.layer_ordering_strategy = ReverseOrderLayerOrderingStrategyImpl::create();
+    options.stop_if_goal = false;
+
+    const auto result = brfs::find_solution(brfs.get_search_context(), options);
+    EXPECT_EQ(result.status, SearchStatus::EXHAUSTED);
+
+    auto expected_indices = get_state_indices(event_handler->get_root_generated_states());
+    const auto expanded_indices = get_state_indices(event_handler->get_expanded_states());
+
+    ASSERT_GE(expected_indices.size(), 2);
+    ASSERT_GE(expanded_indices.size(), expected_indices.size() + 1);
+
+    std::reverse(expected_indices.begin(), expected_indices.end());
+    const auto actual_first_layer_indices =
+        std::vector<Index>(expanded_indices.begin() + 1, expanded_indices.begin() + 1 + expected_indices.size());
+    EXPECT_EQ(actual_first_layer_indices, expected_indices);
 }
 
 /**

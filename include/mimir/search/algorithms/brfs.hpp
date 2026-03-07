@@ -35,6 +35,7 @@ struct Options
     EventHandler event_handler = nullptr;
     GoalStrategy goal_strategy = nullptr;
     PruningStrategy pruning_strategy = nullptr;
+    LayerOrderingStrategy layer_ordering_strategy = nullptr;
     bool stop_if_goal = true;
     uint32_t max_num_states = std::numeric_limits<uint32_t>::max();
     uint32_t max_time_in_ms = std::numeric_limits<uint32_t>::max();

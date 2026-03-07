@@ -182,6 +182,16 @@ class NoPruningStrategyImpl;
 using NoPruningStrategy = std::shared_ptr<NoPruningStrategyImpl>;
 class DuplicatePruningStrategyImpl;
 using DuplicatePruningStrategy = std::shared_ptr<DuplicatePruningStrategyImpl>;
+class ILayerOrderingStrategy;
+using LayerOrderingStrategy = std::shared_ptr<ILayerOrderingStrategy>;
+class InOrderLayerOrderingStrategyImpl;
+using InOrderLayerOrderingStrategy = std::shared_ptr<InOrderLayerOrderingStrategyImpl>;
+class ReverseOrderLayerOrderingStrategyImpl;
+using ReverseOrderLayerOrderingStrategy = std::shared_ptr<ReverseOrderLayerOrderingStrategyImpl>;
+class RandomizedLayerOrderingStrategyImpl;
+using RandomizedLayerOrderingStrategy = std::shared_ptr<RandomizedLayerOrderingStrategyImpl>;
+class GoalCountLayerOrderingStrategyImpl;
+using GoalCountLayerOrderingStrategy = std::shared_ptr<GoalCountLayerOrderingStrategyImpl>;
 namespace iw
 {
 class ArityZeroNoveltyPruningStrategyImpl;
