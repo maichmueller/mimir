@@ -255,6 +255,27 @@ public:
     const std::vector<Index>& get_first_layer_scored_state_indices() const { return m_first_layer_scored_state_indices; }
 };
 
+class ConstantScoringLayerOrderingStrategy : public ILayerOrderingStrategy
+{
+public:
+    bool supports_eager_scoring() const override { return true; }
+
+    ContinuousCost score_state(const State& state, DiscreteCost g_value) const override
+    {
+        [[maybe_unused]] const auto& ignored_state = state;
+        [[maybe_unused]] const auto ignored_g_value = g_value;
+        return 1.0;
+    }
+
+    bool prefer_higher_scores() const override { return true; }
+
+    void order_layer(StateList& states, DiscreteCost g_value) override
+    {
+        [[maybe_unused]] auto& ignored_states = states;
+        [[maybe_unused]] const auto ignored_g_value = g_value;
+    }
+};
+
 static std::vector<Index> get_state_indices(const StateList& states)
 {
     auto indices = std::vector<Index> {};
@@ -705,6 +726,167 @@ TEST(MimirTests, SearchAlgorithmsBrFSCappedLayerUsesEagerScoringAndStopsEarly)
 
     ASSERT_GE(capped_expanded_indices.size(), 2);
     EXPECT_EQ(capped_expanded_indices[1], capped_generated_indices.back());
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSBeamWidthRequiresEagerScoringLayerOrderingStrategy)
+{
+    auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+
+    auto options = brfs::Options();
+    options.layer_ordering_strategy = ReverseOrderLayerOrderingStrategyImpl::create();
+    options.beam_width = 2;
+    options.stop_if_goal = false;
+
+    EXPECT_THROW(brfs::find_solution(brfs.get_search_context(), options), std::invalid_argument);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSBeamWidthConflictsWithNextLayerLimit)
+{
+    auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+
+    auto options = brfs::Options();
+    options.layer_ordering_strategy = std::make_shared<RecordingScoringLayerOrderingStrategy>();
+    options.max_next_layer_states = 2;
+    options.beam_width = 2;
+    options.stop_if_goal = false;
+
+    EXPECT_THROW(brfs::find_solution(brfs.get_search_context(), options), std::invalid_argument);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSBeamSurvivorsOnlyRequiresSupportingPruningStrategy)
+{
+    auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+
+    auto options = brfs::Options();
+    options.layer_ordering_strategy = std::make_shared<RecordingScoringLayerOrderingStrategy>();
+    options.beam_width = 2;
+    options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
+    options.stop_if_goal = false;
+
+    EXPECT_THROW(brfs::find_solution(brfs.get_search_context(), options), std::invalid_argument);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSBeamRetainsTopKScoredSuccessors)
+{
+    auto baseline_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+    auto baseline_event_handler = std::make_shared<RecordingBrFSEventHandler>(baseline_brfs.get_problem());
+
+    auto baseline_options = brfs::Options();
+    baseline_options.event_handler = baseline_event_handler;
+    baseline_options.stop_if_goal = false;
+
+    const auto baseline_result = brfs::find_solution(baseline_brfs.get_search_context(), baseline_options);
+    EXPECT_EQ(baseline_result.status, SearchStatus::EXHAUSTED);
+
+    const auto baseline_generated_indices = get_state_indices(baseline_event_handler->get_root_generated_states());
+    ASSERT_GT(baseline_generated_indices.size(), 2);
+
+    auto beam_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+    auto beam_event_handler = std::make_shared<RecordingBrFSEventHandler>(beam_brfs.get_problem());
+
+    auto beam_options = brfs::Options();
+    beam_options.event_handler = beam_event_handler;
+    beam_options.layer_ordering_strategy = std::make_shared<RecordingScoringLayerOrderingStrategy>();
+    beam_options.beam_width = 2;
+    beam_options.stop_if_goal = false;
+
+    const auto beam_result = brfs::find_solution(beam_brfs.get_search_context(), beam_options);
+    EXPECT_EQ(beam_result.status, SearchStatus::EXHAUSTED);
+
+    const auto beam_generated_indices = get_state_indices(beam_event_handler->get_root_generated_states());
+    const auto beam_expanded_indices = get_state_indices(beam_event_handler->get_expanded_states());
+    const auto expected_kept_indices =
+        std::vector<Index>(baseline_generated_indices.end() - 2, baseline_generated_indices.end());
+    auto expected_ordered_indices = expected_kept_indices;
+    std::reverse(expected_ordered_indices.begin(), expected_ordered_indices.end());
+
+    EXPECT_EQ(beam_generated_indices, expected_ordered_indices);
+    ASSERT_GE(beam_expanded_indices.size(), expected_ordered_indices.size() + 1);
+    EXPECT_EQ(std::vector<Index>(beam_expanded_indices.begin() + 1, beam_expanded_indices.begin() + 1 + expected_ordered_indices.size()),
+              expected_ordered_indices);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSBeamEqualScoreUsesGenerationOrderByDefault)
+{
+    auto baseline_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+    auto baseline_event_handler = std::make_shared<RecordingBrFSEventHandler>(baseline_brfs.get_problem());
+
+    auto baseline_options = brfs::Options();
+    baseline_options.event_handler = baseline_event_handler;
+    baseline_options.stop_if_goal = false;
+
+    const auto baseline_result = brfs::find_solution(baseline_brfs.get_search_context(), baseline_options);
+    EXPECT_EQ(baseline_result.status, SearchStatus::EXHAUSTED);
+
+    const auto baseline_generated_indices = get_state_indices(baseline_event_handler->get_root_generated_states());
+    ASSERT_GT(baseline_generated_indices.size(), 2);
+
+    auto beam_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+    auto beam_event_handler = std::make_shared<RecordingBrFSEventHandler>(beam_brfs.get_problem());
+
+    auto beam_options = brfs::Options();
+    beam_options.event_handler = beam_event_handler;
+    beam_options.layer_ordering_strategy = std::make_shared<ConstantScoringLayerOrderingStrategy>();
+    beam_options.beam_width = 2;
+    beam_options.stop_if_goal = false;
+
+    const auto beam_result = brfs::find_solution(beam_brfs.get_search_context(), beam_options);
+    EXPECT_EQ(beam_result.status, SearchStatus::EXHAUSTED);
+
+    const auto beam_generated_indices = get_state_indices(beam_event_handler->get_root_generated_states());
+    const auto beam_expanded_indices = get_state_indices(beam_event_handler->get_expanded_states());
+    const auto expected_indices = std::vector<Index>(baseline_generated_indices.begin(), baseline_generated_indices.begin() + 2);
+
+    EXPECT_EQ(beam_generated_indices, expected_indices);
+    ASSERT_GE(beam_expanded_indices.size(), expected_indices.size() + 1);
+    EXPECT_EQ(std::vector<Index>(beam_expanded_indices.begin() + 1, beam_expanded_indices.begin() + 1 + expected_indices.size()),
+              expected_indices);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSBeamEqualScoreRandomTieBreakIsDeterministic)
+{
+    auto default_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+    auto default_event_handler = std::make_shared<RecordingBrFSEventHandler>(default_brfs.get_problem());
+
+    auto default_options = brfs::Options();
+    default_options.event_handler = default_event_handler;
+    default_options.layer_ordering_strategy = std::make_shared<ConstantScoringLayerOrderingStrategy>();
+    default_options.beam_width = 4;
+    default_options.stop_if_goal = false;
+
+    const auto default_result = brfs::find_solution(default_brfs.get_search_context(), default_options);
+    EXPECT_EQ(default_result.status, SearchStatus::EXHAUSTED);
+
+    const auto default_generated_indices = get_state_indices(default_event_handler->get_root_generated_states());
+
+    auto run_with_seed = [&](uint64_t seed)
+    {
+        auto beam_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+        auto beam_event_handler = std::make_shared<RecordingBrFSEventHandler>(beam_brfs.get_problem());
+
+        auto beam_options = brfs::Options();
+        beam_options.event_handler = beam_event_handler;
+        beam_options.layer_ordering_strategy = std::make_shared<ConstantScoringLayerOrderingStrategy>();
+        beam_options.beam_width = 4;
+        beam_options.randomize_equal_score_ties = true;
+        beam_options.equal_score_tie_seed = seed;
+        beam_options.stop_if_goal = false;
+
+        const auto beam_result = brfs::find_solution(beam_brfs.get_search_context(), beam_options);
+        EXPECT_EQ(beam_result.status, SearchStatus::EXHAUSTED);
+
+        const auto beam_generated_indices = get_state_indices(beam_event_handler->get_root_generated_states());
+        const auto beam_expanded_indices = get_state_indices(beam_event_handler->get_expanded_states());
+        const auto first_layer_expanded_indices =
+            std::vector<Index>(beam_expanded_indices.begin() + 1, beam_expanded_indices.begin() + 1 + beam_generated_indices.size());
+        return std::make_pair(beam_generated_indices, first_layer_expanded_indices);
+    };
+
+    const auto first_run = run_with_seed(7);
+    const auto second_run = run_with_seed(7);
+
+    EXPECT_EQ(first_run, second_run);
+    EXPECT_NE(first_run.first, default_generated_indices);
 }
 
 /**

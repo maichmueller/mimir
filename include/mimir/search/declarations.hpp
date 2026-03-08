@@ -178,6 +178,11 @@ using FFHeuristic = std::shared_ptr<FFHeuristicImpl>;
 /* Algorithms */
 class IPruningStrategy;
 using PruningStrategy = std::shared_ptr<IPruningStrategy>;
+enum class BeamNoveltyMode
+{
+    ALL_TESTED,
+    SURVIVORS_ONLY,
+};
 class NoPruningStrategyImpl;
 using NoPruningStrategy = std::shared_ptr<NoPruningStrategyImpl>;
 class DuplicatePruningStrategyImpl;

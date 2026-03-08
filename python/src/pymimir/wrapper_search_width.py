@@ -1,17 +1,24 @@
-from typing import Callable, Union
+from typing import Callable, Literal, Union
 
 from pymimir.advanced.formalism import GroundAction as AdvancedGroundAction
 from pymimir.advanced.search import State as AdvancedState
 
 from pymimir.advanced.search import BrFSOptions as AdvancedBrFSOptions
 from pymimir.advanced.search import BrFSStatistics as AdvancedBrFSStatistics
+from pymimir.advanced.search import BeamNoveltyMode as AdvancedBeamNoveltyMode
 from pymimir.advanced.search import find_solution_brfs as advanced_brfs
 from pymimir.advanced.search import find_solution_iw as advanced_iw
-from pymimir.advanced.search import ILayerOrderingStrategy as AdvancedILayerOrderingStrategy
-from pymimir.advanced.search import ProjectiveArityOneNoveltyPruningStrategy as AdvancedProjectiveArityOneNoveltyPruningStrategy
+from pymimir.advanced.search import (
+    ILayerOrderingStrategy as AdvancedILayerOrderingStrategy,
+)
+from pymimir.advanced.search import (
+    ProjectiveArityOneNoveltyPruningStrategy as AdvancedProjectiveArityOneNoveltyPruningStrategy,
+)
+
 # from pymimir.advanced.search import find_solution_siw as advanced_siw
 from pymimir.advanced.search import IBrFSEventHandler as AdvancedBrFSEventHandler
 from pymimir.advanced.search import IWOptions as AdvancedIWOptions
+
 # from pymimir.advanced.search import IWStatistics as AdvancedIWStatistics
 # from pymimir.advanced.search import SIWOptions as AdvancedSIWOptions
 # from pymimir.advanced.search import SIWStatistics as AdvancedSIWStatistics
@@ -24,41 +31,71 @@ from .wrapper_search import SearchResult
 # Width-based algorithms
 # ----------------------
 
-def iw(problem: 'Problem',
-       start_state: 'State',
-       max_arity: int,
-       layer_ordering_strategy: 'Union[AdvancedILayerOrderingStrategy, None]' = None,
-       max_next_layer_states: int = -1,
-       on_expand_state: 'Union[Callable[[State], None], None]' = None,
-       on_expand_goal_state: 'Union[Callable[[State], None], None]' = None,
-       on_generate_state: 'Union[Callable[[State, GroundAction, float, State], None], None]' = None,
-       on_generate_new_state: 'Union[Callable[[State, GroundAction, float, State], None], None]' = None,
-       on_prune_state: 'Union[Callable[[State, GroundAction, float, State], None], None]' = None) -> 'SearchResult':
+
+def iw(
+    problem: "Problem",
+    start_state: "State",
+    max_arity: int,
+    layer_ordering_strategy: "Union[AdvancedILayerOrderingStrategy, None]" = None,
+    max_next_layer_states: int = -1,
+    beam_width: int = -1,
+    beam_novelty_mode: 'Literal["all_tested", "survivors_only"]' = "all_tested",
+    randomize_equal_score_ties: bool = False,
+    equal_score_tie_seed: "Union[int, None]" = None,
+    on_expand_state: "Union[Callable[[State], None], None]" = None,
+    on_expand_goal_state: "Union[Callable[[State], None], None]" = None,
+    on_generate_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
+    on_generate_new_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
+    on_prune_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
+) -> "SearchResult":
     assert isinstance(problem, Problem), "Problem must be an instance of Problem."
     assert isinstance(start_state, State), "Start state must be an instance of State."
     assert isinstance(max_arity, int), "Max arity must be an integer."
     assert max_arity > 0, "Max arity must be positive."
-    assert isinstance(max_next_layer_states, int), "max_next_layer_states must be an int."
-    assert layer_ordering_strategy is None or isinstance(layer_ordering_strategy, AdvancedILayerOrderingStrategy), \
-        "layer_ordering_strategy must be an advanced ILayerOrderingStrategy or None."
+    assert isinstance(
+        max_next_layer_states, int
+    ), "max_next_layer_states must be an int."
+    assert isinstance(beam_width, int), "beam_width must be an int."
+    assert isinstance(
+        beam_novelty_mode, AdvancedBeamNoveltyMode
+    ) or beam_novelty_mode in (
+               "all_tested",
+               "survivors_only",
+           ), "beam_novelty_mode must be either enum entry in 'BeamNoveltyMode', or a str matching 'all_tested' or 'survivors_only'."
+    assert isinstance(
+        randomize_equal_score_ties, bool
+    ), "randomize_equal_score_ties must be a bool."
+    assert equal_score_tie_seed is None or isinstance(
+        equal_score_tie_seed, int
+    ), "equal_score_tie_seed must be an int or None."
+    assert layer_ordering_strategy is None or isinstance(
+        layer_ordering_strategy, AdvancedILayerOrderingStrategy
+    ), "layer_ordering_strategy must be an advanced ILayerOrderingStrategy or None."
+
     # Define the event handler with the provided callback functions.
     class EventHandler(AdvancedBrFSEventHandler):
         def __init__(self) -> None:
             super().__init__()
 
-        def on_expand_state(self, advanced_state: 'AdvancedState'):
+        def on_expand_state(self, advanced_state: "AdvancedState"):
             nonlocal problem, on_expand_state
             if on_expand_state:
                 state = State(advanced_state, problem)
                 on_expand_state(state)
 
-        def on_expand_goal_state(self, advanced_state: 'AdvancedState'):
+        def on_expand_goal_state(self, advanced_state: "AdvancedState"):
             nonlocal problem, on_expand_goal_state
             if on_expand_goal_state:
                 state = State(advanced_state, problem)
                 on_expand_goal_state(state)
 
-        def on_generate_state(self, advanced_state: 'AdvancedState', advanced_action: 'AdvancedGroundAction', action_cost: float, advanced_successor_state: 'AdvancedState'):
+        def on_generate_state(
+            self,
+            advanced_state: "AdvancedState",
+            advanced_action: "AdvancedGroundAction",
+            action_cost: float,
+            advanced_successor_state: "AdvancedState",
+        ):
             nonlocal problem, on_generate_state
             if on_generate_state:
                 state = State(advanced_state, problem)
@@ -66,7 +103,13 @@ def iw(problem: 'Problem',
                 successor_state = State(advanced_successor_state, problem)
                 on_generate_state(state, action, action_cost, successor_state)
 
-        def on_generate_state_in_search_tree(self, advanced_state: 'AdvancedState', advanced_action: 'AdvancedGroundAction', action_cost: float, advanced_successor_state: 'AdvancedState'):
+        def on_generate_state_in_search_tree(
+            self,
+            advanced_state: "AdvancedState",
+            advanced_action: "AdvancedGroundAction",
+            action_cost: float,
+            advanced_successor_state: "AdvancedState",
+        ):
             nonlocal problem, on_generate_new_state
             if on_generate_new_state:
                 state = State(advanced_state, problem)
@@ -74,7 +117,13 @@ def iw(problem: 'Problem',
                 successor_state = State(advanced_successor_state, problem)
                 on_generate_new_state(state, action, action_cost, successor_state)
 
-        def on_generate_state_not_in_search_tree(self, advanced_state: 'AdvancedState', advanced_action: 'AdvancedGroundAction', action_cost: float, advanced_successor_state: 'AdvancedState'):
+        def on_generate_state_not_in_search_tree(
+            self,
+            advanced_state: "AdvancedState",
+            advanced_action: "AdvancedGroundAction",
+            action_cost: float,
+            advanced_successor_state: "AdvancedState",
+        ):
             nonlocal problem, on_prune_state
             if on_prune_state:
                 state = State(advanced_state, problem)
@@ -83,65 +132,139 @@ def iw(problem: 'Problem',
                 on_prune_state(state, action, action_cost, successor_state)
 
         # The following events are ignored in this interface.
-        def on_finish_g_layer(self, value: int): pass
-        def on_start_search(self, arg: 'AdvancedState'): pass
-        def on_end_search(self, arg0: int, arg1: int, arg2: int, arg3: int, arg4: int, arg5: int): pass
-        def on_solved(self, arg): pass
-        def on_unsolvable(self): pass
-        def on_exhausted(self): pass
-        def get_statistics(self) -> 'AdvancedBrFSStatistics':
+        def on_finish_g_layer(self, value: int):
+            pass
+
+        def on_start_search(self, arg: "AdvancedState"):
+            pass
+
+        def on_end_search(
+            self, arg0: int, arg1: int, arg2: int, arg3: int, arg4: int, arg5: int
+        ):
+            pass
+
+        def on_solved(self, arg):
+            pass
+
+        def on_unsolvable(self):
+            pass
+
+        def on_exhausted(self):
+            pass
+
+        def get_statistics(self) -> "AdvancedBrFSStatistics":
             return AdvancedBrFSStatistics()
 
     advanced_options = AdvancedIWOptions()
     advanced_options.start_state = start_state._advanced_state
     advanced_options.brfs_event_handler = EventHandler()
     advanced_options.layer_ordering_strategy = layer_ordering_strategy
-    if max_next_layer_states > 0: advanced_options.max_next_layer_states = max_next_layer_states
+    if max_next_layer_states > 0:
+        advanced_options.max_next_layer_states = max_next_layer_states
+    if beam_width > 0:
+        advanced_options.beam_width = beam_width
+    if isinstance(beam_novelty_mode, AdvancedBeamNoveltyMode):
+        advanced_options.beam_novelty_mode = beam_novelty_mode
+    else:
+        advanced_options.beam_novelty_mode = (
+            AdvancedBeamNoveltyMode.ALL_TESTED
+            if beam_novelty_mode == "all_tested"
+            else AdvancedBeamNoveltyMode.SURVIVORS_ONLY
+        )
+    advanced_options.randomize_equal_score_ties = randomize_equal_score_ties
+    advanced_options.equal_score_tie_seed = (
+        0 if equal_score_tie_seed is None else equal_score_tie_seed
+    )
     advanced_options.max_arity = max_arity
     result = advanced_iw(problem._search_context, advanced_options)
     status = result.status.name.lower()
-    solution = [GroundAction(x, problem) for x in result.plan.get_actions()] if result.plan else None
+    solution = (
+        [GroundAction(x, problem) for x in result.plan.get_actions()]
+        if result.plan
+        else None
+    )
     solution_cost = result.plan.get_cost() if result.plan else None
     goal_state = State(result.goal_state, problem) if result.goal_state else None
     return SearchResult(status, solution, solution_cost, goal_state)
 
 
-def projective_iw(problem: 'Problem',
-                  start_state: 'State',
-                  typed_projection: bool = False,
-                  keep_depth_one_novel: bool = True,
-                  layer_ordering_strategy: 'Union[AdvancedILayerOrderingStrategy, None]' = None,
-                  max_next_layer_states: int = -1,
-                  on_expand_state: 'Union[Callable[[State], None], None]' = None,
-                  on_expand_goal_state: 'Union[Callable[[State], None], None]' = None,
-                  on_generate_state: 'Union[Callable[[State, GroundAction, float, State], None], None]' = None,
-                  on_generate_new_state: 'Union[Callable[[State, GroundAction, float, State], None], None]' = None,
-                  on_prune_state: 'Union[Callable[[State, GroundAction, float, State], None], None]' = None) -> 'SearchResult':
+def projective_iw(
+    problem: "Problem",
+    start_state: "State",
+    typed_projection: bool = False,
+    keep_depth_one_novel: bool = True,
+    layer_ordering_strategy: "Union[AdvancedILayerOrderingStrategy, None]" = None,
+    max_next_layer_states: int = -1,
+    beam_width: int = -1,
+    beam_novelty_mode: 'Literal["all_tested", "survivors_only"]' = "all_tested",
+    randomize_equal_score_ties: bool = False,
+    equal_score_tie_seed: "Union[int, None]" = None,
+    on_expand_state: "Union[Callable[[State], None], None]" = None,
+    on_expand_goal_state: "Union[Callable[[State], None], None]" = None,
+    on_generate_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
+    on_generate_new_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
+    on_prune_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
+) -> "SearchResult":
+    """Run BrFS with projective IW(1) pruning.
+
+    This is width-based search with an IW(1) novelty test over an augmented atom set.
+    A non-unary atom `p(x1, ..., xn)` is projected into positional unary features
+    `p[1](x1), ..., p[n](xn)`. Novelty is checked on those projections.
+
+    If `beam_width` is set, search stays layer-based: depth-(d+1) candidates are
+    novelty-checked first, then ranked by the layer ordering strategy, and only the
+    best beam states continue.
+    """
     assert isinstance(problem, Problem), "Problem must be an instance of Problem."
     assert isinstance(start_state, State), "Start state must be an instance of State."
     assert isinstance(typed_projection, bool), "typed_projection must be a boolean."
-    assert isinstance(keep_depth_one_novel, bool), "keep_depth_one_novel must be a boolean."
-    assert isinstance(max_next_layer_states, int), "max_next_layer_states must be an int."
-    assert layer_ordering_strategy is None or isinstance(layer_ordering_strategy, AdvancedILayerOrderingStrategy), \
-        "layer_ordering_strategy must be an advanced ILayerOrderingStrategy or None."
+    assert isinstance(
+        keep_depth_one_novel, bool
+    ), "keep_depth_one_novel must be a boolean."
+    assert isinstance(
+        max_next_layer_states, int
+    ), "max_next_layer_states must be an int."
+    assert isinstance(beam_width, int), "beam_width must be an int."
+    assert isinstance(
+        beam_novelty_mode, AdvancedBeamNoveltyMode
+    ) or beam_novelty_mode in (
+               "all_tested",
+               "survivors_only",
+           ), "beam_novelty_mode must be either enum entry in 'BeamNoveltyMode', or a str matching 'all_tested' or 'survivors_only'."
+    assert isinstance(
+        randomize_equal_score_ties, bool
+    ), "randomize_equal_score_ties must be a bool."
+    assert equal_score_tie_seed is None or isinstance(
+        equal_score_tie_seed, int
+    ), "equal_score_tie_seed must be an int or None."
+    assert layer_ordering_strategy is None or isinstance(
+        layer_ordering_strategy, AdvancedILayerOrderingStrategy
+    ), "layer_ordering_strategy must be an advanced ILayerOrderingStrategy or None."
+
     # Define the event handler with the provided callback functions.
     class EventHandler(AdvancedBrFSEventHandler):
         def __init__(self) -> None:
             super().__init__()
 
-        def on_expand_state(self, advanced_state: 'AdvancedState'):
+        def on_expand_state(self, advanced_state: "AdvancedState"):
             nonlocal problem, on_expand_state
             if on_expand_state:
                 state = State(advanced_state, problem)
                 on_expand_state(state)
 
-        def on_expand_goal_state(self, advanced_state: 'AdvancedState'):
+        def on_expand_goal_state(self, advanced_state: "AdvancedState"):
             nonlocal problem, on_expand_goal_state
             if on_expand_goal_state:
                 state = State(advanced_state, problem)
                 on_expand_goal_state(state)
 
-        def on_generate_state(self, advanced_state: 'AdvancedState', advanced_action: 'AdvancedGroundAction', action_cost: float, advanced_successor_state: 'AdvancedState'):
+        def on_generate_state(
+            self,
+            advanced_state: "AdvancedState",
+            advanced_action: "AdvancedGroundAction",
+            action_cost: float,
+            advanced_successor_state: "AdvancedState",
+        ):
             nonlocal problem, on_generate_state
             if on_generate_state:
                 state = State(advanced_state, problem)
@@ -149,7 +272,13 @@ def projective_iw(problem: 'Problem',
                 successor_state = State(advanced_successor_state, problem)
                 on_generate_state(state, action, action_cost, successor_state)
 
-        def on_generate_state_in_search_tree(self, advanced_state: 'AdvancedState', advanced_action: 'AdvancedGroundAction', action_cost: float, advanced_successor_state: 'AdvancedState'):
+        def on_generate_state_in_search_tree(
+            self,
+            advanced_state: "AdvancedState",
+            advanced_action: "AdvancedGroundAction",
+            action_cost: float,
+            advanced_successor_state: "AdvancedState",
+        ):
             nonlocal problem, on_generate_new_state
             if on_generate_new_state:
                 state = State(advanced_state, problem)
@@ -157,7 +286,13 @@ def projective_iw(problem: 'Problem',
                 successor_state = State(advanced_successor_state, problem)
                 on_generate_new_state(state, action, action_cost, successor_state)
 
-        def on_generate_state_not_in_search_tree(self, advanced_state: 'AdvancedState', advanced_action: 'AdvancedGroundAction', action_cost: float, advanced_successor_state: 'AdvancedState'):
+        def on_generate_state_not_in_search_tree(
+            self,
+            advanced_state: "AdvancedState",
+            advanced_action: "AdvancedGroundAction",
+            action_cost: float,
+            advanced_successor_state: "AdvancedState",
+        ):
             nonlocal problem, on_prune_state
             if on_prune_state:
                 state = State(advanced_state, problem)
@@ -166,26 +301,61 @@ def projective_iw(problem: 'Problem',
                 on_prune_state(state, action, action_cost, successor_state)
 
         # The following events are ignored in this interface.
-        def on_finish_g_layer(self, value: int): pass
-        def on_start_search(self, arg: 'AdvancedState'): pass
-        def on_end_search(self, arg0: int, arg1: int, arg2: int, arg3: int, arg4: int, arg5: int): pass
-        def on_solved(self, arg): pass
-        def on_unsolvable(self): pass
-        def on_exhausted(self): pass
-        def get_statistics(self) -> 'AdvancedBrFSStatistics':
+        def on_finish_g_layer(self, value: int):
+            pass
+
+        def on_start_search(self, arg: "AdvancedState"):
+            pass
+
+        def on_end_search(
+            self, arg0: int, arg1: int, arg2: int, arg3: int, arg4: int, arg5: int
+        ):
+            pass
+
+        def on_solved(self, arg):
+            pass
+
+        def on_unsolvable(self):
+            pass
+
+        def on_exhausted(self):
+            pass
+
+        def get_statistics(self) -> "AdvancedBrFSStatistics":
             return AdvancedBrFSStatistics()
 
     advanced_options = AdvancedBrFSOptions()
     advanced_options.start_state = start_state._advanced_state
     advanced_options.event_handler = EventHandler()
     advanced_options.layer_ordering_strategy = layer_ordering_strategy
-    if max_next_layer_states > 0: advanced_options.max_next_layer_states = max_next_layer_states
-    advanced_options.pruning_strategy = AdvancedProjectiveArityOneNoveltyPruningStrategy.create(problem._advanced_problem,
-                                                                                                typed_projection,
-                                                                                                keep_depth_one_novel)
+    if max_next_layer_states > 0:
+        advanced_options.max_next_layer_states = max_next_layer_states
+    if beam_width > 0:
+        advanced_options.beam_width = beam_width
+    if isinstance(beam_novelty_mode, AdvancedBeamNoveltyMode):
+        advanced_options.beam_novelty_mode = beam_novelty_mode
+    else:
+        advanced_options.beam_novelty_mode = (
+            AdvancedBeamNoveltyMode.ALL_TESTED
+            if beam_novelty_mode == "all_tested"
+            else AdvancedBeamNoveltyMode.SURVIVORS_ONLY
+        )
+    advanced_options.randomize_equal_score_ties = randomize_equal_score_ties
+    advanced_options.equal_score_tie_seed = (
+        0 if equal_score_tie_seed is None else equal_score_tie_seed
+    )
+    advanced_options.pruning_strategy = (
+        AdvancedProjectiveArityOneNoveltyPruningStrategy.create(
+            problem._advanced_problem, typed_projection, keep_depth_one_novel
+        )
+    )
     result = advanced_brfs(problem._search_context, advanced_options)
     status = result.status.name.lower()
-    solution = [GroundAction(x, problem) for x in result.plan.get_actions()] if result.plan else None
+    solution = (
+        [GroundAction(x, problem) for x in result.plan.get_actions()]
+        if result.plan
+        else None
+    )
     solution_cost = result.plan.get_cost() if result.plan else None
     goal_state = State(result.goal_state, problem) if result.goal_state else None
     return SearchResult(status, solution, solution_cost, goal_state)

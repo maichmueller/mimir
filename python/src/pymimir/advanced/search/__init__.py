@@ -3,6 +3,7 @@
 # Enums
 from pymimir.pymimir.advanced.search import (
     SymmetryPruning,
+    BeamNoveltyMode,
     SearchNodeStatus,
     SearchStatus,
     MatchTreeSplitMetric,

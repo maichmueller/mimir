@@ -24,6 +24,7 @@
 #include "mimir/search/algorithms/iw/pruning_strategy.hpp"
 #include "mimir/search/algorithms/iw/tuple_index_generators.hpp"
 #include "mimir/search/algorithms/iw/tuple_index_mapper.hpp"
+#include "mimir/search/algorithms/strategies/layer_ordering_strategy.hpp"
 #include "mimir/search/applicable_action_generators.hpp"
 #include "mimir/search/axiom_evaluators.hpp"
 #include "mimir/search/grounders.hpp"
@@ -203,6 +204,40 @@ static std::pair<GroundAtomList<FluentTag>, GroundAtom<FluentTag>> find_projecti
     }
 
     throw std::runtime_error("SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyTest: Could not find suitable projected-atom test candidate.");
+}
+
+static std::tuple<State, State, State, State, size_t> create_iw1_beam_novelty_test_states(const Problem& problem, const SearchContext& search_context)
+{
+    auto fluent_atoms = GroundAtomList<FluentTag> {};
+    for (const auto& atom : problem->get_repositories().get_ground_atoms<FluentTag>())
+    {
+        fluent_atoms.push_back(&atom);
+    }
+
+    if (fluent_atoms.size() < 3)
+    {
+        throw std::runtime_error("SearchAlgorithmsIWBeamNoveltyTest: Requires at least three fluent ground atoms.");
+    }
+
+    auto& state_repository = *search_context->get_state_repository();
+    const auto numeric_values = problem->get_initial_function_to_value<FluentTag>();
+
+    auto parent_a_atoms = GroundAtomList<FluentTag> { fluent_atoms[0] };
+    auto parent_b_atoms = GroundAtomList<FluentTag> { fluent_atoms[1] };
+    auto succ_a_atoms = GroundAtomList<FluentTag> { fluent_atoms[0], fluent_atoms[2] };
+    auto succ_b_atoms = GroundAtomList<FluentTag> { fluent_atoms[1], fluent_atoms[2] };
+
+    const auto [parent_a, parent_a_metric_value] = state_repository.get_or_create_state(parent_a_atoms, numeric_values);
+    const auto [parent_b, parent_b_metric_value] = state_repository.get_or_create_state(parent_b_atoms, numeric_values);
+    const auto [succ_a, succ_a_metric_value] = state_repository.get_or_create_state(succ_a_atoms, numeric_values);
+    const auto [succ_b, succ_b_metric_value] = state_repository.get_or_create_state(succ_b_atoms, numeric_values);
+
+    [[maybe_unused]] const auto ignored_parent_a_metric_value = parent_a_metric_value;
+    [[maybe_unused]] const auto ignored_parent_b_metric_value = parent_b_metric_value;
+    [[maybe_unused]] const auto ignored_succ_a_metric_value = succ_a_metric_value;
+    [[maybe_unused]] const auto ignored_succ_b_metric_value = succ_b_metric_value;
+
+    return { parent_a, parent_b, succ_a, succ_b, fluent_atoms.size() };
 }
 
 TEST(MimirTests, SearchAlgorithmsIWSingleStateTupleIndexGeneratorWidth0Test)
@@ -482,6 +517,80 @@ TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyTyped
 
     EXPECT_FALSE(typed_projective_iw1->test_prune_initial_state(state));
     EXPECT_TRUE(typed_projective_iw1->test_prune_successor_state(state, succ_state, true));
+}
+
+TEST(MimirTests, SearchAlgorithmsIWArityOneBeamAllTestedContaminatesNoveltyTest)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "gripper/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl");
+    const auto problem = ProblemImpl::create(domain_file, problem_file);
+    const auto search_context = SearchContextImpl::create(problem, SearchContextImpl::Options(SearchContextImpl::LiftedOptions()));
+
+    const auto [parent_a, parent_b, succ_a, succ_b, num_atoms] = create_iw1_beam_novelty_test_states(problem, search_context);
+    const auto iw1 = iw::ArityKNoveltyPruningStrategyImpl::create(1, num_atoms);
+
+    EXPECT_FALSE(iw1->test_prune_initial_state(parent_a));
+    EXPECT_FALSE(iw1->test_prune_successor_state(parent_a, parent_b, true));
+    EXPECT_FALSE(iw1->test_prune_successor_state_for_beam_selection(parent_a, succ_a, true, BeamNoveltyMode::ALL_TESTED));
+    EXPECT_TRUE(iw1->test_prune_successor_state_for_beam_selection(parent_b, succ_b, true, BeamNoveltyMode::ALL_TESTED));
+}
+
+TEST(MimirTests, SearchAlgorithmsIWArityZeroBeamSurvivorsOnlySupportedTest)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "gripper/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "gripper/p-2-0.pddl");
+    const auto problem = ProblemImpl::create(domain_file, problem_file);
+    const auto search_context = SearchContextImpl::create(problem, SearchContextImpl::Options(SearchContextImpl::LiftedOptions()));
+
+    auto options = iw::Options();
+    options.max_arity = 0;
+    options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(problem);
+    options.beam_width = 2;
+    options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
+
+    const auto result = iw::find_solution(search_context, options);
+    EXPECT_EQ(result.status, SearchStatus::FAILED);
+}
+
+TEST(MimirTests, SearchAlgorithmsIWArityOneBeamSurvivorsOnlyDoesNotContaminateNoveltyTest)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "gripper/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl");
+    const auto problem = ProblemImpl::create(domain_file, problem_file);
+    const auto search_context = SearchContextImpl::create(problem, SearchContextImpl::Options(SearchContextImpl::LiftedOptions()));
+
+    const auto [parent_a, parent_b, succ_a, succ_b, num_atoms] = create_iw1_beam_novelty_test_states(problem, search_context);
+    const auto iw1 = iw::ArityKNoveltyPruningStrategyImpl::create(1, num_atoms);
+
+    EXPECT_FALSE(iw1->test_prune_initial_state(parent_a));
+    EXPECT_FALSE(iw1->test_prune_successor_state(parent_a, parent_b, true));
+    EXPECT_FALSE(iw1->test_prune_successor_state_for_beam_selection(parent_a, succ_a, true, BeamNoveltyMode::SURVIVORS_ONLY));
+    EXPECT_FALSE(iw1->test_prune_successor_state_for_beam_selection(parent_b, succ_b, true, BeamNoveltyMode::SURVIVORS_ONLY));
+
+    iw1->on_begin_beam_replay(BeamNoveltyMode::SURVIVORS_ONLY);
+    EXPECT_FALSE(iw1->test_prune_successor_state_for_beam_replay(parent_b, succ_b, true, BeamNoveltyMode::SURVIVORS_ONLY));
+    iw1->on_end_beam_replay(BeamNoveltyMode::SURVIVORS_ONLY);
+}
+
+TEST(MimirTests, SearchAlgorithmsIWArityOneBeamSurvivorsOnlyReplayCanReduceBeamWidthTest)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "gripper/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl");
+    const auto problem = ProblemImpl::create(domain_file, problem_file);
+    const auto search_context = SearchContextImpl::create(problem, SearchContextImpl::Options(SearchContextImpl::LiftedOptions()));
+
+    const auto [parent_a, parent_b, succ_a, succ_b, num_atoms] = create_iw1_beam_novelty_test_states(problem, search_context);
+    const auto iw1 = iw::ArityKNoveltyPruningStrategyImpl::create(1, num_atoms);
+
+    EXPECT_FALSE(iw1->test_prune_initial_state(parent_a));
+    EXPECT_FALSE(iw1->test_prune_successor_state(parent_a, parent_b, true));
+    EXPECT_FALSE(iw1->test_prune_successor_state_for_beam_selection(parent_a, succ_a, true, BeamNoveltyMode::SURVIVORS_ONLY));
+    EXPECT_FALSE(iw1->test_prune_successor_state_for_beam_selection(parent_b, succ_b, true, BeamNoveltyMode::SURVIVORS_ONLY));
+
+    iw1->on_begin_beam_replay(BeamNoveltyMode::SURVIVORS_ONLY);
+    EXPECT_FALSE(iw1->test_prune_successor_state_for_beam_replay(parent_a, succ_a, true, BeamNoveltyMode::SURVIVORS_ONLY));
+    EXPECT_TRUE(iw1->test_prune_successor_state_for_beam_replay(parent_b, succ_b, true, BeamNoveltyMode::SURVIVORS_ONLY));
+    iw1->on_end_beam_replay(BeamNoveltyMode::SURVIVORS_ONLY);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

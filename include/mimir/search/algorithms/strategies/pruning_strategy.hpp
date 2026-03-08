@@ -32,6 +32,18 @@ public:
 
     virtual bool test_prune_initial_state(const State& state) = 0;
     virtual bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) = 0;
+
+    virtual bool supports_beam_novelty_mode(BeamNoveltyMode beam_novelty_mode) const;
+    virtual bool test_prune_successor_state_for_beam_selection(const State& state,
+                                                               const State& succ_state,
+                                                               bool is_new_succ,
+                                                               BeamNoveltyMode beam_novelty_mode);
+    virtual void on_begin_beam_replay(BeamNoveltyMode beam_novelty_mode);
+    virtual bool test_prune_successor_state_for_beam_replay(const State& state,
+                                                            const State& succ_state,
+                                                            bool is_new_succ,
+                                                            BeamNoveltyMode beam_novelty_mode);
+    virtual void on_end_beam_replay(BeamNoveltyMode beam_novelty_mode);
 };
 
 /// @brief `NoPruningStrategyImpl` never prunes a newly generated state.

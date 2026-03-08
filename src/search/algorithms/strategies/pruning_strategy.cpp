@@ -17,10 +17,59 @@
 
 #include "mimir/search/algorithms/strategies/pruning_strategy.hpp"
 
+#include <stdexcept>
+
 using namespace mimir::formalism;
 
 namespace mimir::search
 {
+
+bool IPruningStrategy::supports_beam_novelty_mode(BeamNoveltyMode beam_novelty_mode) const
+{
+    return beam_novelty_mode == BeamNoveltyMode::ALL_TESTED;
+}
+
+bool IPruningStrategy::test_prune_successor_state_for_beam_selection(const State& state,
+                                                                     const State& succ_state,
+                                                                     bool is_new_succ,
+                                                                     BeamNoveltyMode beam_novelty_mode)
+{
+    if (!supports_beam_novelty_mode(beam_novelty_mode))
+    {
+        throw std::invalid_argument("IPruningStrategy does not support the requested beam novelty mode.");
+    }
+
+    return test_prune_successor_state(state, succ_state, is_new_succ);
+}
+
+void IPruningStrategy::on_begin_beam_replay(BeamNoveltyMode beam_novelty_mode)
+{
+    if (!supports_beam_novelty_mode(beam_novelty_mode))
+    {
+        throw std::invalid_argument("IPruningStrategy does not support the requested beam novelty mode.");
+    }
+}
+
+bool IPruningStrategy::test_prune_successor_state_for_beam_replay(const State& state,
+                                                                  const State& succ_state,
+                                                                  bool is_new_succ,
+                                                                  BeamNoveltyMode beam_novelty_mode)
+{
+    if (!supports_beam_novelty_mode(beam_novelty_mode))
+    {
+        throw std::invalid_argument("IPruningStrategy does not support the requested beam novelty mode.");
+    }
+
+    return test_prune_successor_state(state, succ_state, is_new_succ);
+}
+
+void IPruningStrategy::on_end_beam_replay(BeamNoveltyMode beam_novelty_mode)
+{
+    if (!supports_beam_novelty_mode(beam_novelty_mode))
+    {
+        throw std::invalid_argument("IPruningStrategy does not support the requested beam novelty mode.");
+    }
+}
 
 /* NoPruningStrategyImpl */
 bool NoPruningStrategyImpl::test_prune_initial_state(const State& state) { return false; }

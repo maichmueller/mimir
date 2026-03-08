@@ -37,6 +37,10 @@ struct Options
     PruningStrategy pruning_strategy = nullptr;
     LayerOrderingStrategy layer_ordering_strategy = nullptr;
     uint32_t max_next_layer_states = std::numeric_limits<uint32_t>::max();
+    uint32_t beam_width = std::numeric_limits<uint32_t>::max();
+    BeamNoveltyMode beam_novelty_mode = BeamNoveltyMode::ALL_TESTED;
+    bool randomize_equal_score_ties = false;
+    uint64_t equal_score_tie_seed = 0;
     bool stop_if_goal = true;
     uint32_t max_num_states = std::numeric_limits<uint32_t>::max();
     uint32_t max_time_in_ms = std::numeric_limits<uint32_t>::max();

@@ -300,6 +300,11 @@ void bind_module_definitions(nb::module_& m)
         .value("UNSOLVABLE", SearchStatus::UNSOLVABLE)
         .export_values();
 
+    nb::enum_<BeamNoveltyMode>(m, "BeamNoveltyMode")
+        .value("ALL_TESTED", BeamNoveltyMode::ALL_TESTED)
+        .value("SURVIVORS_ONLY", BeamNoveltyMode::SURVIVORS_ONLY)
+        .export_values();
+
     nb::enum_<match_tree::SplitMetricEnum>(m, "MatchTreeSplitMetric")
         .value("FREQUENCY", match_tree::SplitMetricEnum::FREQUENCY)
         .value("GINI", match_tree::SplitMetricEnum::GINI);
@@ -928,6 +933,10 @@ void bind_module_definitions(nb::module_& m)
         .def_rw("pruning_strategy", &brfs::Options::pruning_strategy)
         .def_rw("layer_ordering_strategy", &brfs::Options::layer_ordering_strategy)
         .def_rw("max_next_layer_states", &brfs::Options::max_next_layer_states)
+        .def_rw("beam_width", &brfs::Options::beam_width)
+        .def_rw("beam_novelty_mode", &brfs::Options::beam_novelty_mode)
+        .def_rw("randomize_equal_score_ties", &brfs::Options::randomize_equal_score_ties)
+        .def_rw("equal_score_tie_seed", &brfs::Options::equal_score_tie_seed)
         .def_rw("stop_if_goal", &brfs::Options::stop_if_goal)
         .def_rw("max_num_states", &brfs::Options::max_num_states)
         .def_rw("max_time_in_ms", &brfs::Options::max_time_in_ms);
@@ -1108,6 +1117,10 @@ void bind_module_definitions(nb::module_& m)
         .def_rw("goal_strategy", &iw::Options::goal_strategy)
         .def_rw("layer_ordering_strategy", &iw::Options::layer_ordering_strategy)
         .def_rw("max_next_layer_states", &iw::Options::max_next_layer_states)
+        .def_rw("beam_width", &iw::Options::beam_width)
+        .def_rw("beam_novelty_mode", &iw::Options::beam_novelty_mode)
+        .def_rw("randomize_equal_score_ties", &iw::Options::randomize_equal_score_ties)
+        .def_rw("equal_score_tie_seed", &iw::Options::equal_score_tie_seed)
         .def_rw("max_arity", &iw::Options::max_arity);
 
     m.def("find_solution_iw", &iw::find_solution, "search_context"_a, "options"_a);
