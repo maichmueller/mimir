@@ -92,6 +92,7 @@ private:
     formalism::Problem m_problem;
     bool m_typed_projection;
     bool m_keep_depth_one_novel;
+    bool m_keep_goal_nonunary_atoms;
     std::optional<Index> m_root_state_index;
     std::unordered_set<Index> m_generated_states;
     UnorderedSet<ProjectedAtomKey> m_seen_projected_atoms;
@@ -112,11 +113,16 @@ public:
     /// Projective IW(1) keeps the usual width-1 novelty test, but it augments the atom set:
     /// every non-unary atom p(x1, ..., xn) is split into positional unary projections p[i](xi).
     /// Novelty is then checked on these projected features instead of only on the original atom.
+    /// Optionally, positive goal atoms of arity > 1 can also stay as full atoms in this feature set.
     explicit ProjectiveArityOneNoveltyPruningStrategyImpl(formalism::Problem problem,
                                                           bool typed_projection = false,
-                                                          bool keep_depth_one_novel = true);
+                                                          bool keep_depth_one_novel = true,
+                                                          bool keep_goal_nonunary_atoms = false);
 
-    static PruningStrategy create(formalism::Problem problem, bool typed_projection = false, bool keep_depth_one_novel = true);
+    static PruningStrategy create(formalism::Problem problem,
+                                  bool typed_projection = false,
+                                  bool keep_depth_one_novel = true,
+                                  bool keep_goal_nonunary_atoms = false);
 
     bool test_prune_initial_state(const State& state) override;
     bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;

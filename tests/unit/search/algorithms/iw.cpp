@@ -519,6 +519,47 @@ TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyTyped
     EXPECT_TRUE(typed_projective_iw1->test_prune_successor_state(state, succ_state, true));
 }
 
+TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyKeepGoalNonUnaryAtomsTest)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "driverlog/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "driverlog/test_problem.pddl");
+    const auto problem = ProblemImpl::create(domain_file, problem_file);
+
+    const auto search_context = SearchContextImpl::create(problem, SearchContextImpl::Options(SearchContextImpl::LiftedOptions()));
+    auto& state_repository = *search_context->get_state_repository();
+
+    const auto at_predicate = problem->get_domain()->get_predicate<FluentTag>("at");
+    const auto package1 = problem->get_problem_or_domain_object("package1");
+    const auto truck1 = problem->get_problem_or_domain_object("truck1");
+    const auto s0 = problem->get_problem_or_domain_object("s0");
+    const auto s1 = problem->get_problem_or_domain_object("s1");
+    auto covering_atoms = GroundAtomList<FluentTag> {
+        problem->get_or_create_ground_atom<FluentTag>(at_predicate, ObjectList { package1, s1 }),
+        problem->get_or_create_ground_atom<FluentTag>(at_predicate, ObjectList { truck1, s0 }),
+    };
+    const auto target_atom = problem->get_or_create_ground_atom<FluentTag>(at_predicate, ObjectList { package1, s0 });
+    const auto numeric_values = problem->get_initial_function_to_value<FluentTag>();
+
+    const auto [state, state_metric_value] = state_repository.get_or_create_state(covering_atoms, numeric_values);
+    [[maybe_unused]] const auto ignored_state_metric_value = state_metric_value;
+
+    covering_atoms.push_back(target_atom);
+    std::sort(covering_atoms.begin(), covering_atoms.end(), [](const auto lhs, const auto rhs) { return lhs->get_index() < rhs->get_index(); });
+    covering_atoms.erase(std::unique(covering_atoms.begin(), covering_atoms.end()), covering_atoms.end());
+
+    const auto [succ_state, succ_state_metric_value] = state_repository.get_or_create_state(covering_atoms, numeric_values);
+    [[maybe_unused]] const auto ignored_succ_state_metric_value = succ_state_metric_value;
+
+    const auto projective_iw1 = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem, false, false, false);
+    const auto goal_aware_projective_iw1 = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem, false, false, true);
+
+    EXPECT_FALSE(projective_iw1->test_prune_initial_state(state));
+    EXPECT_FALSE(goal_aware_projective_iw1->test_prune_initial_state(state));
+
+    EXPECT_TRUE(projective_iw1->test_prune_successor_state(state, succ_state, true));
+    EXPECT_FALSE(goal_aware_projective_iw1->test_prune_successor_state(state, succ_state, true));
+}
+
 TEST(MimirTests, SearchAlgorithmsIWArityOneBeamAllTestedContaminatesNoveltyTest)
 {
     const auto domain_file = fs::path(std::string(DATA_DIR) + "gripper/domain.pddl");

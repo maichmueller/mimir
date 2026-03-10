@@ -193,6 +193,7 @@ def projective_iw(
     start_state: "State",
     typed_projection: bool = False,
     keep_depth_one_novel: bool = True,
+    keep_goal_nonunary_atoms: bool = False,
     layer_ordering_strategy: "Union[AdvancedILayerOrderingStrategy, None]" = None,
     max_next_layer_states: int = -1,
     beam_width: int = -1,
@@ -210,6 +211,8 @@ def projective_iw(
     This is width-based search with an IW(1) novelty test over an augmented atom set.
     A non-unary atom `p(x1, ..., xn)` is projected into positional unary features
     `p[1](x1), ..., p[n](xn)`. Novelty is checked on those projections.
+    If `keep_goal_nonunary_atoms` is set, positive goal atoms of arity > 1 are also
+    tracked as full atoms, in addition to their positional projections.
 
     If `beam_width` is set, search stays layer-based: depth-(d+1) candidates are
     novelty-checked first, then ranked by the layer ordering strategy, and only the
@@ -221,6 +224,9 @@ def projective_iw(
     assert isinstance(
         keep_depth_one_novel, bool
     ), "keep_depth_one_novel must be a boolean."
+    assert isinstance(
+        keep_goal_nonunary_atoms, bool
+    ), "keep_goal_nonunary_atoms must be a boolean."
     assert isinstance(
         max_next_layer_states, int
     ), "max_next_layer_states must be an int."
@@ -346,7 +352,10 @@ def projective_iw(
     )
     advanced_options.pruning_strategy = (
         AdvancedProjectiveArityOneNoveltyPruningStrategy.create(
-            problem._advanced_problem, typed_projection, keep_depth_one_novel
+            problem._advanced_problem,
+            typed_projection,
+            keep_depth_one_novel,
+            keep_goal_nonunary_atoms,
         )
     )
     result = advanced_brfs(problem._search_context, advanced_options)

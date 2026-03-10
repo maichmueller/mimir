@@ -195,10 +195,12 @@ void ArityKNoveltyPruningStrategyImpl::on_end_beam_replay(BeamNoveltyMode beam_n
 
 ProjectiveArityOneNoveltyPruningStrategyImpl::ProjectiveArityOneNoveltyPruningStrategyImpl(formalism::Problem problem,
                                                                                            bool typed_projection,
-                                                                                           bool keep_depth_one_novel) :
+                                                                                           bool keep_depth_one_novel,
+                                                                                           bool keep_goal_nonunary_atoms) :
     m_problem(std::move(problem)),
     m_typed_projection(typed_projection),
     m_keep_depth_one_novel(keep_depth_one_novel),
+    m_keep_goal_nonunary_atoms(keep_goal_nonunary_atoms),
     m_root_state_index(std::nullopt),
     m_generated_states(),
     m_seen_projected_atoms(),
@@ -214,9 +216,14 @@ ProjectiveArityOneNoveltyPruningStrategyImpl::ProjectiveArityOneNoveltyPruningSt
 
 PruningStrategy ProjectiveArityOneNoveltyPruningStrategyImpl::create(formalism::Problem problem,
                                                                      bool typed_projection,
-                                                                     bool keep_depth_one_novel)
+                                                                     bool keep_depth_one_novel,
+                                                                     bool keep_goal_nonunary_atoms)
 {
-    return std::make_shared<ProjectiveArityOneNoveltyPruningStrategyImpl>(std::move(problem), typed_projection, keep_depth_one_novel);
+    return std::make_shared<ProjectiveArityOneNoveltyPruningStrategyImpl>(
+        std::move(problem),
+        typed_projection,
+        keep_depth_one_novel,
+        keep_goal_nonunary_atoms);
 }
 
 void ProjectiveArityOneNoveltyPruningStrategyImpl::collect_projected_atom_keys(
@@ -233,6 +240,11 @@ void ProjectiveArityOneNoveltyPruningStrategyImpl::collect_projected_atom_keys(
     {
         out_projected_atom_keys.emplace_back(0, atom_index, 0, 0, 0);
         return;
+    }
+
+    if (m_keep_goal_nonunary_atoms && m_problem->get_goal_atoms_bitset<PositiveTag, FluentTag>().get(atom_index))
+    {
+        out_projected_atom_keys.emplace_back(0, atom_index, 0, 0, 0);
     }
 
     const auto predicate_index = ground_atom->get_predicate()->get_index();
