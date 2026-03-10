@@ -30,6 +30,22 @@ namespace mimir::search
 
 class StateRepositoryImpl : public std::enable_shared_from_this<StateRepositoryImpl>
 {
+public:
+    struct StagedSuccessorState
+    {
+        FlatBitset fluent_atoms;
+        FlatBitset derived_atoms;
+        FlatDoubleList fluent_numeric_variables;
+        ContinuousCost metric_value;
+    };
+
+    struct StagedSuccessorScratch
+    {
+        FlatBitset applied_positive_effect_atoms;
+        FlatBitset applied_negative_effect_atoms;
+        SharedObjectPool<UnpackedStateImpl> unpacked_state_pool;
+    };
+
 private:
     AxiomEvaluator m_axiom_evaluator;  ///< The axiom evaluator.
 
@@ -74,6 +90,23 @@ public:
     /// @param state_metric_value is the metric value of the state.
     /// @return the successor state and its associated metric value.
     std::pair<State, ContinuousCost> get_or_create_successor_state(const State& state, formalism::GroundAction action, ContinuousCost state_metric_value);
+
+    /// @brief Compute a successor into worker-local dense storage for the grounded
+    /// parallel beam path. This does not mutate the repository state.
+    StagedSuccessorState compute_staged_successor_state(const State& state,
+                                                        formalism::GroundAction action,
+                                                        ContinuousCost state_metric_value,
+                                                        StagedSuccessorScratch& scratch) const;
+
+    /// @brief Materialize a worker-computed parallel beam successor into the
+    /// canonical repository state map on the main search thread.
+    std::pair<State, ContinuousCost> get_or_create_staged_successor_state(const StagedSuccessorState& successor_state);
+
+    /// @brief Build a temporary successor state for worker-side novelty checks and
+    /// eager beam scoring. The returned state is not inserted into the repository.
+    State make_temporary_staged_successor_state(const StagedSuccessorState& successor_state,
+                                                Index temporary_state_index,
+                                                StagedSuccessorScratch& scratch);
 
     /// @brief Get the state with the given packed state.
     /// This operation unpacks the state.

@@ -55,6 +55,8 @@ GroundedApplicableActionGeneratorImpl::create(Problem problem, match_tree::Match
         new GroundedApplicableActionGeneratorImpl(std::move(problem), std::move(match_tree), std::move(event_handler)));
 }
 
+bool GroundedApplicableActionGeneratorImpl::supports_parallel_beam() const { return true; }
+
 mimir::generator<GroundAction> GroundedApplicableActionGeneratorImpl::create_applicable_action_generator(const State& state)
 {
     auto ground_actions = GroundActionList {};

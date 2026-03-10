@@ -47,6 +47,19 @@ bool ArityZeroNoveltyPruningStrategyImpl::supports_beam_novelty_mode(BeamNovelty
     return beam_novelty_mode == BeamNoveltyMode::ALL_TESTED || beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY;
 }
 
+bool ArityZeroNoveltyPruningStrategyImpl::test_prune_successor_state_for_beam_selection(const State& state,
+                                                                                         const State& succ_state,
+                                                                                         bool is_new_succ,
+                                                                                         BeamNoveltyMode beam_novelty_mode)
+{
+    if (beam_novelty_mode == BeamNoveltyMode::ALL_TESTED)
+    {
+        return test_prune_successor_state(state, succ_state, is_new_succ);
+    }
+
+    return state != m_initial_state || !is_new_succ;
+}
+
 size_t ArityKNoveltyPruningStrategyImpl::AtomIndexListHash::operator()(const AtomIndexList& atom_indices) const noexcept
 {
     auto seed = atom_indices.size();
@@ -73,7 +86,7 @@ PruningStrategy ArityKNoveltyPruningStrategyImpl::create(size_t arity, size_t nu
 
 bool ArityKNoveltyPruningStrategyImpl::test_transition_novelty(const State& state, const State& succ_state)
 {
-    return m_novelty_table.test_novelty(state, succ_state);
+    return m_novelty_table.test_novelty_read_only(state, succ_state);
 }
 
 bool ArityKNoveltyPruningStrategyImpl::test_transition_novelty_and_update_delta(const State& state, const State& succ_state)
@@ -136,16 +149,10 @@ bool ArityKNoveltyPruningStrategyImpl::test_prune_successor_state_for_beam_selec
         return test_prune_successor_state(state, succ_state, is_new_succ);
     }
 
-    if (state == succ_state)
+    if (!is_new_succ)
     {
         return true;
     }
-
-    if (m_generated_states.count(succ_state.get_index()))
-    {
-        return true;
-    }
-    m_generated_states.insert(succ_state.get_index());
 
     return !test_transition_novelty(state, succ_state);
 }
@@ -280,9 +287,10 @@ void ProjectiveArityOneNoveltyPruningStrategyImpl::collect_projected_atom_keys(
 
 bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_atom_novelty(AtomIndex atom_index) const
 {
-    collect_projected_atom_keys(atom_index, m_scratch_projected_atom_keys);
+    auto projected_atom_keys = std::vector<ProjectedAtomKey> {};
+    collect_projected_atom_keys(atom_index, projected_atom_keys);
 
-    return std::ranges::any_of(m_scratch_projected_atom_keys,
+    return std::ranges::any_of(projected_atom_keys,
                                [this](const auto& projected_atom) { return !m_seen_projected_atoms.count(projected_atom); });
 }
 
@@ -518,16 +526,10 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_successor_state_fo
         return test_prune_successor_state(state, succ_state, is_new_succ);
     }
 
-    if (state == succ_state)
+    if (!is_new_succ)
     {
         return true;
     }
-
-    if (m_generated_states.count(succ_state.get_index()))
-    {
-        return true;
-    }
-    m_generated_states.insert(succ_state.get_index());
 
     // Beam selection uses the same projective width-1 novelty test. In SURVIVORS_ONLY the
     // test is read-only here, and the kept states replay novelty updates later in beam order.

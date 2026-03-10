@@ -35,6 +35,7 @@ struct Options
     BeamNoveltyMode beam_novelty_mode = BeamNoveltyMode::ALL_TESTED;
     bool randomize_equal_score_ties = false;
     uint64_t equal_score_tie_seed = 0;
+    uint32_t parallel_beam_num_threads = 1;
     size_t max_arity = MAX_ARITY - 1;
 
     Options() = default;

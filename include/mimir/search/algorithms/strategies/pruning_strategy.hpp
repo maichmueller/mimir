@@ -52,6 +52,7 @@ class NoPruningStrategyImpl : public IPruningStrategy
 public:
     bool test_prune_initial_state(const State& state) override;
     bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;
+    bool supports_beam_novelty_mode(BeamNoveltyMode beam_novelty_mode) const override;
 
     static NoPruningStrategy create();
 };
@@ -62,6 +63,7 @@ class DuplicatePruningStrategyImpl : public IPruningStrategy
 public:
     bool test_prune_initial_state(const State& state) override;
     bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;
+    bool supports_beam_novelty_mode(BeamNoveltyMode beam_novelty_mode) const override;
 
     static DuplicatePruningStrategy create();
 };

@@ -942,6 +942,7 @@ void bind_module_definitions(nb::module_& m)
         .def_rw("beam_novelty_mode", &brfs::Options::beam_novelty_mode)
         .def_rw("randomize_equal_score_ties", &brfs::Options::randomize_equal_score_ties)
         .def_rw("equal_score_tie_seed", &brfs::Options::equal_score_tie_seed)
+        .def_rw("parallel_beam_num_threads", &brfs::Options::parallel_beam_num_threads)
         .def_rw("stop_if_goal", &brfs::Options::stop_if_goal)
         .def_rw("max_num_states", &brfs::Options::max_num_states)
         .def_rw("max_time_in_ms", &brfs::Options::max_time_in_ms);
@@ -1126,6 +1127,7 @@ void bind_module_definitions(nb::module_& m)
         .def_rw("beam_novelty_mode", &iw::Options::beam_novelty_mode)
         .def_rw("randomize_equal_score_ties", &iw::Options::randomize_equal_score_ties)
         .def_rw("equal_score_tie_seed", &iw::Options::equal_score_tie_seed)
+        .def_rw("parallel_beam_num_threads", &iw::Options::parallel_beam_num_threads)
         .def_rw("max_arity", &iw::Options::max_arity);
 
     m.def("find_solution_iw", &iw::find_solution, "search_context"_a, "options"_a);

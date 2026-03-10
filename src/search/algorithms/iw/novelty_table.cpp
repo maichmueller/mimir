@@ -185,6 +185,42 @@ bool DynamicNoveltyTable::test_novelty(const State& state, const State& succ_sta
     return false;
 }
 
+bool DynamicNoveltyTable::test_novelty_read_only(const State& state) const
+{
+    auto state_tuple_index_generator = StateTupleIndexGenerator(&m_tuple_index_mapper);
+
+    for (auto it = state_tuple_index_generator.begin(state); it != state_tuple_index_generator.end(); ++it)
+    {
+        const auto tuple_index = *it;
+
+        assert(tuple_index < m_table.size());
+
+        if (!m_table[tuple_index])
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool DynamicNoveltyTable::test_novelty_read_only(const State& state, const State& succ_state) const
+{
+    auto state_pair_tuple_index_generator = StatePairTupleIndexGenerator(&m_tuple_index_mapper);
+
+    for (auto it = state_pair_tuple_index_generator.begin(state, succ_state); it != state_pair_tuple_index_generator.end(); ++it)
+    {
+        const auto tuple_index = *it;
+
+        assert(tuple_index < m_table.size());
+
+        if (!m_table[tuple_index])
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool DynamicNoveltyTable::test_novelty_and_update_table(const State& state)
 {
     resize_to_fit(state);

@@ -57,6 +57,8 @@ GroundedAxiomEvaluatorImpl::create(Problem problem, match_tree::MatchTreeList<Gr
         new GroundedAxiomEvaluatorImpl(std::move(problem), std::move(match_tree_partitioning), std::move(event_handler)));
 }
 
+bool GroundedAxiomEvaluatorImpl::supports_parallel_beam() const { return true; }
+
 void GroundedAxiomEvaluatorImpl::generate_and_apply_axioms(UnpackedStateImpl& unpacked_state)
 {
     auto& dense_derived_atoms = unpacked_state.get_atoms<DerivedTag>();

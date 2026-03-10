@@ -33,6 +33,10 @@ class IAxiomEvaluator
 public:
     virtual ~IAxiomEvaluator() = default;
 
+    /// @brief Return whether this evaluator can participate in the grounded-only
+    /// parallel beam path without shared mutable search-layer state.
+    virtual bool supports_parallel_beam() const { return false; }
+
     /// @brief Generate all applicable axioms for a given set of ground atoms by running fixed point computation.
     virtual void generate_and_apply_axioms(UnpackedStateImpl& unpacked_state) = 0;
 

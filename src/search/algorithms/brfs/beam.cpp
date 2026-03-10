@@ -28,8 +28,11 @@
 #include "mimir/search/search_context.hpp"
 #include "mimir/search/search_space.hpp"
 #include "mimir/search/state_repository.hpp"
+#include "mimir/algorithms/BS_thread_pool.hpp"
 
 #include <algorithm>
+#include <future>
+#include <memory>
 #include <random>
 
 using namespace mimir::formalism;
@@ -77,6 +80,24 @@ struct BeamHeapCompare
     BeamRanking ranking;
 
     bool operator()(const BeamCandidate& lhs, const BeamCandidate& rhs) const { return ranking.better(lhs, rhs); }
+};
+
+struct ParallelBeamTaskInput
+{
+    const State* parent_state;
+    GroundAction action;
+    ContinuousCost parent_metric_value;
+    DiscreteCost successor_g_value;
+    uint64_t generation_sequence;
+};
+
+struct ParallelBeamEvaluatedCandidate
+{
+    ParallelBeamTaskInput task;
+    StateRepositoryImpl::StagedSuccessorState successor_state;
+    ContinuousCost action_cost;
+    ContinuousCost score;
+    bool pruned_for_selection;
 };
 
 void reject_beam_candidate(const BeamCandidate& candidate, const EventHandler& event_handler)
@@ -155,6 +176,43 @@ void sort_beam_candidates(std::vector<BeamCandidate>& beam_candidates, const Bea
 {
     std::sort(beam_candidates.begin(), beam_candidates.end(), [&ranking](const auto& lhs, const auto& rhs) { return ranking.better(lhs, rhs); });
 }
+
+void finalize_beam_layer(const EventHandler& event_handler,
+                         const PruningStrategy& pruning_strategy,
+                         BeamNoveltyMode beam_novelty_mode,
+                         SearchNodeVector& search_nodes,
+                         std::vector<BeamCandidate>& beam_candidates,
+                         StateList& next_layer)
+{
+    next_layer.clear();
+    next_layer.reserve(beam_candidates.size());
+
+    // In SURVIVORS_ONLY, only kept beam states are allowed to update the novelty table.
+    if (beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY)
+    {
+        pruning_strategy->on_begin_beam_replay(beam_novelty_mode);
+    }
+
+    for (const auto& candidate : beam_candidates)
+    {
+        if ((beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY)
+            && pruning_strategy->test_prune_successor_state_for_beam_replay(candidate.parent_state,
+                                                                            candidate.successor_state,
+                                                                            candidate.is_new_successor,
+                                                                            beam_novelty_mode))
+        {
+            reject_beam_candidate(candidate, event_handler);
+            continue;
+        }
+
+        admit_beam_candidate(candidate, search_nodes, next_layer, event_handler);
+    }
+
+    if (beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY)
+    {
+        pruning_strategy->on_end_beam_replay(beam_novelty_mode);
+    }
+}
 }  // namespace
 
 SearchResult find_solution_with_beam(const SearchContext& context,
@@ -182,6 +240,8 @@ SearchResult find_solution_with_beam(const SearchContext& context,
 
     const auto beam_width = options.beam_width;
     const auto beam_novelty_mode = options.beam_novelty_mode;
+    const auto parallel_beam_num_threads = options.parallel_beam_num_threads;
+    const auto use_parallel_beam = parallel_beam_num_threads > 1;
     const auto prefer_higher_scores = layer_ordering_strategy->prefer_higher_scores();
     const auto use_small_beam = (beam_width <= 64);
     const auto ranking = BeamRanking { prefer_higher_scores, options.randomize_equal_score_ties };
@@ -193,13 +253,130 @@ SearchResult find_solution_with_beam(const SearchContext& context,
     auto current_layer = StateList {};
     auto next_layer = StateList {};
     auto beam_candidates = std::vector<BeamCandidate> {};
+    auto parallel_chunk_tasks = std::vector<ParallelBeamTaskInput> {};
+    auto parallel_beam_pool = std::unique_ptr<BS::thread_pool> {};
     current_layer.push_back(start_state);
+
+    if (use_parallel_beam)
+    {
+        parallel_beam_pool = std::make_unique<BS::thread_pool>(parallel_beam_num_threads);
+        parallel_chunk_tasks.reserve(1024);
+    }
 
     while (!current_layer.empty())
     {
         beam_candidates.clear();
         beam_candidates.reserve(std::min<size_t>(beam_width, current_layer.size()));
         auto generation_sequence = uint64_t(0);
+        auto candidate_generation_sequence = uint64_t(0);
+
+        auto flush_parallel_chunk = [&]() -> bool
+        {
+            if (parallel_chunk_tasks.empty())
+            {
+                return true;
+            }
+
+            // Workers only compute successor contents, run the read-only selection test,
+            // and score surviving candidates. Canonical state insertion, duplicate checks,
+            // beam updates, and event callbacks stay serial in generation order.
+            auto futures = std::vector<std::future<ParallelBeamEvaluatedCandidate>> {};
+            futures.reserve(parallel_chunk_tasks.size());
+
+            for (const auto& task : parallel_chunk_tasks)
+            {
+                futures.push_back(parallel_beam_pool->submit_task([&state_repository,
+                                                                   &layer_ordering_strategy,
+                                                                   &pruning_strategy,
+                                                                   beam_novelty_mode,
+                                                                   task]()
+                                                                  {
+                                                                      thread_local auto scratch =
+                                                                          std::make_unique<StateRepositoryImpl::StagedSuccessorScratch>();
+
+                                                                      auto successor_state =
+                                                                          state_repository.compute_staged_successor_state(*task.parent_state,
+                                                                                                                         task.action,
+                                                                                                                         task.parent_metric_value,
+                                                                                                                         *scratch);
+                                                                      auto temporary_successor_state = state_repository.make_temporary_staged_successor_state(
+                                                                          successor_state,
+                                                                          static_cast<Index>(task.generation_sequence),
+                                                                          *scratch);
+                                                                      const auto action_cost = successor_state.metric_value - task.parent_metric_value;
+                                                                      const auto pruned_for_selection =
+                                                                          pruning_strategy->test_prune_successor_state_for_beam_selection(*task.parent_state,
+                                                                                                                                          temporary_successor_state,
+                                                                                                                                          true,
+                                                                                                                                          beam_novelty_mode);
+
+                                                                      auto evaluated_candidate = ParallelBeamEvaluatedCandidate { task,
+                                                                                                                                    std::move(successor_state),
+                                                                                                                                    action_cost,
+                                                                                                                                    0.0,
+                                                                                                                                    pruned_for_selection };
+                                                                      if (!evaluated_candidate.pruned_for_selection)
+                                                                      {
+                                                                          evaluated_candidate.score =
+                                                                              layer_ordering_strategy->score_state(temporary_successor_state,
+                                                                                                                   evaluated_candidate.task.successor_g_value);
+                                                                      }
+
+                                                                      return evaluated_candidate;
+                                                                  }));
+            }
+
+            for (auto& future : futures)
+            {
+                auto evaluated_candidate = future.get();
+                const auto [successor_state, successor_state_metric_value] =
+                    state_repository.get_or_create_staged_successor_state(evaluated_candidate.successor_state);
+                [[maybe_unused]] auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
+                [[maybe_unused]] const auto ignored_successor_state_metric_value = successor_state_metric_value;
+                const auto is_new_successor = generated_state_indices.insert(successor_state.get_index()).second;
+
+                event_handler->on_generate_state(*evaluated_candidate.task.parent_state,
+                                                 evaluated_candidate.task.action,
+                                                 evaluated_candidate.action_cost,
+                                                 successor_state);
+                if (!is_new_successor || evaluated_candidate.pruned_for_selection)
+                {
+                    event_handler->on_generate_state_not_in_search_tree(*evaluated_candidate.task.parent_state,
+                                                                        evaluated_candidate.task.action,
+                                                                        evaluated_candidate.action_cost,
+                                                                        successor_state);
+                    continue;
+                }
+
+                auto candidate = BeamCandidate { *evaluated_candidate.task.parent_state,
+                                                evaluated_candidate.task.action,
+                                                evaluated_candidate.action_cost,
+                                                successor_state,
+                                                evaluated_candidate.task.successor_g_value,
+                                                evaluated_candidate.score,
+                                                candidate_generation_sequence++,
+                                                options.randomize_equal_score_ties ? tie_break_rng() : uint64_t(0),
+                                                is_new_successor };
+
+                if (use_small_beam)
+                {
+                    add_candidate_to_small_beam(beam_candidates, std::move(candidate), beam_width, ranking, event_handler);
+                }
+                else
+                {
+                    add_candidate_to_heap_beam(beam_candidates, std::move(candidate), beam_width, ranking, heap_compare, event_handler);
+                }
+
+                if (search_nodes.size() >= options.max_num_states)
+                {
+                    result.status = SearchStatus::OUT_OF_STATES;
+                    return false;
+                }
+            }
+
+            parallel_chunk_tasks.clear();
+            return true;
+        };
 
         for (const auto& state : current_layer)
         {
@@ -247,45 +424,68 @@ SearchResult find_solution_with_beam(const SearchContext& context,
 
             for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
             {
-                const auto [successor_state, successor_state_metric_value] =
-                    state_repository.get_or_create_successor_state(state, action, search_node.g_value);
-                [[maybe_unused]] auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
-                auto action_cost = successor_state_metric_value - search_node.g_value;
-                const auto successor_g_value = search_node.g_value + 1;
-                const auto is_new_successor = generated_state_indices.insert(successor_state.get_index()).second;
-
-                event_handler->on_generate_state(state, action, action_cost, successor_state);
-                if (pruning_strategy->test_prune_successor_state_for_beam_selection(state, successor_state, is_new_successor, beam_novelty_mode))
+                if (!use_parallel_beam)
                 {
-                    event_handler->on_generate_state_not_in_search_tree(state, action, action_cost, successor_state);
+                    const auto [successor_state, successor_state_metric_value] =
+                        state_repository.get_or_create_successor_state(state, action, search_node.g_value);
+                    [[maybe_unused]] auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
+                    auto action_cost = successor_state_metric_value - search_node.g_value;
+                    const auto successor_g_value = search_node.g_value + 1;
+                    const auto is_new_successor = generated_state_indices.insert(successor_state.get_index()).second;
+
+                    event_handler->on_generate_state(state, action, action_cost, successor_state);
+                    if (pruning_strategy->test_prune_successor_state_for_beam_selection(state, successor_state, is_new_successor, beam_novelty_mode))
+                    {
+                        event_handler->on_generate_state_not_in_search_tree(state, action, action_cost, successor_state);
+                        continue;
+                    }
+
+                    auto candidate = BeamCandidate { state,
+                                                    action,
+                                                    action_cost,
+                                                    successor_state,
+                                                    successor_g_value,
+                                                    layer_ordering_strategy->score_state(successor_state, successor_g_value),
+                                                    generation_sequence++,
+                                                    options.randomize_equal_score_ties ? tie_break_rng() : uint64_t(0),
+                                                    is_new_successor };
+
+                    if (use_small_beam)
+                    {
+                        add_candidate_to_small_beam(beam_candidates, std::move(candidate), beam_width, ranking, event_handler);
+                    }
+                    else
+                    {
+                        add_candidate_to_heap_beam(beam_candidates, std::move(candidate), beam_width, ranking, heap_compare, event_handler);
+                    }
+
+                    if (search_nodes.size() >= options.max_num_states)
+                    {
+                        result.status = SearchStatus::OUT_OF_STATES;
+                        return result;
+                    }
+
                     continue;
                 }
 
-                auto candidate = BeamCandidate { state,
-                                                action,
-                                                action_cost,
-                                                successor_state,
-                                                successor_g_value,
-                                                layer_ordering_strategy->score_state(successor_state, successor_g_value),
-                                                generation_sequence++,
-                                                options.randomize_equal_score_ties ? tie_break_rng() : uint64_t(0),
-                                                is_new_successor };
-
-                if (use_small_beam)
+                parallel_chunk_tasks.push_back(ParallelBeamTaskInput { &state,
+                                                                      action,
+                                                                      static_cast<ContinuousCost>(search_node.g_value),
+                                                                      search_node.g_value + 1,
+                                                                      generation_sequence++ });
+                if (parallel_chunk_tasks.size() == 1024)
                 {
-                    add_candidate_to_small_beam(beam_candidates, std::move(candidate), beam_width, ranking, event_handler);
-                }
-                else
-                {
-                    add_candidate_to_heap_beam(beam_candidates, std::move(candidate), beam_width, ranking, heap_compare, event_handler);
-                }
-
-                if (search_nodes.size() >= options.max_num_states)
-                {
-                    result.status = SearchStatus::OUT_OF_STATES;
-                    return result;
+                    if (!flush_parallel_chunk())
+                    {
+                        return result;
+                    }
                 }
             }
+        }
+
+        if (use_parallel_beam && !flush_parallel_chunk())
+        {
+            return result;
         }
 
         if (!use_small_beam)
@@ -293,34 +493,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
             sort_beam_candidates(beam_candidates, ranking);
         }
 
-        next_layer.clear();
-        next_layer.reserve(beam_candidates.size());
-
-        // In SURVIVORS_ONLY, only kept beam states are allowed to update the novelty table.
-        if (beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY)
-        {
-            pruning_strategy->on_begin_beam_replay(beam_novelty_mode);
-        }
-
-        for (const auto& candidate : beam_candidates)
-        {
-            if ((beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY)
-                && pruning_strategy->test_prune_successor_state_for_beam_replay(candidate.parent_state,
-                                                                                candidate.successor_state,
-                                                                                candidate.is_new_successor,
-                                                                                beam_novelty_mode))
-            {
-                reject_beam_candidate(candidate, event_handler);
-                continue;
-            }
-
-            admit_beam_candidate(candidate, search_nodes, next_layer, event_handler);
-        }
-
-        if (beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY)
-        {
-            pruning_strategy->on_end_beam_replay(beam_novelty_mode);
-        }
+        finalize_beam_layer(event_handler, pruning_strategy, beam_novelty_mode, search_nodes, beam_candidates, next_layer);
 
         if (next_layer.empty())
         {

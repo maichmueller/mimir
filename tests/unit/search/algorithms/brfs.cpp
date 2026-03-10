@@ -17,7 +17,11 @@
 
 #include "mimir/search/algorithms/brfs.hpp"
 
+#include "mimir/datasets/state_space.hpp"
+#include "mimir/datasets/state_space_sampler.hpp"
 #include "mimir/search/algorithms/strategies/layer_ordering_strategy.hpp"
+#include "mimir/search/algorithms/strategies/pruning_strategy.hpp"
+#include "mimir/search/algorithms/iw/pruning_strategy.hpp"
 #include "mimir/formalism/repositories.hpp"
 #include "mimir/search/algorithms.hpp"
 #include "mimir/search/applicable_action_generators.hpp"
@@ -82,6 +86,8 @@ public:
     }
 
     const KPKCLiftedAxiomEvaluatorImpl::Statistics& get_axiom_evaluator_statistics() const { return m_axiom_evaluator_event_handler->get_statistics(); }
+    const Problem& get_problem() const { return m_problem; }
+    const SearchContext& get_search_context() const { return m_search_context; }
 };
 
 /// @brief Instantiate a grounded BrFS
@@ -273,6 +279,23 @@ public:
     {
         [[maybe_unused]] auto& ignored_states = states;
         [[maybe_unused]] const auto ignored_g_value = g_value;
+    }
+};
+
+class UnsupportedBeamPruningStrategy : public IPruningStrategy
+{
+public:
+    bool test_prune_initial_state(const State& state) override
+    {
+        [[maybe_unused]] const auto& ignored_state = state;
+        return false;
+    }
+
+    bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override
+    {
+        [[maybe_unused]] const auto& ignored_state = state;
+        [[maybe_unused]] const auto& ignored_succ_state = succ_state;
+        return !is_new_succ;
     }
 };
 
@@ -759,6 +782,7 @@ TEST(MimirTests, SearchAlgorithmsBrFSBeamSurvivorsOnlyRequiresSupportingPruningS
 
     auto options = brfs::Options();
     options.layer_ordering_strategy = std::make_shared<RecordingScoringLayerOrderingStrategy>();
+    options.pruning_strategy = std::make_shared<UnsupportedBeamPruningStrategy>();
     options.beam_width = 2;
     options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
     options.stop_if_goal = false;
@@ -887,6 +911,188 @@ TEST(MimirTests, SearchAlgorithmsBrFSBeamEqualScoreRandomTieBreakIsDeterministic
 
     EXPECT_EQ(first_run, second_run);
     EXPECT_NE(first_run.first, default_generated_indices);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamRequiresBeamWidth)
+{
+    auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+
+    auto options = brfs::Options();
+    options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
+    options.parallel_beam_num_threads = 2;
+    options.stop_if_goal = false;
+
+    EXPECT_THROW(brfs::find_solution(brfs.get_search_context(), options), std::invalid_argument);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamRejectsAllTestedMode)
+{
+    auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+
+    auto options = brfs::Options();
+    options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
+    options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(brfs.get_problem(), false, true, false);
+    options.beam_width = 2;
+    options.beam_novelty_mode = BeamNoveltyMode::ALL_TESTED;
+    options.parallel_beam_num_threads = 2;
+    options.stop_if_goal = false;
+
+    EXPECT_THROW(brfs::find_solution(brfs.get_search_context(), options), std::invalid_argument);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamRejectsLiftedContexts)
+{
+    auto brfs = LiftedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+
+    auto options = brfs::Options();
+    options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
+    options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(brfs.get_problem(), false, true, false);
+    options.beam_width = 2;
+    options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
+    options.parallel_beam_num_threads = 2;
+    options.stop_if_goal = false;
+
+    EXPECT_THROW(brfs::find_solution(brfs.get_search_context(), options), std::invalid_argument);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamThreadsOneUsesSerialPath)
+{
+    auto serial_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+    auto serial_event_handler = std::make_shared<RecordingBrFSEventHandler>(serial_brfs.get_problem());
+    auto serial_options = brfs::Options();
+    serial_options.event_handler = serial_event_handler;
+    serial_options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(serial_brfs.get_problem());
+    serial_options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(serial_brfs.get_problem(), false, true, false);
+    serial_options.beam_width = 4;
+    serial_options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
+    serial_options.stop_if_goal = false;
+    const auto serial_result = brfs::find_solution(serial_brfs.get_search_context(), serial_options);
+
+    auto one_thread_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+    auto one_thread_event_handler = std::make_shared<RecordingBrFSEventHandler>(one_thread_brfs.get_problem());
+    auto one_thread_options = serial_options;
+    one_thread_options.event_handler = one_thread_event_handler;
+    one_thread_options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(one_thread_brfs.get_problem());
+    one_thread_options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(one_thread_brfs.get_problem(), false, true, false);
+    one_thread_options.parallel_beam_num_threads = 1;
+    const auto one_thread_result = brfs::find_solution(one_thread_brfs.get_search_context(), one_thread_options);
+
+    EXPECT_EQ(one_thread_result.status, serial_result.status);
+    EXPECT_EQ(get_state_indices(one_thread_event_handler->get_root_generated_states()), get_state_indices(serial_event_handler->get_root_generated_states()));
+    EXPECT_EQ(get_state_indices(one_thread_event_handler->get_expanded_states()), get_state_indices(serial_event_handler->get_expanded_states()));
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSParallelProjectiveBeamMatchesSerialTest)
+{
+    auto serial_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+    auto serial_event_handler = std::make_shared<RecordingBrFSEventHandler>(serial_brfs.get_problem());
+    auto serial_options = brfs::Options();
+    serial_options.event_handler = serial_event_handler;
+    serial_options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(serial_brfs.get_problem());
+    serial_options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(serial_brfs.get_problem(), false, true, true);
+    serial_options.beam_width = 4;
+    serial_options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
+    serial_options.stop_if_goal = false;
+    const auto serial_result = brfs::find_solution(serial_brfs.get_search_context(), serial_options);
+
+    auto parallel_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+    auto parallel_event_handler = std::make_shared<RecordingBrFSEventHandler>(parallel_brfs.get_problem());
+    auto parallel_options = serial_options;
+    parallel_options.event_handler = parallel_event_handler;
+    parallel_options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(parallel_brfs.get_problem());
+    parallel_options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(parallel_brfs.get_problem(), false, true, true);
+    parallel_options.parallel_beam_num_threads = 2;
+    const auto parallel_result = brfs::find_solution(parallel_brfs.get_search_context(), parallel_options);
+
+    EXPECT_EQ(parallel_result.status, serial_result.status);
+    EXPECT_EQ(get_state_indices(parallel_event_handler->get_root_generated_states()), get_state_indices(serial_event_handler->get_root_generated_states()));
+    EXPECT_EQ(get_state_indices(parallel_event_handler->get_expanded_states()), get_state_indices(serial_event_handler->get_expanded_states()));
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamTieBreakingMatchesSerialTest)
+{
+    auto run = [](bool randomize_equal_score_ties, uint64_t seed, uint32_t parallel_threads)
+    {
+        auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+        auto event_handler = std::make_shared<RecordingBrFSEventHandler>(brfs.get_problem());
+
+        auto options = brfs::Options();
+        options.event_handler = event_handler;
+        options.layer_ordering_strategy = std::make_shared<ConstantScoringLayerOrderingStrategy>();
+        options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(brfs.get_problem(), false, true, false);
+        options.beam_width = 4;
+        options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
+        options.randomize_equal_score_ties = randomize_equal_score_ties;
+        options.equal_score_tie_seed = seed;
+        options.parallel_beam_num_threads = parallel_threads;
+        options.stop_if_goal = false;
+
+        const auto result = brfs::find_solution(brfs.get_search_context(), options);
+        EXPECT_EQ(result.status, SearchStatus::EXHAUSTED);
+        return std::make_pair(get_state_indices(event_handler->get_root_generated_states()), get_state_indices(event_handler->get_expanded_states()));
+    };
+
+    EXPECT_EQ(run(false, 0, 1), run(false, 0, 2));
+    EXPECT_EQ(run(true, 7, 1), run(true, 7, 2));
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamDuplicatePruningCoversFullStateSpaceTest)
+{
+    auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "blocks_4/domain.pddl"), fs::path(std::string(DATA_DIR) + "blocks_4/test_problem.pddl"));
+    auto event_handler = std::make_shared<RecordingBrFSEventHandler>(brfs.get_problem());
+
+    const auto state_space_result = datasets::StateSpaceImpl::create(brfs.get_search_context());
+    ASSERT_TRUE(state_space_result.has_value());
+    const auto& state_space = state_space_result->first;
+    auto state_space_sampler = datasets::StateSpaceSamplerImpl(state_space);
+
+    auto expected_state_indices = std::vector<Index> {};
+    expected_state_indices.reserve(state_space->get_graph().get_num_vertices());
+    for (const auto& vertex : state_space->get_graph().get_vertices())
+    {
+        expected_state_indices.push_back(graphs::get_state(vertex).get_index());
+    }
+    std::sort(expected_state_indices.begin(), expected_state_indices.end());
+
+    auto options = brfs::Options();
+    options.event_handler = event_handler;
+    options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
+    options.beam_width = static_cast<uint32_t>(state_space->get_graph().get_num_vertices());
+    options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
+    options.parallel_beam_num_threads = 2;
+    options.stop_if_goal = false;
+
+    const auto result = brfs::find_solution(brfs.get_search_context(), options);
+    EXPECT_EQ(result.status, SearchStatus::EXHAUSTED);
+
+    auto actual_state_indices = get_state_indices(event_handler->get_expanded_states());
+    std::sort(actual_state_indices.begin(), actual_state_indices.end());
+    EXPECT_EQ(actual_state_indices, expected_state_indices);
+
+    auto& applicable_action_generator = *brfs.get_search_context()->get_applicable_action_generator();
+    auto& state_repository = *brfs.get_search_context()->get_state_repository();
+    for (const auto& vertex : state_space->get_graph().get_vertices())
+    {
+        const auto state = graphs::get_state(vertex);
+
+        auto expected_transitions = std::vector<std::pair<Index, Index>> {};
+        for (const auto& [action, successor_state] : state_space_sampler.get_forward_transitions(state))
+        {
+            expected_transitions.emplace_back(action->get_index(), successor_state.get_index());
+        }
+        std::sort(expected_transitions.begin(), expected_transitions.end());
+
+        auto actual_transitions = std::vector<std::pair<Index, Index>> {};
+        for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
+        {
+            const auto [successor_state, successor_metric_value] = state_repository.get_or_create_successor_state(state, action, 0.0);
+            [[maybe_unused]] const auto ignored_successor_metric_value = successor_metric_value;
+            actual_transitions.emplace_back(action->get_index(), successor_state.get_index());
+        }
+        std::sort(actual_transitions.begin(), actual_transitions.end());
+
+        EXPECT_EQ(actual_transitions, expected_transitions);
+    }
 }
 
 /**

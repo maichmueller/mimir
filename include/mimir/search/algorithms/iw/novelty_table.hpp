@@ -55,6 +55,8 @@ public:
 
     bool test_novelty(const State& state);
     bool test_novelty(const State& state, const State& succ_state);
+    bool test_novelty_read_only(const State& state) const;
+    bool test_novelty_read_only(const State& state, const State& succ_state) const;
     bool test_novelty_and_update_table(const State& state);
 
     bool test_novelty_and_update_table(const State& state, const State& succ_state);

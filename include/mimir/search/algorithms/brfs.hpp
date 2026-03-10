@@ -41,6 +41,7 @@ struct Options
     BeamNoveltyMode beam_novelty_mode = BeamNoveltyMode::ALL_TESTED;
     bool randomize_equal_score_ties = false;
     uint64_t equal_score_tie_seed = 0;
+    uint32_t parallel_beam_num_threads = 1;
     bool stop_if_goal = true;
     uint32_t max_num_states = std::numeric_limits<uint32_t>::max();
     uint32_t max_time_in_ms = std::numeric_limits<uint32_t>::max();

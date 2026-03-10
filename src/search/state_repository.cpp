@@ -353,6 +353,107 @@ std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_successor_st
     return { successor_state, successor_state_metric_value };
 }
 
+StateRepositoryImpl::StagedSuccessorState
+StateRepositoryImpl::compute_staged_successor_state(const State& state,
+                                                    GroundAction action,
+                                                    ContinuousCost state_metric_value,
+                                                    StagedSuccessorScratch& scratch) const
+{
+    const auto& problem = *m_axiom_evaluator->get_problem();
+
+    // Parallel beam workers evaluate successors in dense worker-local storage so they
+    // can novelty-test and score states without mutating the shared repository cache.
+    auto unpacked_state = scratch.unpacked_state_pool.get_or_allocate(problem);
+    auto& dense_fluent_atoms = unpacked_state->get_atoms<FluentTag>();
+    dense_fluent_atoms = state.get_unpacked_state().get_atoms<FluentTag>();
+    auto& dense_derived_atoms = unpacked_state->get_atoms<DerivedTag>();
+    dense_derived_atoms = state.get_unpacked_state().get_atoms<DerivedTag>();
+    auto& dense_fluent_numeric_variables = unpacked_state->get_numeric_variables();
+    dense_fluent_numeric_variables = state.get_unpacked_state().get_numeric_variables();
+
+    scratch.applied_negative_effect_atoms.unset_all();
+    scratch.applied_positive_effect_atoms.unset_all();
+
+    auto successor_state_metric_value = state_metric_value;
+
+    apply_action_effects(action,
+                         problem,
+                         state,
+                         *unpacked_state,
+                         dense_fluent_atoms,
+                         scratch.applied_negative_effect_atoms,
+                         scratch.applied_positive_effect_atoms,
+                         dense_fluent_numeric_variables,
+                         successor_state_metric_value);
+
+    if (!m_axiom_evaluator->get_problem()->get_problem_and_domain_axioms().empty())
+    {
+        dense_derived_atoms.unset_all();
+        m_axiom_evaluator->generate_and_apply_axioms(*unpacked_state);
+    }
+
+    auto successor_state = StagedSuccessorState();
+    successor_state.fluent_atoms = dense_fluent_atoms;
+    successor_state.derived_atoms = dense_derived_atoms;
+    successor_state.fluent_numeric_variables = dense_fluent_numeric_variables;
+    successor_state.metric_value = successor_state_metric_value;
+    return successor_state;
+}
+
+std::pair<State, ContinuousCost>
+StateRepositoryImpl::get_or_create_staged_successor_state(const StagedSuccessorState& successor_state)
+{
+    auto& problem = *m_axiom_evaluator->get_problem();
+    auto& index_tree_table = problem.get_index_tree_table();
+    auto& double_leaf_table = problem.get_double_leaf_table();
+
+    // The main thread materializes worker-computed successors in generation order so
+    // state indices, duplicate pruning, and beam admission follow the serial semantics.
+    auto unpacked_state = m_unpacked_state_pool.get_or_allocate(problem);
+    auto& dense_fluent_atoms = unpacked_state->get_atoms<FluentTag>();
+    dense_fluent_atoms = successor_state.fluent_atoms;
+    auto& dense_derived_atoms = unpacked_state->get_atoms<DerivedTag>();
+    dense_derived_atoms = successor_state.derived_atoms;
+    auto& dense_fluent_numeric_variables = unpacked_state->get_numeric_variables();
+    dense_fluent_numeric_variables = successor_state.fluent_numeric_variables;
+
+    auto state_fluent_atoms_slot = valla::insert_sequence(dense_fluent_atoms, index_tree_table);
+    update_reached_fluent_atoms(dense_fluent_atoms, m_reached_fluent_atoms);
+
+    m_index_list.clear();
+    valla::encode_as_unsigned_integrals(dense_fluent_numeric_variables, double_leaf_table, std::back_inserter(m_index_list));
+    auto state_numeric_variables = valla::insert_sequence(m_index_list, index_tree_table);
+
+    auto state_derived_atoms_slot = valla::insert_sequence(dense_derived_atoms, index_tree_table);
+    update_reached_derived_atoms(dense_derived_atoms, m_reached_derived_atoms);
+
+    auto packed_state = PackedStateImpl(state_fluent_atoms_slot, state_derived_atoms_slot, state_numeric_variables);
+    auto it = m_states.find(packed_state);
+    if (it != m_states.end())
+    {
+        auto state = State(it->second, &it->first, std::move(unpacked_state), shared_from_this());
+        return { state, successor_state.metric_value };
+    }
+
+    auto result = m_states.emplace(std::move(packed_state), m_states.size());
+    auto state = State(result.first->second, &result.first->first, std::move(unpacked_state), shared_from_this());
+    return { state, successor_state.metric_value };
+}
+
+State StateRepositoryImpl::make_temporary_staged_successor_state(const StagedSuccessorState& successor_state,
+                                                                 Index temporary_state_index,
+                                                                 StagedSuccessorScratch& scratch)
+{
+    const auto& problem = *m_axiom_evaluator->get_problem();
+    auto unpacked_state = scratch.unpacked_state_pool.get_or_allocate(problem);
+    unpacked_state->get_atoms<FluentTag>() = successor_state.fluent_atoms;
+    unpacked_state->get_atoms<DerivedTag>() = successor_state.derived_atoms;
+    unpacked_state->get_numeric_variables() = successor_state.fluent_numeric_variables;
+
+    static const auto s_dummy_packed_state = PackedStateImpl(valla::Slot<Index>(), valla::Slot<Index>(), valla::Slot<Index>());
+    return State(temporary_state_index, &s_dummy_packed_state, std::move(unpacked_state), shared_from_this());
+}
+
 State StateRepositoryImpl::get_state(const PackedStateImpl& state)
 {
     // Unpack the internal state into dense state

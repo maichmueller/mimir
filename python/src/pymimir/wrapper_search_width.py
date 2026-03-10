@@ -47,6 +47,8 @@ def iw(
     on_generate_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
     on_generate_new_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
     on_prune_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
+    *,
+    num_threads: int = -1,
 ) -> "SearchResult":
     assert isinstance(problem, Problem), "Problem must be an instance of Problem."
     assert isinstance(start_state, State), "Start state must be an instance of State."
@@ -68,6 +70,7 @@ def iw(
     assert equal_score_tie_seed is None or isinstance(
         equal_score_tie_seed, int
     ), "equal_score_tie_seed must be an int or None."
+    assert isinstance(num_threads, int), "num_threads must be an int."
     assert layer_ordering_strategy is None or isinstance(
         layer_ordering_strategy, AdvancedILayerOrderingStrategy
     ), "layer_ordering_strategy must be an advanced ILayerOrderingStrategy or None."
@@ -175,6 +178,8 @@ def iw(
     advanced_options.equal_score_tie_seed = (
         0 if equal_score_tie_seed is None else equal_score_tie_seed
     )
+    if num_threads > 1:
+        advanced_options.parallel_beam_num_threads = num_threads
     advanced_options.max_arity = max_arity
     result = advanced_iw(problem._search_context, advanced_options)
     status = result.status.name.lower()
@@ -205,6 +210,8 @@ def projective_iw(
     on_generate_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
     on_generate_new_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
     on_prune_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
+    *,
+    num_threads: int = -1,
 ) -> "SearchResult":
     """Run BrFS with projective IW(1) pruning.
 
@@ -216,7 +223,8 @@ def projective_iw(
 
     If `beam_width` is set, search stays layer-based: depth-(d+1) candidates are
     novelty-checked first, then ranked by the layer ordering strategy, and only the
-    best beam states continue.
+    best beam states continue. With grounded `SURVIVORS_ONLY`, `num_threads`
+    can parallelize successor evaluation before the main thread merges candidates into the beam.
     """
     assert isinstance(problem, Problem), "Problem must be an instance of Problem."
     assert isinstance(start_state, State), "Start state must be an instance of State."
@@ -243,6 +251,7 @@ def projective_iw(
     assert equal_score_tie_seed is None or isinstance(
         equal_score_tie_seed, int
     ), "equal_score_tie_seed must be an int or None."
+    assert isinstance(num_threads, int), "num_threads must be an int."
     assert layer_ordering_strategy is None or isinstance(
         layer_ordering_strategy, AdvancedILayerOrderingStrategy
     ), "layer_ordering_strategy must be an advanced ILayerOrderingStrategy or None."
@@ -350,6 +359,8 @@ def projective_iw(
     advanced_options.equal_score_tie_seed = (
         0 if equal_score_tie_seed is None else equal_score_tie_seed
     )
+    if num_threads > 1:
+        advanced_options.parallel_beam_num_threads = num_threads
     advanced_options.pruning_strategy = (
         AdvancedProjectiveArityOneNoveltyPruningStrategy.create(
             problem._advanced_problem,

@@ -76,12 +76,24 @@ bool NoPruningStrategyImpl::test_prune_initial_state(const State& state) { retur
 
 bool NoPruningStrategyImpl::test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) { return false; }
 
+bool NoPruningStrategyImpl::supports_beam_novelty_mode(BeamNoveltyMode beam_novelty_mode) const
+{
+    [[maybe_unused]] const auto ignored_beam_novelty_mode = beam_novelty_mode;
+    return true;
+}
+
 NoPruningStrategy NoPruningStrategyImpl::create() { return std::make_shared<NoPruningStrategyImpl>(); }
 
 /* DuplicatePruningStrategyImpl */
 bool DuplicatePruningStrategyImpl::test_prune_initial_state(const State& state) { return false; };
 
 bool DuplicatePruningStrategyImpl::test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) { return !is_new_succ; }
+
+bool DuplicatePruningStrategyImpl::supports_beam_novelty_mode(BeamNoveltyMode beam_novelty_mode) const
+{
+    [[maybe_unused]] const auto ignored_beam_novelty_mode = beam_novelty_mode;
+    return true;
+}
 
 DuplicatePruningStrategy DuplicatePruningStrategyImpl::create() { return std::make_shared<DuplicatePruningStrategyImpl>(); }
 }

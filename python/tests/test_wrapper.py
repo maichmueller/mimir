@@ -3,10 +3,18 @@ import unittest
 
 from pathlib import Path
 from pymimir import *  # type: ignore
+import pymimir.advanced.search as advanced_search
 from typing import Union
 
 
 DATA_DIR = (Path(__file__).parent.parent.parent).absolute() / 'data'
+
+
+def _make_problem(domain_name: str, mode: str = 'lifted') -> Problem:
+    domain_path = DATA_DIR / domain_name / 'domain.pddl'
+    problem_path = DATA_DIR / domain_name / 'test_problem.pddl'
+    domain = Domain(domain_path)
+    return Problem(domain, problem_path, mode=mode)
 
 
 class TestDomain(unittest.TestCase):
@@ -1041,6 +1049,82 @@ class TestNumericFluents(unittest.TestCase):
         assert function_updates[0][1].get_numeric_function().get_name() == 'fuel-level'
         assert function_updates[0][2].is_number_term()
         assert function_updates[0][2].get_number_term() == 1.0
+
+
+class TestBeamWrappers(unittest.TestCase):
+    def test_iw_parallel_beam(self):
+        problem = _make_problem('delivery', mode='grounded')
+        start_state = problem.get_initial_state()
+        layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(problem._advanced_problem)
+
+        result = iw(
+            problem,
+            start_state,
+            2,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=4,
+            beam_novelty_mode="survivors_only",
+            num_threads=2,
+        )
+
+        assert result.status == 'solved'
+        assert result.solution is not None
+        assert len(result.solution) == 4
+
+    def test_projective_iw_parallel_beam_requires_beam_width(self):
+        problem = _make_problem('delivery', mode='grounded')
+        start_state = problem.get_initial_state()
+        layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(problem._advanced_problem)
+
+        with self.assertRaises(Exception):
+            projective_iw(
+                problem,
+                start_state,
+                layer_ordering_strategy=layer_ordering_strategy,
+                num_threads=2,
+            )
+
+    def test_brfs_parallel_beam_num_threads_covers_state_space(self):
+        problem = _make_problem('blocks_4', mode='grounded')
+        start_state = problem.get_initial_state()
+        sampler = StateSpaceSampler.new(problem)
+        assert sampler is not None
+
+        expected_state_indices = {
+            state.get_index() for state in sampler.get_states()
+        }
+        expanded_states: list[State] = []
+        expanded_state_indices: set[int] = set()
+
+        def on_expand_state(state: State) -> None:
+            expanded_states.append(state)
+            expanded_state_indices.add(state.get_index())
+
+        result = brfs(
+            problem,
+            start_state,
+            layer_ordering_strategy=advanced_search.GoalCountLayerOrderingStrategy(problem._advanced_problem),
+            beam_width=sampler.num_states(),
+            beam_novelty_mode="survivors_only",
+            num_threads=2,
+            stop_if_goal=False,
+            on_expand_state=on_expand_state,
+        )
+
+        assert result.status == 'exhausted'
+        assert expanded_state_indices == expected_state_indices
+        assert len(expanded_states) == len(expanded_state_indices)
+
+        for state in expanded_states:
+            expected_transitions = {
+                (action.get_index(), successor_state.get_index())
+                for action, successor_state in sampler.get_forward_transitions(state)
+            }
+            actual_transitions = {
+                (action.get_index(), action.apply(state).get_index())
+                for action in state.generate_applicable_actions()
+            }
+            assert actual_transitions == expected_transitions
 
 
 if __name__ == '__main__':

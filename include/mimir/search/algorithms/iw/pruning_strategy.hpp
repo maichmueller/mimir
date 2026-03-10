@@ -44,6 +44,10 @@ public:
     bool test_prune_initial_state(const State& state) override;
     bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;
     bool supports_beam_novelty_mode(BeamNoveltyMode beam_novelty_mode) const override;
+    bool test_prune_successor_state_for_beam_selection(const State& state,
+                                                       const State& succ_state,
+                                                       bool is_new_succ,
+                                                       BeamNoveltyMode beam_novelty_mode) override;
 };
 
 class ArityKNoveltyPruningStrategyImpl : public IPruningStrategy
@@ -98,7 +102,7 @@ private:
     UnorderedSet<ProjectedAtomKey> m_seen_projected_atoms;
     std::vector<ProjectedAtomKey> m_beam_layer_delta_projected_atoms;
     UnorderedSet<ProjectedAtomKey> m_beam_layer_delta_projected_atoms_set;
-    mutable std::vector<ProjectedAtomKey> m_scratch_projected_atom_keys;
+    std::vector<ProjectedAtomKey> m_scratch_projected_atom_keys;
 
     void collect_projected_atom_keys(AtomIndex atom_index, std::vector<ProjectedAtomKey>& out_projected_atom_keys) const;
     bool test_atom_novelty(AtomIndex atom_index) const;

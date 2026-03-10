@@ -34,6 +34,10 @@ class IApplicableActionGenerator
 public:
     virtual ~IApplicableActionGenerator() = default;
 
+    /// @brief Return whether this generator can participate in the grounded-only
+    /// parallel beam path without shared mutable search-layer state.
+    virtual bool supports_parallel_beam() const { return false; }
+
     /// @brief Generate all applicable actions for a given state.
     virtual mimir::generator<formalism::GroundAction> create_applicable_action_generator(const State& state) = 0;
 

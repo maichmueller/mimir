@@ -147,6 +147,8 @@ public:
     }
 
     const GroundedAxiomEvaluatorImpl::Statistics& get_axiom_evaluator_statistics() const { return m_axiom_evaluator_event_handler->get_statistics(); }
+    const Problem& get_problem() const { return m_problem; }
+    const SearchContext& get_search_context() const { return m_search_context; }
 };
 
 static std::pair<GroundAtomList<FluentTag>, GroundAtom<FluentTag>> find_projective_iw1_candidate(const Problem& problem)
@@ -632,6 +634,43 @@ TEST(MimirTests, SearchAlgorithmsIWArityOneBeamSurvivorsOnlyReplayCanReduceBeamW
     EXPECT_FALSE(iw1->test_prune_successor_state_for_beam_replay(parent_a, succ_a, true, BeamNoveltyMode::SURVIVORS_ONLY));
     EXPECT_TRUE(iw1->test_prune_successor_state_for_beam_replay(parent_b, succ_b, true, BeamNoveltyMode::SURVIVORS_ONLY));
     iw1->on_end_beam_replay(BeamNoveltyMode::SURVIVORS_ONLY);
+}
+
+TEST(MimirTests, SearchAlgorithmsIWParallelBeamMatchesSerialTest)
+{
+    auto serial_iw = GroundedIWPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"), fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"), 2);
+    auto serial_options = iw::Options();
+    serial_options.max_arity = 2;
+    serial_options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(serial_iw.get_problem());
+    serial_options.beam_width = 4;
+    serial_options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
+    const auto serial_result = iw::find_solution(serial_iw.get_search_context(), serial_options);
+
+    auto parallel_iw = GroundedIWPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"), fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"), 2);
+    auto parallel_options = serial_options;
+    parallel_options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(parallel_iw.get_problem());
+    parallel_options.parallel_beam_num_threads = 2;
+    const auto parallel_result = iw::find_solution(parallel_iw.get_search_context(), parallel_options);
+
+    ASSERT_EQ(parallel_result.status, serial_result.status);
+    ASSERT_EQ(parallel_result.plan.has_value(), serial_result.plan.has_value());
+    ASSERT_EQ(parallel_result.goal_state.has_value(), serial_result.goal_state.has_value());
+
+    if (serial_result.plan.has_value())
+    {
+        const auto& serial_actions = serial_result.plan->get_actions();
+        const auto& parallel_actions = parallel_result.plan->get_actions();
+        ASSERT_EQ(parallel_actions.size(), serial_actions.size());
+        for (size_t i = 0; i < serial_actions.size(); ++i)
+        {
+            EXPECT_EQ(parallel_actions[i]->get_action()->get_name(), serial_actions[i]->get_action()->get_name());
+            ASSERT_EQ(parallel_actions[i]->get_objects().size(), serial_actions[i]->get_objects().size());
+            for (size_t j = 0; j < serial_actions[i]->get_objects().size(); ++j)
+            {
+                EXPECT_EQ(parallel_actions[i]->get_objects()[j]->get_name(), serial_actions[i]->get_objects()[j]->get_name());
+            }
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
