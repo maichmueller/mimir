@@ -11,7 +11,7 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Benchmark grounded IW beam search with 1/2/4/8 worker threads."
+        description="Benchmark IW beam search with 1/2/4/8 worker threads."
     )
     parser.add_argument(
         "--domain",
@@ -55,6 +55,12 @@ def parse_args() -> argparse.Namespace:
         default="survivors_only",
         help="Beam novelty mode to benchmark.",
     )
+    parser.add_argument(
+        "--mode",
+        choices=["grounded", "lifted", "lifted_symmetry_pruning", "lifted_exhaustive"],
+        default="grounded",
+        help="Search context mode to benchmark.",
+    )
     return parser.parse_args()
 
 
@@ -66,8 +72,18 @@ def run_once(
     num_threads: int,
     beam_novelty_mode: str,
     chunk_size: int,
+    mode: str,
 ) -> None:
-    search_context = search.SearchContext.create(domain_filepath, problem_filepath, search.SearchContextOptions())
+    if mode == "grounded":
+        search_mode = search.GroundedOptions()
+    elif mode == "lifted":
+        search_mode = search.LiftedOptions(search.LiftedKPKCOptions(search.SymmetryPruning.OFF))
+    elif mode == "lifted_symmetry_pruning":
+        search_mode = search.LiftedOptions(search.LiftedKPKCOptions(search.SymmetryPruning.GI))
+    else:
+        search_mode = search.LiftedOptions(search.LiftedExhaustiveOptions())
+
+    search_context = search.SearchContext.create(domain_filepath, problem_filepath, search.SearchContextOptions(search_mode))
     problem = search_context.get_problem()
     start_state, _ = search_context.get_state_repository().get_or_create_initial_state()
 
@@ -116,7 +132,7 @@ def run_once(
     search_time_ms = iw_stats.get_search_time_ms().total_seconds() * 1000.0
 
     print(
-        f"mode={beam_novelty_mode:>14} threads={num_threads:>2} chunk_size={chunk_size:>4} status={result.status.name.lower():>10} "
+        f"search_mode={mode:>24} novelty={beam_novelty_mode:>14} threads={num_threads:>2} chunk_size={chunk_size:>4} status={result.status.name.lower():>10} "
         f"plan_length={plan_length:>2} generated={generated:>6} "
         f"search_time_ms={search_time_ms:>8.2f} wall_time_ms={wall_time_ms:>8.2f} "
         f"chunk_flushes={chunk_flushes:>4} avg_chunk={avg_chunk_size:>8.2f} max_chunk={max_chunk_size:>4} "
@@ -140,4 +156,5 @@ if __name__ == "__main__":
                 num_threads,
                 args.beam_novelty_mode,
                 chunk_size,
+                args.mode,
             )

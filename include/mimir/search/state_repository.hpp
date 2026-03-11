@@ -68,6 +68,10 @@ public:
         FlatBitset applied_positive_effect_atoms;
         FlatBitset applied_negative_effect_atoms;
         SharedObjectPool<UnpackedStateImpl> unpacked_state_pool;
+        ParallelAxiomWorkerContext axiom_worker_context;
+
+        StagedSuccessorScratch();
+        ~StagedSuccessorScratch();
     };
 
     struct StagedSuccessorInternTimings

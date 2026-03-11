@@ -32,6 +32,13 @@ using namespace mimir::formalism;
 namespace mimir::search
 {
 
+namespace
+{
+class GroundedParallelAxiomWorkerContext final : public IParallelAxiomWorkerContext
+{
+};
+}
+
 /**
  * GroundedAxiomEvaluator
  */
@@ -58,6 +65,13 @@ GroundedAxiomEvaluatorImpl::create(Problem problem, match_tree::MatchTreeList<Gr
 }
 
 bool GroundedAxiomEvaluatorImpl::supports_parallel_beam() const { return true; }
+
+bool GroundedAxiomEvaluatorImpl::supports_parallel_staged_successor_evaluation() const { return true; }
+
+ParallelAxiomWorkerContext GroundedAxiomEvaluatorImpl::create_parallel_worker_context() const
+{
+    return std::make_unique<GroundedParallelAxiomWorkerContext>();
+}
 
 void GroundedAxiomEvaluatorImpl::generate_and_apply_axioms(UnpackedStateImpl& unpacked_state)
 {
@@ -100,6 +114,11 @@ void GroundedAxiomEvaluatorImpl::generate_and_apply_axioms(UnpackedStateImpl& un
 
         } while (!reached_partition_fixed_point);
     }
+}
+
+void GroundedAxiomEvaluatorImpl::generate_and_apply_axioms_parallel(UnpackedStateImpl& unpacked_state, IParallelAxiomWorkerContext&) const
+{
+    const_cast<GroundedAxiomEvaluatorImpl*>(this)->generate_and_apply_axioms(unpacked_state);
 }
 
 void GroundedAxiomEvaluatorImpl::on_finish_search_layer() { m_event_handler->on_finish_search_layer(); }

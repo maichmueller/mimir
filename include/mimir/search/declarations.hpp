@@ -117,6 +117,8 @@ using DefaultEventHandler = std::shared_ptr<DefaultEventHandlerImpl>;
 /* AxiomEvaluators */
 class IAxiomEvaluator;
 using AxiomEvaluator = std::shared_ptr<IAxiomEvaluator>;
+class IParallelAxiomWorkerContext;
+using ParallelAxiomWorkerContext = std::unique_ptr<IParallelAxiomWorkerContext>;
 class GroundedAxiomEvaluatorImpl;
 using GroundedAxiomEvaluator = std::shared_ptr<GroundedAxiomEvaluatorImpl>;
 class KPKCLiftedAxiomEvaluatorImpl;

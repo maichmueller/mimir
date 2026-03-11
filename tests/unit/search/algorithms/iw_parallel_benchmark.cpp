@@ -47,24 +47,42 @@ struct BenchmarkResult
     double parallel_producer_stall_time_ms;
 };
 
+SearchContextImpl::Options parse_search_mode(const std::string& mode)
+{
+    if (mode == "grounded")
+    {
+        return SearchContextImpl::Options(SearchContextImpl::GroundedOptions());
+    }
+    if (mode == "lifted")
+    {
+        return SearchContextImpl::Options(SearchContextImpl::LiftedOptions(SearchContextImpl::LiftedOptions::KPKCOptions()));
+    }
+    if (mode == "lifted_symmetry_pruning")
+    {
+        return SearchContextImpl::Options(
+            SearchContextImpl::LiftedOptions(SearchContextImpl::LiftedOptions::KPKCOptions(SearchContextImpl::SymmetryPruning::GI)));
+    }
+    if (mode == "lifted_exhaustive")
+    {
+        return SearchContextImpl::Options(SearchContextImpl::LiftedOptions(SearchContextImpl::LiftedOptions::ExhaustiveOptions()));
+    }
+
+    throw std::invalid_argument("Expected search mode to be 'grounded', 'lifted', 'lifted_symmetry_pruning', or 'lifted_exhaustive'.");
+}
+
 BenchmarkResult run_once(const std::filesystem::path& domain_file,
                          const std::filesystem::path& problem_file,
+                         const SearchContextImpl::Options& search_context_options,
                          size_t max_arity,
                          size_t beam_width,
                          BeamNoveltyMode beam_novelty_mode,
                          uint32_t num_threads,
                          uint32_t chunk_size)
 {
-    auto problem = ProblemImpl::create(domain_file, problem_file);
-    auto grounder = LiftedGrounder(problem);
-    auto applicable_action_generator =
-        grounder.create_grounded_applicable_action_generator(match_tree::Options(), GroundedApplicableActionGeneratorImpl::DefaultEventHandlerImpl::create());
-    auto axiom_evaluator =
-        grounder.create_grounded_axiom_evaluator(match_tree::Options(), GroundedAxiomEvaluatorImpl::DefaultEventHandlerImpl::create());
-    auto state_repository = StateRepositoryImpl::create(axiom_evaluator);
+    auto search_context = SearchContextImpl::create(domain_file, problem_file, search_context_options);
+    const auto problem = search_context->get_problem();
     auto brfs_event_handler = brfs::DefaultEventHandlerImpl::create(problem, true);
     auto iw_event_handler = iw::DefaultEventHandlerImpl::create(problem, true);
-    auto search_context = SearchContextImpl::create(problem, applicable_action_generator, state_repository);
 
     auto options = iw::Options();
     options.max_arity = max_arity;
@@ -186,7 +204,7 @@ int main(int argc, char** argv)
     if (argc < 8)
     {
         std::cerr << "Usage: " << argv[0]
-                  << " <domain.pddl> <problem.pddl> <max_arity> <beam_width> <reps> <all_tested|survivors_only> <threads...> [--chunk-sizes <sizes...>]\n";
+                  << " <domain.pddl> <problem.pddl> <max_arity> <beam_width> <reps> <all_tested|survivors_only> <threads...> [--mode <grounded|lifted|lifted_symmetry_pruning|lifted_exhaustive>] [--chunk-sizes <sizes...>]\n";
         return 1;
     }
 
@@ -199,10 +217,20 @@ int main(int argc, char** argv)
 
     std::vector<uint32_t> thread_counts;
     std::vector<uint32_t> chunk_sizes;
+    auto search_context_options = SearchContextImpl::Options(SearchContextImpl::GroundedOptions());
     auto parsing_chunk_sizes = false;
     for (int i = 7; i < argc; ++i)
     {
         const auto argument = std::string(argv[i]);
+        if (argument == "--mode")
+        {
+            if ((i + 1) >= argc)
+            {
+                throw std::invalid_argument("Expected a mode after --mode.");
+            }
+            search_context_options = parse_search_mode(argv[++i]);
+            continue;
+        }
         if (argument == "--chunk-sizes")
         {
             parsing_chunk_sizes = true;
@@ -229,8 +257,43 @@ int main(int argc, char** argv)
         chunk_sizes.push_back(1024);
     }
 
-    std::cout << "domain=" << domain_file << " problem=" << problem_file << " max_arity=" << max_arity << " beam_width=" << beam_width
-              << " mode=" << argv[6] << " reps=" << reps << '\n';
+    const auto mode_name = [&]() -> std::string
+    {
+        return std::visit(
+            [](auto&& mode) -> std::string
+            {
+                using ModeT = std::decay_t<decltype(mode)>;
+                if constexpr (std::is_same_v<ModeT, SearchContextImpl::GroundedOptions>)
+                {
+                    return "grounded";
+                }
+                else if constexpr (std::is_same_v<ModeT, SearchContextImpl::LiftedOptions>)
+                {
+                    return std::visit(
+                        [](auto&& option) -> std::string
+                        {
+                            using OptionT = std::decay_t<decltype(option)>;
+                            if constexpr (std::is_same_v<OptionT, SearchContextImpl::LiftedOptions::KPKCOptions>)
+                            {
+                                return (option.pruning == SearchContextImpl::SymmetryPruning::GI) ? "lifted_symmetry_pruning" : "lifted";
+                            }
+                            else
+                            {
+                                return "lifted_exhaustive";
+                            }
+                        },
+                        mode.option);
+                }
+                else
+                {
+                    throw std::logic_error("Missing benchmark search mode.");
+                }
+            },
+            search_context_options.mode);
+    }();
+
+    std::cout << "search_mode=" << mode_name << " domain=" << domain_file << " problem=" << problem_file << " max_arity=" << max_arity
+              << " beam_width=" << beam_width << " mode=" << argv[6] << " reps=" << reps << '\n';
 
     for (const auto chunk_size : chunk_sizes)
     {
@@ -263,7 +326,14 @@ int main(int argc, char** argv)
 
             for (size_t rep = 0; rep < reps; ++rep)
             {
-                const auto result = run_once(domain_file, problem_file, max_arity, beam_width, beam_novelty_mode, num_threads, chunk_size);
+                const auto result = run_once(domain_file,
+                                             problem_file,
+                                             search_context_options,
+                                             max_arity,
+                                             beam_width,
+                                             beam_novelty_mode,
+                                             num_threads,
+                                             chunk_size);
                 status = result.status;
                 generated = result.generated;
                 parallel_chunk_flushes = result.parallel_chunk_flushes;

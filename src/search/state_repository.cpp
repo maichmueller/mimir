@@ -36,6 +36,9 @@ using namespace mimir::formalism;
 namespace mimir::search
 {
 
+StateRepositoryImpl::StagedSuccessorScratch::StagedSuccessorScratch() = default;
+StateRepositoryImpl::StagedSuccessorScratch::~StagedSuccessorScratch() = default;
+
 ContinuousCost compute_state_metric_value(const State& state)
 {
     if (state.get_problem().get_auxiliary_function_value().has_value())
@@ -390,7 +393,19 @@ StateRepositoryImpl::compute_staged_successor_state(const State& state,
     if (!m_axiom_evaluator->get_problem()->get_problem_and_domain_axioms().empty())
     {
         dense_derived_atoms.unset_all();
-        m_axiom_evaluator->generate_and_apply_axioms(*unpacked_state);
+        if (m_axiom_evaluator->supports_parallel_staged_successor_evaluation())
+        {
+            if (!scratch.axiom_worker_context)
+            {
+                scratch.axiom_worker_context = m_axiom_evaluator->create_parallel_worker_context();
+            }
+            assert(scratch.axiom_worker_context);
+            m_axiom_evaluator->generate_and_apply_axioms_parallel(*unpacked_state, *scratch.axiom_worker_context);
+        }
+        else
+        {
+            m_axiom_evaluator->generate_and_apply_axioms(*unpacked_state);
+        }
     }
 
     auto successor_state = StagedSuccessorState();

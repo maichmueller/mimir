@@ -28,6 +28,7 @@
 #include "mimir/search/algorithms/strategies/pruning_strategy.hpp"
 #include "mimir/search/applicable_action_generators/interface.hpp"
 #include "mimir/search/axiom_evaluators/interface.hpp"
+#include "mimir/search/axiom_evaluators/lifted/exhaustive.hpp"
 #include "mimir/search/search_context.hpp"
 #include "mimir/search/search_space.hpp"
 #include "mimir/search/state_repository.hpp"
@@ -108,10 +109,18 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
             throw std::invalid_argument("BrFS::Options.parallel_beam_num_threads requires BrFS::Options.beam_width.");
         }
 
-        if (!applicable_action_generator.supports_parallel_beam() || !state_repository.get_axiom_evaluator()->supports_parallel_beam())
+        if (!state_repository.get_axiom_evaluator()->supports_parallel_staged_successor_evaluation())
         {
-            throw std::invalid_argument("BrFS::Options.parallel_beam_num_threads currently requires grounded search contexts.");
+            if (std::dynamic_pointer_cast<ExhaustiveLiftedAxiomEvaluatorImpl>(state_repository.get_axiom_evaluator()))
+            {
+                throw std::invalid_argument(
+                    "BrFS::Options.parallel_beam_num_threads does not support lifted exhaustive search contexts. Use grounded or lifted KPKC search contexts.");
+            }
+
+            throw std::invalid_argument("BrFS::Options.parallel_beam_num_threads is currently supported only for grounded search contexts and lifted KPKC search contexts.");
         }
+
+        state_repository.get_axiom_evaluator()->prepare_parallel_staged_successor_evaluation();
     }
 
     auto result = SearchResult();

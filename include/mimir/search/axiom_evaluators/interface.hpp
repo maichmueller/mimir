@@ -25,6 +25,12 @@
 namespace mimir::search
 {
 
+class IParallelAxiomWorkerContext
+{
+public:
+    virtual ~IParallelAxiomWorkerContext() = default;
+};
+
 /**
  * Dynamic interface class.
  */
@@ -33,12 +39,24 @@ class IAxiomEvaluator
 public:
     virtual ~IAxiomEvaluator() = default;
 
-    /// @brief Return whether this evaluator can participate in the grounded-only
-    /// parallel beam path without shared mutable search-layer state.
+    /// @brief Legacy capability bit for the original grounded-only parallel beam path.
     virtual bool supports_parallel_beam() const { return false; }
+
+    /// @brief Return whether this evaluator can evaluate staged successors from worker threads.
+    virtual bool supports_parallel_staged_successor_evaluation() const { return false; }
+
+    /// @brief Create a worker-local context reused by a single staged-successor worker thread.
+    virtual ParallelAxiomWorkerContext create_parallel_worker_context() const { return nullptr; }
+
+    /// @brief Prepare immutable data needed by worker-local staged-successor evaluation.
+    virtual void prepare_parallel_staged_successor_evaluation() {}
 
     /// @brief Generate all applicable axioms for a given set of ground atoms by running fixed point computation.
     virtual void generate_and_apply_axioms(UnpackedStateImpl& unpacked_state) = 0;
+
+    /// @brief Worker-thread staged-successor axiom evaluation. Only valid if
+    /// supports_parallel_staged_successor_evaluation() returns true.
+    virtual void generate_and_apply_axioms_parallel(UnpackedStateImpl& unpacked_state, IParallelAxiomWorkerContext& worker_context) const;
 
     /// @brief Accumulate event handler statistics during search.
     virtual void on_finish_search_layer() = 0;

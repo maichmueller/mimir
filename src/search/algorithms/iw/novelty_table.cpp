@@ -232,6 +232,8 @@ bool DynamicNoveltyTable::test_novelty(const State& state, const AtomIndexList& 
 
 bool DynamicNoveltyTable::test_novelty_read_only(const State& state) const
 {
+    const_cast<DynamicNoveltyTable*>(this)->resize_to_fit(state);
+
     auto state_tuple_index_generator = StateTupleIndexGenerator(&m_tuple_index_mapper);
 
     for (auto it = state_tuple_index_generator.begin(state); it != state_tuple_index_generator.end(); ++it)
@@ -250,6 +252,10 @@ bool DynamicNoveltyTable::test_novelty_read_only(const State& state) const
 
 bool DynamicNoveltyTable::test_novelty_read_only(const State& state, const State& succ_state) const
 {
+    auto* self = const_cast<DynamicNoveltyTable*>(this);
+    self->resize_to_fit(state);
+    self->resize_to_fit(succ_state);
+
     auto state_pair_tuple_index_generator = StatePairTupleIndexGenerator(&m_tuple_index_mapper);
 
     for (auto it = state_pair_tuple_index_generator.begin(state, succ_state); it != state_pair_tuple_index_generator.end(); ++it)
@@ -268,6 +274,13 @@ bool DynamicNoveltyTable::test_novelty_read_only(const State& state, const State
 
 bool DynamicNoveltyTable::test_novelty_read_only(const State& state, const AtomIndexList& succ_state_atom_indices) const
 {
+    auto* self = const_cast<DynamicNoveltyTable*>(this);
+    self->resize_to_fit(state);
+    if (!succ_state_atom_indices.empty())
+    {
+        self->resize_to_fit(succ_state_atom_indices.back());
+    }
+
     auto state_pair_tuple_index_generator = StatePairTupleIndexGenerator(&m_tuple_index_mapper);
 
     for (auto it = state_pair_tuple_index_generator.begin(state, succ_state_atom_indices); it != state_pair_tuple_index_generator.end(); ++it)

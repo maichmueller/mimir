@@ -58,7 +58,10 @@ public:
     GroundedAxiomEvaluatorImpl& operator=(GroundedAxiomEvaluatorImpl&& other) = delete;
 
     bool supports_parallel_beam() const override;
+    bool supports_parallel_staged_successor_evaluation() const override;
+    ParallelAxiomWorkerContext create_parallel_worker_context() const override;
     void generate_and_apply_axioms(UnpackedStateImpl& unpacked_state) override;
+    void generate_and_apply_axioms_parallel(UnpackedStateImpl& unpacked_state, IParallelAxiomWorkerContext& worker_context) const override;
 
     void on_finish_search_layer() override;
     void on_end_search() override;

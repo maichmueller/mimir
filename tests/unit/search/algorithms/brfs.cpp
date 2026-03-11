@@ -60,11 +60,13 @@ private:
     SearchContext m_search_context;
 
 public:
-    LiftedBrFSPlanner(const fs::path& domain_file, const fs::path& problem_file) :
+    LiftedBrFSPlanner(const fs::path& domain_file,
+                     const fs::path& problem_file,
+                     SearchContextImpl::SymmetryPruning symmetry_pruning = SearchContextImpl::SymmetryPruning::OFF) :
         m_problem(ProblemImpl::create(domain_file, problem_file)),
         m_applicable_action_generator_event_handler(KPKCLiftedApplicableActionGeneratorImpl::DefaultEventHandlerImpl::create()),
         m_applicable_action_generator(KPKCLiftedApplicableActionGeneratorImpl::create(m_problem,
-                                                                                      SearchContextImpl::LiftedOptions::KPKCOptions(),
+                                                                                      SearchContextImpl::LiftedOptions::KPKCOptions(symmetry_pruning),
                                                                                       m_applicable_action_generator_event_handler)),
         m_axiom_evaluator_event_handler(KPKCLiftedAxiomEvaluatorImpl::DefaultEventHandlerImpl::create()),
         m_axiom_evaluator(KPKCLiftedAxiomEvaluatorImpl::create(m_problem, m_axiom_evaluator_event_handler)),
@@ -1127,19 +1129,258 @@ TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamInternSubphasesAreMeasuredTest)
     EXPECT_GT(statistics.get_parallel_beam_in_flight_chunks_high_water(), 0u);
 }
 
-TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamRejectsLiftedContexts)
+TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamMatchesSerialLiftedKPKCTest)
 {
-    auto brfs = LiftedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+    auto run = [](const std::string& domain_name,
+                  const std::string& problem_name,
+                  SearchContextImpl::SymmetryPruning symmetry_pruning,
+                  BeamNoveltyMode beam_novelty_mode,
+                  uint32_t parallel_threads)
+    {
+        auto brfs = LiftedBrFSPlanner(fs::path(std::string(DATA_DIR) + domain_name + "/domain.pddl"),
+                                      fs::path(std::string(DATA_DIR) + domain_name + "/" + problem_name),
+                                      symmetry_pruning);
+        auto event_handler = std::make_shared<RecordingBrFSEventHandler>(brfs.get_problem());
+
+        auto options = brfs::Options();
+        options.event_handler = event_handler;
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
+        options.pruning_strategy = DuplicatePruningStrategyImpl::create();
+        options.beam_width = 64;
+        options.beam_novelty_mode = beam_novelty_mode;
+        options.parallel_beam_num_threads = parallel_threads;
+        options.stop_if_goal = true;
+
+        const auto result = brfs::find_solution(brfs.get_search_context(), options);
+        if (result.plan.has_value())
+        {
+            expect_plan_reaches_goal(brfs.get_search_context(), result);
+        }
+
+        return make_brfs_run_trace(result, *event_handler);
+    };
+
+    for (const auto& [domain_name, problem_name] :
+         std::vector<std::pair<std::string, std::string>> { { "delivery", "test_problem.pddl" }, { "philosophers", "test_problem.pddl" } })
+    {
+        SCOPED_TRACE(domain_name);
+
+        for (const auto beam_novelty_mode : { BeamNoveltyMode::ALL_TESTED, BeamNoveltyMode::SURVIVORS_ONLY })
+        {
+            SCOPED_TRACE(beam_novelty_mode == BeamNoveltyMode::ALL_TESTED ? "all_tested" : "survivors_only");
+            const auto serial_trace = run(domain_name, problem_name, SearchContextImpl::SymmetryPruning::OFF, beam_novelty_mode, 1);
+
+            for (const auto parallel_threads : { 2u, 4u })
+            {
+                SCOPED_TRACE(parallel_threads);
+                expect_brfs_run_traces_match(
+                    run(domain_name, problem_name, SearchContextImpl::SymmetryPruning::OFF, beam_novelty_mode, parallel_threads),
+                    serial_trace);
+            }
+        }
+    }
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamMatchesSerialLiftedSymmetryPruningTest)
+{
+    auto run = [](BeamNoveltyMode beam_novelty_mode, uint32_t parallel_threads)
+    {
+        auto brfs = LiftedBrFSPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"),
+                                      fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"),
+                                      SearchContextImpl::SymmetryPruning::GI);
+        auto event_handler = std::make_shared<RecordingBrFSEventHandler>(brfs.get_problem());
+
+        auto options = brfs::Options();
+        options.event_handler = event_handler;
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
+        options.pruning_strategy = DuplicatePruningStrategyImpl::create();
+        options.beam_width = 64;
+        options.beam_novelty_mode = beam_novelty_mode;
+        options.parallel_beam_num_threads = parallel_threads;
+        options.stop_if_goal = true;
+
+        const auto result = brfs::find_solution(brfs.get_search_context(), options);
+        if (result.plan.has_value())
+        {
+            expect_plan_reaches_goal(brfs.get_search_context(), result);
+        }
+
+        return make_brfs_run_trace(result, *event_handler);
+    };
+
+    for (const auto beam_novelty_mode : { BeamNoveltyMode::ALL_TESTED, BeamNoveltyMode::SURVIVORS_ONLY })
+    {
+        SCOPED_TRACE(beam_novelty_mode == BeamNoveltyMode::ALL_TESTED ? "all_tested" : "survivors_only");
+        const auto serial_trace = run(beam_novelty_mode, 1);
+        for (const auto parallel_threads : { 2u, 4u })
+        {
+            SCOPED_TRACE(parallel_threads);
+            expect_brfs_run_traces_match(run(beam_novelty_mode, parallel_threads), serial_trace);
+        }
+    }
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSParallelProjectiveBeamMatchesSerialLiftedKPKCTest)
+{
+    auto run = [](const std::string& domain_name,
+                  const std::string& problem_name,
+                  SearchContextImpl::SymmetryPruning symmetry_pruning,
+                  BeamNoveltyMode beam_novelty_mode,
+                  uint32_t parallel_threads)
+    {
+        auto brfs = LiftedBrFSPlanner(fs::path(std::string(DATA_DIR) + domain_name + "/domain.pddl"),
+                                      fs::path(std::string(DATA_DIR) + domain_name + "/" + problem_name),
+                                      symmetry_pruning);
+        auto event_handler = std::make_shared<RecordingBrFSEventHandler>(brfs.get_problem());
+
+        auto options = brfs::Options();
+        options.event_handler = event_handler;
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
+        options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(brfs.get_problem(), false, true, false);
+        options.beam_width = 64;
+        options.beam_novelty_mode = beam_novelty_mode;
+        options.parallel_beam_num_threads = parallel_threads;
+        options.stop_if_goal = false;
+
+        const auto result = brfs::find_solution(brfs.get_search_context(), options);
+        if (result.plan.has_value())
+        {
+            expect_plan_reaches_goal(brfs.get_search_context(), result);
+        }
+
+        return make_brfs_run_trace(result, *event_handler);
+    };
+
+    for (const auto& [domain_name, problem_name, symmetry_pruning] :
+         std::vector<std::tuple<std::string, std::string, SearchContextImpl::SymmetryPruning>> {
+             { "delivery", "test_problem.pddl", SearchContextImpl::SymmetryPruning::OFF },
+             { "philosophers", "test_problem.pddl", SearchContextImpl::SymmetryPruning::OFF },
+             { "delivery", "test_problem.pddl", SearchContextImpl::SymmetryPruning::GI } })
+    {
+        SCOPED_TRACE(domain_name);
+        SCOPED_TRACE(symmetry_pruning == SearchContextImpl::SymmetryPruning::GI ? "symmetry_pruning" : "plain_lifted");
+
+        for (const auto beam_novelty_mode : { BeamNoveltyMode::ALL_TESTED, BeamNoveltyMode::SURVIVORS_ONLY })
+        {
+            SCOPED_TRACE(beam_novelty_mode == BeamNoveltyMode::ALL_TESTED ? "all_tested" : "survivors_only");
+            const auto serial_trace = run(domain_name, problem_name, symmetry_pruning, beam_novelty_mode, 1);
+
+            for (const auto parallel_threads : { 2u, 4u })
+            {
+                SCOPED_TRACE(parallel_threads);
+                expect_brfs_run_traces_match(run(domain_name, problem_name, symmetry_pruning, beam_novelty_mode, parallel_threads),
+                                             serial_trace);
+            }
+        }
+    }
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamTieBreakingMatchesSerialLiftedKPKCTest)
+{
+    auto run = [](bool randomize_equal_score_ties, uint64_t seed, uint32_t parallel_threads)
+    {
+        auto brfs = LiftedBrFSPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"),
+                                      fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"));
+        auto event_handler = std::make_shared<RecordingBrFSEventHandler>(brfs.get_problem());
+
+        auto options = brfs::Options();
+        options.event_handler = event_handler;
+        options.layer_ordering_strategy = std::make_shared<ConstantScoringLayerOrderingStrategy>();
+        options.pruning_strategy = DuplicatePruningStrategyImpl::create();
+        options.beam_width = 8;
+        options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
+        options.randomize_equal_score_ties = randomize_equal_score_ties;
+        options.equal_score_tie_seed = seed;
+        options.parallel_beam_num_threads = parallel_threads;
+        options.stop_if_goal = false;
+
+        const auto result = brfs::find_solution(brfs.get_search_context(), options);
+        return make_brfs_run_trace(result, *event_handler);
+    };
+
+    const auto serial_default = run(false, 0, 1);
+    const auto serial_seeded = run(true, 7, 1);
+
+    for (const auto parallel_threads : { 2u, 4u })
+    {
+        EXPECT_EQ(run(false, 0, parallel_threads).root_generated_state_indices, serial_default.root_generated_state_indices);
+        expect_brfs_run_traces_match(run(false, 0, parallel_threads), serial_default);
+        expect_brfs_run_traces_match(run(true, 7, parallel_threads), serial_seeded);
+    }
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamRepeatedMatchesSerialLiftedKPKCTest)
+{
+    auto run = [](const std::string& domain_name, BeamNoveltyMode beam_novelty_mode, uint32_t parallel_threads)
+    {
+        auto brfs = LiftedBrFSPlanner(fs::path(std::string(DATA_DIR) + domain_name + "/domain.pddl"),
+                                      fs::path(std::string(DATA_DIR) + domain_name + "/test_problem.pddl"));
+        auto event_handler = std::make_shared<RecordingBrFSEventHandler>(brfs.get_problem());
+
+        auto options = brfs::Options();
+        options.event_handler = event_handler;
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
+        options.pruning_strategy = DuplicatePruningStrategyImpl::create();
+        options.beam_width = 64;
+        options.beam_novelty_mode = beam_novelty_mode;
+        options.parallel_beam_num_threads = parallel_threads;
+        options.stop_if_goal = true;
+
+        const auto result = brfs::find_solution(brfs.get_search_context(), options);
+        if (result.plan.has_value())
+        {
+            expect_plan_reaches_goal(brfs.get_search_context(), result);
+        }
+
+        return make_brfs_run_trace(result, *event_handler);
+    };
+
+    for (const auto& domain_name : { std::string("delivery"), std::string("philosophers") })
+    {
+        SCOPED_TRACE(domain_name);
+
+        for (const auto beam_novelty_mode : { BeamNoveltyMode::ALL_TESTED, BeamNoveltyMode::SURVIVORS_ONLY })
+        {
+            SCOPED_TRACE(beam_novelty_mode == BeamNoveltyMode::ALL_TESTED ? "all_tested" : "survivors_only");
+            const auto serial_trace = run(domain_name, beam_novelty_mode, 1);
+
+            for (int repetition = 0; repetition < 20; ++repetition)
+            {
+                SCOPED_TRACE(repetition);
+                for (const auto parallel_threads : { 2u, 4u })
+                {
+                    SCOPED_TRACE(parallel_threads);
+                    expect_brfs_run_traces_match(run(domain_name, beam_novelty_mode, parallel_threads), serial_trace);
+                }
+            }
+        }
+    }
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamRejectsLiftedExhaustiveContexts)
+{
+    auto problem = ProblemImpl::create(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"),
+                                       fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"));
+    auto search_context = SearchContextImpl::create(problem,
+                                                    SearchContextImpl::Options(
+                                                        SearchContextImpl::LiftedOptions(SearchContextImpl::LiftedOptions::ExhaustiveOptions())));
 
     auto options = brfs::Options();
-    options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
-    options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(brfs.get_problem(), false, true, false);
-    options.beam_width = 2;
+    options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(problem);
+    options.pruning_strategy = DuplicatePruningStrategyImpl::create();
+    options.beam_width = 8;
     options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
     options.parallel_beam_num_threads = 2;
-    options.stop_if_goal = false;
 
-    EXPECT_THROW(brfs::find_solution(brfs.get_search_context(), options), std::invalid_argument);
+    try
+    {
+        [[maybe_unused]] const auto result = brfs::find_solution(search_context, options);
+        FAIL() << "Expected invalid_argument";
+    }
+    catch (const std::invalid_argument& error)
+    {
+        EXPECT_NE(std::string(error.what()).find("lifted exhaustive"), std::string::npos);
+    }
 }
 
 TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamThreadsOneUsesSerialPath)

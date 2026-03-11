@@ -67,7 +67,7 @@ def brfs(
     :type randomize_equal_score_ties: bool
     :param equal_score_tie_seed: Optional deterministic seed for equal-score randomization. Defaults to 0 when unset.
     :type equal_score_tie_seed: int | None
-    :param num_threads: Thread count for grounded beam evaluation. Values <= 1 keep the serial path.
+    :param num_threads: Thread count for parallel beam evaluation. Values <= 1 keep the serial path.
     :type num_threads: int
     :param chunk_size: Parallel beam chunk size. Values <= 0 keep the engine default.
     :type chunk_size: int
@@ -234,7 +234,8 @@ def brfs(
         advanced_options.parallel_beam_chunk_size = chunk_size
     advanced_options.start_state = start_state._advanced_state
     advanced_options.event_handler = EventHandler()
-    advanced_options.layer_ordering_strategy = layer_ordering_strategy
+    if layer_ordering_strategy is not None:
+        advanced_options.layer_ordering_strategy = layer_ordering_strategy
     advanced_options.stop_if_goal = stop_if_goal
     # Invoke the BrFS search algorithm
     result = advanced_brfs(problem._search_context, advanced_options)

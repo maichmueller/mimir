@@ -1126,6 +1126,99 @@ class TestBeamWrappers(unittest.TestCase):
             }
             assert actual_transitions == expected_transitions
 
+    def test_iw_parallel_beam_lifted_kpkc(self):
+        for domain_name in ['delivery', 'philosophers']:
+            problem = _make_problem(domain_name, mode='lifted')
+            start_state = problem.get_initial_state()
+            layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(problem._advanced_problem)
+
+            serial_result = iw(
+                problem,
+                start_state,
+                3,
+                layer_ordering_strategy=layer_ordering_strategy,
+                beam_width=64,
+                beam_novelty_mode="survivors_only",
+            )
+            parallel_result = iw(
+                problem,
+                start_state,
+                3,
+                layer_ordering_strategy=layer_ordering_strategy,
+                beam_width=64,
+                beam_novelty_mode="survivors_only",
+                num_threads=2,
+                chunk_size=64,
+            )
+
+            assert parallel_result.status == serial_result.status
+            assert (parallel_result.solution is None) == (serial_result.solution is None)
+            if serial_result.solution is not None:
+                assert len(parallel_result.solution) == len(serial_result.solution)
+
+    def test_iw_parallel_beam_lifted_symmetry_pruning(self):
+        problem = _make_problem('delivery', mode='lifted_symmetry_pruning')
+        start_state = problem.get_initial_state()
+        layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(problem._advanced_problem)
+
+        serial_result = iw(
+            problem,
+            start_state,
+            3,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="all_tested",
+        )
+        parallel_result = iw(
+            problem,
+            start_state,
+            3,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="all_tested",
+            num_threads=2,
+            chunk_size=64,
+        )
+
+        assert parallel_result.status == serial_result.status
+        assert (parallel_result.solution is None) == (serial_result.solution is None)
+        if serial_result.solution is not None:
+            assert len(parallel_result.solution) == len(serial_result.solution)
+
+    def test_projective_iw_parallel_beam_lifted_delivery_does_not_throw(self):
+        problem = _make_problem('delivery', mode='lifted')
+        start_state = problem.get_initial_state()
+        layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(problem._advanced_problem)
+
+        result = projective_iw(
+            problem,
+            start_state,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="survivors_only",
+            num_threads=2,
+            chunk_size=64,
+        )
+
+        assert result.status in ['solved', 'exhausted']
+
+    def test_projective_iw_parallel_beam_lifted_philosophers_does_not_throw(self):
+        problem = _make_problem('philosophers', mode='lifted')
+        start_state = problem.get_initial_state()
+        layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(problem._advanced_problem)
+
+        result = projective_iw(
+            problem,
+            start_state,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="all_tested",
+            num_threads=2,
+            chunk_size=64,
+        )
+
+        assert result.status in ['solved', 'exhausted']
+
 
 if __name__ == '__main__':
     unittest.main()

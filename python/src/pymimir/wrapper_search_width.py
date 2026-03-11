@@ -163,7 +163,8 @@ def iw(
     advanced_options = AdvancedIWOptions()
     advanced_options.start_state = start_state._advanced_state
     advanced_options.brfs_event_handler = EventHandler()
-    advanced_options.layer_ordering_strategy = layer_ordering_strategy
+    if layer_ordering_strategy is not None:
+        advanced_options.layer_ordering_strategy = layer_ordering_strategy
     if max_next_layer_states > 0:
         advanced_options.max_next_layer_states = max_next_layer_states
     if beam_width > 0:
@@ -228,7 +229,7 @@ def projective_iw(
 
     If `beam_width` is set, search stays layer-based: depth-(d+1) candidates are
     novelty-checked first, then ranked by the layer ordering strategy, and only the
-    best beam states continue. With grounded beam search, `num_threads` can
+    best beam states continue. With parallel beam search, `num_threads` can
     parallelize successor evaluation before the main thread merges candidates into the beam.
     `chunk_size` controls how many staged successors are batched before each merge.
     """
@@ -349,7 +350,8 @@ def projective_iw(
     advanced_options = AdvancedBrFSOptions()
     advanced_options.start_state = start_state._advanced_state
     advanced_options.event_handler = EventHandler()
-    advanced_options.layer_ordering_strategy = layer_ordering_strategy
+    if layer_ordering_strategy is not None:
+        advanced_options.layer_ordering_strategy = layer_ordering_strategy
     if max_next_layer_states > 0:
         advanced_options.max_next_layer_states = max_next_layer_states
     if beam_width > 0:
