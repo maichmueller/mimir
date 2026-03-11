@@ -29,6 +29,9 @@ struct BenchmarkResult
     SearchStatus status;
     size_t generated;
     double wall_time_ms;
+    double lifted_action_generation_time_ms;
+    double lifted_dynamic_assignment_initialization_time_ms;
+    double lifted_symmetry_setup_time_ms;
     uint64_t parallel_chunk_flushes;
     uint64_t parallel_chunk_tasks_total;
     uint64_t max_parallel_chunk_size;
@@ -103,6 +106,9 @@ BenchmarkResult run_once(const std::filesystem::path& domain_file,
     uint64_t parallel_chunk_flushes = 0;
     uint64_t parallel_chunk_tasks_total = 0;
     uint64_t max_parallel_chunk_size = 0;
+    double lifted_action_generation_time_ms = 0.0;
+    double lifted_dynamic_assignment_initialization_time_ms = 0.0;
+    double lifted_symmetry_setup_time_ms = 0.0;
     double parallel_worker_compute_time_ms = 0.0;
     double parallel_main_thread_merge_time_ms = 0.0;
     double parallel_main_thread_intern_time_ms = 0.0;
@@ -136,10 +142,22 @@ BenchmarkResult run_once(const std::filesystem::path& domain_file,
         parallel_producer_stall_time_ms += brfs_statistics.get_parallel_beam_producer_stall_time_ms();
     }
 
+    if (const auto lifted_generator = std::dynamic_pointer_cast<KPKCLiftedApplicableActionGeneratorImpl>(search_context->get_applicable_action_generator()))
+    {
+        const auto& generation_statistics = lifted_generator->get_generation_statistics();
+        lifted_action_generation_time_ms = generation_statistics.get_total_generation_time_ms();
+        lifted_dynamic_assignment_initialization_time_ms =
+            generation_statistics.get_total_dynamic_assignment_initialization_time_ms();
+        lifted_symmetry_setup_time_ms = generation_statistics.get_total_symmetry_setup_time_ms();
+    }
+
     return BenchmarkResult {
         result.status,
         generated,
         std::chrono::duration<double, std::milli>(wall_end - wall_start).count(),
+        lifted_action_generation_time_ms,
+        lifted_dynamic_assignment_initialization_time_ms,
+        lifted_symmetry_setup_time_ms,
         parallel_chunk_flushes,
         parallel_chunk_tasks_total,
         max_parallel_chunk_size,
@@ -310,6 +328,9 @@ int main(int argc, char** argv)
             uint64_t parallel_chunk_flushes = 0;
             uint64_t parallel_chunk_tasks_total = 0;
             uint64_t max_parallel_chunk_size = 0;
+            double lifted_action_generation_time_ms = 0.0;
+            double lifted_dynamic_assignment_initialization_time_ms = 0.0;
+            double lifted_symmetry_setup_time_ms = 0.0;
             double average_parallel_chunk_size = 0.0;
             double parallel_worker_compute_time_ms = 0.0;
             double parallel_main_thread_merge_time_ms = 0.0;
@@ -339,6 +360,9 @@ int main(int argc, char** argv)
                 parallel_chunk_flushes = result.parallel_chunk_flushes;
                 parallel_chunk_tasks_total = result.parallel_chunk_tasks_total;
                 max_parallel_chunk_size = result.max_parallel_chunk_size;
+                lifted_action_generation_time_ms = result.lifted_action_generation_time_ms;
+                lifted_dynamic_assignment_initialization_time_ms = result.lifted_dynamic_assignment_initialization_time_ms;
+                lifted_symmetry_setup_time_ms = result.lifted_symmetry_setup_time_ms;
                 average_parallel_chunk_size = result.average_parallel_chunk_size;
                 parallel_worker_compute_time_ms = result.parallel_worker_compute_time_ms;
                 parallel_main_thread_merge_time_ms = result.parallel_main_thread_merge_time_ms;
@@ -370,6 +394,9 @@ int main(int argc, char** argv)
                       << " min_ms=" << min_ms << " max_ms=" << max_ms << " generated=" << generated << " status=" << to_string(status)
                       << " chunk_flushes=" << parallel_chunk_flushes << " avg_chunk_size=" << average_parallel_chunk_size
                       << " max_chunk_size=" << max_parallel_chunk_size << " chunk_tasks_total=" << parallel_chunk_tasks_total
+                      << " lifted_action_gen_ms=" << lifted_action_generation_time_ms
+                      << " lifted_dynamic_assign_ms=" << lifted_dynamic_assignment_initialization_time_ms
+                      << " lifted_symmetry_setup_ms=" << lifted_symmetry_setup_time_ms
                       << " worker_compute_ms=" << parallel_worker_compute_time_ms
                       << " main_merge_ms=" << parallel_main_thread_merge_time_ms
                       << " main_intern_ms=" << parallel_main_thread_intern_time_ms

@@ -27,6 +27,8 @@
 #include "mimir/search/satisficing_binding_generators/action.hpp"
 #include "mimir/search/search_context.hpp"
 
+#include <cstdint>
+
 namespace mimir::search
 {
 /// @brief `KPKCLiftedApplicableActionGeneratorImpl` implements lifted applicable action generation
@@ -36,6 +38,29 @@ class KPKCLiftedApplicableActionGeneratorImpl : public IApplicableActionGenerato
 {
 public:
     using Statistics = applicable_action_generator::lifted::kpkc::Statistics;
+
+    struct GenerationStatistics
+    {
+        uint64_t num_generation_calls = 0;
+        uint64_t total_generation_time_ns = 0;
+        uint64_t total_dynamic_assignment_initialization_time_ns = 0;
+        uint64_t total_symmetry_setup_time_ns = 0;
+
+        void record_generation(uint64_t generation_time_ns, uint64_t dynamic_assignment_initialization_time_ns, uint64_t symmetry_setup_time_ns)
+        {
+            ++num_generation_calls;
+            total_generation_time_ns += generation_time_ns;
+            total_dynamic_assignment_initialization_time_ns += dynamic_assignment_initialization_time_ns;
+            total_symmetry_setup_time_ns += symmetry_setup_time_ns;
+        }
+
+        double get_total_generation_time_ms() const { return static_cast<double>(total_generation_time_ns) / 1'000'000.0; }
+        double get_total_dynamic_assignment_initialization_time_ms() const
+        {
+            return static_cast<double>(total_dynamic_assignment_initialization_time_ns) / 1'000'000.0;
+        }
+        double get_total_symmetry_setup_time_ms() const { return static_cast<double>(total_symmetry_setup_time_ns) / 1'000'000.0; }
+    };
 
     using IEventHandler = applicable_action_generator::lifted::kpkc::IEventHandler;
     using EventHandler = applicable_action_generator::lifted::kpkc::EventHandler;
@@ -74,6 +99,7 @@ public:
      */
 
     const formalism::Problem& get_problem() const override;
+    const GenerationStatistics& get_generation_statistics() const;
 
 private:
     formalism::Problem m_problem;
@@ -84,6 +110,7 @@ private:
     ActionSatisficingBindingGeneratorList m_action_grounding_data;
 
     formalism::DynamicAssignmentSets m_dynamic_assignment_sets;
+    GenerationStatistics m_generation_statistics;
 };
 
 }  // namespace mimir

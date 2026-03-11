@@ -49,12 +49,15 @@ namespace mimir::search
  * Helpers
  */
 
-inline void clear_full_consistency_graph(std::vector<boost::dynamic_bitset<>>& full_consistency_graph)
+inline void clear_touched_consistency_edges(std::vector<boost::dynamic_bitset<>>& full_consistency_graph,
+                                            std::vector<std::pair<Index, Index>>& touched_consistency_edges)
 {
-    for (auto& row : full_consistency_graph)
+    for (const auto& [first_index, second_index] : touched_consistency_edges)
     {
-        row.reset();
+        full_consistency_graph[first_index][second_index] = 0;
+        full_consistency_graph[second_index][first_index] = 0;
     }
+    touched_consistency_edges.clear();
 }
 
 /**
@@ -174,12 +177,12 @@ mimir::generator<formalism::ObjectList> SatisficingBindingGenerator<Derived_>::g
                                                                                             const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
                                                                                             const std::optional<boost::dynamic_bitset<>>& vertex_mask)
 {
+    clear_touched_consistency_edges(m_full_consistency_graph, m_touched_consistency_edges);
+
     if (m_static_consistency_graph.get_num_edges() == 0)
     {
         co_return;
     }
-
-    clear_full_consistency_graph(m_full_consistency_graph);
 
     for (const auto& edge : m_static_consistency_graph.consistent_edges(m_problem->get_static_assignment_sets(), dynamic_assignment_sets, vertex_mask))
     {
@@ -189,6 +192,7 @@ mimir::generator<formalism::ObjectList> SatisficingBindingGenerator<Derived_>::g
         auto& second_row = m_full_consistency_graph[second_index];
         first_row[second_index] = 1;
         second_row[first_index] = 1;
+        m_touched_consistency_edges.emplace_back(first_index, second_index);
     }
 
     // Find all cliques of size num_parameters whose labels denote complete assignments that might yield an applicable precondition. The relatively few
@@ -224,7 +228,8 @@ SatisficingBindingGenerator<Derived_>::SatisficingBindingGenerator(formalism::Co
     m_problem(problem),
     m_event_handler(event_handler ? event_handler : std::make_shared<DefaultEventHandlerImpl>()),
     m_static_consistency_graph(*m_problem, m_conjunctive_condition, 0, m_conjunctive_condition->get_parameters().size()),
-    m_full_consistency_graph(m_static_consistency_graph.get_vertices().size(), boost::dynamic_bitset<>(m_static_consistency_graph.get_vertices().size()))
+    m_full_consistency_graph(m_static_consistency_graph.get_vertices().size(), boost::dynamic_bitset<>(m_static_consistency_graph.get_vertices().size())),
+    m_touched_consistency_edges()
 {
 }
 

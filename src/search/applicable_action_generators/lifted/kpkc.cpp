@@ -37,6 +37,7 @@
 #include "mimir/search/state.hpp"
 
 #include <boost/dynamic_bitset.hpp>
+#include <chrono>
 #include <stdexcept>
 #include <vector>
 
@@ -46,6 +47,24 @@ using namespace std::string_literals;
 
 namespace mimir::search
 {
+namespace
+{
+struct GenerationStatisticsScope
+{
+    KPKCLiftedApplicableActionGeneratorImpl::GenerationStatistics* statistics;
+    std::chrono::steady_clock::time_point generation_start;
+    std::chrono::nanoseconds dynamic_assignment_initialization_time;
+    std::chrono::nanoseconds symmetry_setup_time;
+
+    ~GenerationStatisticsScope()
+    {
+        const auto generation_time = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - generation_start);
+        statistics->record_generation(static_cast<uint64_t>(generation_time.count()),
+                                      static_cast<uint64_t>(dynamic_assignment_initialization_time.count()),
+                                      static_cast<uint64_t>(symmetry_setup_time.count()));
+    }
+};
+}
 
 /**
  * LiftedApplicableActionGenerator
@@ -82,7 +101,15 @@ KPKCLiftedApplicableActionGenerator KPKCLiftedApplicableActionGeneratorImpl::cre
 
 mimir::generator<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_applicable_action_generator(const State& state)
 {
+    const auto generation_start = std::chrono::steady_clock::now();
+
+    const auto dynamic_assignment_initialization_start = std::chrono::steady_clock::now();
     initialize(state.get_unpacked_state(), m_dynamic_assignment_sets);
+    const auto dynamic_assignment_initialization_time =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - dynamic_assignment_initialization_start);
+    auto symmetry_setup_time = std::chrono::nanoseconds::zero();
+    auto generation_statistics_scope =
+        GenerationStatisticsScope { &m_generation_statistics, generation_start, dynamic_assignment_initialization_time, symmetry_setup_time };
 
     /* Generate applicable actions */
 
@@ -123,6 +150,7 @@ mimir::generator<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_a
     else
     {
         // --- Step 1: Create object graph, compute mapping from vertex to orbit where the object with index i corresponds to vertex with index i. ---
+        const auto symmetry_setup_start = std::chrono::steady_clock::now();
 
         auto object_graph = datasets::create_object_graph(state, *m_problem);
         // std::cout << object_graph << std::endl;
@@ -154,6 +182,8 @@ mimir::generator<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_a
         }
 
         // std::cout << "vertex_to_orbit: " << to_string(vertex_to_orbit) << std::endl;
+        symmetry_setup_time = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - symmetry_setup_start);
+        generation_statistics_scope.symmetry_setup_time = symmetry_setup_time;
 
         for (auto& condition_grounder : m_action_grounding_data)
         {
@@ -253,6 +283,10 @@ mimir::generator<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_a
 }
 
 const Problem& KPKCLiftedApplicableActionGeneratorImpl::get_problem() const { return m_problem; }
+const KPKCLiftedApplicableActionGeneratorImpl::GenerationStatistics& KPKCLiftedApplicableActionGeneratorImpl::get_generation_statistics() const
+{
+    return m_generation_statistics;
+}
 
 void KPKCLiftedApplicableActionGeneratorImpl::on_finish_search_layer()
 {

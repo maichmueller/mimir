@@ -27,6 +27,7 @@
 #include "mimir/search/state_unpacked.hpp"
 
 #include <boost/dynamic_bitset/dynamic_bitset.hpp>
+#include <utility>
 
 namespace mimir::search
 {
@@ -87,6 +88,7 @@ protected:
 
     /* Memory for reuse */
     std::vector<boost::dynamic_bitset<>> m_full_consistency_graph;
+    std::vector<std::pair<Index, Index>> m_touched_consistency_edges;
 
     /// @brief Helper to cast to Derived_.
     constexpr const auto& self() const { return static_cast<const Derived_&>(*this); }

@@ -736,27 +736,25 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                 if (parallel_chunk_tasks.size() == parallel_beam_chunk_size)
                 {
                     submit_parallel_chunk();
-                    collect_ready_chunks(false);
-                    if (!drain_ready_chunks())
+                    if (in_flight_chunks.size() >= max_in_flight_chunks)
                     {
-                        finalize_parallel_pipeline();
-                        return result;
-                    }
+                        collect_ready_chunks(false);
 
-                    while (in_flight_chunks.size() >= max_in_flight_chunks)
-                    {
-                        parallel_producer_stall_time += collect_ready_chunks(true);
+                        while (in_flight_chunks.size() >= max_in_flight_chunks)
+                        {
+                            parallel_producer_stall_time += collect_ready_chunks(true);
+                            if (!drain_ready_chunks())
+                            {
+                                finalize_parallel_pipeline();
+                                return result;
+                            }
+                        }
+
                         if (!drain_ready_chunks())
                         {
                             finalize_parallel_pipeline();
                             return result;
                         }
-                    }
-
-                    if (!drain_ready_chunks())
-                    {
-                        finalize_parallel_pipeline();
-                        return result;
                     }
                 }
             }
