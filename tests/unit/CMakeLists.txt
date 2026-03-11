@@ -42,6 +42,8 @@ add_gtest(search_astar_eager_test                          "search/algorithms/as
 add_gtest(search_brfs_test                                 "search/algorithms/brfs.cpp")
 add_gtest(search_iw_test                                   "search/algorithms/iw.cpp")
 add_gtest(search_siw_test                                  "search/algorithms/siw.cpp")
+add_executable(search_iw_parallel_benchmark                "search/algorithms/iw_parallel_benchmark.cpp")
+target_link_libraries(search_iw_parallel_benchmark PRIVATE mimir::core)
 add_gtest(search_grounded_test                             "search/applicable_action_generators/grounded.cpp")
 add_gtest(search_lifted_test                               "search/applicable_action_generators/lifted.cpp")
 add_gtest(search_alternating_test                          "search/openlists/alternating.cpp")

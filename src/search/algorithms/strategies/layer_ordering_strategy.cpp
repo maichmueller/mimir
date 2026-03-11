@@ -40,6 +40,20 @@ ContinuousCost ILayerOrderingStrategy::score_state(const State& state, DiscreteC
     throw std::logic_error("ILayerOrderingStrategy does not support eager scoring.");
 }
 
+bool ILayerOrderingStrategy::supports_staged_scoring() const { return false; }
+
+ContinuousCost ILayerOrderingStrategy::score_staged_state(const FlatBitset& fluent_atoms,
+                                                          const FlatBitset& derived_atoms,
+                                                          const FlatDoubleList& numeric_variables,
+                                                          DiscreteCost g_value) const
+{
+    [[maybe_unused]] const auto& ignored_fluent_atoms = fluent_atoms;
+    [[maybe_unused]] const auto& ignored_derived_atoms = derived_atoms;
+    [[maybe_unused]] const auto& ignored_numeric_variables = numeric_variables;
+    [[maybe_unused]] const auto ignored_g_value = g_value;
+    throw std::logic_error("ILayerOrderingStrategy does not support staged eager scoring.");
+}
+
 bool ILayerOrderingStrategy::prefer_higher_scores() const { return true; }
 
 void InOrderLayerOrderingStrategyImpl::order_layer(StateList& states, DiscreteCost g_value)
@@ -84,6 +98,29 @@ ContinuousCost GoalCountLayerOrderingStrategyImpl::score_state(const State& stat
 {
     [[maybe_unused]] const auto ignored_g_value = g_value;
     return static_cast<ContinuousCost>(count_satisfied_goal_literals(state));
+}
+
+bool GoalCountLayerOrderingStrategyImpl::supports_staged_scoring() const { return true; }
+
+ContinuousCost GoalCountLayerOrderingStrategyImpl::score_staged_state(const FlatBitset& fluent_atoms,
+                                                                      const FlatBitset& derived_atoms,
+                                                                      const FlatDoubleList& numeric_variables,
+                                                                      DiscreteCost g_value) const
+{
+    [[maybe_unused]] const auto& ignored_numeric_variables = numeric_variables;
+    [[maybe_unused]] const auto ignored_g_value = g_value;
+
+    const auto& positive_fluent_goals = m_problem->get_goal_atoms_bitset<PositiveTag, FluentTag>();
+    const auto& negative_fluent_goals = m_problem->get_goal_atoms_bitset<NegativeTag, FluentTag>();
+    const auto& positive_derived_goals = m_problem->get_goal_atoms_bitset<PositiveTag, DerivedTag>();
+    const auto& negative_derived_goals = m_problem->get_goal_atoms_bitset<NegativeTag, DerivedTag>();
+
+    size_t score = 0;
+    score += count_set_intersection(fluent_atoms, positive_fluent_goals);
+    score += negative_fluent_goals.count() - count_set_intersection(fluent_atoms, negative_fluent_goals);
+    score += count_set_intersection(derived_atoms, positive_derived_goals);
+    score += negative_derived_goals.count() - count_set_intersection(derived_atoms, negative_derived_goals);
+    return static_cast<ContinuousCost>(score);
 }
 
 bool GoalCountLayerOrderingStrategyImpl::prefer_higher_scores() const { return m_prefer_more_satisfied_goals; }

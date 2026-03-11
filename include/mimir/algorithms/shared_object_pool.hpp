@@ -20,7 +20,6 @@
 
 #include <cassert>
 #include <concepts>
-#include <iostream>
 #include <memory>
 #include <stack>
 #include <utility>

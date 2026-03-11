@@ -126,7 +126,8 @@ bool ArityKNoveltyPruningStrategyImpl::test_prune_successor_state(const State& s
 
     if (m_generated_states.count(succ_state.get_index()))
     {
-        assert(!m_novelty_table.test_novelty_and_update_table(state, succ_state));
+        // Transition novelty depends on the predecessor as well. A duplicate successor
+        // can still expose a novel transition, but duplicate states are pruned either way.
         return true;
     }
     m_generated_states.insert(succ_state.get_index());
@@ -497,7 +498,8 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_successor_state(co
 
     if (m_generated_states.count(succ_state.get_index()))
     {
-        assert(!test_transition_novelty_and_update_table(state, succ_state));
+        // Projective width-1 novelty is still transition-based, so a duplicate successor
+        // can remain novel relative to a different predecessor even though it is pruned.
         return true;
     }
     m_generated_states.insert(succ_state.get_index());

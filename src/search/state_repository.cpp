@@ -228,7 +228,7 @@ static void collect_applied_auxiliary_numeric_effects(const GroundNumericEffect<
 
 static void apply_action_effects(GroundAction action,
                                  const ProblemImpl& problem,
-                                 State state,
+                                 const State& state,
                                  const UnpackedStateImpl& unpacked_state,
                                  FlatBitset& ref_dense_fluent_atoms,
                                  FlatBitset& ref_negative_applied_effects,

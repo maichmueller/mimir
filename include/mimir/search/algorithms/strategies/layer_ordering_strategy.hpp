@@ -37,6 +37,9 @@ public:
     virtual bool supports_eager_scoring() const;
 
     virtual ContinuousCost score_state(const State& state, DiscreteCost g_value) const;
+    virtual bool supports_staged_scoring() const;
+    virtual ContinuousCost
+    score_staged_state(const FlatBitset& fluent_atoms, const FlatBitset& derived_atoms, const FlatDoubleList& numeric_variables, DiscreteCost g_value) const;
 
     virtual bool prefer_higher_scores() const;
 
@@ -84,6 +87,9 @@ public:
     bool supports_eager_scoring() const override;
 
     ContinuousCost score_state(const State& state, DiscreteCost g_value) const override;
+    bool supports_staged_scoring() const override;
+    ContinuousCost
+    score_staged_state(const FlatBitset& fluent_atoms, const FlatBitset& derived_atoms, const FlatDoubleList& numeric_variables, DiscreteCost g_value) const override;
 
     bool prefer_higher_scores() const override;
 

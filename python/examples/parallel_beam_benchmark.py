@@ -42,10 +42,23 @@ def parse_args() -> argparse.Namespace:
         default=[1, 2, 4, 8],
         help="Thread counts to benchmark. Values <= 1 use the serial beam path.",
     )
+    parser.add_argument(
+        "--beam-novelty-mode",
+        choices=["survivors_only", "all_tested"],
+        default="survivors_only",
+        help="Beam novelty mode to benchmark.",
+    )
     return parser.parse_args()
 
 
-def run_once(domain_filepath: str, problem_filepath: str, max_arity: int, beam_width: int, num_threads: int) -> None:
+def run_once(
+    domain_filepath: str,
+    problem_filepath: str,
+    max_arity: int,
+    beam_width: int,
+    num_threads: int,
+    beam_novelty_mode: str,
+) -> None:
     search_context = search.SearchContext.create(domain_filepath, problem_filepath, search.SearchContextOptions())
     problem = search_context.get_problem()
     start_state, _ = search_context.get_state_repository().get_or_create_initial_state()
@@ -58,7 +71,11 @@ def run_once(domain_filepath: str, problem_filepath: str, max_arity: int, beam_w
     options.brfs_event_handler = brfs_event_handler
     options.layer_ordering_strategy = search.GoalCountLayerOrderingStrategy(problem)
     options.beam_width = beam_width
-    options.beam_novelty_mode = search.BeamNoveltyMode.SURVIVORS_ONLY
+    options.beam_novelty_mode = (
+        search.BeamNoveltyMode.SURVIVORS_ONLY
+        if beam_novelty_mode == "survivors_only"
+        else search.BeamNoveltyMode.ALL_TESTED
+    )
     options.max_arity = max_arity
     if num_threads > 1:
         options.parallel_beam_num_threads = num_threads
@@ -69,15 +86,16 @@ def run_once(domain_filepath: str, problem_filepath: str, max_arity: int, beam_w
     iw_stats = iw_event_handler.get_statistics()
     generated = sum(stats.get_num_generated() for stats in iw_stats.get_brfs_statistics_by_arity())
     plan_length = len(result.plan.get_actions()) if result.plan else 0
+    search_time_ms = iw_stats.get_search_time_ms().total_seconds() * 1000.0
 
     print(
-        f"threads={num_threads:>2} status={result.status.name.lower():>10} "
+        f"mode={beam_novelty_mode:>14} threads={num_threads:>2} status={result.status.name.lower():>10} "
         f"plan_length={plan_length:>2} generated={generated:>6} "
-        f"search_time_ms={iw_stats.get_search_time_ms():>8} wall_time_ms={wall_time_ms:>8.2f}"
+        f"search_time_ms={search_time_ms:>8.2f} wall_time_ms={wall_time_ms:>8.2f}"
     )
 
 
 if __name__ == "__main__":
     args = parse_args()
     for num_threads in args.threads:
-        run_once(args.domain, args.problem, args.max_arity, args.beam_width, num_threads)
+        run_once(args.domain, args.problem, args.max_arity, args.beam_width, num_threads, args.beam_novelty_mode)

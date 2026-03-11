@@ -19,9 +19,11 @@
 
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/formalism/repositories.hpp"
+#include "mimir/search/applicability.hpp"
 #include "mimir/search/algorithms.hpp"
 #include "mimir/search/algorithms/iw/event_handlers.hpp"
 #include "mimir/search/algorithms/iw/pruning_strategy.hpp"
+#include "mimir/search/algorithms/strategies/goal_strategy.hpp"
 #include "mimir/search/algorithms/iw/tuple_index_generators.hpp"
 #include "mimir/search/algorithms/iw/tuple_index_mapper.hpp"
 #include "mimir/search/algorithms/strategies/layer_ordering_strategy.hpp"
@@ -35,7 +37,10 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
+#include <string>
 #include <stdexcept>
+#include <vector>
 
 using namespace mimir::search;
 using namespace mimir::formalism;
@@ -240,6 +245,107 @@ static std::tuple<State, State, State, State, size_t> create_iw1_beam_novelty_te
     [[maybe_unused]] const auto ignored_succ_b_metric_value = succ_b_metric_value;
 
     return { parent_a, parent_b, succ_a, succ_b, fluent_atoms.size() };
+}
+
+static std::vector<std::string> get_plan_action_signatures(const Plan& plan)
+{
+    auto signatures = std::vector<std::string> {};
+    signatures.reserve(plan.get_actions().size());
+
+    for (const auto action : plan.get_actions())
+    {
+        auto signature = action->get_action()->get_name() + "(";
+        bool first = true;
+
+        for (const auto object : action->get_objects())
+        {
+            if (!first)
+            {
+                signature += ",";
+            }
+            first = false;
+            signature += object->get_name();
+        }
+
+        signature += ")";
+        signatures.push_back(std::move(signature));
+    }
+
+    return signatures;
+}
+
+static void expect_plan_reaches_goal(const SearchContext& search_context, const SearchResult& result)
+{
+    ASSERT_TRUE(result.plan.has_value());
+
+    auto& state_repository = *search_context->get_state_repository();
+    const auto goal_strategy = ProblemGoalStrategyImpl::create(search_context->get_problem());
+    ASSERT_TRUE(goal_strategy->test_static_goal());
+
+    const auto [initial_state, initial_metric_value] = state_repository.get_or_create_initial_state();
+    auto state = initial_state;
+    auto state_metric_value = initial_metric_value;
+
+    for (const auto action : result.plan->get_actions())
+    {
+        ASSERT_TRUE(is_applicable(action, state));
+
+        const auto successor = state_repository.get_or_create_successor_state(state, action, state_metric_value);
+        state = successor.first;
+        state_metric_value = successor.second;
+    }
+
+    EXPECT_TRUE(goal_strategy->test_dynamic_goal(state));
+    if (result.goal_state.has_value())
+    {
+        EXPECT_EQ(state.get_index(), result.goal_state->get_index());
+    }
+}
+
+struct IWRunTrace
+{
+    SearchStatus status;
+    std::optional<Index> goal_state_index;
+    std::vector<std::string> plan_action_signatures;
+    int effective_width;
+    std::vector<std::vector<uint64_t>> num_generated_until_g_value_by_arity;
+    std::vector<std::vector<uint64_t>> num_expanded_until_g_value_by_arity;
+    std::vector<std::vector<uint64_t>> num_pruned_until_g_value_by_arity;
+};
+
+static IWRunTrace make_iw_run_trace(const SearchResult& result, const iw::Statistics& statistics)
+{
+    auto num_generated_until_g_value_by_arity = std::vector<std::vector<uint64_t>> {};
+    auto num_expanded_until_g_value_by_arity = std::vector<std::vector<uint64_t>> {};
+    auto num_pruned_until_g_value_by_arity = std::vector<std::vector<uint64_t>> {};
+
+    for (const auto& brfs_statistics : statistics.get_brfs_statistics_by_arity())
+    {
+        num_generated_until_g_value_by_arity.push_back(brfs_statistics.get_num_generated_until_g_value());
+        num_expanded_until_g_value_by_arity.push_back(brfs_statistics.get_num_expanded_until_g_value());
+        num_pruned_until_g_value_by_arity.push_back(brfs_statistics.get_num_pruned_until_g_value());
+    }
+
+    return IWRunTrace {
+        result.status,
+        result.goal_state.has_value() ? std::make_optional(result.goal_state->get_index()) : std::nullopt,
+        result.plan.has_value() ? get_plan_action_signatures(*result.plan) : std::vector<std::string> {},
+        statistics.get_effective_width(),
+        std::move(num_generated_until_g_value_by_arity),
+        std::move(num_expanded_until_g_value_by_arity),
+        std::move(num_pruned_until_g_value_by_arity),
+    };
+}
+
+static void expect_iw_run_traces_match(const IWRunTrace& lhs, const IWRunTrace& rhs)
+{
+    EXPECT_EQ(lhs.status, rhs.status);
+    EXPECT_EQ(lhs.goal_state_index, rhs.goal_state_index);
+    EXPECT_EQ(lhs.plan_action_signatures, rhs.plan_action_signatures);
+    EXPECT_EQ(lhs.effective_width, rhs.effective_width);
+    EXPECT_EQ(lhs.num_generated_until_g_value_by_arity, rhs.num_generated_until_g_value_by_arity);
+    EXPECT_EQ(lhs.num_expanded_until_g_value_by_arity, rhs.num_expanded_until_g_value_by_arity);
+    EXPECT_EQ(lhs.num_pruned_until_g_value_by_arity, rhs.num_pruned_until_g_value_by_arity);
 }
 
 TEST(MimirTests, SearchAlgorithmsIWSingleStateTupleIndexGeneratorWidth0Test)
@@ -670,6 +776,189 @@ TEST(MimirTests, SearchAlgorithmsIWParallelBeamMatchesSerialTest)
                 EXPECT_EQ(parallel_actions[i]->get_objects()[j]->get_name(), serial_actions[i]->get_objects()[j]->get_name());
             }
         }
+    }
+}
+
+TEST(MimirTests, SearchAlgorithmsIWParallelAllTestedBeamMatchesSerialTest)
+{
+    auto serial_iw = GroundedIWPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"), fs::path(std::string(DATA_DIR) + "delivery/test_problem2.pddl"), 2);
+    auto serial_options = iw::Options();
+    serial_options.max_arity = 2;
+    serial_options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(serial_iw.get_problem());
+    serial_options.beam_width = 128;
+    serial_options.beam_novelty_mode = BeamNoveltyMode::ALL_TESTED;
+    const auto serial_result = iw::find_solution(serial_iw.get_search_context(), serial_options);
+
+    auto parallel_iw = GroundedIWPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"), fs::path(std::string(DATA_DIR) + "delivery/test_problem2.pddl"), 2);
+    auto parallel_options = serial_options;
+    parallel_options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(parallel_iw.get_problem());
+    parallel_options.parallel_beam_num_threads = 2;
+    const auto parallel_result = iw::find_solution(parallel_iw.get_search_context(), parallel_options);
+
+    ASSERT_EQ(parallel_result.status, serial_result.status);
+    ASSERT_EQ(parallel_result.plan.has_value(), serial_result.plan.has_value());
+    ASSERT_EQ(parallel_result.goal_state.has_value(), serial_result.goal_state.has_value());
+
+    if (serial_result.plan.has_value())
+    {
+        const auto& serial_actions = serial_result.plan->get_actions();
+        const auto& parallel_actions = parallel_result.plan->get_actions();
+        ASSERT_EQ(parallel_actions.size(), serial_actions.size());
+        for (size_t i = 0; i < serial_actions.size(); ++i)
+        {
+            EXPECT_EQ(parallel_actions[i]->get_action()->get_name(), serial_actions[i]->get_action()->get_name());
+            ASSERT_EQ(parallel_actions[i]->get_objects().size(), serial_actions[i]->get_objects().size());
+            for (size_t j = 0; j < serial_actions[i]->get_objects().size(); ++j)
+            {
+                EXPECT_EQ(parallel_actions[i]->get_objects()[j]->get_name(), serial_actions[i]->get_objects()[j]->get_name());
+            }
+        }
+    }
+}
+
+TEST(MimirTests, SearchAlgorithmsIWParallelBeamRepeatedMatchesSerialDeliveryTest)
+{
+    auto run = [](const fs::path& problem_file, BeamNoveltyMode beam_novelty_mode, uint32_t beam_width, uint32_t parallel_threads)
+    {
+        auto iw = GroundedIWPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"), problem_file, 2);
+        auto iw_event_handler = iw::DefaultEventHandlerImpl::create(iw.get_problem());
+
+        auto options = iw::Options();
+        options.max_arity = 2;
+        options.iw_event_handler = iw_event_handler;
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(iw.get_problem());
+        options.beam_width = beam_width;
+        options.beam_novelty_mode = beam_novelty_mode;
+        options.parallel_beam_num_threads = parallel_threads;
+
+        const auto result = iw::find_solution(iw.get_search_context(), options);
+        if (result.plan.has_value())
+        {
+            expect_plan_reaches_goal(iw.get_search_context(), result);
+        }
+
+        return make_iw_run_trace(result, iw_event_handler->get_statistics());
+    };
+
+    struct TestCase
+    {
+        fs::path problem_file;
+        BeamNoveltyMode beam_novelty_mode;
+        uint32_t beam_width;
+        const char* label;
+    };
+
+    for (const auto& test_case : std::array<TestCase, 2> { TestCase { fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"),
+                                                                         BeamNoveltyMode::SURVIVORS_ONLY,
+                                                                         4,
+                                                                         "survivors_only" },
+                                                            TestCase { fs::path(std::string(DATA_DIR) + "delivery/test_problem2.pddl"),
+                                                                         BeamNoveltyMode::ALL_TESTED,
+                                                                         128,
+                                                                         "all_tested" } })
+    {
+        SCOPED_TRACE(test_case.label);
+
+        const auto serial_trace = run(test_case.problem_file, test_case.beam_novelty_mode, test_case.beam_width, 1);
+
+        for (int repetition = 0; repetition < 8; ++repetition)
+        {
+            SCOPED_TRACE(repetition);
+
+            for (const auto parallel_threads : { 2u, 4u, 8u })
+            {
+                SCOPED_TRACE(parallel_threads);
+                expect_iw_run_traces_match(run(test_case.problem_file, test_case.beam_novelty_mode, test_case.beam_width, parallel_threads),
+                                           serial_trace);
+            }
+        }
+    }
+}
+
+TEST(MimirTests, SearchAlgorithmsIWParallelBeamChunkedScheduleMatchesSerialTest)
+{
+    auto run = [](BeamNoveltyMode beam_novelty_mode, uint32_t parallel_threads)
+    {
+        auto iw = GroundedIWPlanner(fs::path(std::string(DATA_DIR) + "schedule/domain.pddl"),
+                                    fs::path(std::string(DATA_DIR) + "schedule/test_problem.pddl"),
+                                    5);
+        auto iw_event_handler = iw::DefaultEventHandlerImpl::create(iw.get_problem());
+
+        auto options = iw::Options();
+        options.max_arity = 5;
+        options.iw_event_handler = iw_event_handler;
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(iw.get_problem());
+        options.beam_width = 256;
+        options.beam_novelty_mode = beam_novelty_mode;
+        options.parallel_beam_num_threads = parallel_threads;
+
+        const auto result = iw::find_solution(iw.get_search_context(), options);
+        if (result.plan.has_value())
+        {
+            expect_plan_reaches_goal(iw.get_search_context(), result);
+        }
+
+        return make_iw_run_trace(result, iw_event_handler->get_statistics());
+    };
+
+    for (const auto beam_novelty_mode : { BeamNoveltyMode::ALL_TESTED, BeamNoveltyMode::SURVIVORS_ONLY })
+    {
+        SCOPED_TRACE(beam_novelty_mode == BeamNoveltyMode::ALL_TESTED ? "all_tested" : "survivors_only");
+
+        const auto serial_trace = run(beam_novelty_mode, 1);
+
+        for (const auto parallel_threads : { 2u, 4u })
+        {
+            SCOPED_TRACE(parallel_threads);
+
+            const auto parallel_trace = run(beam_novelty_mode, parallel_threads);
+            EXPECT_EQ(parallel_trace.status, serial_trace.status);
+            EXPECT_EQ(parallel_trace.goal_state_index.has_value(), serial_trace.goal_state_index.has_value());
+            EXPECT_EQ(parallel_trace.effective_width, serial_trace.effective_width);
+            EXPECT_EQ(parallel_trace.num_generated_until_g_value_by_arity, serial_trace.num_generated_until_g_value_by_arity);
+            EXPECT_EQ(parallel_trace.num_expanded_until_g_value_by_arity, serial_trace.num_expanded_until_g_value_by_arity);
+            EXPECT_EQ(parallel_trace.num_pruned_until_g_value_by_arity, serial_trace.num_pruned_until_g_value_by_arity);
+            EXPECT_EQ(parallel_trace.plan_action_signatures.size(), serial_trace.plan_action_signatures.size());
+        }
+    }
+}
+
+TEST(MimirTests, SearchAlgorithmsIWParallelBeamLongRunStressDeliveryTest)
+{
+    auto run = [](const fs::path& problem_file, BeamNoveltyMode beam_novelty_mode, uint32_t beam_width, uint32_t parallel_threads)
+    {
+        auto iw = GroundedIWPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"), problem_file, 2);
+        auto iw_event_handler = iw::DefaultEventHandlerImpl::create(iw.get_problem());
+
+        auto options = iw::Options();
+        options.max_arity = 2;
+        options.iw_event_handler = iw_event_handler;
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(iw.get_problem());
+        options.beam_width = beam_width;
+        options.beam_novelty_mode = beam_novelty_mode;
+        options.parallel_beam_num_threads = parallel_threads;
+
+        const auto result = iw::find_solution(iw.get_search_context(), options);
+        if (result.plan.has_value())
+        {
+            expect_plan_reaches_goal(iw.get_search_context(), result);
+        }
+
+        return make_iw_run_trace(result, iw_event_handler->get_statistics());
+    };
+
+    const auto survivors_reference = run(fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"), BeamNoveltyMode::SURVIVORS_ONLY, 4, 1);
+    const auto all_tested_reference = run(fs::path(std::string(DATA_DIR) + "delivery/test_problem2.pddl"), BeamNoveltyMode::ALL_TESTED, 128, 1);
+
+    for (int repetition = 0; repetition < 32; ++repetition)
+    {
+        SCOPED_TRACE(repetition);
+        expect_iw_run_traces_match(
+            run(fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"), BeamNoveltyMode::SURVIVORS_ONLY, 4, 4),
+            survivors_reference);
+        expect_iw_run_traces_match(
+            run(fs::path(std::string(DATA_DIR) + "delivery/test_problem2.pddl"), BeamNoveltyMode::ALL_TESTED, 128, 4),
+            all_tested_reference);
     }
 }
 

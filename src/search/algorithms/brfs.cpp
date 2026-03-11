@@ -102,11 +102,6 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
             throw std::invalid_argument("BrFS::Options.parallel_beam_num_threads requires BrFS::Options.beam_width.");
         }
 
-        if (beam_novelty_mode != BeamNoveltyMode::SURVIVORS_ONLY)
-        {
-            throw std::invalid_argument("BrFS::Options.parallel_beam_num_threads only supports BeamNoveltyMode::SURVIVORS_ONLY.");
-        }
-
         if (!applicable_action_generator.supports_parallel_beam() || !state_repository.get_axiom_evaluator()->supports_parallel_beam())
         {
             throw std::invalid_argument("BrFS::Options.parallel_beam_num_threads currently requires grounded search contexts.");

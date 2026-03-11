@@ -43,7 +43,7 @@ namespace
 {
 struct BeamCandidate
 {
-    State parent_state;
+    const State* parent_state;
     GroundAction action;
     ContinuousCost action_cost;
     State successor_state;
@@ -97,23 +97,22 @@ struct ParallelBeamEvaluatedCandidate
     StateRepositoryImpl::StagedSuccessorState successor_state;
     ContinuousCost action_cost;
     ContinuousCost score;
-    bool pruned_for_selection;
 };
 
 void reject_beam_candidate(const BeamCandidate& candidate, const EventHandler& event_handler)
 {
-    event_handler->on_generate_state_not_in_search_tree(candidate.parent_state, candidate.action, candidate.action_cost, candidate.successor_state);
+    event_handler->on_generate_state_not_in_search_tree(*candidate.parent_state, candidate.action, candidate.action_cost, candidate.successor_state);
 }
 
 void admit_beam_candidate(const BeamCandidate& candidate, SearchNodeVector& search_nodes, StateList& next_layer, const EventHandler& event_handler)
 {
     auto& successor_search_node = get_or_create_search_node(candidate.successor_state.get_index(), search_nodes);
     successor_search_node.status = SearchNodeStatus::OPEN;
-    successor_search_node.parent_state = candidate.parent_state.get_index();
+    successor_search_node.parent_state = candidate.parent_state->get_index();
     successor_search_node.g_value = candidate.successor_g_value;
 
     next_layer.emplace_back(candidate.successor_state);
-    event_handler->on_generate_state_in_search_tree(candidate.parent_state, candidate.action, candidate.action_cost, candidate.successor_state);
+    event_handler->on_generate_state_in_search_tree(*candidate.parent_state, candidate.action, candidate.action_cost, candidate.successor_state);
 }
 
 void add_candidate_to_small_beam(std::vector<BeamCandidate>& beam_candidates,
@@ -196,7 +195,7 @@ void finalize_beam_layer(const EventHandler& event_handler,
     for (const auto& candidate : beam_candidates)
     {
         if ((beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY)
-            && pruning_strategy->test_prune_successor_state_for_beam_replay(candidate.parent_state,
+            && pruning_strategy->test_prune_successor_state_for_beam_replay(*candidate.parent_state,
                                                                             candidate.successor_state,
                                                                             candidate.is_new_successor,
                                                                             beam_novelty_mode))
@@ -277,19 +276,17 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                 return true;
             }
 
-            // Workers only compute successor contents, run the read-only selection test,
-            // and score surviving candidates. Canonical state insertion, duplicate checks,
-            // beam updates, and event callbacks stay serial in generation order.
+            // Workers compute successor contents and score staged states. For
+            // parallel beam, workers only build dense staged successors and optionally
+            // score them directly from those staged facts. Repository insertion,
+            // novelty checks, duplicate checks, beam updates, and event callbacks stay
+            // serial in generation order.
             auto futures = std::vector<std::future<ParallelBeamEvaluatedCandidate>> {};
             futures.reserve(parallel_chunk_tasks.size());
 
             for (const auto& task : parallel_chunk_tasks)
             {
-                futures.push_back(parallel_beam_pool->submit_task([&state_repository,
-                                                                   &layer_ordering_strategy,
-                                                                   &pruning_strategy,
-                                                                   beam_novelty_mode,
-                                                                   task]()
+                futures.push_back(parallel_beam_pool->submit_task([&state_repository, &layer_ordering_strategy, task]()
                                                                   {
                                                                       thread_local auto scratch =
                                                                           std::make_unique<StateRepositoryImpl::StagedSuccessorScratch>();
@@ -299,28 +296,19 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                                                                                                                          task.action,
                                                                                                                          task.parent_metric_value,
                                                                                                                          *scratch);
-                                                                      auto temporary_successor_state = state_repository.make_temporary_staged_successor_state(
-                                                                          successor_state,
-                                                                          static_cast<Index>(task.generation_sequence),
-                                                                          *scratch);
                                                                       const auto action_cost = successor_state.metric_value - task.parent_metric_value;
-                                                                      const auto pruned_for_selection =
-                                                                          pruning_strategy->test_prune_successor_state_for_beam_selection(*task.parent_state,
-                                                                                                                                          temporary_successor_state,
-                                                                                                                                          true,
-                                                                                                                                          beam_novelty_mode);
+                                                                      const auto score = layer_ordering_strategy->supports_staged_scoring() ?
+                                                                                             layer_ordering_strategy->score_staged_state(
+                                                                                                 successor_state.fluent_atoms,
+                                                                                                 successor_state.derived_atoms,
+                                                                                                 successor_state.fluent_numeric_variables,
+                                                                                                 task.successor_g_value) :
+                                                                                             ContinuousCost(0);
 
                                                                       auto evaluated_candidate = ParallelBeamEvaluatedCandidate { task,
                                                                                                                                     std::move(successor_state),
                                                                                                                                     action_cost,
-                                                                                                                                    0.0,
-                                                                                                                                    pruned_for_selection };
-                                                                      if (!evaluated_candidate.pruned_for_selection)
-                                                                      {
-                                                                          evaluated_candidate.score =
-                                                                              layer_ordering_strategy->score_state(temporary_successor_state,
-                                                                                                                   evaluated_candidate.task.successor_g_value);
-                                                                      }
+                                                                                                                                    score };
 
                                                                       return evaluated_candidate;
                                                                   }));
@@ -339,7 +327,13 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                                                  evaluated_candidate.task.action,
                                                  evaluated_candidate.action_cost,
                                                  successor_state);
-                if (!is_new_successor || evaluated_candidate.pruned_for_selection)
+                const auto pruned_for_selection =
+                    pruning_strategy->test_prune_successor_state_for_beam_selection(*evaluated_candidate.task.parent_state,
+                                                                                    successor_state,
+                                                                                    is_new_successor,
+                                                                                    beam_novelty_mode);
+
+                if (!is_new_successor || pruned_for_selection)
                 {
                     event_handler->on_generate_state_not_in_search_tree(*evaluated_candidate.task.parent_state,
                                                                         evaluated_candidate.task.action,
@@ -348,12 +342,14 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                     continue;
                 }
 
-                auto candidate = BeamCandidate { *evaluated_candidate.task.parent_state,
+                auto candidate = BeamCandidate { evaluated_candidate.task.parent_state,
                                                 evaluated_candidate.task.action,
                                                 evaluated_candidate.action_cost,
                                                 successor_state,
                                                 evaluated_candidate.task.successor_g_value,
-                                                evaluated_candidate.score,
+                                                layer_ordering_strategy->supports_staged_scoring() ?
+                                                    evaluated_candidate.score :
+                                                    layer_ordering_strategy->score_state(successor_state, evaluated_candidate.task.successor_g_value),
                                                 candidate_generation_sequence++,
                                                 options.randomize_equal_score_ties ? tie_break_rng() : uint64_t(0),
                                                 is_new_successor };
@@ -440,7 +436,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                         continue;
                     }
 
-                    auto candidate = BeamCandidate { state,
+                    auto candidate = BeamCandidate { &state,
                                                     action,
                                                     action_cost,
                                                     successor_state,
@@ -494,6 +490,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
         }
 
         finalize_beam_layer(event_handler, pruning_strategy, beam_novelty_mode, search_nodes, beam_candidates, next_layer);
+        beam_candidates.clear();
 
         if (next_layer.empty())
         {
