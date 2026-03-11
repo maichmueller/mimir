@@ -50,16 +50,20 @@ public:
 
     void compute_novel_tuples(const State& state, std::vector<AtomIndexList>& out_novel_tuples);
     void compute_novel_tuples(const State& state, const State& succ_state, std::vector<AtomIndexList>& out_novel_tuples);
+    void compute_novel_tuples(const State& state, const AtomIndexList& succ_state_atom_indices, std::vector<AtomIndexList>& out_novel_tuples);
 
     void insert_tuples(const std::vector<AtomIndexList>& tuples);
 
     bool test_novelty(const State& state);
     bool test_novelty(const State& state, const State& succ_state);
+    bool test_novelty(const State& state, const AtomIndexList& succ_state_atom_indices);
     bool test_novelty_read_only(const State& state) const;
     bool test_novelty_read_only(const State& state, const State& succ_state) const;
+    bool test_novelty_read_only(const State& state, const AtomIndexList& succ_state_atom_indices) const;
     bool test_novelty_and_update_table(const State& state);
 
     bool test_novelty_and_update_table(const State& state, const State& succ_state);
+    bool test_novelty_and_update_table(const State& state, const AtomIndexList& succ_state_atom_indices);
 
     void reset();
 

@@ -497,6 +497,46 @@ StatePairTupleIndexGenerator::const_iterator StatePairTupleIndexGenerator::begin
     return a_atom_indices[1].empty() ? const_iterator(nullptr, false) : const_iterator(this, true);
 }
 
+StatePairTupleIndexGenerator::const_iterator StatePairTupleIndexGenerator::begin(const State& state, const AtomIndexList& succ_atom_indices)
+{
+    a_atom_indices[0].clear();
+    a_atom_indices[1].clear();
+    const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
+
+    auto it1 = succ_atom_indices.begin();
+    auto it2 = state_fluent_atoms.begin();
+
+    while (it1 != succ_atom_indices.end() && it2 != state_fluent_atoms.end())
+    {
+        if (*it1 < *it2)
+        {
+            a_atom_indices[1].push_back(*it1);
+            ++it1;
+        }
+        else if (*it2 < *it1)
+        {
+            ++it2;
+        }
+        else
+        {
+            a_atom_indices[0].push_back(*it1);
+            ++it1;
+            ++it2;
+        }
+    }
+    for (; it1 != succ_atom_indices.end(); ++it1)
+    {
+        a_atom_indices[1].push_back(*it1);
+    }
+
+    a_atom_indices[0].push_back(tuple_index_mapper->get_num_atoms());
+
+    assert(std::is_sorted(a_atom_indices[0].begin(), a_atom_indices[0].end()));
+    assert(std::is_sorted(a_atom_indices[1].begin(), a_atom_indices[1].end()));
+
+    return a_atom_indices[1].empty() ? const_iterator(nullptr, false) : const_iterator(this, true);
+}
+
 StatePairTupleIndexGenerator::const_iterator StatePairTupleIndexGenerator::begin(const AtomIndexList& atom_indices, const AtomIndexList& add_atom_indices)
 {
     a_atom_indices[0] = atom_indices;

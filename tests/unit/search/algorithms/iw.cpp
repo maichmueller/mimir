@@ -875,6 +875,49 @@ TEST(MimirTests, SearchAlgorithmsIWParallelBeamRepeatedMatchesSerialDeliveryTest
     }
 }
 
+TEST(MimirTests, SearchAlgorithmsIWParallelBeamCustomChunkSizeMatchesSerialTest)
+{
+    auto run = [](uint32_t chunk_size)
+    {
+        auto iw = GroundedIWPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"), fs::path(std::string(DATA_DIR) + "delivery/test_problem2.pddl"), 2);
+        auto iw_event_handler = iw::DefaultEventHandlerImpl::create(iw.get_problem());
+        auto options = iw::Options();
+        options.max_arity = 2;
+        options.iw_event_handler = iw_event_handler;
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(iw.get_problem());
+        options.beam_width = 128;
+        options.beam_novelty_mode = BeamNoveltyMode::ALL_TESTED;
+        if (chunk_size > 0)
+        {
+            options.parallel_beam_num_threads = 2;
+            options.parallel_beam_chunk_size = chunk_size;
+        }
+
+        const auto result = iw::find_solution(iw.get_search_context(), options);
+        return std::make_pair(make_iw_run_trace(result, iw_event_handler->get_statistics()), iw_event_handler->get_statistics());
+    };
+
+    const auto [serial_trace, serial_statistics] = run(0);
+    [[maybe_unused]] const auto ignored_serial_statistics = serial_statistics;
+
+    for (const auto chunk_size : { 1u, 4096u })
+    {
+        SCOPED_TRACE(chunk_size);
+        const auto [parallel_trace, parallel_statistics] = run(chunk_size);
+        expect_iw_run_traces_match(parallel_trace, serial_trace);
+
+        uint64_t chunk_flushes = 0;
+        uint64_t max_chunk_size = 0;
+        for (const auto& brfs_statistics : parallel_statistics.get_brfs_statistics_by_arity())
+        {
+            chunk_flushes += brfs_statistics.get_num_parallel_beam_chunk_flushes();
+            max_chunk_size = std::max(max_chunk_size, brfs_statistics.get_max_parallel_beam_chunk_size());
+        }
+        EXPECT_GT(chunk_flushes, 0);
+        EXPECT_LE(max_chunk_size, chunk_size);
+    }
+}
+
 TEST(MimirTests, SearchAlgorithmsIWParallelBeamChunkedScheduleMatchesSerialTest)
 {
     auto run = [](BeamNoveltyMode beam_novelty_mode, uint32_t parallel_threads)

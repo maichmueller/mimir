@@ -180,7 +180,22 @@ std::ostream& print(std::ostream& out, const mimir::search::brfs::Statistics& el
                "[BrFS] Number of reached fluent atoms: {}\n"
                "[BrFS] Number of reached derived atoms: {}\n"
                "[BrFS] Number of states: {}\n"
-               "[BrFS] Number of nodes: {}",
+               "[BrFS] Number of nodes: {}\n"
+               "[BrFS] Parallel beam chunk flushes: {}\n"
+               "[BrFS] Parallel beam average chunk size: {:.2f}\n"
+               "[BrFS] Parallel beam max chunk size: {}\n"
+               "[BrFS] Parallel beam worker compute time: {:.3f}ms\n"
+               "[BrFS] Parallel beam main-thread merge time: {:.3f}ms\n"
+               "[BrFS] Parallel beam main-thread intern time: {:.3f}ms\n"
+               "[BrFS] Parallel beam fluent slot time: {:.3f}ms\n"
+               "[BrFS] Parallel beam numeric slot time: {:.3f}ms\n"
+               "[BrFS] Parallel beam derived slot time: {:.3f}ms\n"
+               "[BrFS] Parallel beam state lookup time: {:.3f}ms\n"
+               "[BrFS] Parallel beam reached-atom update time: {:.3f}ms\n"
+               "[BrFS] Parallel beam ready-queue high-water: {}\n"
+               "[BrFS] Parallel beam in-flight chunks high-water: {}\n"
+               "[BrFS] Parallel beam consumer stall time: {:.3f}ms\n"
+               "[BrFS] Parallel beam producer stall time: {:.3f}ms",
                element.get_search_time_ms().count(),
                element.get_num_generated(),
                element.get_num_expanded(),
@@ -191,7 +206,22 @@ std::ostream& print(std::ostream& out, const mimir::search::brfs::Statistics& el
                element.get_num_reached_fluent_atoms(),
                element.get_num_reached_derived_atoms(),
                element.get_num_states(),
-               element.get_num_nodes());
+               element.get_num_nodes(),
+               element.get_num_parallel_beam_chunk_flushes(),
+               element.get_average_parallel_beam_chunk_size(),
+               element.get_max_parallel_beam_chunk_size(),
+               element.get_parallel_beam_worker_compute_time_ms(),
+               element.get_parallel_beam_main_thread_merge_time_ms(),
+               element.get_parallel_beam_main_thread_intern_time_ms(),
+               element.get_parallel_beam_fluent_slot_time_ms(),
+               element.get_parallel_beam_numeric_slot_time_ms(),
+               element.get_parallel_beam_derived_slot_time_ms(),
+               element.get_parallel_beam_state_lookup_time_ms(),
+               element.get_parallel_beam_reached_atom_update_time_ms(),
+               element.get_parallel_beam_ready_queue_high_water(),
+               element.get_parallel_beam_in_flight_chunks_high_water(),
+               element.get_parallel_beam_consumer_stall_time_ms(),
+               element.get_parallel_beam_producer_stall_time_ms());
 
     return out;
 }

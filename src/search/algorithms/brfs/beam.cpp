@@ -31,7 +31,10 @@
 #include "mimir/algorithms/BS_thread_pool.hpp"
 
 #include <algorithm>
+#include <chrono>
+#include <deque>
 #include <future>
+#include <map>
 #include <memory>
 #include <random>
 
@@ -54,12 +57,27 @@ struct BeamCandidate
     bool is_new_successor;
 };
 
+struct DeferredBeamCandidate
+{
+    const State* parent_state;
+    GroundAction action;
+    ContinuousCost action_cost;
+    StateRepositoryImpl::StagedSuccessorState successor_state;
+    StateRepositoryImpl::StagedSuccessorHandle successor_handle;
+    DiscreteCost successor_g_value;
+    ContinuousCost score;
+    uint64_t generation_sequence;
+    uint64_t tie_token;
+    bool is_new_successor;
+};
+
 struct BeamRanking
 {
     bool prefer_higher_scores;
     bool randomize_equal_score_ties;
 
-    bool better(const BeamCandidate& lhs, const BeamCandidate& rhs) const
+    template<typename Candidate>
+    bool better(const Candidate& lhs, const Candidate& rhs) const
     {
         if (lhs.score != rhs.score)
         {
@@ -75,11 +93,12 @@ struct BeamRanking
     }
 };
 
+template<typename Candidate>
 struct BeamHeapCompare
 {
     BeamRanking ranking;
 
-    bool operator()(const BeamCandidate& lhs, const BeamCandidate& rhs) const { return ranking.better(lhs, rhs); }
+    bool operator()(const Candidate& lhs, const Candidate& rhs) const { return ranking.better(lhs, rhs); }
 };
 
 struct ParallelBeamTaskInput
@@ -99,6 +118,20 @@ struct ParallelBeamEvaluatedCandidate
     ContinuousCost score;
 };
 
+struct EvaluatedChunk
+{
+    uint64_t chunk_id;
+    uint64_t first_generation_sequence;
+    std::vector<ParallelBeamEvaluatedCandidate> candidates;
+    std::chrono::nanoseconds worker_compute_time;
+};
+
+struct InFlightChunk
+{
+    uint64_t chunk_id;
+    std::future<EvaluatedChunk> future;
+};
+
 void reject_beam_candidate(const BeamCandidate& candidate, const EventHandler& event_handler)
 {
     event_handler->on_generate_state_not_in_search_tree(*candidate.parent_state, candidate.action, candidate.action_cost, candidate.successor_state);
@@ -115,15 +148,16 @@ void admit_beam_candidate(const BeamCandidate& candidate, SearchNodeVector& sear
     event_handler->on_generate_state_in_search_tree(*candidate.parent_state, candidate.action, candidate.action_cost, candidate.successor_state);
 }
 
-void add_candidate_to_small_beam(std::vector<BeamCandidate>& beam_candidates,
-                                 BeamCandidate candidate,
+template<typename Candidate, typename RejectFn>
+void add_candidate_to_small_beam(std::vector<Candidate>& beam_candidates,
+                                 Candidate candidate,
                                  size_t beam_width,
                                  const BeamRanking& ranking,
-                                 const EventHandler& event_handler)
+                                 RejectFn&& reject_candidate)
 {
     if ((beam_candidates.size() >= beam_width) && !ranking.better(candidate, beam_candidates.back()))
     {
-        reject_beam_candidate(candidate, event_handler);
+        reject_candidate(candidate);
         return;
     }
 
@@ -138,16 +172,17 @@ void add_candidate_to_small_beam(std::vector<BeamCandidate>& beam_candidates,
     {
         auto evicted_candidate = std::move(beam_candidates.back());
         beam_candidates.pop_back();
-        reject_beam_candidate(evicted_candidate, event_handler);
+        reject_candidate(evicted_candidate);
     }
 }
 
-void add_candidate_to_heap_beam(std::vector<BeamCandidate>& beam_candidates,
-                                BeamCandidate candidate,
+template<typename Candidate, typename RejectFn>
+void add_candidate_to_heap_beam(std::vector<Candidate>& beam_candidates,
+                                Candidate candidate,
                                 size_t beam_width,
                                 const BeamRanking& ranking,
-                                const BeamHeapCompare& heap_compare,
-                                const EventHandler& event_handler)
+                                const BeamHeapCompare<Candidate>& heap_compare,
+                                RejectFn&& reject_candidate)
 {
     if (beam_candidates.size() < beam_width)
     {
@@ -158,20 +193,21 @@ void add_candidate_to_heap_beam(std::vector<BeamCandidate>& beam_candidates,
 
     if (!ranking.better(candidate, beam_candidates.front()))
     {
-        reject_beam_candidate(candidate, event_handler);
+        reject_candidate(candidate);
         return;
     }
 
     std::pop_heap(beam_candidates.begin(), beam_candidates.end(), heap_compare);
     auto evicted_candidate = std::move(beam_candidates.back());
     beam_candidates.pop_back();
-    reject_beam_candidate(evicted_candidate, event_handler);
+    reject_candidate(evicted_candidate);
 
     beam_candidates.push_back(std::move(candidate));
     std::push_heap(beam_candidates.begin(), beam_candidates.end(), heap_compare);
 }
 
-void sort_beam_candidates(std::vector<BeamCandidate>& beam_candidates, const BeamRanking& ranking)
+template<typename Candidate>
+void sort_beam_candidates(std::vector<Candidate>& beam_candidates, const BeamRanking& ranking)
 {
     std::sort(beam_candidates.begin(), beam_candidates.end(), [&ranking](const auto& lhs, const auto& rhs) { return ranking.better(lhs, rhs); });
 }
@@ -212,6 +248,53 @@ void finalize_beam_layer(const EventHandler& event_handler,
         pruning_strategy->on_end_beam_replay(beam_novelty_mode);
     }
 }
+
+void finalize_deferred_beam_layer(const EventHandler& event_handler,
+                                  const PruningStrategy& pruning_strategy,
+                                  BeamNoveltyMode beam_novelty_mode,
+                                  StateRepositoryImpl& state_repository,
+                                  SearchNodeVector& search_nodes,
+                                  std::vector<DeferredBeamCandidate>& beam_candidates,
+                                  StateList& next_layer)
+{
+    next_layer.clear();
+    next_layer.reserve(beam_candidates.size());
+
+    if (beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY)
+    {
+        pruning_strategy->on_begin_beam_replay(beam_novelty_mode);
+    }
+
+    for (const auto& candidate : beam_candidates)
+    {
+        if ((beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY)
+            && pruning_strategy->test_prune_staged_successor_state_for_beam_replay(*candidate.parent_state,
+                                                                                   candidate.successor_state.fluent_atoms,
+                                                                                   candidate.successor_state.derived_atoms,
+                                                                                   candidate.successor_state.fluent_numeric_variables,
+                                                                                   candidate.successor_state.fluent_atom_indices,
+                                                                                   candidate.is_new_successor,
+                                                                                   beam_novelty_mode))
+        {
+            event_handler->on_generate_state_not_in_search_tree_without_payload();
+            continue;
+        }
+
+        auto successor_state = state_repository.materialize_staged_successor_state(candidate.successor_state, candidate.successor_handle);
+        auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
+        successor_search_node.status = SearchNodeStatus::OPEN;
+        successor_search_node.parent_state = candidate.parent_state->get_index();
+        successor_search_node.g_value = candidate.successor_g_value;
+
+        next_layer.emplace_back(successor_state);
+        event_handler->on_generate_state_in_search_tree(*candidate.parent_state, candidate.action, candidate.action_cost, successor_state);
+    }
+
+    if (beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY)
+    {
+        pruning_strategy->on_end_beam_replay(beam_novelty_mode);
+    }
+}
 }  // namespace
 
 SearchResult find_solution_with_beam(const SearchContext& context,
@@ -240,11 +323,16 @@ SearchResult find_solution_with_beam(const SearchContext& context,
     const auto beam_width = options.beam_width;
     const auto beam_novelty_mode = options.beam_novelty_mode;
     const auto parallel_beam_num_threads = options.parallel_beam_num_threads;
+    const auto parallel_beam_chunk_size = options.parallel_beam_chunk_size;
     const auto use_parallel_beam = parallel_beam_num_threads > 1;
+    const auto use_staged_parallel_fast_path =
+        use_parallel_beam && event_handler->supports_payloadless_generated_state_events()
+        && pruning_strategy->supports_staged_beam_pruning(beam_novelty_mode) && layer_ordering_strategy->supports_staged_scoring();
     const auto prefer_higher_scores = layer_ordering_strategy->prefer_higher_scores();
     const auto use_small_beam = (beam_width <= 64);
     const auto ranking = BeamRanking { prefer_higher_scores, options.randomize_equal_score_ties };
-    const auto heap_compare = BeamHeapCompare { ranking };
+    const auto heap_compare = BeamHeapCompare<BeamCandidate> { ranking };
+    const auto deferred_heap_compare = BeamHeapCompare<DeferredBeamCandidate> { ranking };
     auto tie_break_rng = std::mt19937_64(options.equal_score_tie_seed);
     auto generated_state_indices = UnorderedSet<Index> {};
     generated_state_indices.insert(start_state.get_index());
@@ -252,125 +340,298 @@ SearchResult find_solution_with_beam(const SearchContext& context,
     auto current_layer = StateList {};
     auto next_layer = StateList {};
     auto beam_candidates = std::vector<BeamCandidate> {};
+    auto deferred_beam_candidates = std::vector<DeferredBeamCandidate> {};
     auto parallel_chunk_tasks = std::vector<ParallelBeamTaskInput> {};
     auto parallel_beam_pool = std::unique_ptr<BS::thread_pool> {};
+    auto in_flight_chunks = std::deque<InFlightChunk> {};
+    auto ready_chunks = std::map<uint64_t, EvaluatedChunk> {};
+    const auto max_in_flight_chunks = std::max<size_t>(1, 2 * static_cast<size_t>(parallel_beam_num_threads));
+    auto parallel_ready_queue_high_water = size_t(0);
+    auto parallel_in_flight_chunks_high_water = size_t(0);
+    auto parallel_consumer_stall_time = std::chrono::nanoseconds::zero();
+    auto parallel_producer_stall_time = std::chrono::nanoseconds::zero();
     current_layer.push_back(start_state);
 
     if (use_parallel_beam)
     {
         parallel_beam_pool = std::make_unique<BS::thread_pool>(parallel_beam_num_threads);
-        parallel_chunk_tasks.reserve(1024);
+        parallel_chunk_tasks.reserve(parallel_beam_chunk_size);
     }
+
+    const auto finalize_parallel_pipeline = [&]()
+    {
+        if (use_parallel_beam)
+        {
+            event_handler->on_finish_parallel_beam_pipeline(parallel_ready_queue_high_water,
+                                                           parallel_in_flight_chunks_high_water,
+                                                           parallel_consumer_stall_time,
+                                                           parallel_producer_stall_time);
+        }
+    };
 
     while (!current_layer.empty())
     {
         beam_candidates.clear();
         beam_candidates.reserve(std::min<size_t>(beam_width, current_layer.size()));
+        deferred_beam_candidates.clear();
+        deferred_beam_candidates.reserve(std::min<size_t>(beam_width, current_layer.size()));
         auto generation_sequence = uint64_t(0);
         auto candidate_generation_sequence = uint64_t(0);
+        auto next_chunk_id_to_submit = uint64_t(0);
+        auto next_chunk_id_to_merge = uint64_t(0);
 
-        auto flush_parallel_chunk = [&]() -> bool
+        const auto submit_parallel_chunk = [&]()
         {
-            if (parallel_chunk_tasks.empty())
+            if (!use_parallel_beam || parallel_chunk_tasks.empty())
             {
-                return true;
+                return;
             }
 
-            // Workers compute successor contents and score staged states. For
-            // parallel beam, workers only build dense staged successors and optionally
-            // score them directly from those staged facts. Repository insertion,
-            // novelty checks, duplicate checks, beam updates, and event callbacks stay
-            // serial in generation order.
-            auto futures = std::vector<std::future<ParallelBeamEvaluatedCandidate>> {};
-            futures.reserve(parallel_chunk_tasks.size());
+            auto chunk_tasks = std::vector<ParallelBeamTaskInput> {};
+            chunk_tasks.swap(parallel_chunk_tasks);
+            parallel_chunk_tasks.reserve(parallel_beam_chunk_size);
 
-            for (const auto& task : parallel_chunk_tasks)
+            const auto chunk_id = next_chunk_id_to_submit++;
+            const auto first_generation_sequence = chunk_tasks.front().generation_sequence;
+
+            in_flight_chunks.push_back(InFlightChunk {
+                chunk_id,
+                parallel_beam_pool->submit_task([&state_repository, &layer_ordering_strategy, chunk_id, first_generation_sequence, chunk_tasks = std::move(chunk_tasks)]()
+                                                {
+                                                    thread_local auto scratch =
+                                                        std::make_unique<StateRepositoryImpl::StagedSuccessorScratch>();
+
+                                                    auto evaluated_chunk =
+                                                        EvaluatedChunk { chunk_id, first_generation_sequence, {}, std::chrono::nanoseconds::zero() };
+                                                    evaluated_chunk.candidates.reserve(chunk_tasks.size());
+
+                                                    const auto worker_compute_start = std::chrono::steady_clock::now();
+                                                    for (const auto& task : chunk_tasks)
+                                                    {
+                                                        auto successor_state = state_repository.compute_staged_successor_state(*task.parent_state,
+                                                                                                                              task.action,
+                                                                                                                              task.parent_metric_value,
+                                                                                                                              *scratch);
+                                                        const auto action_cost = successor_state.metric_value - task.parent_metric_value;
+                                                        const auto score = layer_ordering_strategy->supports_staged_scoring() ?
+                                                                               layer_ordering_strategy->score_staged_state(
+                                                                                   successor_state.fluent_atoms,
+                                                                                   successor_state.derived_atoms,
+                                                                                   successor_state.fluent_numeric_variables,
+                                                                                   task.successor_g_value) :
+                                                                               ContinuousCost(0);
+
+                                                        evaluated_chunk.candidates.push_back(
+                                                            ParallelBeamEvaluatedCandidate { task, std::move(successor_state), action_cost, score });
+                                                    }
+                                                    evaluated_chunk.worker_compute_time =
+                                                        std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - worker_compute_start);
+                                                    return evaluated_chunk;
+                                                })
+            });
+            parallel_in_flight_chunks_high_water = std::max(parallel_in_flight_chunks_high_water, in_flight_chunks.size());
+        };
+
+        const auto collect_ready_chunks = [&](bool wait_for_next_chunk) -> std::chrono::nanoseconds
+        {
+            if (in_flight_chunks.empty())
             {
-                futures.push_back(parallel_beam_pool->submit_task([&state_repository, &layer_ordering_strategy, task]()
-                                                                  {
-                                                                      thread_local auto scratch =
-                                                                          std::make_unique<StateRepositoryImpl::StagedSuccessorScratch>();
-
-                                                                      auto successor_state =
-                                                                          state_repository.compute_staged_successor_state(*task.parent_state,
-                                                                                                                         task.action,
-                                                                                                                         task.parent_metric_value,
-                                                                                                                         *scratch);
-                                                                      const auto action_cost = successor_state.metric_value - task.parent_metric_value;
-                                                                      const auto score = layer_ordering_strategy->supports_staged_scoring() ?
-                                                                                             layer_ordering_strategy->score_staged_state(
-                                                                                                 successor_state.fluent_atoms,
-                                                                                                 successor_state.derived_atoms,
-                                                                                                 successor_state.fluent_numeric_variables,
-                                                                                                 task.successor_g_value) :
-                                                                                             ContinuousCost(0);
-
-                                                                      auto evaluated_candidate = ParallelBeamEvaluatedCandidate { task,
-                                                                                                                                    std::move(successor_state),
-                                                                                                                                    action_cost,
-                                                                                                                                    score };
-
-                                                                      return evaluated_candidate;
-                                                                  }));
+                return std::chrono::nanoseconds::zero();
             }
 
-            for (auto& future : futures)
+            auto waited_time = std::chrono::nanoseconds::zero();
+            if (wait_for_next_chunk)
             {
-                auto evaluated_candidate = future.get();
-                const auto [successor_state, successor_state_metric_value] =
-                    state_repository.get_or_create_staged_successor_state(evaluated_candidate.successor_state);
-                [[maybe_unused]] auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
-                [[maybe_unused]] const auto ignored_successor_state_metric_value = successor_state_metric_value;
-                const auto is_new_successor = generated_state_indices.insert(successor_state.get_index()).second;
+                const auto wait_start = std::chrono::steady_clock::now();
+                in_flight_chunks.front().future.wait();
+                waited_time = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - wait_start);
+            }
 
-                event_handler->on_generate_state(*evaluated_candidate.task.parent_state,
-                                                 evaluated_candidate.task.action,
-                                                 evaluated_candidate.action_cost,
-                                                 successor_state);
-                const auto pruned_for_selection =
-                    pruning_strategy->test_prune_successor_state_for_beam_selection(*evaluated_candidate.task.parent_state,
-                                                                                    successor_state,
-                                                                                    is_new_successor,
-                                                                                    beam_novelty_mode);
-
-                if (!is_new_successor || pruned_for_selection)
+            for (auto it = in_flight_chunks.begin(); it != in_flight_chunks.end();)
+            {
+                if (it->future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
                 {
-                    event_handler->on_generate_state_not_in_search_tree(*evaluated_candidate.task.parent_state,
-                                                                        evaluated_candidate.task.action,
-                                                                        evaluated_candidate.action_cost,
-                                                                        successor_state);
-                    continue;
-                }
-
-                auto candidate = BeamCandidate { evaluated_candidate.task.parent_state,
-                                                evaluated_candidate.task.action,
-                                                evaluated_candidate.action_cost,
-                                                successor_state,
-                                                evaluated_candidate.task.successor_g_value,
-                                                layer_ordering_strategy->supports_staged_scoring() ?
-                                                    evaluated_candidate.score :
-                                                    layer_ordering_strategy->score_state(successor_state, evaluated_candidate.task.successor_g_value),
-                                                candidate_generation_sequence++,
-                                                options.randomize_equal_score_ties ? tie_break_rng() : uint64_t(0),
-                                                is_new_successor };
-
-                if (use_small_beam)
-                {
-                    add_candidate_to_small_beam(beam_candidates, std::move(candidate), beam_width, ranking, event_handler);
+                    auto evaluated_chunk = it->future.get();
+                    ready_chunks.emplace(it->chunk_id, std::move(evaluated_chunk));
+                    parallel_ready_queue_high_water = std::max(parallel_ready_queue_high_water, ready_chunks.size());
+                    it = in_flight_chunks.erase(it);
                 }
                 else
                 {
-                    add_candidate_to_heap_beam(beam_candidates, std::move(candidate), beam_width, ranking, heap_compare, event_handler);
+                    ++it;
+                }
+            }
+
+            return waited_time;
+        };
+
+        const auto process_ready_chunk = [&](EvaluatedChunk& evaluated_chunk) -> bool
+        {
+            const auto merge_start = std::chrono::steady_clock::now();
+            auto main_thread_intern_time = std::chrono::nanoseconds::zero();
+            auto fluent_slot_time = std::chrono::nanoseconds::zero();
+            auto numeric_slot_time = std::chrono::nanoseconds::zero();
+            auto derived_slot_time = std::chrono::nanoseconds::zero();
+            auto state_lookup_time = std::chrono::nanoseconds::zero();
+            auto reached_atom_update_time = std::chrono::nanoseconds::zero();
+
+            for (auto& evaluated_candidate : evaluated_chunk.candidates)
+            {
+                auto intern_timings = StateRepositoryImpl::StagedSuccessorInternTimings {};
+                const auto intern_start = std::chrono::steady_clock::now();
+                const auto successor_handle = state_repository.get_or_create_staged_successor_handle(evaluated_candidate.successor_state, &intern_timings);
+                main_thread_intern_time += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - intern_start);
+                fluent_slot_time += intern_timings.fluent_slot_time;
+                numeric_slot_time += intern_timings.numeric_slot_time;
+                derived_slot_time += intern_timings.derived_slot_time;
+                state_lookup_time += intern_timings.state_lookup_time;
+                reached_atom_update_time += intern_timings.reached_atom_update_time;
+
+                const auto is_new_successor = generated_state_indices.insert(successor_handle.state_index).second;
+
+                if (use_staged_parallel_fast_path)
+                {
+                    event_handler->on_generate_state_without_payload();
+                    const auto pruned_for_selection =
+                        pruning_strategy->test_prune_staged_successor_state_for_beam_selection(*evaluated_candidate.task.parent_state,
+                                                                                               evaluated_candidate.successor_state.fluent_atoms,
+                                                                                               evaluated_candidate.successor_state.derived_atoms,
+                                                                                               evaluated_candidate.successor_state.fluent_numeric_variables,
+                                                                                               evaluated_candidate.successor_state.fluent_atom_indices,
+                                                                                               is_new_successor,
+                                                                                               beam_novelty_mode);
+
+                    if (!is_new_successor || pruned_for_selection)
+                    {
+                        event_handler->on_generate_state_not_in_search_tree_without_payload();
+                        continue;
+                    }
+
+                    auto candidate = DeferredBeamCandidate { evaluated_candidate.task.parent_state,
+                                                            evaluated_candidate.task.action,
+                                                            evaluated_candidate.action_cost,
+                                                            std::move(evaluated_candidate.successor_state),
+                                                            successor_handle,
+                                                            evaluated_candidate.task.successor_g_value,
+                                                            evaluated_candidate.score,
+                                                            candidate_generation_sequence++,
+                                                            options.randomize_equal_score_ties ? tie_break_rng() : uint64_t(0),
+                                                            is_new_successor };
+
+                    const auto reject_candidate = [&](const auto&) { event_handler->on_generate_state_not_in_search_tree_without_payload(); };
+                    if (use_small_beam)
+                    {
+                        add_candidate_to_small_beam(deferred_beam_candidates,
+                                                    std::move(candidate),
+                                                    beam_width,
+                                                    ranking,
+                                                    reject_candidate);
+                    }
+                    else
+                    {
+                        add_candidate_to_heap_beam(deferred_beam_candidates,
+                                                   std::move(candidate),
+                                                   beam_width,
+                                                   ranking,
+                                                   deferred_heap_compare,
+                                                   reject_candidate);
+                    }
+                }
+                else
+                {
+                    auto successor_state = state_repository.materialize_staged_successor_state(evaluated_candidate.successor_state, successor_handle);
+                    event_handler->on_generate_state(*evaluated_candidate.task.parent_state,
+                                                     evaluated_candidate.task.action,
+                                                     evaluated_candidate.action_cost,
+                                                     successor_state);
+                    const auto pruned_for_selection =
+                        pruning_strategy->test_prune_successor_state_for_beam_selection(*evaluated_candidate.task.parent_state,
+                                                                                        successor_state,
+                                                                                        is_new_successor,
+                                                                                        beam_novelty_mode);
+
+                    if (!is_new_successor || pruned_for_selection)
+                    {
+                        event_handler->on_generate_state_not_in_search_tree(*evaluated_candidate.task.parent_state,
+                                                                            evaluated_candidate.task.action,
+                                                                            evaluated_candidate.action_cost,
+                                                                            successor_state);
+                        continue;
+                    }
+
+                    auto candidate = BeamCandidate { evaluated_candidate.task.parent_state,
+                                                    evaluated_candidate.task.action,
+                                                    evaluated_candidate.action_cost,
+                                                    successor_state,
+                                                    evaluated_candidate.task.successor_g_value,
+                                                    layer_ordering_strategy->supports_staged_scoring() ?
+                                                        evaluated_candidate.score :
+                                                        layer_ordering_strategy->score_state(successor_state, evaluated_candidate.task.successor_g_value),
+                                                    candidate_generation_sequence++,
+                                                    options.randomize_equal_score_ties ? tie_break_rng() : uint64_t(0),
+                                                    is_new_successor };
+
+                    const auto reject_candidate = [&](const BeamCandidate& candidate) { reject_beam_candidate(candidate, event_handler); };
+                    if (use_small_beam)
+                    {
+                        add_candidate_to_small_beam(beam_candidates, std::move(candidate), beam_width, ranking, reject_candidate);
+                    }
+                    else
+                    {
+                        add_candidate_to_heap_beam(beam_candidates, std::move(candidate), beam_width, ranking, heap_compare, reject_candidate);
+                    }
                 }
 
-                if (search_nodes.size() >= options.max_num_states)
+                if (generated_state_indices.size() >= options.max_num_states)
                 {
                     result.status = SearchStatus::OUT_OF_STATES;
+
+                    const auto merge_end = std::chrono::steady_clock::now();
+                    event_handler->on_finish_parallel_beam_chunk(evaluated_chunk.candidates.size(),
+                                                                 evaluated_chunk.worker_compute_time,
+                                                                 std::chrono::duration_cast<std::chrono::nanoseconds>(merge_end - merge_start),
+                                                                 main_thread_intern_time,
+                                                                 fluent_slot_time,
+                                                                 numeric_slot_time,
+                                                                 derived_slot_time,
+                                                                 state_lookup_time,
+                                                                 reached_atom_update_time);
                     return false;
                 }
             }
 
-            parallel_chunk_tasks.clear();
+            const auto merge_end = std::chrono::steady_clock::now();
+            event_handler->on_finish_parallel_beam_chunk(evaluated_chunk.candidates.size(),
+                                                         evaluated_chunk.worker_compute_time,
+                                                         std::chrono::duration_cast<std::chrono::nanoseconds>(merge_end - merge_start),
+                                                         main_thread_intern_time,
+                                                         fluent_slot_time,
+                                                         numeric_slot_time,
+                                                         derived_slot_time,
+                                                         state_lookup_time,
+                                                         reached_atom_update_time);
+            return true;
+        };
+
+        const auto drain_ready_chunks = [&]() -> bool
+        {
+            while (true)
+            {
+                auto it = ready_chunks.find(next_chunk_id_to_merge);
+                if (it == ready_chunks.end())
+                {
+                    break;
+                }
+
+                auto evaluated_chunk = std::move(it->second);
+                ready_chunks.erase(it);
+                if (!process_ready_chunk(evaluated_chunk))
+                {
+                    return false;
+                }
+                ++next_chunk_id_to_merge;
+            }
+
             return true;
         };
 
@@ -379,6 +640,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
             if (stopwatch.has_finished())
             {
                 result.status = SearchStatus::OUT_OF_TIME;
+                finalize_parallel_pipeline();
                 return result;
             }
 
@@ -411,6 +673,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
 
                     event_handler->on_solved(result.plan.value());
 
+                    finalize_parallel_pipeline();
                     return result;
                 }
             }
@@ -424,7 +687,6 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                 {
                     const auto [successor_state, successor_state_metric_value] =
                         state_repository.get_or_create_successor_state(state, action, search_node.g_value);
-                    [[maybe_unused]] auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
                     auto action_cost = successor_state_metric_value - search_node.g_value;
                     const auto successor_g_value = search_node.g_value + 1;
                     const auto is_new_successor = generated_state_indices.insert(successor_state.get_index()).second;
@@ -446,18 +708,20 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                                                     options.randomize_equal_score_ties ? tie_break_rng() : uint64_t(0),
                                                     is_new_successor };
 
+                    const auto reject_candidate = [&](const BeamCandidate& candidate) { reject_beam_candidate(candidate, event_handler); };
                     if (use_small_beam)
                     {
-                        add_candidate_to_small_beam(beam_candidates, std::move(candidate), beam_width, ranking, event_handler);
+                        add_candidate_to_small_beam(beam_candidates, std::move(candidate), beam_width, ranking, reject_candidate);
                     }
                     else
                     {
-                        add_candidate_to_heap_beam(beam_candidates, std::move(candidate), beam_width, ranking, heap_compare, event_handler);
+                        add_candidate_to_heap_beam(beam_candidates, std::move(candidate), beam_width, ranking, heap_compare, reject_candidate);
                     }
 
-                    if (search_nodes.size() >= options.max_num_states)
+                    if (generated_state_indices.size() >= options.max_num_states)
                     {
                         result.status = SearchStatus::OUT_OF_STATES;
+                        finalize_parallel_pipeline();
                         return result;
                     }
 
@@ -469,28 +733,93 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                                                                       static_cast<ContinuousCost>(search_node.g_value),
                                                                       search_node.g_value + 1,
                                                                       generation_sequence++ });
-                if (parallel_chunk_tasks.size() == 1024)
+                if (parallel_chunk_tasks.size() == parallel_beam_chunk_size)
                 {
-                    if (!flush_parallel_chunk())
+                    submit_parallel_chunk();
+                    collect_ready_chunks(false);
+                    if (!drain_ready_chunks())
                     {
+                        finalize_parallel_pipeline();
+                        return result;
+                    }
+
+                    while (in_flight_chunks.size() >= max_in_flight_chunks)
+                    {
+                        parallel_producer_stall_time += collect_ready_chunks(true);
+                        if (!drain_ready_chunks())
+                        {
+                            finalize_parallel_pipeline();
+                            return result;
+                        }
+                    }
+
+                    if (!drain_ready_chunks())
+                    {
+                        finalize_parallel_pipeline();
                         return result;
                     }
                 }
             }
         }
 
-        if (use_parallel_beam && !flush_parallel_chunk())
+        if (use_parallel_beam)
         {
-            return result;
+            submit_parallel_chunk();
+            collect_ready_chunks(false);
+            if (!drain_ready_chunks())
+            {
+                finalize_parallel_pipeline();
+                return result;
+            }
+
+            while (!in_flight_chunks.empty() || !ready_chunks.empty())
+            {
+                if (!drain_ready_chunks())
+                {
+                    finalize_parallel_pipeline();
+                    return result;
+                }
+
+                if (ready_chunks.find(next_chunk_id_to_merge) == ready_chunks.end() && !in_flight_chunks.empty())
+                {
+                    parallel_consumer_stall_time += collect_ready_chunks(true);
+                }
+                else
+                {
+                    collect_ready_chunks(false);
+                }
+            }
+
+            if (!drain_ready_chunks())
+            {
+                finalize_parallel_pipeline();
+                return result;
+            }
         }
 
         if (!use_small_beam)
         {
-            sort_beam_candidates(beam_candidates, ranking);
+            if (use_staged_parallel_fast_path)
+            {
+                sort_beam_candidates(deferred_beam_candidates, ranking);
+            }
+            else
+            {
+                sort_beam_candidates(beam_candidates, ranking);
+            }
         }
 
-        finalize_beam_layer(event_handler, pruning_strategy, beam_novelty_mode, search_nodes, beam_candidates, next_layer);
-        beam_candidates.clear();
+        if (use_staged_parallel_fast_path)
+        {
+            finalize_deferred_beam_layer(
+                event_handler, pruning_strategy, beam_novelty_mode, state_repository, search_nodes, deferred_beam_candidates, next_layer);
+            deferred_beam_candidates.clear();
+        }
+        else
+        {
+            finalize_beam_layer(event_handler, pruning_strategy, beam_novelty_mode, search_nodes, beam_candidates, next_layer);
+            beam_candidates.clear();
+        }
 
         if (next_layer.empty())
         {
@@ -515,6 +844,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
     event_handler->on_exhausted();
 
     result.status = SearchStatus::EXHAUSTED;
+    finalize_parallel_pipeline();
     return result;
 }
 }

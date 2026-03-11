@@ -49,6 +49,7 @@ def iw(
     on_prune_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
     *,
     num_threads: int = -1,
+    chunk_size: int = -1,
 ) -> "SearchResult":
     assert isinstance(problem, Problem), "Problem must be an instance of Problem."
     assert isinstance(start_state, State), "Start state must be an instance of State."
@@ -71,6 +72,7 @@ def iw(
         equal_score_tie_seed, int
     ), "equal_score_tie_seed must be an int or None."
     assert isinstance(num_threads, int), "num_threads must be an int."
+    assert isinstance(chunk_size, int), "chunk_size must be an int."
     assert layer_ordering_strategy is None or isinstance(
         layer_ordering_strategy, AdvancedILayerOrderingStrategy
     ), "layer_ordering_strategy must be an advanced ILayerOrderingStrategy or None."
@@ -180,6 +182,8 @@ def iw(
     )
     if num_threads > 1:
         advanced_options.parallel_beam_num_threads = num_threads
+    if chunk_size > 0:
+        advanced_options.parallel_beam_chunk_size = chunk_size
     advanced_options.max_arity = max_arity
     result = advanced_iw(problem._search_context, advanced_options)
     status = result.status.name.lower()
@@ -212,6 +216,7 @@ def projective_iw(
     on_prune_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
     *,
     num_threads: int = -1,
+    chunk_size: int = -1,
 ) -> "SearchResult":
     """Run BrFS with projective IW(1) pruning.
 
@@ -223,8 +228,9 @@ def projective_iw(
 
     If `beam_width` is set, search stays layer-based: depth-(d+1) candidates are
     novelty-checked first, then ranked by the layer ordering strategy, and only the
-    best beam states continue. With grounded `SURVIVORS_ONLY`, `num_threads`
-    can parallelize successor evaluation before the main thread merges candidates into the beam.
+    best beam states continue. With grounded beam search, `num_threads` can
+    parallelize successor evaluation before the main thread merges candidates into the beam.
+    `chunk_size` controls how many staged successors are batched before each merge.
     """
     assert isinstance(problem, Problem), "Problem must be an instance of Problem."
     assert isinstance(start_state, State), "Start state must be an instance of State."
@@ -252,6 +258,7 @@ def projective_iw(
         equal_score_tie_seed, int
     ), "equal_score_tie_seed must be an int or None."
     assert isinstance(num_threads, int), "num_threads must be an int."
+    assert isinstance(chunk_size, int), "chunk_size must be an int."
     assert layer_ordering_strategy is None or isinstance(
         layer_ordering_strategy, AdvancedILayerOrderingStrategy
     ), "layer_ordering_strategy must be an advanced ILayerOrderingStrategy or None."
@@ -361,6 +368,8 @@ def projective_iw(
     )
     if num_threads > 1:
         advanced_options.parallel_beam_num_threads = num_threads
+    if chunk_size > 0:
+        advanced_options.parallel_beam_chunk_size = chunk_size
     advanced_options.pruning_strategy = (
         AdvancedProjectiveArityOneNoveltyPruningStrategy.create(
             problem._advanced_problem,

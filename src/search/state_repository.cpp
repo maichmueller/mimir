@@ -53,6 +53,7 @@ ContinuousCost compute_state_metric_value(const State& state)
 StateRepositoryImpl::StateRepositoryImpl(AxiomEvaluator axiom_evaluator) :
     m_axiom_evaluator(std::move(axiom_evaluator)),
     m_states(),
+    m_fluent_atom_slots(),
     m_reached_fluent_atoms(),
     m_reached_derived_atoms(),
     m_applied_positive_effect_atoms(),
@@ -118,7 +119,7 @@ std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_state(const 
 
     update_reached_fluent_atoms(dense_fluent_atoms, m_reached_fluent_atoms);
 
-    // Test whether there exists an extended state for the given non extended state
+    // Test whether there exists an extended state for the given non extended state.
     auto it = m_states.find(PackedStateImpl(state_fluent_atoms_slot, state_derived_atoms_slot, state_numeric_variables));
     if (it != m_states.end())
     {
@@ -317,7 +318,7 @@ std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_successor_st
     valla::encode_as_unsigned_integrals(dense_fluent_numeric_variables, double_leaf_table, std::back_inserter(m_index_list));
     state_numeric_variables = valla::insert_sequence(m_index_list, index_tree_table);
 
-    // Check if non-extended state exists in cache
+    // Check if non-extended state exists in cache.
     auto it = m_states.find(PackedStateImpl(state_fluent_atoms_slot, state_derived_atoms_slot, state_numeric_variables));
     if (it != m_states.end())
     {
@@ -395,13 +396,23 @@ StateRepositoryImpl::compute_staged_successor_state(const State& state,
     auto successor_state = StagedSuccessorState();
     successor_state.fluent_atoms = dense_fluent_atoms;
     successor_state.derived_atoms = dense_derived_atoms;
+    successor_state.fluent_atom_indices.clear();
+    for (const auto index : dense_fluent_atoms)
+    {
+        successor_state.fluent_atom_indices.push_back(index);
+    }
+    successor_state.derived_atom_indices.clear();
+    for (const auto index : dense_derived_atoms)
+    {
+        successor_state.derived_atom_indices.push_back(index);
+    }
     successor_state.fluent_numeric_variables = dense_fluent_numeric_variables;
     successor_state.metric_value = successor_state_metric_value;
     return successor_state;
 }
 
-std::pair<State, ContinuousCost>
-StateRepositoryImpl::get_or_create_staged_successor_state(const StagedSuccessorState& successor_state)
+StateRepositoryImpl::StagedSuccessorHandle
+StateRepositoryImpl::get_or_create_staged_successor_handle(const StagedSuccessorState& successor_state, StagedSuccessorInternTimings* timings)
 {
     auto& problem = *m_axiom_evaluator->get_problem();
     auto& index_tree_table = problem.get_index_tree_table();
@@ -409,39 +420,81 @@ StateRepositoryImpl::get_or_create_staged_successor_state(const StagedSuccessorS
 
     // The main thread materializes worker-computed successors in generation order so
     // state indices, duplicate pruning, and beam admission follow the serial semantics.
-    auto unpacked_state = m_unpacked_state_pool.get_or_allocate(problem);
-    auto& dense_fluent_atoms = unpacked_state->get_atoms<FluentTag>();
-    dense_fluent_atoms = successor_state.fluent_atoms;
-    auto& dense_derived_atoms = unpacked_state->get_atoms<DerivedTag>();
-    dense_derived_atoms = successor_state.derived_atoms;
-    auto& dense_fluent_numeric_variables = unpacked_state->get_numeric_variables();
-    dense_fluent_numeric_variables = successor_state.fluent_numeric_variables;
-
-    auto state_fluent_atoms_slot = valla::insert_sequence(dense_fluent_atoms, index_tree_table);
-    update_reached_fluent_atoms(dense_fluent_atoms, m_reached_fluent_atoms);
-
-    m_index_list.clear();
-    valla::encode_as_unsigned_integrals(dense_fluent_numeric_variables, double_leaf_table, std::back_inserter(m_index_list));
-    auto state_numeric_variables = valla::insert_sequence(m_index_list, index_tree_table);
-
-    auto state_derived_atoms_slot = valla::insert_sequence(dense_derived_atoms, index_tree_table);
-    update_reached_derived_atoms(dense_derived_atoms, m_reached_derived_atoms);
-
-    auto packed_state = PackedStateImpl(state_fluent_atoms_slot, state_derived_atoms_slot, state_numeric_variables);
-    auto it = m_states.find(packed_state);
-    if (it != m_states.end())
+    const auto fluent_slot_start = std::chrono::steady_clock::now();
+    auto state_fluent_atoms_slot = valla::Slot<Index>();
+    if (const auto it = m_fluent_atom_slots.find(successor_state.fluent_atom_indices); it != m_fluent_atom_slots.end())
     {
-        auto state = State(it->second, &it->first, std::move(unpacked_state), shared_from_this());
-        return { state, successor_state.metric_value };
+        state_fluent_atoms_slot = it->second;
+    }
+    else
+    {
+        state_fluent_atoms_slot = valla::insert_sequence(successor_state.fluent_atom_indices, index_tree_table);
+        m_fluent_atom_slots.emplace(successor_state.fluent_atom_indices, state_fluent_atoms_slot);
+    }
+    if (timings)
+    {
+        timings->fluent_slot_time += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - fluent_slot_start);
     }
 
+    m_index_list.clear();
+    const auto numeric_slot_start = std::chrono::steady_clock::now();
+    valla::encode_as_unsigned_integrals(successor_state.fluent_numeric_variables, double_leaf_table, std::back_inserter(m_index_list));
+    auto state_numeric_variables = valla::insert_sequence(m_index_list, index_tree_table);
+    if (timings)
+    {
+        timings->numeric_slot_time += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - numeric_slot_start);
+    }
+
+    const auto derived_slot_start = std::chrono::steady_clock::now();
+    auto state_derived_atoms_slot = valla::insert_sequence(successor_state.derived_atom_indices, index_tree_table);
+    if (timings)
+    {
+        timings->derived_slot_time += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - derived_slot_start);
+    }
+
+    auto packed_state = PackedStateImpl(state_fluent_atoms_slot, state_derived_atoms_slot, state_numeric_variables);
+    const auto state_lookup_start = std::chrono::steady_clock::now();
+    auto it = m_states.find(packed_state);
+    if (timings)
+    {
+        timings->state_lookup_time += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - state_lookup_start);
+    }
+
+    if (it != m_states.end())
+    {
+        return StagedSuccessorHandle { it->second, &it->first };
+    }
+
+    const auto reached_atom_update_start = std::chrono::steady_clock::now();
+    update_reached_fluent_atoms(successor_state.fluent_atoms, m_reached_fluent_atoms);
+    update_reached_derived_atoms(successor_state.derived_atoms, m_reached_derived_atoms);
+    if (timings)
+    {
+        timings->reached_atom_update_time +=
+            std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - reached_atom_update_start);
+    }
+
+    const auto state_emplace_start = std::chrono::steady_clock::now();
     auto result = m_states.emplace(std::move(packed_state), m_states.size());
-    auto state = State(result.first->second, &result.first->first, std::move(unpacked_state), shared_from_this());
-    return { state, successor_state.metric_value };
+    if (timings)
+    {
+        timings->state_lookup_time += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - state_emplace_start);
+    }
+    return StagedSuccessorHandle { result.first->second, &result.first->first };
+}
+
+State StateRepositoryImpl::materialize_staged_successor_state(const StagedSuccessorState& successor_state, const StagedSuccessorHandle& successor_handle)
+{
+    const auto& problem = *m_axiom_evaluator->get_problem();
+    auto unpacked_state = m_unpacked_state_pool.get_or_allocate(problem);
+    unpacked_state->get_atoms<FluentTag>() = successor_state.fluent_atoms;
+    unpacked_state->get_atoms<DerivedTag>() = successor_state.derived_atoms;
+    unpacked_state->get_numeric_variables() = successor_state.fluent_numeric_variables;
+    return State(successor_handle.state_index, successor_handle.packed_state, std::move(unpacked_state), shared_from_this());
 }
 
 State StateRepositoryImpl::make_temporary_staged_successor_state(const StagedSuccessorState& successor_state,
-                                                                 Index temporary_state_index,
+                                                                 const StagedSuccessorHandle& successor_handle,
                                                                  StagedSuccessorScratch& scratch)
 {
     const auto& problem = *m_axiom_evaluator->get_problem();
@@ -449,9 +502,7 @@ State StateRepositoryImpl::make_temporary_staged_successor_state(const StagedSuc
     unpacked_state->get_atoms<FluentTag>() = successor_state.fluent_atoms;
     unpacked_state->get_atoms<DerivedTag>() = successor_state.derived_atoms;
     unpacked_state->get_numeric_variables() = successor_state.fluent_numeric_variables;
-
-    static const auto s_dummy_packed_state = PackedStateImpl(valla::Slot<Index>(), valla::Slot<Index>(), valla::Slot<Index>());
-    return State(temporary_state_index, &s_dummy_packed_state, std::move(unpacked_state), shared_from_this());
+    return State(successor_handle.state_index, successor_handle.packed_state, std::move(unpacked_state), shared_from_this());
 }
 
 State StateRepositoryImpl::get_state(const PackedStateImpl& state)

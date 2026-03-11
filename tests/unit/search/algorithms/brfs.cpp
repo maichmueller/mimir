@@ -1024,6 +1024,20 @@ TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamRequiresBeamWidth)
     EXPECT_THROW(brfs::find_solution(brfs.get_search_context(), options), std::invalid_argument);
 }
 
+TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamRejectsZeroChunkSize)
+{
+    auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+
+    auto options = brfs::Options();
+    options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
+    options.beam_width = 4;
+    options.parallel_beam_num_threads = 2;
+    options.parallel_beam_chunk_size = 0;
+    options.stop_if_goal = false;
+
+    EXPECT_THROW(brfs::find_solution(brfs.get_search_context(), options), std::invalid_argument);
+}
+
 TEST(MimirTests, SearchAlgorithmsBrFSParallelAllTestedBeamMatchesSerialTest)
 {
     auto serial_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
@@ -1049,6 +1063,68 @@ TEST(MimirTests, SearchAlgorithmsBrFSParallelAllTestedBeamMatchesSerialTest)
     EXPECT_EQ(parallel_result.status, serial_result.status);
     EXPECT_EQ(get_state_indices(parallel_event_handler->get_root_generated_states()), get_state_indices(serial_event_handler->get_root_generated_states()));
     EXPECT_EQ(get_state_indices(parallel_event_handler->get_expanded_states()), get_state_indices(serial_event_handler->get_expanded_states()));
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamCustomChunkSizesMatchSerialTest)
+{
+    auto run = [](uint32_t chunk_size)
+    {
+        auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"),
+                                        fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"));
+        auto event_handler = std::make_shared<RecordingBrFSEventHandler>(brfs.get_problem());
+        auto options = brfs::Options();
+        options.event_handler = event_handler;
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
+        options.beam_width = 64;
+        options.beam_novelty_mode = BeamNoveltyMode::ALL_TESTED;
+        options.parallel_beam_num_threads = (chunk_size > 0) ? 2 : 1;
+        options.parallel_beam_chunk_size = (chunk_size > 0) ? chunk_size : options.parallel_beam_chunk_size;
+        options.stop_if_goal = true;
+
+        const auto result = brfs::find_solution(brfs.get_search_context(), options);
+        return std::make_pair(make_brfs_run_trace(result, *event_handler), event_handler->get_statistics());
+    };
+
+    const auto [serial_trace, serial_stats] = run(0);
+    [[maybe_unused]] const auto ignored_serial_stats = serial_stats;
+
+    for (const auto chunk_size : { 1u, 4096u })
+    {
+        SCOPED_TRACE(chunk_size);
+        const auto [parallel_trace, parallel_stats] = run(chunk_size);
+        expect_brfs_run_traces_match(parallel_trace, serial_trace);
+        EXPECT_GT(parallel_stats.get_num_parallel_beam_chunk_flushes(), 0);
+        EXPECT_LE(parallel_stats.get_max_parallel_beam_chunk_size(), chunk_size);
+    }
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamInternSubphasesAreMeasuredTest)
+{
+    auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "schedule/domain.pddl"),
+                                    fs::path(std::string(DATA_DIR) + "schedule/test_problem.pddl"));
+    auto event_handler = std::make_shared<RecordingBrFSEventHandler>(brfs.get_problem());
+
+    auto options = brfs::Options();
+    options.event_handler = event_handler;
+    options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
+    options.beam_width = 256;
+    options.beam_novelty_mode = BeamNoveltyMode::ALL_TESTED;
+    options.parallel_beam_num_threads = 4;
+    options.parallel_beam_chunk_size = 512;
+
+    const auto result = brfs::find_solution(brfs.get_search_context(), options);
+    EXPECT_EQ(result.status, SearchStatus::SOLVED);
+
+    const auto& statistics = event_handler->get_statistics();
+    EXPECT_GT(statistics.get_num_parallel_beam_chunk_flushes(), 0);
+    EXPECT_GT(statistics.get_parallel_beam_worker_compute_time_ms(), 0.0);
+    EXPECT_GT(statistics.get_parallel_beam_main_thread_merge_time_ms(), 0.0);
+    EXPECT_GT(statistics.get_parallel_beam_main_thread_intern_time_ms(), 0.0);
+    EXPECT_GT(statistics.get_parallel_beam_fluent_slot_time_ms(), 0.0);
+    EXPECT_GT(statistics.get_parallel_beam_numeric_slot_time_ms(), 0.0);
+    EXPECT_GT(statistics.get_parallel_beam_state_lookup_time_ms(), 0.0);
+    EXPECT_GT(statistics.get_parallel_beam_ready_queue_high_water(), 0u);
+    EXPECT_GT(statistics.get_parallel_beam_in_flight_chunks_high_water(), 0u);
 }
 
 TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamRejectsLiftedContexts)

@@ -23,6 +23,7 @@
 #include "mimir/search/declarations.hpp"
 
 #include <chrono>
+#include <cstddef>
 #include <concepts>
 #include <cstdint>
 
@@ -46,6 +47,12 @@ public:
     /// @brief React on generating a state by applying an action.
     virtual void on_generate_state(const State& state, formalism::GroundAction action, ContinuousCost action_cost, const State& successor_state) = 0;
 
+    /// @brief Lightweight generated-state hook for quiet handlers in the staged beam fast path.
+    virtual bool supports_payloadless_generated_state_events() const { return false; }
+    virtual void on_generate_state_without_payload() {}
+    virtual void on_generate_state_in_search_tree_without_payload() {}
+    virtual void on_generate_state_not_in_search_tree_without_payload() {}
+
     /// @brief React on generating a state in the search tree by applying an action.
     virtual void
     on_generate_state_in_search_tree(const State& state, formalism::GroundAction action, ContinuousCost action_cost, const State& successor_state) = 0;
@@ -67,6 +74,27 @@ public:
                                uint64_t num_nodes,
                                uint64_t num_actions,
                                uint64_t num_axioms) = 0;
+
+    /// @brief React on finishing one parallel beam chunk.
+    virtual void on_finish_parallel_beam_chunk(size_t chunk_size,
+                                               std::chrono::nanoseconds worker_compute_time,
+                                               std::chrono::nanoseconds main_thread_merge_time,
+                                               std::chrono::nanoseconds main_thread_intern_time,
+                                               std::chrono::nanoseconds fluent_slot_time,
+                                               std::chrono::nanoseconds numeric_slot_time,
+                                               std::chrono::nanoseconds derived_slot_time,
+                                               std::chrono::nanoseconds state_lookup_time,
+                                               std::chrono::nanoseconds reached_atom_update_time)
+    {
+    }
+
+    /// @brief React on finishing the parallel beam pipeline for one search.
+    virtual void on_finish_parallel_beam_pipeline(size_t ready_queue_high_water,
+                                                  size_t in_flight_chunks_high_water,
+                                                  std::chrono::nanoseconds consumer_stall_time,
+                                                  std::chrono::nanoseconds producer_stall_time)
+    {
+    }
 
     /// @brief React on solving a search.
     virtual void on_solved(const Plan& plan) = 0;
@@ -132,6 +160,14 @@ public:
         }
     }
 
+    bool supports_payloadless_generated_state_events() const override { return m_quiet; }
+
+    void on_generate_state_without_payload() override { m_statistics.increment_num_generated(); }
+
+    void on_generate_state_in_search_tree_without_payload() override {}
+
+    void on_generate_state_not_in_search_tree_without_payload() override {}
+
     void on_generate_state_in_search_tree(const State& state, formalism::GroundAction action, ContinuousCost action_cost, const State& successor_state) override
     {
         if (!m_quiet)
@@ -191,6 +227,38 @@ public:
         {
             self().on_end_search_impl(num_reached_fluent_atoms, num_reached_derived_atoms, num_states, num_nodes, num_actions, num_axioms);
         }
+    }
+
+    void on_finish_parallel_beam_chunk(size_t chunk_size,
+                                       std::chrono::nanoseconds worker_compute_time,
+                                       std::chrono::nanoseconds main_thread_merge_time,
+                                       std::chrono::nanoseconds main_thread_intern_time,
+                                       std::chrono::nanoseconds fluent_slot_time,
+                                       std::chrono::nanoseconds numeric_slot_time,
+                                       std::chrono::nanoseconds derived_slot_time,
+                                       std::chrono::nanoseconds state_lookup_time,
+                                       std::chrono::nanoseconds reached_atom_update_time) override
+    {
+        m_statistics.record_parallel_beam_chunk(chunk_size,
+                                               worker_compute_time,
+                                               main_thread_merge_time,
+                                               main_thread_intern_time,
+                                               fluent_slot_time,
+                                               numeric_slot_time,
+                                               derived_slot_time,
+                                               state_lookup_time,
+                                               reached_atom_update_time);
+    }
+
+    void on_finish_parallel_beam_pipeline(size_t ready_queue_high_water,
+                                          size_t in_flight_chunks_high_water,
+                                          std::chrono::nanoseconds consumer_stall_time,
+                                          std::chrono::nanoseconds producer_stall_time) override
+    {
+        m_statistics.record_parallel_beam_pipeline(ready_queue_high_water,
+                                                   in_flight_chunks_high_water,
+                                                   consumer_stall_time,
+                                                   producer_stall_time);
     }
 
     void on_solved(const Plan& plan) override

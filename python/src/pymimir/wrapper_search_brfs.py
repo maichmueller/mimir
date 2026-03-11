@@ -41,6 +41,7 @@ def brfs(
     on_finish_g_layer: "Union[Callable[[float], None], None]" = None,
     *,
     num_threads: int = -1,
+    chunk_size: int = -1,
     stop_if_goal: bool = True,
 ) -> "SearchResult":
     """
@@ -66,8 +67,10 @@ def brfs(
     :type randomize_equal_score_ties: bool
     :param equal_score_tie_seed: Optional deterministic seed for equal-score randomization. Defaults to 0 when unset.
     :type equal_score_tie_seed: int | None
-    :param num_threads: Thread count for grounded SURVIVORS_ONLY beam evaluation. Values <= 1 keep the serial path.
+    :param num_threads: Thread count for grounded beam evaluation. Values <= 1 keep the serial path.
     :type num_threads: int
+    :param chunk_size: Parallel beam chunk size. Values <= 0 keep the engine default.
+    :type chunk_size: int
     :param on_expand_state: Callback function called when a state is expanded.
     :type on_expand_state: Callable[[State], None]
     :param on_expand_goal_state: Callback function called when a goal state is expanded.
@@ -108,6 +111,7 @@ def brfs(
         equal_score_tie_seed, int
     ), "equal_score_tie_seed must be an int or None."
     assert isinstance(num_threads, int), "num_threads must be an int."
+    assert isinstance(chunk_size, int), "chunk_size must be an int."
     assert isinstance(stop_if_goal, bool), "stop_if_goal must be a bool."
     assert layer_ordering_strategy is None or isinstance(
         layer_ordering_strategy, AdvancedILayerOrderingStrategy
@@ -226,6 +230,8 @@ def brfs(
     )
     if num_threads > 1:
         advanced_options.parallel_beam_num_threads = num_threads
+    if chunk_size > 0:
+        advanced_options.parallel_beam_chunk_size = chunk_size
     advanced_options.start_state = start_state._advanced_state
     advanced_options.event_handler = EventHandler()
     advanced_options.layer_ordering_strategy = layer_ordering_strategy

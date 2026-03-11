@@ -59,6 +59,7 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
     const auto use_beam = (beam_width < std::numeric_limits<uint32_t>::max());
     const auto beam_novelty_mode = options.beam_novelty_mode;
     const auto parallel_beam_num_threads = options.parallel_beam_num_threads;
+    const auto parallel_beam_chunk_size = options.parallel_beam_chunk_size;
 
     if (use_next_layer_limit && (max_next_layer_states == 0))
     {
@@ -93,6 +94,11 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
     if (use_beam && !pruning_strategy->supports_beam_novelty_mode(beam_novelty_mode))
     {
         throw std::invalid_argument("The selected pruning_strategy does not support the requested beam novelty mode.");
+    }
+
+    if (parallel_beam_chunk_size == 0)
+    {
+        throw std::invalid_argument("BrFS::Options.parallel_beam_chunk_size must be positive.");
     }
 
     if (parallel_beam_num_threads > 1)

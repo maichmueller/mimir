@@ -136,6 +136,29 @@ void DynamicNoveltyTable::compute_novel_tuples(const State& state, const State& 
     }
 }
 
+void DynamicNoveltyTable::compute_novel_tuples(const State& state, const AtomIndexList& succ_state_atom_indices, std::vector<AtomIndexList>& out_novel_tuples)
+{
+    out_novel_tuples.clear();
+
+    resize_to_fit(state);
+    if (!succ_state_atom_indices.empty())
+    {
+        resize_to_fit(succ_state_atom_indices.back());
+    }
+
+    for (auto it = m_state_pair_tuple_index_generator.begin(state, succ_state_atom_indices); it != m_state_pair_tuple_index_generator.end(); ++it)
+    {
+        const auto tuple_index = *it;
+
+        assert(tuple_index < m_table.size());
+
+        if (!m_table[tuple_index])
+        {
+            out_novel_tuples.push_back(m_tuple_index_mapper.to_atom_indices(tuple_index));
+        }
+    }
+}
+
 void DynamicNoveltyTable::insert_tuples(const std::vector<AtomIndexList>& tuples)
 {
     for (const auto& tuple : tuples)
@@ -185,6 +208,28 @@ bool DynamicNoveltyTable::test_novelty(const State& state, const State& succ_sta
     return false;
 }
 
+bool DynamicNoveltyTable::test_novelty(const State& state, const AtomIndexList& succ_state_atom_indices)
+{
+    resize_to_fit(state);
+    if (!succ_state_atom_indices.empty())
+    {
+        resize_to_fit(succ_state_atom_indices.back());
+    }
+
+    for (auto it = m_state_pair_tuple_index_generator.begin(state, succ_state_atom_indices); it != m_state_pair_tuple_index_generator.end(); ++it)
+    {
+        const auto tuple_index = *it;
+
+        assert(tuple_index < m_table.size());
+
+        if (!m_table[tuple_index])
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool DynamicNoveltyTable::test_novelty_read_only(const State& state) const
 {
     auto state_tuple_index_generator = StateTupleIndexGenerator(&m_tuple_index_mapper);
@@ -208,6 +253,24 @@ bool DynamicNoveltyTable::test_novelty_read_only(const State& state, const State
     auto state_pair_tuple_index_generator = StatePairTupleIndexGenerator(&m_tuple_index_mapper);
 
     for (auto it = state_pair_tuple_index_generator.begin(state, succ_state); it != state_pair_tuple_index_generator.end(); ++it)
+    {
+        const auto tuple_index = *it;
+
+        assert(tuple_index < m_table.size());
+
+        if (!m_table[tuple_index])
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool DynamicNoveltyTable::test_novelty_read_only(const State& state, const AtomIndexList& succ_state_atom_indices) const
+{
+    auto state_pair_tuple_index_generator = StatePairTupleIndexGenerator(&m_tuple_index_mapper);
+
+    for (auto it = state_pair_tuple_index_generator.begin(state, succ_state_atom_indices); it != state_pair_tuple_index_generator.end(); ++it)
     {
         const auto tuple_index = *it;
 
@@ -248,6 +311,30 @@ bool DynamicNoveltyTable::test_novelty_and_update_table(const State& state, cons
 
     bool is_novel = false;
     for (auto it = m_state_pair_tuple_index_generator.begin(state, succ_state); it != m_state_pair_tuple_index_generator.end(); ++it)
+    {
+        const auto tuple_index = *it;
+
+        assert(tuple_index < m_table.size());
+
+        if (!is_novel && !m_table[tuple_index])
+        {
+            is_novel = true;
+        }
+        m_table[tuple_index] = true;
+    }
+    return is_novel;
+}
+
+bool DynamicNoveltyTable::test_novelty_and_update_table(const State& state, const AtomIndexList& succ_state_atom_indices)
+{
+    resize_to_fit(state);
+    if (!succ_state_atom_indices.empty())
+    {
+        resize_to_fit(succ_state_atom_indices.back());
+    }
+
+    bool is_novel = false;
+    for (auto it = m_state_pair_tuple_index_generator.begin(state, succ_state_atom_indices); it != m_state_pair_tuple_index_generator.end(); ++it)
     {
         const auto tuple_index = *it;
 

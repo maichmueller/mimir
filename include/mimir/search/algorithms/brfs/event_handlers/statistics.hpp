@@ -18,7 +18,9 @@
 #ifndef MIMIR_SEARCH_ALGORITHMS_BRFS_EVENT_HANDLERS_STATISTICS_HPP_
 #define MIMIR_SEARCH_ALGORITHMS_BRFS_EVENT_HANDLERS_STATISTICS_HPP_
 
+#include <algorithm>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <ostream>
 #include <vector>
@@ -33,6 +35,21 @@ private:
     uint64_t m_num_expanded;
     uint64_t m_num_deadends;
     uint64_t m_num_pruned;
+    uint64_t m_num_parallel_beam_chunk_flushes;
+    uint64_t m_num_parallel_beam_chunk_tasks_total;
+    uint64_t m_max_parallel_beam_chunk_size;
+    uint64_t m_parallel_beam_worker_compute_time_ns;
+    uint64_t m_parallel_beam_main_thread_merge_time_ns;
+    uint64_t m_parallel_beam_main_thread_intern_time_ns;
+    uint64_t m_parallel_beam_fluent_slot_time_ns;
+    uint64_t m_parallel_beam_numeric_slot_time_ns;
+    uint64_t m_parallel_beam_derived_slot_time_ns;
+    uint64_t m_parallel_beam_state_lookup_time_ns;
+    uint64_t m_parallel_beam_reached_atom_update_time_ns;
+    uint64_t m_parallel_beam_ready_queue_high_water;
+    uint64_t m_parallel_beam_in_flight_chunks_high_water;
+    uint64_t m_parallel_beam_consumer_stall_time_ns;
+    uint64_t m_parallel_beam_producer_stall_time_ns;
     std::chrono::time_point<std::chrono::high_resolution_clock> m_search_start_time_point;
     std::chrono::time_point<std::chrono::high_resolution_clock> m_search_end_time_point;
 
@@ -55,6 +72,21 @@ public:
         m_num_expanded(0),
         m_num_deadends(0),
         m_num_pruned(0),
+        m_num_parallel_beam_chunk_flushes(0),
+        m_num_parallel_beam_chunk_tasks_total(0),
+        m_max_parallel_beam_chunk_size(0),
+        m_parallel_beam_worker_compute_time_ns(0),
+        m_parallel_beam_main_thread_merge_time_ns(0),
+        m_parallel_beam_main_thread_intern_time_ns(0),
+        m_parallel_beam_fluent_slot_time_ns(0),
+        m_parallel_beam_numeric_slot_time_ns(0),
+        m_parallel_beam_derived_slot_time_ns(0),
+        m_parallel_beam_state_lookup_time_ns(0),
+        m_parallel_beam_reached_atom_update_time_ns(0),
+        m_parallel_beam_ready_queue_high_water(0),
+        m_parallel_beam_in_flight_chunks_high_water(0),
+        m_parallel_beam_consumer_stall_time_ns(0),
+        m_parallel_beam_producer_stall_time_ns(0),
         m_num_generated_until_g_value(),
         m_num_expanded_until_g_value(),
         m_num_deadends_until_g_value(),
@@ -85,6 +117,38 @@ public:
     void increment_num_expanded() { ++m_num_expanded; }
     void increment_num_deadends() { ++m_num_deadends; }
     void increment_num_pruned() { ++m_num_pruned; }
+    void record_parallel_beam_chunk(size_t chunk_size,
+                                    std::chrono::nanoseconds worker_compute_time,
+                                    std::chrono::nanoseconds main_thread_merge_time,
+                                    std::chrono::nanoseconds main_thread_intern_time,
+                                    std::chrono::nanoseconds fluent_slot_time,
+                                    std::chrono::nanoseconds numeric_slot_time,
+                                    std::chrono::nanoseconds derived_slot_time,
+                                    std::chrono::nanoseconds state_lookup_time,
+                                    std::chrono::nanoseconds reached_atom_update_time)
+    {
+        ++m_num_parallel_beam_chunk_flushes;
+        m_num_parallel_beam_chunk_tasks_total += chunk_size;
+        m_max_parallel_beam_chunk_size = std::max<uint64_t>(m_max_parallel_beam_chunk_size, chunk_size);
+        m_parallel_beam_worker_compute_time_ns += static_cast<uint64_t>(worker_compute_time.count());
+        m_parallel_beam_main_thread_merge_time_ns += static_cast<uint64_t>(main_thread_merge_time.count());
+        m_parallel_beam_main_thread_intern_time_ns += static_cast<uint64_t>(main_thread_intern_time.count());
+        m_parallel_beam_fluent_slot_time_ns += static_cast<uint64_t>(fluent_slot_time.count());
+        m_parallel_beam_numeric_slot_time_ns += static_cast<uint64_t>(numeric_slot_time.count());
+        m_parallel_beam_derived_slot_time_ns += static_cast<uint64_t>(derived_slot_time.count());
+        m_parallel_beam_state_lookup_time_ns += static_cast<uint64_t>(state_lookup_time.count());
+        m_parallel_beam_reached_atom_update_time_ns += static_cast<uint64_t>(reached_atom_update_time.count());
+    }
+    void record_parallel_beam_pipeline(size_t ready_queue_high_water,
+                                       size_t in_flight_chunks_high_water,
+                                       std::chrono::nanoseconds consumer_stall_time,
+                                       std::chrono::nanoseconds producer_stall_time)
+    {
+        m_parallel_beam_ready_queue_high_water = std::max<uint64_t>(m_parallel_beam_ready_queue_high_water, ready_queue_high_water);
+        m_parallel_beam_in_flight_chunks_high_water = std::max<uint64_t>(m_parallel_beam_in_flight_chunks_high_water, in_flight_chunks_high_water);
+        m_parallel_beam_consumer_stall_time_ns += static_cast<uint64_t>(consumer_stall_time.count());
+        m_parallel_beam_producer_stall_time_ns += static_cast<uint64_t>(producer_stall_time.count());
+    }
     void set_search_start_time_point(std::chrono::time_point<std::chrono::high_resolution_clock> time_point) { m_search_start_time_point = time_point; }
     void set_search_end_time_point(std::chrono::time_point<std::chrono::high_resolution_clock> time_point) { m_search_end_time_point = time_point; }
 
@@ -104,6 +168,42 @@ public:
     uint64_t get_num_expanded() const { return m_num_expanded; }
     uint64_t get_num_deadends() const { return m_num_deadends; }
     uint64_t get_num_pruned() const { return m_num_pruned; }
+    uint64_t get_num_parallel_beam_chunk_flushes() const { return m_num_parallel_beam_chunk_flushes; }
+    uint64_t get_num_parallel_beam_chunk_tasks_total() const { return m_num_parallel_beam_chunk_tasks_total; }
+    double get_average_parallel_beam_chunk_size() const
+    {
+        return (m_num_parallel_beam_chunk_flushes == 0) ?
+                   0.0 :
+                   static_cast<double>(m_num_parallel_beam_chunk_tasks_total) / static_cast<double>(m_num_parallel_beam_chunk_flushes);
+    }
+    uint64_t get_max_parallel_beam_chunk_size() const { return m_max_parallel_beam_chunk_size; }
+    double get_parallel_beam_worker_compute_time_ms() const { return static_cast<double>(m_parallel_beam_worker_compute_time_ns) / 1'000'000.0; }
+    double get_parallel_beam_main_thread_merge_time_ms() const
+    {
+        return static_cast<double>(m_parallel_beam_main_thread_merge_time_ns) / 1'000'000.0;
+    }
+    double get_parallel_beam_main_thread_intern_time_ms() const
+    {
+        return static_cast<double>(m_parallel_beam_main_thread_intern_time_ns) / 1'000'000.0;
+    }
+    double get_parallel_beam_fluent_slot_time_ms() const { return static_cast<double>(m_parallel_beam_fluent_slot_time_ns) / 1'000'000.0; }
+    double get_parallel_beam_numeric_slot_time_ms() const { return static_cast<double>(m_parallel_beam_numeric_slot_time_ns) / 1'000'000.0; }
+    double get_parallel_beam_derived_slot_time_ms() const { return static_cast<double>(m_parallel_beam_derived_slot_time_ns) / 1'000'000.0; }
+    double get_parallel_beam_state_lookup_time_ms() const { return static_cast<double>(m_parallel_beam_state_lookup_time_ns) / 1'000'000.0; }
+    double get_parallel_beam_reached_atom_update_time_ms() const
+    {
+        return static_cast<double>(m_parallel_beam_reached_atom_update_time_ns) / 1'000'000.0;
+    }
+    uint64_t get_parallel_beam_ready_queue_high_water() const { return m_parallel_beam_ready_queue_high_water; }
+    uint64_t get_parallel_beam_in_flight_chunks_high_water() const { return m_parallel_beam_in_flight_chunks_high_water; }
+    double get_parallel_beam_consumer_stall_time_ms() const
+    {
+        return static_cast<double>(m_parallel_beam_consumer_stall_time_ns) / 1'000'000.0;
+    }
+    double get_parallel_beam_producer_stall_time_ms() const
+    {
+        return static_cast<double>(m_parallel_beam_producer_stall_time_ns) / 1'000'000.0;
+    }
 
     std::chrono::milliseconds get_search_time_ms() const
     {

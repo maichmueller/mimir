@@ -25,18 +25,42 @@
 #include "mimir/search/state.hpp"
 #include "mimir/search/state_unpacked.hpp"
 
+#include <absl/container/flat_hash_map.h>
+#include <chrono>
+
 namespace mimir::search
 {
 
 class StateRepositoryImpl : public std::enable_shared_from_this<StateRepositoryImpl>
 {
 public:
+    struct IndexListHash
+    {
+        size_t operator()(const IndexList& list) const
+        {
+            auto seed = list.size();
+            for (const auto index : list)
+            {
+                loki::hash_combine(seed, index);
+            }
+            return seed;
+        }
+    };
+
     struct StagedSuccessorState
     {
         FlatBitset fluent_atoms;
         FlatBitset derived_atoms;
+        IndexList fluent_atom_indices;
+        IndexList derived_atom_indices;
         FlatDoubleList fluent_numeric_variables;
         ContinuousCost metric_value;
+    };
+
+    struct StagedSuccessorHandle
+    {
+        Index state_index;
+        PackedState packed_state;
     };
 
     struct StagedSuccessorScratch
@@ -46,10 +70,20 @@ public:
         SharedObjectPool<UnpackedStateImpl> unpacked_state_pool;
     };
 
+    struct StagedSuccessorInternTimings
+    {
+        std::chrono::nanoseconds fluent_slot_time = std::chrono::nanoseconds::zero();
+        std::chrono::nanoseconds numeric_slot_time = std::chrono::nanoseconds::zero();
+        std::chrono::nanoseconds derived_slot_time = std::chrono::nanoseconds::zero();
+        std::chrono::nanoseconds state_lookup_time = std::chrono::nanoseconds::zero();
+        std::chrono::nanoseconds reached_atom_update_time = std::chrono::nanoseconds::zero();
+    };
+
 private:
     AxiomEvaluator m_axiom_evaluator;  ///< The axiom evaluator.
 
     PackedStateImplMap m_states;  ///< Stores all created extended states.
+    absl::flat_hash_map<IndexList, valla::Slot<Index>, IndexListHash> m_fluent_atom_slots;  ///< Memoizes fluent atom sequences to tree slots.
 
     FlatBitset m_reached_fluent_atoms;   ///< Stores all encountered fluent atoms.
     FlatBitset m_reached_derived_atoms;  ///< Stores all encountered derived atoms.
@@ -100,12 +134,16 @@ public:
 
     /// @brief Materialize a worker-computed parallel beam successor into the
     /// canonical repository state map on the main search thread.
-    std::pair<State, ContinuousCost> get_or_create_staged_successor_state(const StagedSuccessorState& successor_state);
+    StagedSuccessorHandle get_or_create_staged_successor_handle(const StagedSuccessorState& successor_state,
+                                                                StagedSuccessorInternTimings* timings = nullptr);
+
+    /// @brief Materialize a canonical repository state from a staged successor handle.
+    State materialize_staged_successor_state(const StagedSuccessorState& successor_state, const StagedSuccessorHandle& successor_handle);
 
     /// @brief Build a temporary successor state for worker-side novelty checks and
     /// eager beam scoring. The returned state is not inserted into the repository.
     State make_temporary_staged_successor_state(const StagedSuccessorState& successor_state,
-                                                Index temporary_state_index,
+                                                const StagedSuccessorHandle& successor_handle,
                                                 StagedSuccessorScratch& scratch);
 
     /// @brief Get the state with the given packed state.
