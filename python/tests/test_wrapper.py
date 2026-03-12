@@ -34,6 +34,15 @@ class TestDomain(unittest.TestCase):
         for requirement in actual_requirements:
             assert requirement in expected_requirements
 
+    def test_types(self):
+        domain_path = DATA_DIR / 'miconic' / 'domain.pddl'
+        domain = Domain(domain_path)
+        actual_types = {type_.get_name(): [base.get_name() for base in type_.get_bases()] for type_ in domain.get_types()}
+        assert 'passenger' in actual_types
+        assert 'floor' in actual_types
+        assert actual_types['passenger'] == ['object']
+        assert actual_types['floor'] == ['object']
+
     def test_predicates(self):
         domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
         domain = Domain(domain_path)
@@ -43,6 +52,19 @@ class TestDomain(unittest.TestCase):
         for predicate in actual_predicates:
             assert predicate.get_index() is not None
             assert (predicate.get_name(), predicate.get_arity()) in expected_predicates
+
+    def test_predicate_typed_parameters(self):
+        domain_path = DATA_DIR / 'miconic' / 'domain.pddl'
+        domain = Domain(domain_path)
+        predicate = domain.get_predicate('origin')
+        actual_parameters = predicate.get_parameters()
+        typed_parameters = predicate.get_typed_parameters()
+        assert len(actual_parameters) == 2
+        assert len(typed_parameters) == 2
+        assert all(isinstance(parameter, Variable) for parameter in actual_parameters)
+        assert all(isinstance(parameter, Parameter) for parameter in typed_parameters)
+        assert [parameter.get_name() for parameter in typed_parameters] == [parameter.get_name() for parameter in actual_parameters]
+        assert [[base.get_name() for base in parameter.get_bases()] for parameter in typed_parameters] == [['passenger'], ['floor']]
 
     def test_actions(self):
         domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
@@ -63,6 +85,15 @@ class TestDomain(unittest.TestCase):
         for constant in actual_constants:
             assert constant.get_index() is not None
             assert constant.get_name() in expected_constants
+
+    def test_numeric_function_typed_parameters(self):
+        domain_path = DATA_DIR / 'woodworking' / 'domain.pddl'
+        domain = Domain(domain_path)
+        function = next(function for function in domain.get_numeric_functions() if function.get_name() == 'spray-varnish-cost')
+        typed_parameters = function.get_typed_parameters()
+        assert len(typed_parameters) == 1
+        assert isinstance(typed_parameters[0], Parameter)
+        assert [base.get_name() for base in typed_parameters[0].get_bases()] == ['part']
 
     def test_str_repr_hash(self):
         domain_path = DATA_DIR / 'woodworking' / 'domain.pddl'
@@ -117,6 +148,15 @@ class TestProblem(unittest.TestCase):
         initial_state = problem.get_initial_state()
         applicable_actions = initial_state.generate_applicable_actions()
         assert len(applicable_actions) == 3  # Only three actions should be applicable due to symmetry pruning.
+
+    def test_object_bases(self):
+        domain_path = DATA_DIR / 'miconic' / 'domain.pddl'
+        problem_path = DATA_DIR / 'miconic' / 'test_problem.pddl'
+        domain = Domain(domain_path)
+        problem = Problem(domain, problem_path)
+        actual_object_bases = {obj.get_name(): [base.get_name() for base in obj.get_bases()] for obj in problem.get_objects()}
+        assert actual_object_bases['p0'] == ['passenger']
+        assert actual_object_bases['f0'] == ['floor']
 
     # def test_requirements(self):
     #     domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
@@ -256,6 +296,18 @@ class TestProblem(unittest.TestCase):
 
 
 class TestAction(unittest.TestCase):
+    def test_typed_parameters(self):
+        domain_path = DATA_DIR / 'miconic' / 'domain.pddl'
+        domain = Domain(domain_path)
+        action = domain.get_action('board')
+        action_parameters = action.get_typed_parameters()
+        precondition_parameters = action.get_precondition().get_typed_parameters()
+        effect_parameters = action.get_conditional_effect()[0].get_effect().get_typed_parameters()
+        expected_bases = [['floor'], ['passenger']]
+        assert [[base.get_name() for base in parameter.get_bases()] for parameter in action_parameters] == expected_bases
+        assert [[base.get_name() for base in parameter.get_bases()] for parameter in precondition_parameters] == expected_bases
+        assert [[base.get_name() for base in parameter.get_bases()] for parameter in effect_parameters] == expected_bases
+
     def test_precondition(self):
         domain_path = DATA_DIR / 'miconic-fulladl' / 'domain.pddl'
         domain = Domain(domain_path)

@@ -117,6 +117,8 @@ AdvancedPredicate = Union[AdvancedStaticPredicate, AdvancedFluentPredicate, Adva
 # ------------
 
 Term = Union['Object', 'Variable']
+Type = AdvancedType
+Parameter = AdvancedParameter
 
 
 # ----------------
@@ -280,6 +282,15 @@ class Object:
         """
         return self._advanced_object.get_name()
 
+    def get_bases(self) -> 'AdvancedTypeList':
+        """
+        Get the base types of the object.
+
+        :return: The base types of the object.
+        :rtype: AdvancedTypeList
+        """
+        return self._advanced_object.get_bases()
+
     def __str__(self) -> 'str':
         """
         Get the string representation of the object.
@@ -371,6 +382,15 @@ class Predicate:
         :rtype: list[Variable]
         """
         return [Variable(x) for x in self._advanced_predicate.get_parameters()]
+
+    def get_typed_parameters(self) -> 'AdvancedParameterList':
+        """
+        Get the typed parameters of the predicate.
+
+        :return: The typed parameters of the predicate.
+        :rtype: AdvancedParameterList
+        """
+        return self._advanced_predicate.get_parameters()
 
     def is_static(self) -> 'bool':
         """
@@ -1234,6 +1254,15 @@ class Effect:
         """
         return [Variable(x) for x in self._advanced_conjunctive_effect.get_parameters()]
 
+    def get_typed_parameters(self) -> 'AdvancedParameterList':
+        """
+        Get the typed parameters of the effect list.
+
+        :return: The typed parameters of the effect list.
+        :rtype: AdvancedParameterList
+        """
+        return self._advanced_conjunctive_effect.get_parameters()
+
     def get_literals(self) -> 'list[Literal]':
         """
         Get the literals of the effect list.
@@ -1438,6 +1467,15 @@ class Action:
         :rtype: list[Variable]
         """
         return [Variable(x) for x in self._advanced_action.get_parameters()]
+
+    def get_typed_parameters(self) -> 'AdvancedParameterList':
+        """
+        Get the typed parameters of the action.
+
+        :return: The typed parameters of the action.
+        :rtype: AdvancedParameterList
+        """
+        return self._advanced_action.get_parameters()
 
     def get_precondition(self) -> 'ConjunctiveCondition':
         """
@@ -1715,6 +1753,15 @@ class Domain:
         # We remove the '(:requirements' prefix and the ')' suffix.
         requirements = str(self._advanced_domain.get_requirements())[15:-1].split()
         return requirements
+
+    def get_types(self) -> 'AdvancedTypeList':
+        """
+        Get the types of the domain.
+
+        :return: The types in the domain.
+        :rtype: AdvancedTypeList
+        """
+        return self._advanced_domain.get_types()
 
     def get_numeric_functions(self, ignore_static: bool = False, ignore_fluent: bool = False, ignore_auxiliary: bool = False) -> 'list[NumericFunction]':
         """
@@ -2755,6 +2802,15 @@ class ConjunctiveCondition:
         """
         return [Variable(x) for x in self._advanced_conjunctive_condition.get_parameters()]
 
+    def get_typed_parameters(self) -> 'AdvancedParameterList':
+        """
+        Get the typed parameters of the conjunctive condition.
+
+        :return: The typed parameters of the conjunctive condition.
+        :rtype: AdvancedParameterList
+        """
+        return self._advanced_conjunctive_condition.get_parameters()
+
     def get_literals(self, ignore_static = False, ignore_fluent = False, ignore_derived = False) -> 'list[Literal]':
         """
         Get the literals of the conjunctive condition.
@@ -2947,6 +3003,15 @@ class NumericFunction:
         :rtype: list[Variable]
         """
         return [Variable(x) for x in self._advanced_function_skeleton.get_parameters()]
+
+    def get_typed_parameters(self) -> 'AdvancedParameterList':
+        """
+        Get the typed parameters of the numeric function.
+
+        :return: The typed parameters of the numeric function.
+        :rtype: AdvancedParameterList
+        """
+        return self._advanced_function_skeleton.get_parameters()
 
     def __str__(self):
         """

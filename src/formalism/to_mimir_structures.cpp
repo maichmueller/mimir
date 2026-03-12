@@ -891,6 +891,9 @@ Domain ToMimirStructures::translate(const loki::Domain& domain, DomainBuilder& b
     /* Requirements section */
     const auto requirements = translate_common(domain->get_requirements(), repositories);
 
+    /* Types section */
+    const auto types = translate_common(domain->get_types(), repositories);
+
     /* Constants section */
     const auto constants = translate_common(domain->get_constants(), repositories);
 
@@ -943,6 +946,7 @@ Domain ToMimirStructures::translate(const loki::Domain& domain, DomainBuilder& b
     builder.get_filepath() = domain->get_filepath();
     builder.get_name() = domain->get_name();
     builder.get_requirements() = requirements;
+    builder.get_types() = std::move(types);
     builder.get_constants() = std::move(constants);
     builder.get_hana_predicates() = std::move(predicates);
     builder.get_hana_function_skeletons() = std::move(function_skeletons);

@@ -15,9 +15,11 @@ from .wrapper_formalism import (
     GroundLiteral,
     Literal,
     Object,
+    Parameter,
     Predicate,
     Problem,
     State,
+    Type,
     Variable,
 )
 
