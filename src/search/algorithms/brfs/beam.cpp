@@ -325,6 +325,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
     const auto parallel_beam_num_threads = options.parallel_beam_num_threads;
     const auto parallel_beam_chunk_size = options.parallel_beam_chunk_size;
     const auto use_parallel_beam = parallel_beam_num_threads > 1;
+    const auto use_parallel_action_generation = use_parallel_beam && applicable_action_generator.supports_parallel_applicable_action_generation();
     const auto use_staged_parallel_fast_path =
         use_parallel_beam && event_handler->supports_payloadless_generated_state_events()
         && pruning_strategy->supports_staged_beam_pruning(beam_novelty_mode) && layer_ordering_strategy->supports_staged_scoring();
@@ -681,7 +682,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
             event_handler->on_expand_state(state);
             search_node.status = SearchNodeStatus::CLOSED;
 
-            for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
+            const auto handle_action = [&](const auto& action) -> bool
             {
                 if (!use_parallel_beam)
                 {
@@ -695,7 +696,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                     if (pruning_strategy->test_prune_successor_state_for_beam_selection(state, successor_state, is_new_successor, beam_novelty_mode))
                     {
                         event_handler->on_generate_state_not_in_search_tree(state, action, action_cost, successor_state);
-                        continue;
+                        return true;
                     }
 
                     auto candidate = BeamCandidate { &state,
@@ -721,11 +722,10 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                     if (generated_state_indices.size() >= options.max_num_states)
                     {
                         result.status = SearchStatus::OUT_OF_STATES;
-                        finalize_parallel_pipeline();
-                        return result;
+                        return false;
                     }
 
-                    continue;
+                    return true;
                 }
 
                 parallel_chunk_tasks.push_back(ParallelBeamTaskInput { &state,
@@ -745,16 +745,38 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                             parallel_producer_stall_time += collect_ready_chunks(true);
                             if (!drain_ready_chunks())
                             {
-                                finalize_parallel_pipeline();
-                                return result;
+                                return false;
                             }
                         }
 
                         if (!drain_ready_chunks())
                         {
-                            finalize_parallel_pipeline();
-                            return result;
+                            return false;
                         }
+                    }
+                }
+                return true;
+            };
+
+            if (use_parallel_action_generation)
+            {
+                for (const auto& action : applicable_action_generator.create_applicable_action_list_parallel(state, *parallel_beam_pool))
+                {
+                    if (!handle_action(action))
+                    {
+                        finalize_parallel_pipeline();
+                        return result;
+                    }
+                }
+            }
+            else
+            {
+                for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
+                {
+                    if (!handle_action(action))
+                    {
+                        finalize_parallel_pipeline();
+                        return result;
                     }
                 }
             }

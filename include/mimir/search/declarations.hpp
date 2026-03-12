@@ -72,6 +72,8 @@ using DefaultEventHandler = std::shared_ptr<DefaultEventHandlerImpl>;
 /* ApplicableActionGenerators */
 class IApplicableActionGenerator;
 using ApplicableActionGenerator = std::shared_ptr<IApplicableActionGenerator>;
+class IParallelApplicableActionGeneratorWorkerContext;
+using ParallelApplicableActionGeneratorWorkerContext = std::unique_ptr<IParallelApplicableActionGeneratorWorkerContext>;
 class GroundedApplicableActionGeneratorImpl;
 using GroundedApplicableActionGenerator = std::shared_ptr<GroundedApplicableActionGeneratorImpl>;
 class KPKCLiftedApplicableActionGeneratorImpl;

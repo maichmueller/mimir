@@ -23,8 +23,19 @@
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/search/declarations.hpp"
 
+namespace BS
+{
+class thread_pool;
+}
+
 namespace mimir::search
 {
+
+class IParallelApplicableActionGeneratorWorkerContext
+{
+public:
+    virtual ~IParallelApplicableActionGeneratorWorkerContext() = default;
+};
 
 /**
  * Dynamic interface class.
@@ -38,8 +49,19 @@ public:
     /// parallel beam path without shared mutable search-layer state.
     virtual bool supports_parallel_beam() const { return false; }
 
+    /// @brief Return whether this generator can enumerate applicable actions from worker threads
+    /// while keeping main-thread grounding and final action order deterministic.
+    virtual bool supports_parallel_applicable_action_generation() const { return false; }
+
+    /// @brief Create a worker-local context reused by a single parallel applicable-action worker thread.
+    virtual ParallelApplicableActionGeneratorWorkerContext create_parallel_worker_context() const { return nullptr; }
+
     /// @brief Generate all applicable actions for a given state.
     virtual mimir::generator<formalism::GroundAction> create_applicable_action_generator(const State& state) = 0;
+
+    /// @brief Deterministic parallel applicable-action enumeration. Only valid if
+    /// supports_parallel_applicable_action_generation() returns true.
+    virtual std::vector<formalism::GroundAction> create_applicable_action_list_parallel(const State& state, BS::thread_pool& thread_pool);
 
     /// @brief Accumulate event handler statistics during search.
     virtual void on_finish_search_layer() = 0;

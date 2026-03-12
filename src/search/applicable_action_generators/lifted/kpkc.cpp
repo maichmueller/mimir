@@ -28,6 +28,7 @@
 #include "mimir/graphs/algorithms/color_refinement.hpp"
 #include "mimir/graphs/algorithms/nauty.hpp"
 #include "mimir/graphs/formatter.hpp"
+#include "mimir/algorithms/BS_thread_pool.hpp"
 #include "mimir/search/applicability.hpp"
 #include "mimir/search/applicable_action_generators/lifted/kpkc/event_handlers/default.hpp"
 #include "mimir/search/applicable_action_generators/lifted/kpkc/event_handlers/interface.hpp"
@@ -38,6 +39,7 @@
 
 #include <boost/dynamic_bitset.hpp>
 #include <chrono>
+#include <future>
 #include <stdexcept>
 #include <vector>
 
@@ -49,6 +51,18 @@ namespace mimir::search
 {
 namespace
 {
+struct ParallelActionSchemaTask
+{
+    size_t schema_index;
+    std::optional<boost::dynamic_bitset<>> vertex_mask;
+};
+
+struct ParallelActionSchemaResult
+{
+    size_t schema_index;
+    std::vector<ObjectList> candidate_bindings;
+};
+
 struct GenerationStatisticsScope
 {
     KPKCLiftedApplicableActionGeneratorImpl::GenerationStatistics* statistics;
@@ -64,6 +78,139 @@ struct GenerationStatisticsScope
                                       static_cast<uint64_t>(symmetry_setup_time.count()));
     }
 };
+
+class KPKCParallelApplicableActionWorkerContext final : public IParallelApplicableActionGeneratorWorkerContext
+{
+public:
+    const KPKCLiftedApplicableActionGeneratorImpl* owner;
+    ActionSatisficingBindingGeneratorList action_grounding_data;
+
+    KPKCParallelApplicableActionWorkerContext(const KPKCLiftedApplicableActionGeneratorImpl* owner,
+                                             const ActionSatisficingBindingGeneratorList& action_grounding_data) :
+        owner(owner),
+        action_grounding_data(action_grounding_data)
+    {
+    }
+};
+
+std::vector<ParallelActionSchemaTask> build_parallel_action_schema_tasks(
+    const Problem& problem,
+    const SearchContextImpl::LiftedOptions::KPKCOptions& options,
+    const State& state,
+    const ActionSatisficingBindingGeneratorList& action_grounding_data,
+    std::chrono::nanoseconds& symmetry_setup_time)
+{
+    auto tasks = std::vector<ParallelActionSchemaTask> {};
+    tasks.reserve(action_grounding_data.size());
+
+    if (options.pruning == SearchContextImpl::SymmetryPruning::OFF)
+    {
+        for (size_t schema_index = 0; schema_index < action_grounding_data.size(); ++schema_index)
+        {
+            const auto& condition_grounder = action_grounding_data[schema_index];
+            if (!nullary_conditions_hold(condition_grounder.get_conjunctive_condition(), state.get_unpacked_state()))
+            {
+                continue;
+            }
+
+            tasks.push_back(ParallelActionSchemaTask { schema_index, std::nullopt });
+        }
+
+        return tasks;
+    }
+
+    const auto symmetry_setup_start = std::chrono::steady_clock::now();
+    auto object_graph = datasets::create_object_graph(state, *problem);
+    auto vertex_to_orbit = IndexList(object_graph.get_num_vertices());
+
+    if (options.pruning == SearchContextImpl::SymmetryPruning::GI)
+    {
+        auto nauty_graph = graphs::nauty::SparseGraph(object_graph);
+        nauty_graph.canonize();
+
+        for (Index i = 0; i < static_cast<Index>(object_graph.get_num_vertices()); ++i)
+        {
+            vertex_to_orbit[i] = nauty_graph.get_orbits()[i];
+        }
+    }
+    else if (options.pruning == SearchContextImpl::SymmetryPruning::WL1)
+    {
+        const auto certificate = graphs::color_refinement::compute_certificate(object_graph);
+
+        auto color_to_index = IndexMap<Index> {};
+        for (Index i = 0; i < static_cast<Index>(object_graph.get_num_vertices()); ++i)
+        {
+            const auto [it, success] = color_to_index.emplace(certificate->get_hash_to_color()[i], color_to_index.size());
+            vertex_to_orbit[i] = it->second;
+        }
+    }
+
+    symmetry_setup_time = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - symmetry_setup_start);
+
+    for (size_t schema_index = 0; schema_index < action_grounding_data.size(); ++schema_index)
+    {
+        const auto& condition_grounder = action_grounding_data[schema_index];
+        if (!nullary_conditions_hold(condition_grounder.get_conjunctive_condition(), state.get_unpacked_state()))
+        {
+            continue;
+        }
+
+        auto touched_orbits = IndexSet {};
+        auto count_touched_orbits = IndexList(object_graph.get_num_vertices(), 0);
+
+        for (const auto& objects : condition_grounder.get_static_consistency_graph().get_objects_by_parameter_index())
+        {
+            touched_orbits.clear();
+            for (const auto& object : objects)
+            {
+                touched_orbits.insert(vertex_to_orbit[object]);
+            }
+            for (const auto orbit : touched_orbits)
+            {
+                ++count_touched_orbits[orbit];
+            }
+        }
+
+        const auto num_objects = problem->get_problem_and_domain_objects().size();
+        const auto arity = condition_grounder.get_action()->get_arity();
+        auto reduced_objects = boost::dynamic_bitset<>(num_objects * arity);
+        auto tmp_count_touched_orbits = IndexList {};
+
+        for (size_t parameter_index = 0; parameter_index < condition_grounder.get_action()->get_arity(); ++parameter_index)
+        {
+            const auto& objects = condition_grounder.get_static_consistency_graph().get_objects_by_parameter_index()[parameter_index];
+            tmp_count_touched_orbits = count_touched_orbits;
+
+            for (const auto& object : objects)
+            {
+                const auto orbit = vertex_to_orbit[object];
+                if (tmp_count_touched_orbits[orbit] > 0)
+                {
+                    reduced_objects[parameter_index * num_objects + object] = true;
+                    --tmp_count_touched_orbits[orbit];
+                }
+            }
+        }
+
+        auto vertex_mask =
+            std::optional<boost::dynamic_bitset<>>(boost::dynamic_bitset<>(condition_grounder.get_static_consistency_graph().get_vertices().size(), false));
+
+        for (const auto& vertex : condition_grounder.get_static_consistency_graph().get_vertices())
+        {
+            const auto parameter = vertex.get_parameter_index();
+            const auto object = vertex.get_object_index();
+
+            if (reduced_objects[parameter * num_objects + object])
+            {
+                vertex_mask->set(vertex.get_index());
+            }
+        }
+
+        tasks.push_back(ParallelActionSchemaTask { schema_index, std::move(vertex_mask) });
+    }
+
+    return tasks;
+}
 }
 
 /**
@@ -97,6 +244,13 @@ KPKCLiftedApplicableActionGenerator KPKCLiftedApplicableActionGeneratorImpl::cre
                                                                                     satisficing_binding_generator::EventHandler binding_event_handler)
 {
     return std::make_shared<KPKCLiftedApplicableActionGeneratorImpl>(problem, options, event_handler, binding_event_handler);
+}
+
+bool KPKCLiftedApplicableActionGeneratorImpl::supports_parallel_applicable_action_generation() const { return true; }
+
+ParallelApplicableActionGeneratorWorkerContext KPKCLiftedApplicableActionGeneratorImpl::create_parallel_worker_context() const
+{
+    return std::make_unique<KPKCParallelApplicableActionWorkerContext>(this, m_action_grounding_data);
 }
 
 mimir::generator<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_applicable_action_generator(const State& state)
@@ -280,6 +434,87 @@ mimir::generator<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_a
     }
 
     m_event_handler->on_end_generating_applicable_actions();
+}
+
+std::vector<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_applicable_action_list_parallel(const State& state,
+                                                                                                          BS::thread_pool& thread_pool)
+{
+    const auto generation_start = std::chrono::steady_clock::now();
+
+    const auto dynamic_assignment_initialization_start = std::chrono::steady_clock::now();
+    initialize(state.get_unpacked_state(), m_dynamic_assignment_sets);
+    const auto dynamic_assignment_initialization_time =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - dynamic_assignment_initialization_start);
+    auto symmetry_setup_time = std::chrono::nanoseconds::zero();
+    auto generation_statistics_scope = GenerationStatisticsScope { &m_generation_statistics, generation_start, dynamic_assignment_initialization_time,
+                                                                  symmetry_setup_time };
+
+    m_event_handler->on_start_generating_applicable_actions();
+
+    const auto& unpacked_state = state.get_unpacked_state();
+    const auto& ground_action_repository =
+        boost::hana::at_key(state.get_problem().get_repositories().get_hana_repositories(), boost::hana::type<GroundActionImpl> {});
+
+    const auto schema_tasks = build_parallel_action_schema_tasks(m_problem, m_options, state, m_action_grounding_data, symmetry_setup_time);
+    generation_statistics_scope.symmetry_setup_time = symmetry_setup_time;
+
+    auto futures = std::vector<std::future<ParallelActionSchemaResult>> {};
+    futures.reserve(schema_tasks.size());
+    auto worker_contexts = std::vector<ParallelApplicableActionGeneratorWorkerContext> {};
+    worker_contexts.reserve(thread_pool.get_thread_count());
+    for (size_t i = 0; i < thread_pool.get_thread_count(); ++i)
+    {
+        worker_contexts.push_back(create_parallel_worker_context());
+    }
+
+    for (const auto& schema_task : schema_tasks)
+    {
+        futures.push_back(thread_pool.submit_task(
+            [&unpacked_state, &dynamic_assignment_sets = m_dynamic_assignment_sets, &worker_contexts, schema_task]()
+            {
+                const auto worker_index = BS::this_thread::get_index();
+                assert(worker_index.has_value());
+                auto& typed_worker_context = static_cast<KPKCParallelApplicableActionWorkerContext&>(*worker_contexts[*worker_index]);
+                auto& condition_grounder = typed_worker_context.action_grounding_data[schema_task.schema_index];
+                auto candidate_bindings = std::vector<ObjectList> {};
+
+                for (auto&& binding :
+                     condition_grounder.create_candidate_binding_generator(unpacked_state, dynamic_assignment_sets, schema_task.vertex_mask))
+                {
+                    candidate_bindings.push_back(std::move(binding));
+                }
+
+                return ParallelActionSchemaResult { schema_task.schema_index, std::move(candidate_bindings) };
+            }));
+    }
+
+    auto applicable_actions = std::vector<GroundAction> {};
+    for (size_t task_index = 0; task_index < futures.size(); ++task_index)
+    {
+        auto schema_result = futures[task_index].get();
+        auto& condition_grounder = m_action_grounding_data[schema_result.schema_index];
+
+        for (auto& binding : schema_result.candidate_bindings)
+        {
+            if (!condition_grounder.test_binding(unpacked_state, binding))
+            {
+                continue;
+            }
+
+            const auto num_ground_actions = ground_action_repository.size();
+            const auto ground_action = m_problem->ground(condition_grounder.get_action(), std::move(binding));
+
+            assert(is_applicable(ground_action, state));
+
+            m_event_handler->on_ground_action(ground_action);
+            (ground_action_repository.size() > num_ground_actions) ? m_event_handler->on_ground_action_cache_miss(ground_action) :
+                                                                     m_event_handler->on_ground_action_cache_hit(ground_action);
+            applicable_actions.push_back(ground_action);
+        }
+    }
+
+    m_event_handler->on_end_generating_applicable_actions();
+    return applicable_actions;
 }
 
 const Problem& KPKCLiftedApplicableActionGeneratorImpl::get_problem() const { return m_problem; }

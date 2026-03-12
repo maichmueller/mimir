@@ -28,6 +28,7 @@
 #include "mimir/search/search_context.hpp"
 
 #include <cstdint>
+#include <vector>
 
 namespace mimir::search
 {
@@ -89,7 +90,10 @@ public:
     KPKCLiftedApplicableActionGeneratorImpl(KPKCLiftedApplicableActionGeneratorImpl&& other) = delete;
     KPKCLiftedApplicableActionGeneratorImpl& operator=(KPKCLiftedApplicableActionGeneratorImpl&& other) = delete;
 
+    bool supports_parallel_applicable_action_generation() const override;
+    ParallelApplicableActionGeneratorWorkerContext create_parallel_worker_context() const override;
     mimir::generator<formalism::GroundAction> create_applicable_action_generator(const State& state) override;
+    std::vector<formalism::GroundAction> create_applicable_action_list_parallel(const State& state, BS::thread_pool& thread_pool) override;
 
     void on_finish_search_layer() override;
     void on_end_search() override;

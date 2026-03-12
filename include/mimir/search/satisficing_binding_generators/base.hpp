@@ -58,6 +58,14 @@ public:
                                                                      const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
                                                                      const std::optional<boost::dynamic_bitset<>>& vertex_mask);
 
+    mimir::generator<formalism::ObjectList> create_candidate_binding_generator(const State& state,
+                                                                               const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                                                               const std::optional<boost::dynamic_bitset<>>& vertex_mask);
+
+    mimir::generator<formalism::ObjectList> create_candidate_binding_generator(const UnpackedStateImpl& unpacked_state,
+                                                                               const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                                                               const std::optional<boost::dynamic_bitset<>>& vertex_mask);
+
     mimir::generator<std::pair<formalism::ObjectList,
                                std::tuple<formalism::GroundLiteralList<formalism::StaticTag>,
                                           formalism::GroundLiteralList<formalism::FluentTag>,
@@ -107,14 +115,21 @@ protected:
     bool is_valid_binding(const UnpackedStateImpl& unpacked_state, const formalism::ObjectList& binding);
 
     mimir::generator<formalism::ObjectList> nullary_case(const UnpackedStateImpl& unpacked_state);
+    mimir::generator<formalism::ObjectList> candidate_nullary_case(const UnpackedStateImpl& unpacked_state);
 
     mimir::generator<formalism::ObjectList> unary_case(const UnpackedStateImpl& unpacked_state,
                                                        const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
                                                        const std::optional<boost::dynamic_bitset<>>& vertex_mask);
+    mimir::generator<formalism::ObjectList> candidate_unary_case(const UnpackedStateImpl& unpacked_state,
+                                                                 const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                                                 const std::optional<boost::dynamic_bitset<>>& vertex_mask);
 
     mimir::generator<formalism::ObjectList> general_case(const UnpackedStateImpl& unpacked_state,
                                                          const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
                                                          const std::optional<boost::dynamic_bitset<>>& vertex_mask);
+    mimir::generator<formalism::ObjectList> candidate_general_case(const UnpackedStateImpl& unpacked_state,
+                                                                   const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                                                   const std::optional<boost::dynamic_bitset<>>& vertex_mask);
 };
 
 }
