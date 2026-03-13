@@ -20,7 +20,9 @@
 #include "mimir/common/formatter.hpp"
 #include "mimir/datasets/object_graph.hpp"
 #include "mimir/formalism/domain.hpp"
+#include "mimir/formalism/effects.hpp"
 #include "mimir/formalism/formatter.hpp"
+#include "mimir/formalism/function_expressions.hpp"
 #include "mimir/formalism/ground_action.hpp"
 #include "mimir/formalism/object.hpp"
 #include "mimir/formalism/problem.hpp"
@@ -32,11 +34,16 @@
 #include "mimir/search/applicability.hpp"
 #include "mimir/search/applicable_action_generators/lifted/kpkc/event_handlers/default.hpp"
 #include "mimir/search/applicable_action_generators/lifted/kpkc/event_handlers/interface.hpp"
+#include "mimir/search/algorithms/strategies/layer_ordering_strategy.hpp"
+#include "mimir/search/algorithms/strategies/pruning_strategy.hpp"
 #include "mimir/search/assignment_set_utils.hpp"
+#include "mimir/search/axiom_evaluators/interface.hpp"
 #include "mimir/search/satisficing_binding_generators/event_handlers/default.hpp"
 #include "mimir/search/satisficing_binding_generators/event_handlers/interface.hpp"
 #include "mimir/search/state.hpp"
+#include "mimir/search/state_repository.hpp"
 
+#include <absl/container/flat_hash_map.h>
 #include <boost/dynamic_bitset.hpp>
 #include <chrono>
 #include <future>
@@ -63,6 +70,127 @@ struct ParallelActionSchemaResult
     std::vector<ObjectList> candidate_bindings;
 };
 
+template<typename Candidate>
+struct LocalBeamRanking
+{
+    bool prefer_higher_scores;
+
+    bool better(const Candidate& lhs, const Candidate& rhs) const
+    {
+        if (lhs.score != rhs.score)
+        {
+            return prefer_higher_scores ? (lhs.score > rhs.score) : (lhs.score < rhs.score);
+        }
+
+        if (lhs.tie_token != rhs.tie_token)
+        {
+            return lhs.tie_token < rhs.tie_token;
+        }
+
+        return lhs.generation_sequence < rhs.generation_sequence;
+    }
+};
+
+template<typename Candidate, typename RejectFn>
+void add_candidate_to_small_local_beam(std::vector<Candidate>& candidates,
+                                       Candidate candidate,
+                                       size_t beam_width,
+                                       const LocalBeamRanking<Candidate>& ranking,
+                                       RejectFn&& reject_candidate)
+{
+    if ((candidates.size() >= beam_width) && !ranking.better(candidate, candidates.back()))
+    {
+        reject_candidate(candidate);
+        return;
+    }
+
+    auto insert_it = candidates.begin();
+    while ((insert_it != candidates.end()) && ranking.better(*insert_it, candidate))
+    {
+        ++insert_it;
+    }
+    candidates.insert(insert_it, std::move(candidate));
+
+    if (candidates.size() > beam_width)
+    {
+        auto evicted = std::move(candidates.back());
+        candidates.pop_back();
+        reject_candidate(evicted);
+    }
+}
+
+template<typename Candidate>
+struct LocalBeamHeapCompare
+{
+    LocalBeamRanking<Candidate> ranking;
+
+    bool operator()(const Candidate& lhs, const Candidate& rhs) const { return ranking.better(lhs, rhs); }
+};
+
+template<typename Candidate, typename RejectFn>
+void add_candidate_to_heap_local_beam(std::vector<Candidate>& candidates,
+                                      Candidate candidate,
+                                      size_t beam_width,
+                                      const LocalBeamRanking<Candidate>& ranking,
+                                      const LocalBeamHeapCompare<Candidate>& heap_compare,
+                                      RejectFn&& reject_candidate)
+{
+    if (candidates.size() < beam_width)
+    {
+        candidates.push_back(std::move(candidate));
+        std::push_heap(candidates.begin(), candidates.end(), heap_compare);
+        return;
+    }
+
+    if (!ranking.better(candidate, candidates.front()))
+    {
+        reject_candidate(candidate);
+        return;
+    }
+
+    std::pop_heap(candidates.begin(), candidates.end(), heap_compare);
+    auto evicted = std::move(candidates.back());
+    candidates.pop_back();
+    reject_candidate(evicted);
+
+    candidates.push_back(std::move(candidate));
+    std::push_heap(candidates.begin(), candidates.end(), heap_compare);
+}
+
+inline uint64_t make_generation_sequence(uint32_t task_order, uint32_t local_index)
+{
+    return (static_cast<uint64_t>(task_order) << 32U) | static_cast<uint64_t>(local_index);
+}
+
+inline uint64_t splitmix64(uint64_t x)
+{
+    x += 0x9e3779b97f4a7c15ULL;
+    x = (x ^ (x >> 30U)) * 0xbf58476d1ce4e5b9ULL;
+    x = (x ^ (x >> 27U)) * 0x94d049bb133111ebULL;
+    return x ^ (x >> 31U);
+}
+
+struct IndexListHash
+{
+    size_t operator()(const IndexList& list) const
+    {
+        auto seed = list.size();
+        for (const auto index : list)
+        {
+            loki::hash_combine(seed, index);
+        }
+        return seed;
+    }
+};
+
+template<IsStaticOrFluentOrDerivedTag P>
+using GroundAtomIndexLookup = std::vector<absl::flat_hash_map<IndexList, Index, IndexListHash>>;
+
+template<IsStaticOrFluentTag F>
+using GroundFunctionIndexLookup = std::vector<absl::flat_hash_map<IndexList, Index, IndexListHash>>;
+
+constexpr auto kMissingIndex = MAX_INDEX;
+
 struct GenerationStatisticsScope
 {
     KPKCLiftedApplicableActionGeneratorImpl::GenerationStatistics* statistics;
@@ -79,17 +207,808 @@ struct GenerationStatisticsScope
     }
 };
 
+template<IsStaticOrFluentOrDerivedTag P>
+void mark_predicate(Predicate<P> predicate, std::vector<bool>& marked)
+{
+    if (predicate->get_index() >= marked.size())
+    {
+        marked.resize(predicate->get_index() + 1, false);
+    }
+    marked[predicate->get_index()] = true;
+}
+
+template<IsStaticOrFluentTag F>
+void mark_function_skeleton(FunctionSkeleton<F> function_skeleton, std::vector<bool>& marked)
+{
+    if (function_skeleton->get_index() >= marked.size())
+    {
+        marked.resize(function_skeleton->get_index() + 1, false);
+    }
+    marked[function_skeleton->get_index()] = true;
+}
+
+void collect_function_skeletons(FunctionExpression function_expression,
+                                std::vector<bool>& static_function_skeletons,
+                                std::vector<bool>& fluent_function_skeletons)
+{
+    std::visit(
+        [&](auto&& arg)
+        {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, FunctionExpressionNumber>)
+            {
+                return;
+            }
+            else if constexpr (std::is_same_v<T, FunctionExpressionBinaryOperator>)
+            {
+                collect_function_skeletons(arg->get_left_function_expression(), static_function_skeletons, fluent_function_skeletons);
+                collect_function_skeletons(arg->get_right_function_expression(), static_function_skeletons, fluent_function_skeletons);
+            }
+            else if constexpr (std::is_same_v<T, FunctionExpressionMultiOperator>)
+            {
+                for (const auto& child : arg->get_function_expressions())
+                {
+                    collect_function_skeletons(child, static_function_skeletons, fluent_function_skeletons);
+                }
+            }
+            else if constexpr (std::is_same_v<T, FunctionExpressionMinus>)
+            {
+                collect_function_skeletons(arg->get_function_expression(), static_function_skeletons, fluent_function_skeletons);
+            }
+            else if constexpr (std::is_same_v<T, FunctionExpressionFunction<StaticTag>>)
+            {
+                mark_function_skeleton(arg->get_function()->get_function_skeleton(), static_function_skeletons);
+            }
+            else if constexpr (std::is_same_v<T, FunctionExpressionFunction<FluentTag>>)
+            {
+                mark_function_skeleton(arg->get_function()->get_function_skeleton(), fluent_function_skeletons);
+            }
+            else if constexpr (std::is_same_v<T, FunctionExpressionFunction<AuxiliaryTag>>)
+            {
+                throw std::logic_error(
+                    "collect_function_skeletons: unexpected FunctionExpressionFunction<AuxiliaryTag> in lifted applicable-action generation.");
+            }
+            else
+            {
+                static_assert(dependent_false<T>::value, "Missing function expression case.");
+            }
+        },
+        function_expression->get_variant());
+}
+
+void collect_action_lookup_requirements(const Problem& problem,
+                                        std::vector<bool>& static_predicates,
+                                        std::vector<bool>& fluent_predicates,
+                                        std::vector<bool>& derived_predicates,
+                                        std::vector<bool>& static_function_skeletons,
+                                        std::vector<bool>& fluent_function_skeletons)
+{
+    const auto collect_condition = [&](ConjunctiveCondition condition)
+    {
+        for (const auto& literal : condition->get_literals<StaticTag>())
+        {
+            mark_predicate(literal->get_atom()->get_predicate(), static_predicates);
+        }
+        for (const auto& literal : condition->get_literals<FluentTag>())
+        {
+            mark_predicate(literal->get_atom()->get_predicate(), fluent_predicates);
+        }
+        for (const auto& literal : condition->get_literals<DerivedTag>())
+        {
+            mark_predicate(literal->get_atom()->get_predicate(), derived_predicates);
+        }
+        for (const auto& constraint : condition->get_numeric_constraints())
+        {
+            collect_function_skeletons(constraint->get_left_function_expression(), static_function_skeletons, fluent_function_skeletons);
+            collect_function_skeletons(constraint->get_right_function_expression(), static_function_skeletons, fluent_function_skeletons);
+        }
+    };
+
+    const auto collect_effect = [&](ConjunctiveEffect effect)
+    {
+        for (const auto& literal : effect->get_literals())
+        {
+            mark_predicate(literal->get_atom()->get_predicate(), fluent_predicates);
+        }
+
+        for (const auto& effect : effect->get_fluent_numeric_effects())
+        {
+            mark_function_skeleton(effect->get_function()->get_function_skeleton(), fluent_function_skeletons);
+            collect_function_skeletons(effect->get_function_expression(), static_function_skeletons, fluent_function_skeletons);
+        }
+
+        if (const auto& auxiliary_effect = effect->get_auxiliary_numeric_effect(); auxiliary_effect.has_value())
+        {
+            collect_function_skeletons(auxiliary_effect.value()->get_function_expression(), static_function_skeletons, fluent_function_skeletons);
+        }
+    };
+
+    for (const auto& action : problem->get_domain()->get_actions())
+    {
+        collect_condition(action->get_conjunctive_condition());
+
+        for (const auto& conditional_effect : action->get_conditional_effects())
+        {
+            collect_condition(conditional_effect->get_conjunctive_condition());
+            collect_effect(conditional_effect->get_conjunctive_effect());
+        }
+    }
+}
+
+template<typename ParameterLike, typename OnBinding>
+void for_each_type_legal_binding(const Problem& problem,
+                                 const ParameterLike& parameters,
+                                 size_t parameter_index,
+                                 ObjectList& object_binding,
+                                 IndexList& object_indices,
+                                 OnBinding&& on_binding)
+{
+    if (parameter_index == parameters.size())
+    {
+        on_binding(object_binding, object_indices);
+        return;
+    }
+
+    const auto& parameter = parameters[parameter_index];
+    for (const auto& object : problem->get_problem_and_domain_objects())
+    {
+        if (!is_subtypeeq(object->get_bases(), parameter->get_bases()))
+        {
+            continue;
+        }
+
+        object_binding.push_back(object);
+        object_indices.push_back(object->get_index());
+        for_each_type_legal_binding(problem, parameters, parameter_index + 1, object_binding, object_indices, on_binding);
+        object_indices.pop_back();
+        object_binding.pop_back();
+    }
+}
+
+template<IsStaticOrFluentOrDerivedTag P>
+void build_ground_atom_lookup(const Problem& problem, Predicate<P> predicate, GroundAtomIndexLookup<P>& lookup_tables)
+{
+    if (predicate->get_index() >= lookup_tables.size())
+    {
+        lookup_tables.resize(predicate->get_index() + 1);
+    }
+
+    auto& lookup = lookup_tables[predicate->get_index()];
+    if (!lookup.empty() || predicate->get_arity() == 0)
+    {
+        if (lookup.empty() && predicate->get_arity() == 0)
+        {
+            const auto atom = problem->get_or_create_ground_atom(predicate, ObjectList {});
+            lookup.emplace(IndexList {}, atom->get_index());
+        }
+        return;
+    }
+
+    auto binding = ObjectList {};
+    auto binding_indices = IndexList {};
+    for_each_type_legal_binding(problem,
+                                predicate->get_parameters(),
+                                0,
+                                binding,
+                                binding_indices,
+                                [&](const ObjectList& object_binding, const IndexList& object_indices)
+                                {
+                                    const auto atom = problem->get_or_create_ground_atom(predicate, object_binding);
+                                    lookup.emplace(object_indices, atom->get_index());
+                                });
+}
+
+template<IsStaticOrFluentTag F>
+void build_ground_function_lookup(const Problem& problem, FunctionSkeleton<F> function_skeleton, GroundFunctionIndexLookup<F>& lookup_tables)
+{
+    if (function_skeleton->get_index() >= lookup_tables.size())
+    {
+        lookup_tables.resize(function_skeleton->get_index() + 1);
+    }
+
+    auto& lookup = lookup_tables[function_skeleton->get_index()];
+    if (!lookup.empty() || function_skeleton->get_arity() == 0)
+    {
+        if (lookup.empty() && function_skeleton->get_arity() == 0)
+        {
+            auto& repositories = const_cast<Repositories&>(problem->get_repositories());
+            const auto function = repositories.get_or_create_ground_function(function_skeleton, ObjectList {});
+            lookup.emplace(IndexList {}, function->get_index());
+        }
+        return;
+    }
+
+    auto binding = ObjectList {};
+    auto binding_indices = IndexList {};
+    for_each_type_legal_binding(problem,
+                                function_skeleton->get_parameters(),
+                                0,
+                                binding,
+                                binding_indices,
+                                [&](const ObjectList& object_binding, const IndexList& object_indices)
+                                {
+                                    auto& repositories = const_cast<Repositories&>(problem->get_repositories());
+                                    const auto function = repositories.get_or_create_ground_function(function_skeleton, object_binding);
+                                    lookup.emplace(object_indices, function->get_index());
+                                });
+}
+
+Index resolve_term_index(Term term, const ObjectList& binding)
+{
+    return std::visit(
+        [&](auto&& arg) -> Index
+        {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, Object>)
+            {
+                return arg->get_index();
+            }
+            else if constexpr (std::is_same_v<T, Variable>)
+            {
+                return binding[arg->get_parameter_index()]->get_index();
+            }
+            else
+            {
+                static_assert(dependent_false<T>::value, "Missing term variant.");
+            }
+        },
+        term->get_variant());
+}
+
+void resolve_terms_to_indices(const TermList& terms, const ObjectList& binding, IndexList& out_indices)
+{
+    out_indices.clear();
+    out_indices.reserve(terms.size());
+    for (const auto& term : terms)
+    {
+        out_indices.push_back(resolve_term_index(term, binding));
+    }
+}
+
+template<IsStaticOrFluentOrDerivedTag P>
+Index lookup_ground_atom_index(const GroundAtomIndexLookup<P>& lookup_tables,
+                               Predicate<P> predicate,
+                               const TermList& terms,
+                               const ObjectList& binding,
+                               IndexList& scratch_indices)
+{
+    resolve_terms_to_indices(terms, binding, scratch_indices);
+    const auto& lookup = lookup_tables.at(predicate->get_index());
+    const auto it = lookup.find(scratch_indices);
+    return (it == lookup.end()) ? kMissingIndex : it->second;
+}
+
+template<IsStaticOrFluentTag F>
+Index lookup_ground_function_index(const GroundFunctionIndexLookup<F>& lookup_tables,
+                                   FunctionSkeleton<F> function_skeleton,
+                                   const TermList& terms,
+                                   const ObjectList& binding,
+                                   IndexList& scratch_indices)
+{
+    resolve_terms_to_indices(terms, binding, scratch_indices);
+    const auto& lookup = lookup_tables.at(function_skeleton->get_index());
+    const auto it = lookup.find(scratch_indices);
+    return (it == lookup.end()) ? kMissingIndex : it->second;
+}
+
+bool evaluate_comparator(loki::BinaryComparatorEnum comparator, ContinuousCost lhs, ContinuousCost rhs)
+{
+    if (std::isnan(lhs) || std::isnan(rhs))
+    {
+        return false;
+    }
+
+    switch (comparator)
+    {
+        case loki::BinaryComparatorEnum::EQUAL:
+            return lhs == rhs;
+        case loki::BinaryComparatorEnum::UNEQUAL:
+            return lhs != rhs;
+        case loki::BinaryComparatorEnum::GREATER:
+            return lhs > rhs;
+        case loki::BinaryComparatorEnum::GREATER_EQUAL:
+            return lhs >= rhs;
+        case loki::BinaryComparatorEnum::LESS:
+            return lhs < rhs;
+        case loki::BinaryComparatorEnum::LESS_EQUAL:
+            return lhs <= rhs;
+        default:
+            throw std::logic_error("evaluate_comparator: Unexpected BinaryComparatorEnum.");
+    }
+}
+
+class ParallelKPKCActionGrounder
+{
+public:
+    explicit ParallelKPKCActionGrounder(const ActionSatisficingBindingGenerator& source) :
+        m_action(source.get_action()),
+        m_conjunctive_condition(source.get_conjunctive_condition()),
+        m_fluent_numeric_changes(),
+        m_auxiliary_numeric_change(detail::EffectFamily::NONE),
+        m_index_scratch()
+    {
+    }
+
+    template<typename LookupTablesT>
+    bool test_binding(const UnpackedStateImpl& unpacked_state, const LookupTablesT& lookup_tables, const ObjectList& binding)
+    {
+        if (!condition_holds(unpacked_state, lookup_tables, m_conjunctive_condition, binding))
+        {
+            return false;
+        }
+
+        m_fluent_numeric_changes.assign(unpacked_state.get_numeric_variables().size(), detail::EffectFamily::NONE);
+        m_auxiliary_numeric_change = detail::EffectFamily::NONE;
+
+        for (const auto& conditional_effect : m_action->get_conditional_effects())
+        {
+            if (!condition_holds(unpacked_state, lookup_tables, conditional_effect->get_conjunctive_condition(), binding))
+            {
+                continue;
+            }
+
+            if (!effect_holds(unpacked_state, lookup_tables, conditional_effect->get_conjunctive_effect(), binding))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    template<typename LookupTablesT>
+    ParallelRelaxedBeamSuccessorCandidate compute_staged_successor_candidate(const State& state,
+                                                                             const LookupTablesT& lookup_tables,
+                                                                             const ObjectList& binding,
+                                                                             ContinuousCost state_metric_value,
+                                                                             const AxiomEvaluator& axiom_evaluator,
+                                                                             StateRepositoryImpl::StagedSuccessorScratch& scratch)
+    {
+        auto unpacked_state = scratch.unpacked_state_pool.get_or_allocate(state.get_problem());
+        auto& dense_fluent_atoms = unpacked_state->get_atoms<FluentTag>();
+        dense_fluent_atoms = state.get_unpacked_state().get_atoms<FluentTag>();
+        auto& dense_derived_atoms = unpacked_state->get_atoms<DerivedTag>();
+        dense_derived_atoms = state.get_unpacked_state().get_atoms<DerivedTag>();
+        auto& dense_fluent_numeric_variables = unpacked_state->get_numeric_variables();
+        dense_fluent_numeric_variables = state.get_unpacked_state().get_numeric_variables();
+
+        scratch.applied_negative_effect_atoms.unset_all();
+        scratch.applied_positive_effect_atoms.unset_all();
+
+        auto successor_metric_value = state_metric_value;
+        apply_action_effects(state,
+                             *unpacked_state,
+                             lookup_tables,
+                             binding,
+                             dense_fluent_atoms,
+                             scratch.applied_negative_effect_atoms,
+                             scratch.applied_positive_effect_atoms,
+                             dense_fluent_numeric_variables,
+                             successor_metric_value);
+
+        if (!axiom_evaluator->get_problem()->get_problem_and_domain_axioms().empty())
+        {
+            dense_derived_atoms.unset_all();
+            if (axiom_evaluator->supports_parallel_staged_successor_evaluation())
+            {
+                if (!scratch.axiom_worker_context)
+                {
+                    scratch.axiom_worker_context = axiom_evaluator->create_parallel_worker_context();
+                }
+                assert(scratch.axiom_worker_context);
+                axiom_evaluator->generate_and_apply_axioms_parallel(*unpacked_state, *scratch.axiom_worker_context);
+            }
+            else
+            {
+                axiom_evaluator->generate_and_apply_axioms(*unpacked_state);
+            }
+        }
+
+        auto candidate = ParallelRelaxedBeamSuccessorCandidate {};
+        candidate.parent_state = &state;
+        candidate.action_schema = m_action;
+        candidate.binding = binding;
+        candidate.fluent_atoms = dense_fluent_atoms;
+        candidate.derived_atoms = dense_derived_atoms;
+        candidate.fluent_numeric_variables = dense_fluent_numeric_variables;
+        candidate.action_cost = successor_metric_value - state_metric_value;
+        candidate.successor_metric_value = successor_metric_value;
+        for (const auto atom_index : dense_fluent_atoms)
+        {
+            candidate.fluent_atom_indices.push_back(atom_index);
+        }
+        for (const auto atom_index : dense_derived_atoms)
+        {
+            candidate.derived_atom_indices.push_back(atom_index);
+        }
+        return candidate;
+    }
+
+private:
+    template<typename LookupTablesT>
+    bool condition_holds(const UnpackedStateImpl& unpacked_state,
+                         const LookupTablesT& lookup_tables,
+                         ConjunctiveCondition condition,
+                         const ObjectList& binding)
+    {
+        for (const auto& literal : condition->get_literals<StaticTag>())
+        {
+            const auto atom_index = lookup_ground_atom_index(lookup_tables.static_predicates,
+                                                             literal->get_atom()->get_predicate(),
+                                                             literal->get_atom()->get_terms(),
+                                                             binding,
+                                                             m_index_scratch);
+            if (atom_index == kMissingIndex || literal->get_polarity() != unpacked_state.get_problem().get_positive_static_initial_atoms_bitset().get(atom_index))
+            {
+                return false;
+            }
+        }
+
+        for (const auto& literal : condition->get_literals<FluentTag>())
+        {
+            const auto atom_index = lookup_ground_atom_index(lookup_tables.fluent_predicates,
+                                                             literal->get_atom()->get_predicate(),
+                                                             literal->get_atom()->get_terms(),
+                                                             binding,
+                                                             m_index_scratch);
+            if (atom_index == kMissingIndex || literal->get_polarity() != unpacked_state.get_atoms<FluentTag>().get(atom_index))
+            {
+                return false;
+            }
+        }
+
+        for (const auto& literal : condition->get_literals<DerivedTag>())
+        {
+            const auto atom_index = lookup_ground_atom_index(lookup_tables.derived_predicates,
+                                                             literal->get_atom()->get_predicate(),
+                                                             literal->get_atom()->get_terms(),
+                                                             binding,
+                                                             m_index_scratch);
+            if (atom_index == kMissingIndex || literal->get_polarity() != unpacked_state.get_atoms<DerivedTag>().get(atom_index))
+            {
+                return false;
+            }
+        }
+
+        for (const auto& numeric_constraint : condition->get_numeric_constraints())
+        {
+            const auto lhs = evaluate_function_expression(unpacked_state, lookup_tables, numeric_constraint->get_left_function_expression(), binding);
+            const auto rhs = evaluate_function_expression(unpacked_state, lookup_tables, numeric_constraint->get_right_function_expression(), binding);
+            if (!evaluate_comparator(numeric_constraint->get_binary_comparator(), lhs, rhs))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    template<typename LookupTablesT>
+    bool effect_holds(const UnpackedStateImpl& unpacked_state,
+                      const LookupTablesT& lookup_tables,
+                      ConjunctiveEffect effect,
+                      const ObjectList& binding)
+    {
+        for (const auto& numeric_effect : effect->get_fluent_numeric_effects())
+        {
+            if (!effect_holds(unpacked_state, lookup_tables, numeric_effect, binding))
+            {
+                return false;
+            }
+        }
+
+        if (const auto& auxiliary_numeric_effect = effect->get_auxiliary_numeric_effect(); auxiliary_numeric_effect.has_value())
+        {
+            if (!effect_holds(unpacked_state, lookup_tables, auxiliary_numeric_effect.value(), binding))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    template<typename LookupTablesT>
+    void apply_action_effects(const State& state,
+                              UnpackedStateImpl& unpacked_state,
+                              const LookupTablesT& lookup_tables,
+                              const ObjectList& binding,
+                              FlatBitset& ref_dense_fluent_atoms,
+                              FlatBitset& ref_negative_applied_effects,
+                              FlatBitset& ref_positive_applied_effects,
+                              FlatDoubleList& ref_fluent_numeric_variables,
+                              ContinuousCost& ref_successor_metric_value)
+    {
+        const auto& static_numeric_variables = state.get_problem().get_initial_function_to_value<StaticTag>();
+        const auto& fluent_numeric_variables = state.get_numeric_variables();
+
+        for (const auto& conditional_effect : m_action->get_conditional_effects())
+        {
+            if (!condition_holds(unpacked_state, lookup_tables, conditional_effect->get_conjunctive_condition(), binding))
+            {
+                continue;
+            }
+
+            apply_conjunctive_effect(state,
+                                     lookup_tables,
+                                     conditional_effect->get_conjunctive_effect(),
+                                     binding,
+                                     ref_negative_applied_effects,
+                                     ref_positive_applied_effects,
+                                     static_numeric_variables,
+                                     fluent_numeric_variables,
+                                     ref_fluent_numeric_variables,
+                                     ref_successor_metric_value);
+        }
+
+        ref_dense_fluent_atoms -= ref_negative_applied_effects;
+        ref_dense_fluent_atoms |= ref_positive_applied_effects;
+        unpacked_state.get_atoms<FluentTag>() = ref_dense_fluent_atoms;
+        unpacked_state.get_numeric_variables() = ref_fluent_numeric_variables;
+
+        if (!state.get_problem().get_domain()->get_auxiliary_function_skeleton().has_value())
+        {
+            ref_successor_metric_value =
+                state.get_problem().get_optimization_metric().has_value() ?
+                    evaluate(state.get_problem().get_optimization_metric().value()->get_function_expression(),
+                             static_numeric_variables,
+                             ref_fluent_numeric_variables) :
+                    ref_successor_metric_value + 1;
+        }
+    }
+
+    template<typename LookupTablesT>
+    void apply_conjunctive_effect(const State& state,
+                                  const LookupTablesT& lookup_tables,
+                                  ConjunctiveEffect effect,
+                                  const ObjectList& binding,
+                                  FlatBitset& ref_negative_applied_effects,
+                                  FlatBitset& ref_positive_applied_effects,
+                                  const FlatDoubleList& static_numeric_variables,
+                                  const FlatDoubleList& fluent_numeric_variables,
+                                  FlatDoubleList& ref_fluent_numeric_variables,
+                                  ContinuousCost& ref_successor_metric_value)
+    {
+        for (const auto& literal : effect->get_literals())
+        {
+            const auto atom_index = lookup_ground_atom_index(lookup_tables.fluent_predicates,
+                                                             literal->get_atom()->get_predicate(),
+                                                             literal->get_atom()->get_terms(),
+                                                             binding,
+                                                             m_index_scratch);
+            if (atom_index == kMissingIndex)
+            {
+                continue;
+            }
+
+            if (literal->get_polarity())
+            {
+                ref_positive_applied_effects.set(atom_index);
+            }
+            else
+            {
+                ref_negative_applied_effects.set(atom_index);
+            }
+        }
+
+        for (const auto& numeric_effect : effect->get_fluent_numeric_effects())
+        {
+            const auto function_index = lookup_ground_function_index(lookup_tables.fluent_functions,
+                                                                     numeric_effect->get_function()->get_function_skeleton(),
+                                                                     numeric_effect->get_function()->get_terms(),
+                                                                     binding,
+                                                                     m_index_scratch);
+            if (function_index == kMissingIndex)
+            {
+                continue;
+            }
+
+            if (function_index >= ref_fluent_numeric_variables.size())
+            {
+                ref_fluent_numeric_variables.resize(function_index + 1, UNDEFINED_CONTINUOUS_COST);
+            }
+
+            const auto value = evaluate_function_expression(state.get_unpacked_state(),
+                                                            lookup_tables,
+                                                            numeric_effect->get_function_expression(),
+                                                            binding);
+            apply_numeric_effect({ numeric_effect->get_assign_operator(), value }, ref_fluent_numeric_variables[function_index]);
+        }
+
+        if (const auto& auxiliary_numeric_effect = effect->get_auxiliary_numeric_effect(); auxiliary_numeric_effect.has_value())
+        {
+            const auto value =
+                evaluate_function_expression(state.get_unpacked_state(), lookup_tables, auxiliary_numeric_effect.value()->get_function_expression(), binding);
+            apply_numeric_effect({ auxiliary_numeric_effect.value()->get_assign_operator(), value }, ref_successor_metric_value);
+        }
+    }
+
+    static void apply_numeric_effect(const std::pair<loki::AssignOperatorEnum, ContinuousCost>& numeric_effect, ContinuousCost& ref_value)
+    {
+        const auto [assign_operator, value] = numeric_effect;
+
+        assert(!std::isnan(value));
+        assert(assign_operator == loki::AssignOperatorEnum::ASSIGN || !std::isnan(ref_value));
+
+        switch (assign_operator)
+        {
+            case loki::AssignOperatorEnum::ASSIGN:
+                ref_value = value;
+                break;
+            case loki::AssignOperatorEnum::INCREASE:
+                ref_value += value;
+                break;
+            case loki::AssignOperatorEnum::DECREASE:
+                ref_value -= value;
+                break;
+            case loki::AssignOperatorEnum::SCALE_UP:
+                ref_value *= value;
+                break;
+            case loki::AssignOperatorEnum::SCALE_DOWN:
+                assert(value != 0);
+                ref_value /= value;
+                break;
+            default:
+                throw std::logic_error("ParallelKPKCActionGrounder::apply_numeric_effect: unexpected AssignOperatorEnum.");
+        }
+    }
+
+    template<typename LookupTablesT>
+    bool effect_holds(const UnpackedStateImpl& unpacked_state,
+                      const LookupTablesT& lookup_tables,
+                      NumericEffect<FluentTag> effect,
+                      const ObjectList& binding)
+    {
+        const auto function_index = lookup_ground_function_index(lookup_tables.fluent_functions,
+                                                                 effect->get_function()->get_function_skeleton(),
+                                                                 effect->get_function()->get_terms(),
+                                                                 binding,
+                                                                 m_index_scratch);
+        if (function_index == kMissingIndex)
+        {
+            return false;
+        }
+
+        m_fluent_numeric_changes.resize(function_index + 1, detail::EffectFamily::NONE);
+        auto& recorded_effect_family = m_fluent_numeric_changes.at(function_index);
+        const auto effect_family = detail::get_effect_family(effect->get_assign_operator());
+        if (!detail::is_compatible_effect_family(recorded_effect_family, effect_family))
+        {
+            return false;
+        }
+        recorded_effect_family = effect_family;
+
+        const auto value = evaluate_function_expression(unpacked_state, lookup_tables, effect->get_function_expression(), binding);
+        const auto is_assignment_operator = (effect->get_assign_operator() == loki::AssignOperatorEnum::ASSIGN);
+        const auto is_undefined_value = (function_index >= unpacked_state.get_numeric_variables().size()
+                                         || std::isnan(unpacked_state.get_numeric_variables()[function_index]));
+
+        return !std::isnan(value) && !(is_undefined_value && !is_assignment_operator);
+    }
+
+    template<typename LookupTablesT>
+    bool effect_holds(const UnpackedStateImpl& unpacked_state,
+                      const LookupTablesT& lookup_tables,
+                      NumericEffect<AuxiliaryTag> effect,
+                      const ObjectList& binding)
+    {
+        const auto effect_family = detail::get_effect_family(effect->get_assign_operator());
+        if (!detail::is_compatible_effect_family(m_auxiliary_numeric_change, effect_family))
+        {
+            return false;
+        }
+        m_auxiliary_numeric_change = effect_family;
+        const auto value = evaluate_function_expression(unpacked_state, lookup_tables, effect->get_function_expression(), binding);
+        return !std::isnan(value);
+    }
+
+    template<typename LookupTablesT>
+    ContinuousCost evaluate_function_expression(const UnpackedStateImpl& unpacked_state,
+                                                const LookupTablesT& lookup_tables,
+                                                FunctionExpression function_expression,
+                                                const ObjectList& binding)
+    {
+        return std::visit(
+            [&](auto&& arg) -> ContinuousCost
+            {
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, FunctionExpressionNumber>)
+                {
+                    return arg->get_number();
+                }
+                else if constexpr (std::is_same_v<T, FunctionExpressionBinaryOperator>)
+                {
+                    return evaluate_binary(arg->get_binary_operator(),
+                                           evaluate_function_expression(unpacked_state, lookup_tables, arg->get_left_function_expression(), binding),
+                                           evaluate_function_expression(unpacked_state, lookup_tables, arg->get_right_function_expression(), binding));
+                }
+                else if constexpr (std::is_same_v<T, FunctionExpressionMultiOperator>)
+                {
+                    if (arg->get_function_expressions().empty())
+                    {
+                        return UNDEFINED_CONTINUOUS_COST;
+                    }
+
+                    auto value = evaluate_function_expression(unpacked_state, lookup_tables, arg->get_function_expressions().front(), binding);
+                    for (size_t i = 1; i < arg->get_function_expressions().size(); ++i)
+                    {
+                        value = evaluate_multi(arg->get_multi_operator(),
+                                               value,
+                                               evaluate_function_expression(unpacked_state, lookup_tables, arg->get_function_expressions()[i], binding));
+                    }
+                    return value;
+                }
+                else if constexpr (std::is_same_v<T, FunctionExpressionMinus>)
+                {
+                    const auto value = evaluate_function_expression(unpacked_state, lookup_tables, arg->get_function_expression(), binding);
+                    return std::isnan(value) ? UNDEFINED_CONTINUOUS_COST : -value;
+                }
+                else if constexpr (std::is_same_v<T, FunctionExpressionFunction<StaticTag>>)
+                {
+                    const auto function_index = lookup_ground_function_index(lookup_tables.static_functions,
+                                                                            arg->get_function()->get_function_skeleton(),
+                                                                            arg->get_function()->get_terms(),
+                                                                            binding,
+                                                                            m_index_scratch);
+                    if (function_index == kMissingIndex || function_index >= unpacked_state.get_problem().get_initial_function_to_value<StaticTag>().size())
+                    {
+                        return UNDEFINED_CONTINUOUS_COST;
+                    }
+                    return unpacked_state.get_problem().get_initial_function_to_value<StaticTag>()[function_index];
+                }
+                else if constexpr (std::is_same_v<T, FunctionExpressionFunction<FluentTag>>)
+                {
+                    const auto function_index = lookup_ground_function_index(lookup_tables.fluent_functions,
+                                                                            arg->get_function()->get_function_skeleton(),
+                                                                            arg->get_function()->get_terms(),
+                                                                            binding,
+                                                                            m_index_scratch);
+                    if (function_index == kMissingIndex || function_index >= unpacked_state.get_numeric_variables().size())
+                    {
+                        return UNDEFINED_CONTINUOUS_COST;
+                    }
+                    return unpacked_state.get_numeric_variables()[function_index];
+                }
+                else if constexpr (std::is_same_v<T, FunctionExpressionFunction<AuxiliaryTag>>)
+                {
+                    throw std::logic_error(
+                        "ParallelKPKCActionGrounder::evaluate_function_expression: unexpected FunctionExpressionFunction<AuxiliaryTag>.");
+                }
+                else
+                {
+                    static_assert(dependent_false<T>::value, "Missing function expression variant.");
+                }
+            },
+            function_expression->get_variant());
+    }
+
+    Action m_action;
+    ConjunctiveCondition m_conjunctive_condition;
+    std::vector<detail::EffectFamily> m_fluent_numeric_changes;
+    detail::EffectFamily m_auxiliary_numeric_change;
+    IndexList m_index_scratch;
+};
+
 class KPKCParallelApplicableActionWorkerContext final : public IParallelApplicableActionGeneratorWorkerContext
 {
 public:
     const KPKCLiftedApplicableActionGeneratorImpl* owner;
     ActionSatisficingBindingGeneratorList action_grounding_data;
+    std::vector<ParallelKPKCActionGrounder> action_validators;
+    StateRepositoryImpl::StagedSuccessorScratch successor_scratch;
 
     KPKCParallelApplicableActionWorkerContext(const KPKCLiftedApplicableActionGeneratorImpl* owner,
                                              const ActionSatisficingBindingGeneratorList& action_grounding_data) :
         owner(owner),
-        action_grounding_data(action_grounding_data)
+        action_grounding_data(action_grounding_data),
+        action_validators(),
+        successor_scratch()
     {
+        action_validators.reserve(this->action_grounding_data.size());
+        for (const auto& condition_grounder : this->action_grounding_data)
+        {
+            action_validators.emplace_back(condition_grounder);
+        }
     }
 };
 
@@ -213,6 +1132,15 @@ std::vector<ParallelActionSchemaTask> build_parallel_action_schema_tasks(
 }
 }
 
+struct KPKCLiftedApplicableActionGeneratorImpl::ParallelGroundLookupTables
+{
+    GroundAtomIndexLookup<StaticTag> static_predicates;
+    GroundAtomIndexLookup<FluentTag> fluent_predicates;
+    GroundAtomIndexLookup<DerivedTag> derived_predicates;
+    GroundFunctionIndexLookup<StaticTag> static_functions;
+    GroundFunctionIndexLookup<FluentTag> fluent_functions;
+};
+
 /**
  * LiftedApplicableActionGenerator
  */
@@ -226,7 +1154,10 @@ KPKCLiftedApplicableActionGeneratorImpl::KPKCLiftedApplicableActionGeneratorImpl
     m_event_handler(event_handler ? event_handler : DefaultEventHandlerImpl::create()),
     m_binding_event_handler(binding_event_handler ? binding_event_handler : satisficing_binding_generator::DefaultEventHandlerImpl::create()),
     m_action_grounding_data(),
-    m_dynamic_assignment_sets(*m_problem)
+    m_dynamic_assignment_sets(*m_problem),
+    m_generation_statistics(),
+    m_parallel_lookup_tables_once_flag(),
+    m_parallel_lookup_tables()
 {
     /* 2. Initialize the condition grounders for each action schema. */
     const auto& actions = problem->get_domain()->get_actions();
@@ -236,6 +1167,81 @@ KPKCLiftedApplicableActionGeneratorImpl::KPKCLiftedApplicableActionGeneratorImpl
         assert(action->get_index() == i);
         m_action_grounding_data.push_back(ActionSatisficingBindingGenerator(action, m_problem, m_binding_event_handler));
     }
+}
+
+void KPKCLiftedApplicableActionGeneratorImpl::prepare_parallel_applicable_action_generation() const
+{
+    std::call_once(
+        m_parallel_lookup_tables_once_flag,
+        [this]()
+        {
+            auto lookup_tables = std::make_shared<ParallelGroundLookupTables>();
+
+            auto static_predicates = std::vector<bool> {};
+            auto fluent_predicates = std::vector<bool> {};
+            auto derived_predicates = std::vector<bool> {};
+            auto static_function_skeletons = std::vector<bool> {};
+            auto fluent_function_skeletons = std::vector<bool> {};
+
+            collect_action_lookup_requirements(m_problem,
+                                               static_predicates,
+                                               fluent_predicates,
+                                               derived_predicates,
+                                               static_function_skeletons,
+                                               fluent_function_skeletons);
+
+            const auto& static_predicate_repository =
+                boost::hana::at_key(m_problem->get_repositories().get_hana_repositories(), boost::hana::type<PredicateImpl<StaticTag>> {});
+            for (Index i = 0; i < static_predicates.size(); ++i)
+            {
+                if (static_predicates[i])
+                {
+                    build_ground_atom_lookup(m_problem, static_predicate_repository.at(i), lookup_tables->static_predicates);
+                }
+            }
+
+            const auto& fluent_predicate_repository =
+                boost::hana::at_key(m_problem->get_repositories().get_hana_repositories(), boost::hana::type<PredicateImpl<FluentTag>> {});
+            for (Index i = 0; i < fluent_predicates.size(); ++i)
+            {
+                if (fluent_predicates[i])
+                {
+                    build_ground_atom_lookup(m_problem, fluent_predicate_repository.at(i), lookup_tables->fluent_predicates);
+                }
+            }
+
+            const auto& derived_predicate_repository =
+                boost::hana::at_key(m_problem->get_repositories().get_hana_repositories(), boost::hana::type<PredicateImpl<DerivedTag>> {});
+            for (Index i = 0; i < derived_predicates.size(); ++i)
+            {
+                if (derived_predicates[i])
+                {
+                    build_ground_atom_lookup(m_problem, derived_predicate_repository.at(i), lookup_tables->derived_predicates);
+                }
+            }
+
+            const auto& static_function_repository =
+                boost::hana::at_key(m_problem->get_repositories().get_hana_repositories(), boost::hana::type<FunctionSkeletonImpl<StaticTag>> {});
+            for (Index i = 0; i < static_function_skeletons.size(); ++i)
+            {
+                if (static_function_skeletons[i])
+                {
+                    build_ground_function_lookup(m_problem, static_function_repository.at(i), lookup_tables->static_functions);
+                }
+            }
+
+            const auto& fluent_function_repository =
+                boost::hana::at_key(m_problem->get_repositories().get_hana_repositories(), boost::hana::type<FunctionSkeletonImpl<FluentTag>> {});
+            for (Index i = 0; i < fluent_function_skeletons.size(); ++i)
+            {
+                if (fluent_function_skeletons[i])
+                {
+                    build_ground_function_lookup(m_problem, fluent_function_repository.at(i), lookup_tables->fluent_functions);
+                }
+            }
+
+            m_parallel_lookup_tables = std::move(lookup_tables);
+        });
 }
 
 KPKCLiftedApplicableActionGenerator KPKCLiftedApplicableActionGeneratorImpl::create(Problem problem,
@@ -248,8 +1254,11 @@ KPKCLiftedApplicableActionGenerator KPKCLiftedApplicableActionGeneratorImpl::cre
 
 bool KPKCLiftedApplicableActionGeneratorImpl::supports_parallel_applicable_action_generation() const { return true; }
 
+bool KPKCLiftedApplicableActionGeneratorImpl::supports_parallel_relaxed_beam_successor_generation() const { return true; }
+
 ParallelApplicableActionGeneratorWorkerContext KPKCLiftedApplicableActionGeneratorImpl::create_parallel_worker_context() const
 {
+    assert(m_parallel_lookup_tables);
     return std::make_unique<KPKCParallelApplicableActionWorkerContext>(this, m_action_grounding_data);
 }
 
@@ -439,6 +1448,8 @@ mimir::generator<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_a
 std::vector<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_applicable_action_list_parallel(const State& state,
                                                                                                           BS::thread_pool& thread_pool)
 {
+    prepare_parallel_applicable_action_generation();
+
     const auto generation_start = std::chrono::steady_clock::now();
 
     const auto dynamic_assignment_initialization_start = std::chrono::steady_clock::now();
@@ -470,18 +1481,22 @@ std::vector<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_applic
     for (const auto& schema_task : schema_tasks)
     {
         futures.push_back(thread_pool.submit_task(
-            [&unpacked_state, &dynamic_assignment_sets = m_dynamic_assignment_sets, &worker_contexts, schema_task]()
+            [&unpacked_state, &dynamic_assignment_sets = m_dynamic_assignment_sets, &worker_contexts, lookup_tables = m_parallel_lookup_tables, schema_task]()
             {
                 const auto worker_index = BS::this_thread::get_index();
                 assert(worker_index.has_value());
                 auto& typed_worker_context = static_cast<KPKCParallelApplicableActionWorkerContext&>(*worker_contexts[*worker_index]);
                 auto& condition_grounder = typed_worker_context.action_grounding_data[schema_task.schema_index];
+                auto& action_validator = typed_worker_context.action_validators[schema_task.schema_index];
                 auto candidate_bindings = std::vector<ObjectList> {};
 
                 for (auto&& binding :
                      condition_grounder.create_candidate_binding_generator(unpacked_state, dynamic_assignment_sets, schema_task.vertex_mask))
                 {
-                    candidate_bindings.push_back(std::move(binding));
+                    if (action_validator.test_binding(unpacked_state, *lookup_tables, binding))
+                    {
+                        candidate_bindings.push_back(std::move(binding));
+                    }
                 }
 
                 return ParallelActionSchemaResult { schema_task.schema_index, std::move(candidate_bindings) };
@@ -496,11 +1511,6 @@ std::vector<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_applic
 
         for (auto& binding : schema_result.candidate_bindings)
         {
-            if (!condition_grounder.test_binding(unpacked_state, binding))
-            {
-                continue;
-            }
-
             const auto num_ground_actions = ground_action_repository.size();
             const auto ground_action = m_problem->ground(condition_grounder.get_action(), std::move(binding));
 
@@ -515,6 +1525,209 @@ std::vector<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_applic
 
     m_event_handler->on_end_generating_applicable_actions();
     return applicable_actions;
+}
+
+ParallelRelaxedBeamSuccessorGenerationResult KPKCLiftedApplicableActionGeneratorImpl::create_relaxed_parallel_beam_successor_candidates(
+    const State& state,
+    ContinuousCost state_metric_value,
+    DiscreteCost successor_g_value,
+    BS::thread_pool& thread_pool,
+    StateRepositoryImpl& state_repository,
+    const PruningStrategy& pruning_strategy,
+    BeamNoveltyMode beam_novelty_mode,
+    const LayerOrderingStrategy& layer_ordering_strategy,
+    uint32_t beam_width,
+    bool randomize_equal_score_ties,
+    uint64_t equal_score_tie_seed)
+{
+    prepare_parallel_applicable_action_generation();
+
+    if (beam_novelty_mode != BeamNoveltyMode::SURVIVORS_ONLY)
+    {
+        throw std::invalid_argument(
+            "KPKCLiftedApplicableActionGeneratorImpl::create_relaxed_parallel_beam_successor_candidates requires BeamNoveltyMode::SURVIVORS_ONLY.");
+    }
+
+    const auto generation_start = std::chrono::steady_clock::now();
+
+    const auto dynamic_assignment_initialization_start = std::chrono::steady_clock::now();
+    initialize(state.get_unpacked_state(), m_dynamic_assignment_sets);
+    const auto dynamic_assignment_initialization_time =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - dynamic_assignment_initialization_start);
+    auto symmetry_setup_time = std::chrono::nanoseconds::zero();
+    auto generation_statistics_scope = GenerationStatisticsScope { &m_generation_statistics, generation_start, dynamic_assignment_initialization_time,
+                                                                  symmetry_setup_time };
+
+    m_event_handler->on_start_generating_applicable_actions();
+
+    const auto schema_tasks = build_parallel_action_schema_tasks(m_problem, m_options, state, m_action_grounding_data, symmetry_setup_time);
+    generation_statistics_scope.symmetry_setup_time = symmetry_setup_time;
+
+    if (schema_tasks.empty())
+    {
+        m_event_handler->on_end_generating_applicable_actions();
+        return ParallelRelaxedBeamSuccessorGenerationResult {};
+    }
+
+    auto worker_contexts = std::vector<ParallelApplicableActionGeneratorWorkerContext> {};
+    worker_contexts.reserve(thread_pool.get_thread_count());
+    for (size_t i = 0; i < thread_pool.get_thread_count(); ++i)
+    {
+        worker_contexts.push_back(create_parallel_worker_context());
+    }
+
+    const auto use_small_beam = beam_width <= 64;
+    const auto ranking = LocalBeamRanking<ParallelRelaxedBeamSuccessorCandidate> { layer_ordering_strategy->prefer_higher_scores() };
+    const auto heap_compare = LocalBeamHeapCompare<ParallelRelaxedBeamSuccessorCandidate> { ranking };
+    const auto num_partitions =
+        std::min<size_t>(thread_pool.get_thread_count(), std::max<size_t>(1, schema_tasks.size()));
+    auto futures = std::vector<std::future<ParallelRelaxedBeamSuccessorGenerationResult>> {};
+    futures.reserve(num_partitions);
+
+    auto begin_index = size_t(0);
+    const auto base_partition_size = schema_tasks.size() / num_partitions;
+    const auto num_larger_partitions = schema_tasks.size() % num_partitions;
+
+    for (size_t partition_index = 0; partition_index < num_partitions; ++partition_index)
+    {
+        const auto partition_size = base_partition_size + (partition_index < num_larger_partitions ? 1u : 0u);
+        const auto partition_begin = begin_index;
+        const auto partition_end = partition_begin + partition_size;
+        begin_index = partition_end;
+
+        futures.push_back(thread_pool.submit_task([&state,
+                                                   &state_repository,
+                                                   &pruning_strategy,
+                                                   &layer_ordering_strategy,
+                                                   &dynamic_assignment_sets = m_dynamic_assignment_sets,
+                                                   &schema_tasks,
+                                                   &worker_contexts,
+                                                   lookup_tables = m_parallel_lookup_tables,
+                                                   state_metric_value,
+                                                   successor_g_value,
+                                                   beam_width,
+                                                   beam_novelty_mode,
+                                                   use_small_beam,
+                                                   ranking,
+                                                   heap_compare,
+                                                   randomize_equal_score_ties,
+                                                   equal_score_tie_seed,
+                                                   partition_begin,
+                                                   partition_end]()
+                                                  {
+                                                      auto result = ParallelRelaxedBeamSuccessorGenerationResult {};
+                                                      result.candidates.reserve(std::min<size_t>(beam_width, partition_end - partition_begin));
+
+                                                      const auto worker_index = BS::this_thread::get_index();
+                                                      assert(worker_index.has_value());
+                                                      auto& typed_worker_context =
+                                                          static_cast<KPKCParallelApplicableActionWorkerContext&>(*worker_contexts[*worker_index]);
+                                                      const auto& axiom_evaluator = state_repository.get_axiom_evaluator();
+
+                                                      const auto worker_compute_start = std::chrono::steady_clock::now();
+                                                      for (size_t task_order = partition_begin; task_order < partition_end; ++task_order)
+                                                      {
+                                                          const auto& schema_task = schema_tasks[task_order];
+                                                          auto& condition_grounder =
+                                                              typed_worker_context.action_grounding_data[schema_task.schema_index];
+                                                          auto& action_validator = typed_worker_context.action_validators[schema_task.schema_index];
+                                                          auto local_binding_index = uint32_t(0);
+
+                                                          for (auto&& binding :
+                                                               condition_grounder.create_candidate_binding_generator(state.get_unpacked_state(),
+                                                                                                                    dynamic_assignment_sets,
+                                                                                                                    schema_task.vertex_mask))
+                                                          {
+                                                              if (!action_validator.test_binding(state.get_unpacked_state(), *lookup_tables, binding))
+                                                              {
+                                                                  continue;
+                                                              }
+
+                                                              ++result.num_scored_candidates;
+                                                              auto candidate = action_validator.compute_staged_successor_candidate(state,
+                                                                                                                                   *lookup_tables,
+                                                                                                                                   binding,
+                                                                                                                                   state_metric_value,
+                                                                                                                                   axiom_evaluator,
+                                                                                                                                   typed_worker_context.successor_scratch);
+                                                              if (pruning_strategy->test_prune_staged_successor_state_for_relaxed_beam_selection(
+                                                                      state,
+                                                                      candidate.fluent_atoms,
+                                                                      candidate.derived_atoms,
+                                                                      candidate.fluent_numeric_variables,
+                                                                      candidate.fluent_atom_indices,
+                                                                      beam_novelty_mode))
+                                                              {
+                                                                  ++local_binding_index;
+                                                                  continue;
+                                                              }
+
+                                                              candidate.score = layer_ordering_strategy->score_staged_state(candidate.fluent_atoms,
+                                                                                                                            candidate.derived_atoms,
+                                                                                                                            candidate.fluent_numeric_variables,
+                                                                                                                            successor_g_value);
+                                                              candidate.successor_g_value = successor_g_value;
+                                                              candidate.generation_sequence =
+                                                                  make_generation_sequence(static_cast<uint32_t>(task_order), local_binding_index++);
+                                                              candidate.tie_token = randomize_equal_score_ties ?
+                                                                                        splitmix64(equal_score_tie_seed ^ candidate.generation_sequence) :
+                                                                                        uint64_t(0);
+
+                                                              const auto reject_candidate = [](const auto&) {};
+                                                              if (use_small_beam)
+                                                              {
+                                                                  add_candidate_to_small_local_beam(
+                                                                      result.candidates,
+                                                                      std::move(candidate),
+                                                                      beam_width,
+                                                                      ranking,
+                                                                      reject_candidate);
+                                                              }
+                                                              else
+                                                              {
+                                                                  add_candidate_to_heap_local_beam(result.candidates,
+                                                                                                   std::move(candidate),
+                                                                                                   beam_width,
+                                                                                                   ranking,
+                                                                                                   heap_compare,
+                                                                                                   reject_candidate);
+                                                              }
+                                                          }
+                                                      }
+
+                                                      if (!use_small_beam)
+                                                      {
+                                                          std::sort(result.candidates.begin(),
+                                                                    result.candidates.end(),
+                                                                    [&ranking](const auto& lhs, const auto& rhs) { return ranking.better(lhs, rhs); });
+                                                      }
+
+                                                      result.worker_compute_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                                          std::chrono::steady_clock::now() - worker_compute_start);
+                                                      return result;
+                                                  }));
+    }
+
+    auto merged_result = ParallelRelaxedBeamSuccessorGenerationResult {};
+    merged_result.candidates.reserve(std::min<size_t>(beam_width * num_partitions, schema_tasks.size() * beam_width));
+
+    for (auto& future : futures)
+    {
+        auto partition_result = future.get();
+        merged_result.worker_compute_time += partition_result.worker_compute_time;
+        merged_result.num_scored_candidates += partition_result.num_scored_candidates;
+        for (auto& candidate : partition_result.candidates)
+        {
+            merged_result.candidates.push_back(std::move(candidate));
+        }
+    }
+
+    std::sort(merged_result.candidates.begin(),
+              merged_result.candidates.end(),
+              [&ranking](const auto& lhs, const auto& rhs) { return ranking.better(lhs, rhs); });
+
+    m_event_handler->on_end_generating_applicable_actions();
+    return merged_result;
 }
 
 const Problem& KPKCLiftedApplicableActionGeneratorImpl::get_problem() const { return m_problem; }

@@ -79,6 +79,7 @@ BenchmarkResult run_once(const std::filesystem::path& domain_file,
                          size_t max_arity,
                          size_t beam_width,
                          BeamNoveltyMode beam_novelty_mode,
+                         bool relaxed_survivors_only_beam,
                          uint32_t num_threads,
                          uint32_t chunk_size)
 {
@@ -91,6 +92,7 @@ BenchmarkResult run_once(const std::filesystem::path& domain_file,
     options.max_arity = max_arity;
     options.beam_width = beam_width;
     options.beam_novelty_mode = beam_novelty_mode;
+    options.relaxed_survivors_only_beam = relaxed_survivors_only_beam;
     options.parallel_beam_num_threads = num_threads;
     options.parallel_beam_chunk_size = chunk_size;
     options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(problem);
@@ -222,7 +224,7 @@ int main(int argc, char** argv)
     if (argc < 8)
     {
         std::cerr << "Usage: " << argv[0]
-                  << " <domain.pddl> <problem.pddl> <max_arity> <beam_width> <reps> <all_tested|survivors_only> <threads...> [--mode <grounded|lifted|lifted_symmetry_pruning|lifted_exhaustive>] [--chunk-sizes <sizes...>]\n";
+                  << " <domain.pddl> <problem.pddl> <max_arity> <beam_width> <reps> <all_tested|survivors_only> <threads...> [--mode <grounded|lifted|lifted_symmetry_pruning|lifted_exhaustive>] [--chunk-sizes <sizes...>] [--relaxed-survivors-only-beam]\n";
         return 1;
     }
 
@@ -235,6 +237,7 @@ int main(int argc, char** argv)
 
     std::vector<uint32_t> thread_counts;
     std::vector<uint32_t> chunk_sizes;
+    auto relaxed_survivors_only_beam = false;
     auto search_context_options = SearchContextImpl::Options(SearchContextImpl::GroundedOptions());
     auto parsing_chunk_sizes = false;
     for (int i = 7; i < argc; ++i)
@@ -254,7 +257,11 @@ int main(int argc, char** argv)
             parsing_chunk_sizes = true;
             continue;
         }
-
+        if (argument == "--relaxed-survivors-only-beam")
+        {
+            relaxed_survivors_only_beam = true;
+            continue;
+        }
         if (parsing_chunk_sizes)
         {
             chunk_sizes.push_back(static_cast<uint32_t>(std::stoul(argument)));
@@ -275,6 +282,10 @@ int main(int argc, char** argv)
         chunk_sizes.push_back(1024);
     }
 
+    if (relaxed_survivors_only_beam && beam_novelty_mode != BeamNoveltyMode::SURVIVORS_ONLY)
+    {
+        throw std::invalid_argument("--relaxed-survivors-only-beam requires beam novelty mode 'survivors_only'.");
+    }
     const auto mode_name = [&]() -> std::string
     {
         return std::visit(
@@ -311,7 +322,8 @@ int main(int argc, char** argv)
     }();
 
     std::cout << "search_mode=" << mode_name << " domain=" << domain_file << " problem=" << problem_file << " max_arity=" << max_arity
-              << " beam_width=" << beam_width << " mode=" << argv[6] << " reps=" << reps << '\n';
+              << " beam_width=" << beam_width << " mode=" << argv[6] << " reps=" << reps
+              << " relaxed_survivors_only_beam=" << (relaxed_survivors_only_beam ? "true" : "false") << '\n';
 
     for (const auto chunk_size : chunk_sizes)
     {
@@ -353,6 +365,7 @@ int main(int argc, char** argv)
                                              max_arity,
                                              beam_width,
                                              beam_novelty_mode,
+                                             relaxed_survivors_only_beam,
                                              num_threads,
                                              chunk_size);
                 status = result.status;

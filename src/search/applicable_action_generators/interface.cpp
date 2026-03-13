@@ -13,4 +13,21 @@ std::vector<formalism::GroundAction> IApplicableActionGenerator::create_applicab
         "IApplicableActionGenerator::create_applicable_action_list_parallel: parallel applicable-action generation is not supported.");
 }
 
+ParallelRelaxedBeamSuccessorGenerationResult IApplicableActionGenerator::create_relaxed_parallel_beam_successor_candidates(
+    const State&,
+    ContinuousCost,
+    DiscreteCost,
+    BS::thread_pool&,
+    StateRepositoryImpl&,
+    const PruningStrategy&,
+    BeamNoveltyMode,
+    const LayerOrderingStrategy&,
+    uint32_t,
+    bool,
+    uint64_t)
+{
+    throw std::logic_error(
+        "IApplicableActionGenerator::create_relaxed_parallel_beam_successor_candidates: relaxed parallel beam successor generation is not supported.");
+}
+
 }

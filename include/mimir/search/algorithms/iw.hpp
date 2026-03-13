@@ -33,6 +33,7 @@ struct Options
     uint32_t max_next_layer_states = std::numeric_limits<uint32_t>::max();
     uint32_t beam_width = std::numeric_limits<uint32_t>::max();
     BeamNoveltyMode beam_novelty_mode = BeamNoveltyMode::ALL_TESTED;
+    bool relaxed_survivors_only_beam = false;
     bool randomize_equal_score_ties = false;
     uint64_t equal_score_tie_seed = 0;
     uint32_t parallel_beam_num_threads = 1;

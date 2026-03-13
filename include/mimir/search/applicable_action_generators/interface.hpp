@@ -23,6 +23,8 @@
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/search/declarations.hpp"
 
+#include <chrono>
+
 namespace BS
 {
 class thread_pool;
@@ -35,6 +37,31 @@ class IParallelApplicableActionGeneratorWorkerContext
 {
 public:
     virtual ~IParallelApplicableActionGeneratorWorkerContext() = default;
+};
+
+struct ParallelRelaxedBeamSuccessorCandidate
+{
+    const State* parent_state = nullptr;
+    formalism::Action action_schema = nullptr;
+    formalism::ObjectList binding;
+    FlatBitset fluent_atoms;
+    FlatBitset derived_atoms;
+    iw::AtomIndexList fluent_atom_indices;
+    iw::AtomIndexList derived_atom_indices;
+    FlatDoubleList fluent_numeric_variables;
+    ContinuousCost action_cost = 0;
+    ContinuousCost successor_metric_value = 0;
+    DiscreteCost successor_g_value = 0;
+    ContinuousCost score = 0;
+    uint64_t generation_sequence = 0;
+    uint64_t tie_token = 0;
+};
+
+struct ParallelRelaxedBeamSuccessorGenerationResult
+{
+    std::vector<ParallelRelaxedBeamSuccessorCandidate> candidates;
+    std::chrono::nanoseconds worker_compute_time = std::chrono::nanoseconds::zero();
+    size_t num_scored_candidates = 0;
 };
 
 /**
@@ -62,6 +89,25 @@ public:
     /// @brief Deterministic parallel applicable-action enumeration. Only valid if
     /// supports_parallel_applicable_action_generation() returns true.
     virtual std::vector<formalism::GroundAction> create_applicable_action_list_parallel(const State& state, BS::thread_pool& thread_pool);
+
+    /// @brief Return whether this generator can directly produce worker-scored staged
+    /// successor candidates for relaxed SURVIVORS_ONLY beam search.
+    virtual bool supports_parallel_relaxed_beam_successor_generation() const { return false; }
+
+    /// @brief Generate relaxed-beam successor candidates in workers. The main thread only
+    /// sees the reduced candidate set and materializes canonical states/actions afterward.
+    virtual ParallelRelaxedBeamSuccessorGenerationResult create_relaxed_parallel_beam_successor_candidates(
+        const State& state,
+        ContinuousCost state_metric_value,
+        DiscreteCost successor_g_value,
+        BS::thread_pool& thread_pool,
+        StateRepositoryImpl& state_repository,
+        const PruningStrategy& pruning_strategy,
+        BeamNoveltyMode beam_novelty_mode,
+        const LayerOrderingStrategy& layer_ordering_strategy,
+        uint32_t beam_width,
+        bool randomize_equal_score_ties,
+        uint64_t equal_score_tie_seed);
 
     /// @brief Accumulate event handler statistics during search.
     virtual void on_finish_search_layer() = 0;

@@ -42,6 +42,7 @@ def brfs(
     *,
     num_threads: int = -1,
     chunk_size: int = -1,
+    relaxed_survivors_only_beam: bool = False,
     stop_if_goal: bool = True,
 ) -> "SearchResult":
     """
@@ -71,6 +72,8 @@ def brfs(
     :type num_threads: int
     :param chunk_size: Parallel beam chunk size. Values <= 0 keep the engine default.
     :type chunk_size: int
+    :param relaxed_survivors_only_beam: Opt-in relaxed SURVIVORS_ONLY beam mode that only canonicalizes the merged worker-local top-k candidates.
+    :type relaxed_survivors_only_beam: bool
     :param on_expand_state: Callback function called when a state is expanded.
     :type on_expand_state: Callable[[State], None]
     :param on_expand_goal_state: Callback function called when a goal state is expanded.
@@ -112,6 +115,9 @@ def brfs(
     ), "equal_score_tie_seed must be an int or None."
     assert isinstance(num_threads, int), "num_threads must be an int."
     assert isinstance(chunk_size, int), "chunk_size must be an int."
+    assert isinstance(
+        relaxed_survivors_only_beam, bool
+    ), "relaxed_survivors_only_beam must be a bool."
     assert isinstance(stop_if_goal, bool), "stop_if_goal must be a bool."
     assert layer_ordering_strategy is None or isinstance(
         layer_ordering_strategy, AdvancedILayerOrderingStrategy
@@ -228,6 +234,7 @@ def brfs(
     advanced_options.equal_score_tie_seed = (
         0 if equal_score_tie_seed is None else equal_score_tie_seed
     )
+    advanced_options.relaxed_survivors_only_beam = relaxed_survivors_only_beam
     if num_threads > 1:
         advanced_options.parallel_beam_num_threads = num_threads
     if chunk_size > 0:

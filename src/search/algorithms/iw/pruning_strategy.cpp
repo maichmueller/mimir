@@ -64,6 +64,11 @@ bool ArityZeroNoveltyPruningStrategyImpl::supports_staged_beam_pruning(BeamNovel
     return supports_beam_novelty_mode(beam_novelty_mode);
 }
 
+bool ArityZeroNoveltyPruningStrategyImpl::supports_relaxed_staged_beam_pruning(BeamNoveltyMode beam_novelty_mode) const
+{
+    return beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY;
+}
+
 bool ArityZeroNoveltyPruningStrategyImpl::test_prune_successor_state_for_beam_selection(const State& state,
                                                                                          const State& succ_state,
                                                                                          bool is_new_succ,
@@ -115,6 +120,23 @@ bool ArityZeroNoveltyPruningStrategyImpl::test_prune_staged_successor_state_for_
                                                                     succ_fluent_atom_indices,
                                                                     is_new_succ,
                                                                     beam_novelty_mode);
+    }
+
+    return state.get_index() != m_initial_state.get_index() || is_staged_self_loop(state, succ_fluent_atoms, succ_derived_atoms, succ_numeric_variables);
+}
+
+bool ArityZeroNoveltyPruningStrategyImpl::test_prune_staged_successor_state_for_relaxed_beam_selection(const State& state,
+                                                                                                        const FlatBitset& succ_fluent_atoms,
+                                                                                                        const FlatBitset& succ_derived_atoms,
+                                                                                                        const FlatDoubleList& succ_numeric_variables,
+                                                                                                        const AtomIndexList& succ_fluent_atom_indices,
+                                                                                                        BeamNoveltyMode beam_novelty_mode)
+{
+    [[maybe_unused]] const auto& ignored_succ_fluent_atom_indices = succ_fluent_atom_indices;
+
+    if (beam_novelty_mode != BeamNoveltyMode::SURVIVORS_ONLY)
+    {
+        throw std::invalid_argument("ArityZeroNoveltyPruningStrategyImpl only supports relaxed staged beam selection in SURVIVORS_ONLY mode.");
     }
 
     return state.get_index() != m_initial_state.get_index() || is_staged_self_loop(state, succ_fluent_atoms, succ_derived_atoms, succ_numeric_variables);
@@ -203,6 +225,11 @@ bool ArityKNoveltyPruningStrategyImpl::supports_beam_novelty_mode(BeamNoveltyMod
 bool ArityKNoveltyPruningStrategyImpl::supports_staged_beam_pruning(BeamNoveltyMode beam_novelty_mode) const
 {
     return supports_beam_novelty_mode(beam_novelty_mode);
+}
+
+bool ArityKNoveltyPruningStrategyImpl::supports_relaxed_staged_beam_pruning(BeamNoveltyMode beam_novelty_mode) const
+{
+    return beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY;
 }
 
 bool ArityKNoveltyPruningStrategyImpl::test_prune_successor_state_for_beam_selection(const State& state,
@@ -329,6 +356,29 @@ bool ArityKNoveltyPruningStrategyImpl::test_prune_staged_successor_state_for_bea
         }
     }
     return !is_novel;
+}
+
+bool ArityKNoveltyPruningStrategyImpl::test_prune_staged_successor_state_for_relaxed_beam_selection(const State& state,
+                                                                                                     const FlatBitset& succ_fluent_atoms,
+                                                                                                     const FlatBitset& succ_derived_atoms,
+                                                                                                     const FlatDoubleList& succ_numeric_variables,
+                                                                                                     const AtomIndexList& succ_fluent_atom_indices,
+                                                                                                     BeamNoveltyMode beam_novelty_mode)
+{
+    [[maybe_unused]] const auto& ignored_succ_derived_atoms = succ_derived_atoms;
+    [[maybe_unused]] const auto& ignored_succ_numeric_variables = succ_numeric_variables;
+
+    if (beam_novelty_mode != BeamNoveltyMode::SURVIVORS_ONLY)
+    {
+        throw std::invalid_argument("ArityKNoveltyPruningStrategyImpl only supports relaxed staged beam selection in SURVIVORS_ONLY mode.");
+    }
+
+    if (is_staged_self_loop(state, succ_fluent_atoms, succ_derived_atoms, succ_numeric_variables))
+    {
+        return true;
+    }
+
+    return !m_novelty_table.test_novelty_read_only(state, succ_fluent_atom_indices);
 }
 
 void ArityKNoveltyPruningStrategyImpl::on_end_beam_replay(BeamNoveltyMode beam_novelty_mode)
@@ -666,6 +716,11 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::supports_staged_beam_pruning(
     return supports_beam_novelty_mode(beam_novelty_mode);
 }
 
+bool ProjectiveArityOneNoveltyPruningStrategyImpl::supports_relaxed_staged_beam_pruning(BeamNoveltyMode beam_novelty_mode) const
+{
+    return beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY;
+}
+
 bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_successor_state_for_beam_selection(const State& state,
                                                                                                   const State& succ_state,
                                                                                                   bool is_new_succ,
@@ -817,6 +872,71 @@ void ProjectiveArityOneNoveltyPruningStrategyImpl::on_begin_beam_replay(BeamNove
     m_beam_layer_delta_projected_atoms.clear();
     m_beam_layer_delta_projected_atoms_set.clear();
     m_scratch_projected_atom_keys.clear();
+}
+
+bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_staged_successor_state_for_relaxed_beam_selection(
+    const State& state,
+    const FlatBitset& succ_fluent_atoms,
+    const FlatBitset& succ_derived_atoms,
+    const FlatDoubleList& succ_numeric_variables,
+    const AtomIndexList& succ_fluent_atom_indices,
+    BeamNoveltyMode beam_novelty_mode)
+{
+    [[maybe_unused]] const auto& ignored_succ_derived_atoms = succ_derived_atoms;
+    [[maybe_unused]] const auto& ignored_succ_numeric_variables = succ_numeric_variables;
+
+    if (beam_novelty_mode != BeamNoveltyMode::SURVIVORS_ONLY)
+    {
+        throw std::invalid_argument(
+            "ProjectiveArityOneNoveltyPruningStrategyImpl only supports relaxed staged beam selection in SURVIVORS_ONLY mode.");
+    }
+
+    if (is_staged_self_loop(state, succ_fluent_atoms, succ_derived_atoms, succ_numeric_variables))
+    {
+        return true;
+    }
+
+    auto is_novel = false;
+    const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
+    auto it_state = state_fluent_atoms.begin();
+    auto it_succ_state = succ_fluent_atom_indices.begin();
+
+    while (it_state != state_fluent_atoms.end() && it_succ_state != succ_fluent_atom_indices.end())
+    {
+        if (*it_succ_state < *it_state)
+        {
+            if (test_atom_novelty(*it_succ_state))
+            {
+                is_novel = true;
+                break;
+            }
+            ++it_succ_state;
+        }
+        else if (*it_state < *it_succ_state)
+        {
+            ++it_state;
+        }
+        else
+        {
+            ++it_state;
+            ++it_succ_state;
+        }
+    }
+
+    for (; !is_novel && it_succ_state != succ_fluent_atom_indices.end(); ++it_succ_state)
+    {
+        if (test_atom_novelty(*it_succ_state))
+        {
+            is_novel = true;
+        }
+    }
+
+    if (m_keep_depth_one_novel && m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
+    {
+        return false;
+    }
+
+    return !is_novel;
 }
 
 bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_successor_state_for_beam_replay(const State& state,

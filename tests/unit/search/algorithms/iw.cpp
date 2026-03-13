@@ -33,6 +33,7 @@
 #include "mimir/search/plan.hpp"
 #include "mimir/search/search_context.hpp"
 #include "mimir/search/state_repository.hpp"
+#include "mimir/datasets/state_space.hpp"
 
 #include <gtest/gtest.h>
 
@@ -944,6 +945,68 @@ TEST(MimirTests, SearchAlgorithmsIWParallelBeamCustomChunkSizeMatchesSerialTest)
     }
 }
 
+TEST(MimirTests, SearchAlgorithmsIWRelaxedSurvivorsOnlyBeamRequiresSurvivorsOnlyMode)
+{
+    auto iw = GroundedIWPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"),
+                                fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"),
+                                2);
+
+    auto options = iw::Options();
+    options.max_arity = 2;
+    options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(iw.get_problem());
+    options.beam_width = 8;
+    options.beam_novelty_mode = BeamNoveltyMode::ALL_TESTED;
+    options.parallel_beam_num_threads = 2;
+    options.relaxed_survivors_only_beam = true;
+
+    EXPECT_THROW(iw::find_solution(iw.get_search_context(), options), std::invalid_argument);
+}
+
+TEST(MimirTests, SearchAlgorithmsIWRelaxedSurvivorsOnlyBeamWideBeamMatchesDeterministicTest)
+{
+    auto run = [](bool relaxed_survivors_only_beam)
+    {
+        auto iw = GroundedIWPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"),
+                                    fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"),
+                                    2);
+        auto iw_event_handler = iw::DefaultEventHandlerImpl::create(iw.get_problem());
+
+        const auto state_space_result = datasets::StateSpaceImpl::create(iw.get_search_context());
+        EXPECT_TRUE(state_space_result.has_value());
+        if (!state_space_result.has_value())
+        {
+            return IWRunTrace {};
+        }
+
+        auto options = iw::Options();
+        options.max_arity = 2;
+        options.iw_event_handler = iw_event_handler;
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(iw.get_problem());
+        options.beam_width = static_cast<uint32_t>(state_space_result->first->get_graph().get_num_vertices());
+        options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
+        options.parallel_beam_num_threads = 4;
+        options.relaxed_survivors_only_beam = relaxed_survivors_only_beam;
+
+        const auto result = iw::find_solution(iw.get_search_context(), options);
+        if (result.plan.has_value())
+        {
+            expect_plan_reaches_goal(iw.get_search_context(), result);
+        }
+
+        return make_iw_run_trace(result, iw_event_handler->get_statistics());
+    };
+
+    const auto relaxed_trace = run(true);
+    const auto deterministic_trace = run(false);
+
+    EXPECT_EQ(relaxed_trace.status, deterministic_trace.status);
+    EXPECT_EQ(relaxed_trace.goal_state_index, deterministic_trace.goal_state_index);
+    EXPECT_EQ(relaxed_trace.plan_action_signatures, deterministic_trace.plan_action_signatures);
+    EXPECT_EQ(relaxed_trace.effective_width, deterministic_trace.effective_width);
+    EXPECT_EQ(relaxed_trace.num_expanded_until_g_value_by_arity, deterministic_trace.num_expanded_until_g_value_by_arity);
+    EXPECT_EQ(relaxed_trace.num_pruned_until_g_value_by_arity, deterministic_trace.num_pruned_until_g_value_by_arity);
+}
+
 TEST(MimirTests, SearchAlgorithmsIWParallelBeamChunkedScheduleMatchesSerialTest)
 {
     auto run = [](BeamNoveltyMode beam_novelty_mode, uint32_t parallel_threads)
@@ -1028,6 +1091,46 @@ TEST(MimirTests, SearchAlgorithmsIWParallelBeamLongRunStressDeliveryTest)
         expect_iw_run_traces_match(
             run(fs::path(std::string(DATA_DIR) + "delivery/test_problem2.pddl"), BeamNoveltyMode::ALL_TESTED, 128, 4),
             all_tested_reference);
+    }
+}
+
+TEST(MimirTests, SearchAlgorithmsIWRelaxedSurvivorsOnlyBeamRepeatedLiftedKPKCTest)
+{
+    auto run = [](const std::string& domain_name)
+    {
+        auto iw = LiftedIWPlanner(fs::path(std::string(DATA_DIR) + domain_name + "/domain.pddl"),
+                                  fs::path(std::string(DATA_DIR) + domain_name + "/test_problem.pddl"),
+                                  3);
+        auto iw_event_handler = iw::DefaultEventHandlerImpl::create(iw.get_problem());
+
+        auto options = iw::Options();
+        options.max_arity = 3;
+        options.iw_event_handler = iw_event_handler;
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(iw.get_problem());
+        options.beam_width = 64;
+        options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
+        options.parallel_beam_num_threads = 4;
+        options.relaxed_survivors_only_beam = true;
+
+        const auto result = iw::find_solution(iw.get_search_context(), options);
+        if (result.plan.has_value())
+        {
+            expect_plan_reaches_goal(iw.get_search_context(), result);
+        }
+
+        return make_iw_run_trace(result, iw_event_handler->get_statistics());
+    };
+
+    for (const auto& domain_name : { std::string("delivery"), std::string("philosophers") })
+    {
+        SCOPED_TRACE(domain_name);
+        const auto reference_trace = run(domain_name);
+
+        for (int repetition = 0; repetition < 8; ++repetition)
+        {
+            SCOPED_TRACE(repetition);
+            expect_iw_run_traces_match(run(domain_name), reference_trace);
+        }
     }
 }
 

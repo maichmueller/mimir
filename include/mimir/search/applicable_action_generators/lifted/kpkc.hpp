@@ -28,6 +28,8 @@
 #include "mimir/search/search_context.hpp"
 
 #include <cstdint>
+#include <memory>
+#include <mutex>
 #include <vector>
 
 namespace mimir::search
@@ -91,9 +93,22 @@ public:
     KPKCLiftedApplicableActionGeneratorImpl& operator=(KPKCLiftedApplicableActionGeneratorImpl&& other) = delete;
 
     bool supports_parallel_applicable_action_generation() const override;
+    bool supports_parallel_relaxed_beam_successor_generation() const override;
     ParallelApplicableActionGeneratorWorkerContext create_parallel_worker_context() const override;
     mimir::generator<formalism::GroundAction> create_applicable_action_generator(const State& state) override;
     std::vector<formalism::GroundAction> create_applicable_action_list_parallel(const State& state, BS::thread_pool& thread_pool) override;
+    ParallelRelaxedBeamSuccessorGenerationResult create_relaxed_parallel_beam_successor_candidates(
+        const State& state,
+        ContinuousCost state_metric_value,
+        DiscreteCost successor_g_value,
+        BS::thread_pool& thread_pool,
+        StateRepositoryImpl& state_repository,
+        const PruningStrategy& pruning_strategy,
+        BeamNoveltyMode beam_novelty_mode,
+        const LayerOrderingStrategy& layer_ordering_strategy,
+        uint32_t beam_width,
+        bool randomize_equal_score_ties,
+        uint64_t equal_score_tie_seed) override;
 
     void on_finish_search_layer() override;
     void on_end_search() override;
@@ -106,6 +121,10 @@ public:
     const GenerationStatistics& get_generation_statistics() const;
 
 private:
+    struct ParallelGroundLookupTables;
+
+    void prepare_parallel_applicable_action_generation() const;
+
     formalism::Problem m_problem;
     SearchContextImpl::LiftedOptions::KPKCOptions m_options;
     EventHandler m_event_handler;
@@ -115,6 +134,8 @@ private:
 
     formalism::DynamicAssignmentSets m_dynamic_assignment_sets;
     GenerationStatistics m_generation_statistics;
+    mutable std::once_flag m_parallel_lookup_tables_once_flag;
+    mutable std::shared_ptr<const ParallelGroundLookupTables> m_parallel_lookup_tables;
 };
 
 }  // namespace mimir

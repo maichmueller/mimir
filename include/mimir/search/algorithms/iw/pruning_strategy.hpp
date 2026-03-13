@@ -45,6 +45,7 @@ public:
     bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;
     bool supports_beam_novelty_mode(BeamNoveltyMode beam_novelty_mode) const override;
     bool supports_staged_beam_pruning(BeamNoveltyMode beam_novelty_mode) const override;
+    bool supports_relaxed_staged_beam_pruning(BeamNoveltyMode beam_novelty_mode) const override;
     bool test_prune_successor_state_for_beam_selection(const State& state,
                                                        const State& succ_state,
                                                        bool is_new_succ,
@@ -56,6 +57,12 @@ public:
                                                               const AtomIndexList& succ_fluent_atom_indices,
                                                               bool is_new_succ,
                                                               BeamNoveltyMode beam_novelty_mode) override;
+    bool test_prune_staged_successor_state_for_relaxed_beam_selection(const State& state,
+                                                                      const FlatBitset& succ_fluent_atoms,
+                                                                      const FlatBitset& succ_derived_atoms,
+                                                                      const FlatDoubleList& succ_numeric_variables,
+                                                                      const AtomIndexList& succ_fluent_atom_indices,
+                                                                      BeamNoveltyMode beam_novelty_mode) override;
     bool test_prune_staged_successor_state_for_beam_replay(const State& state,
                                                            const FlatBitset& succ_fluent_atoms,
                                                            const FlatBitset& succ_derived_atoms,
@@ -92,6 +99,7 @@ public:
     bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;
     bool supports_beam_novelty_mode(BeamNoveltyMode beam_novelty_mode) const override;
     bool supports_staged_beam_pruning(BeamNoveltyMode beam_novelty_mode) const override;
+    bool supports_relaxed_staged_beam_pruning(BeamNoveltyMode beam_novelty_mode) const override;
     bool test_prune_successor_state_for_beam_selection(const State& state,
                                                        const State& succ_state,
                                                        bool is_new_succ,
@@ -103,6 +111,12 @@ public:
                                                               const AtomIndexList& succ_fluent_atom_indices,
                                                               bool is_new_succ,
                                                               BeamNoveltyMode beam_novelty_mode) override;
+    bool test_prune_staged_successor_state_for_relaxed_beam_selection(const State& state,
+                                                                      const FlatBitset& succ_fluent_atoms,
+                                                                      const FlatBitset& succ_derived_atoms,
+                                                                      const FlatDoubleList& succ_numeric_variables,
+                                                                      const AtomIndexList& succ_fluent_atom_indices,
+                                                                      BeamNoveltyMode beam_novelty_mode) override;
     void on_begin_beam_replay(BeamNoveltyMode beam_novelty_mode) override;
     bool test_prune_successor_state_for_beam_replay(const State& state,
                                                     const State& succ_state,
@@ -162,6 +176,7 @@ public:
     bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;
     bool supports_beam_novelty_mode(BeamNoveltyMode beam_novelty_mode) const override;
     bool supports_staged_beam_pruning(BeamNoveltyMode beam_novelty_mode) const override;
+    bool supports_relaxed_staged_beam_pruning(BeamNoveltyMode beam_novelty_mode) const override;
     bool test_prune_successor_state_for_beam_selection(const State& state,
                                                        const State& succ_state,
                                                        bool is_new_succ,
@@ -173,6 +188,12 @@ public:
                                                               const AtomIndexList& succ_fluent_atom_indices,
                                                               bool is_new_succ,
                                                               BeamNoveltyMode beam_novelty_mode) override;
+    bool test_prune_staged_successor_state_for_relaxed_beam_selection(const State& state,
+                                                                      const FlatBitset& succ_fluent_atoms,
+                                                                      const FlatBitset& succ_derived_atoms,
+                                                                      const FlatDoubleList& succ_numeric_variables,
+                                                                      const AtomIndexList& succ_fluent_atom_indices,
+                                                                      BeamNoveltyMode beam_novelty_mode) override;
     void on_begin_beam_replay(BeamNoveltyMode beam_novelty_mode) override;
     bool test_prune_successor_state_for_beam_replay(const State& state,
                                                     const State& succ_state,

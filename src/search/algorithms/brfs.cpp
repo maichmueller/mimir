@@ -59,6 +59,7 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
     const auto beam_width = options.beam_width;
     const auto use_beam = (beam_width < std::numeric_limits<uint32_t>::max());
     const auto beam_novelty_mode = options.beam_novelty_mode;
+    const auto relaxed_survivors_only_beam = options.relaxed_survivors_only_beam;
     const auto parallel_beam_num_threads = options.parallel_beam_num_threads;
     const auto parallel_beam_chunk_size = options.parallel_beam_chunk_size;
 
@@ -95,6 +96,30 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
     if (use_beam && !pruning_strategy->supports_beam_novelty_mode(beam_novelty_mode))
     {
         throw std::invalid_argument("The selected pruning_strategy does not support the requested beam novelty mode.");
+    }
+
+    if (relaxed_survivors_only_beam)
+    {
+        if (!use_beam)
+        {
+            throw std::invalid_argument("BrFS::Options.relaxed_survivors_only_beam requires BrFS::Options.beam_width.");
+        }
+        if (beam_novelty_mode != BeamNoveltyMode::SURVIVORS_ONLY)
+        {
+            throw std::invalid_argument("BrFS::Options.relaxed_survivors_only_beam requires BeamNoveltyMode::SURVIVORS_ONLY.");
+        }
+        if (parallel_beam_num_threads <= 1)
+        {
+            throw std::invalid_argument("BrFS::Options.relaxed_survivors_only_beam requires BrFS::Options.parallel_beam_num_threads > 1.");
+        }
+        if (!layer_ordering_strategy->supports_staged_scoring())
+        {
+            throw std::invalid_argument("BrFS::Options.relaxed_survivors_only_beam requires a layer_ordering_strategy with staged scoring support.");
+        }
+        if (!pruning_strategy->supports_relaxed_staged_beam_pruning(beam_novelty_mode))
+        {
+            throw std::invalid_argument("The selected pruning_strategy does not support relaxed staged beam pruning.");
+        }
     }
 
     if (parallel_beam_chunk_size == 0)

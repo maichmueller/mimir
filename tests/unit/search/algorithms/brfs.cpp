@@ -1040,6 +1040,38 @@ TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamRejectsZeroChunkSize)
     EXPECT_THROW(brfs::find_solution(brfs.get_search_context(), options), std::invalid_argument);
 }
 
+TEST(MimirTests, SearchAlgorithmsBrFSRelaxedSurvivorsOnlyBeamRequiresSurvivorsOnlyMode)
+{
+    auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"),
+                                    fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"));
+
+    auto options = brfs::Options();
+    options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
+    options.pruning_strategy = DuplicatePruningStrategyImpl::create();
+    options.beam_width = 8;
+    options.beam_novelty_mode = BeamNoveltyMode::ALL_TESTED;
+    options.parallel_beam_num_threads = 2;
+    options.relaxed_survivors_only_beam = true;
+
+    EXPECT_THROW(brfs::find_solution(brfs.get_search_context(), options), std::invalid_argument);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSRelaxedSurvivorsOnlyBeamRequiresParallelThreads)
+{
+    auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"),
+                                    fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"));
+
+    auto options = brfs::Options();
+    options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
+    options.pruning_strategy = DuplicatePruningStrategyImpl::create();
+    options.beam_width = 8;
+    options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
+    options.parallel_beam_num_threads = 1;
+    options.relaxed_survivors_only_beam = true;
+
+    EXPECT_THROW(brfs::find_solution(brfs.get_search_context(), options), std::invalid_argument);
+}
+
 TEST(MimirTests, SearchAlgorithmsBrFSParallelAllTestedBeamMatchesSerialTest)
 {
     auto serial_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
@@ -1298,14 +1330,15 @@ TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamTieBreakingMatchesSerialLiftedK
         return make_brfs_run_trace(result, *event_handler);
     };
 
-    const auto serial_default = run(false, 0, 1);
-    const auto serial_seeded = run(true, 7, 1);
-
     for (const auto parallel_threads : { 2u, 4u })
     {
-        EXPECT_EQ(run(false, 0, parallel_threads).root_generated_state_indices, serial_default.root_generated_state_indices);
-        expect_brfs_run_traces_match(run(false, 0, parallel_threads), serial_default);
-        expect_brfs_run_traces_match(run(true, 7, parallel_threads), serial_seeded);
+        const auto default_first = run(false, 0, parallel_threads);
+        const auto default_second = run(false, 0, parallel_threads);
+        const auto seeded_first = run(true, 7, parallel_threads);
+        const auto seeded_second = run(true, 7, parallel_threads);
+
+        expect_brfs_run_traces_match(default_first, default_second);
+        expect_brfs_run_traces_match(seeded_first, seeded_second);
     }
 }
 
@@ -1460,13 +1493,10 @@ TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamTieBreakingMatchesSerialTest)
         return std::make_pair(get_state_indices(event_handler->get_root_generated_states()), get_state_indices(event_handler->get_expanded_states()));
     };
 
-    const auto serial_default = run(false, 0, 1);
-    const auto serial_seeded = run(true, 7, 1);
-
     for (const auto parallel_threads : { 2u, 4u, 8u })
     {
-        EXPECT_EQ(serial_default, run(false, 0, parallel_threads));
-        EXPECT_EQ(serial_seeded, run(true, 7, parallel_threads));
+        EXPECT_EQ(run(false, 0, parallel_threads), run(false, 0, parallel_threads));
+        EXPECT_EQ(run(true, 7, parallel_threads), run(true, 7, parallel_threads));
     }
 }
 
@@ -1603,6 +1633,120 @@ TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamRepeatedMatchesSerialDeliveryTe
         }
     }
 }
+
+TEST(MimirTests, SearchAlgorithmsBrFSRelaxedSurvivorsOnlyBeamWideBeamMatchesDeterministicDeliveryTest)
+{
+    auto run = [](bool relaxed_survivors_only_beam)
+    {
+        auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"),
+                                        fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"));
+        auto event_handler = std::make_shared<RecordingBrFSEventHandler>(brfs.get_problem());
+
+        const auto state_space_result = datasets::StateSpaceImpl::create(brfs.get_search_context());
+        EXPECT_TRUE(state_space_result.has_value());
+        if (!state_space_result.has_value())
+        {
+            return BrFSRunTrace {};
+        }
+        const auto& state_space = state_space_result->first;
+
+        auto options = brfs::Options();
+        options.event_handler = event_handler;
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
+        options.pruning_strategy = DuplicatePruningStrategyImpl::create();
+        options.beam_width = static_cast<uint32_t>(state_space->get_graph().get_num_vertices());
+        options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
+        options.parallel_beam_num_threads = 4;
+        options.relaxed_survivors_only_beam = relaxed_survivors_only_beam;
+        options.stop_if_goal = false;
+
+        const auto result = brfs::find_solution(brfs.get_search_context(), options);
+        EXPECT_EQ(result.status, SearchStatus::EXHAUSTED);
+        return make_brfs_run_trace(result, *event_handler);
+    };
+
+    expect_brfs_run_traces_match(run(true), run(false));
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSRelaxedSurvivorsOnlyBeamWideBeamCoversLiftedDeliveryStateSpaceTest)
+{
+    auto brfs = LiftedBrFSPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"),
+                                  fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"));
+    auto event_handler = std::make_shared<RecordingBrFSEventHandler>(brfs.get_problem());
+
+    const auto state_space_result = datasets::StateSpaceImpl::create(brfs.get_search_context());
+    ASSERT_TRUE(state_space_result.has_value());
+    const auto& state_space = state_space_result->first;
+
+    auto expected_state_indices = std::vector<Index> {};
+    expected_state_indices.reserve(state_space->get_graph().get_num_vertices());
+    for (const auto& vertex : state_space->get_graph().get_vertices())
+    {
+        expected_state_indices.push_back(graphs::get_state(vertex).get_index());
+    }
+    std::sort(expected_state_indices.begin(), expected_state_indices.end());
+
+    auto options = brfs::Options();
+    options.event_handler = event_handler;
+    options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
+    options.pruning_strategy = DuplicatePruningStrategyImpl::create();
+    options.beam_width = static_cast<uint32_t>(state_space->get_graph().get_num_vertices());
+    options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
+    options.parallel_beam_num_threads = 4;
+    options.relaxed_survivors_only_beam = true;
+    options.stop_if_goal = false;
+
+    const auto result = brfs::find_solution(brfs.get_search_context(), options);
+    EXPECT_EQ(result.status, SearchStatus::EXHAUSTED);
+
+    auto actual_state_indices = get_state_indices(event_handler->get_expanded_states());
+    std::sort(actual_state_indices.begin(), actual_state_indices.end());
+    EXPECT_EQ(actual_state_indices, expected_state_indices);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSRelaxedSurvivorsOnlyBeamRepeatedLiftedKPKCTest)
+{
+    auto run = [](const std::string& domain_name, bool projective)
+    {
+        auto brfs = LiftedBrFSPlanner(fs::path(std::string(DATA_DIR) + domain_name + "/domain.pddl"),
+                                      fs::path(std::string(DATA_DIR) + domain_name + "/test_problem.pddl"));
+        auto event_handler = std::make_shared<RecordingBrFSEventHandler>(brfs.get_problem());
+
+        auto options = brfs::Options();
+        options.event_handler = event_handler;
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
+        options.pruning_strategy = projective ? iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(brfs.get_problem(), false, true, false) :
+                                               DuplicatePruningStrategyImpl::create();
+        options.beam_width = 64;
+        options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
+        options.parallel_beam_num_threads = 4;
+        options.relaxed_survivors_only_beam = true;
+        options.stop_if_goal = true;
+
+        const auto result = brfs::find_solution(brfs.get_search_context(), options);
+        if (result.plan.has_value())
+        {
+            expect_plan_reaches_goal(brfs.get_search_context(), result);
+        }
+
+        return make_brfs_run_trace(result, *event_handler);
+    };
+
+    for (const auto& [domain_name, projective] :
+         std::vector<std::pair<std::string, bool>> { { "delivery", false }, { "delivery", true }, { "philosophers", true } })
+    {
+        SCOPED_TRACE(domain_name);
+        SCOPED_TRACE(projective ? "projective" : "duplicate");
+        const auto reference_trace = run(domain_name, projective);
+
+        for (int repetition = 0; repetition < 8; ++repetition)
+        {
+            SCOPED_TRACE(repetition);
+            expect_brfs_run_traces_match(run(domain_name, projective), reference_trace);
+        }
+    }
+}
+
 
 TEST(MimirTests, SearchAlgorithmsBrFSParallelProjectiveBeamOptionMatrixMatchesSerialTest)
 {

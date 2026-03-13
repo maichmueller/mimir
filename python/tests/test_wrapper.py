@@ -1271,6 +1271,44 @@ class TestBeamWrappers(unittest.TestCase):
 
         assert result.status in ['solved', 'exhausted']
 
+    def test_iw_relaxed_survivors_only_beam_lifted_delivery_does_not_throw(self):
+        problem = _make_problem('delivery', mode='lifted')
+        start_state = problem.get_initial_state()
+        layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(problem._advanced_problem)
+
+        result = iw(
+            problem,
+            start_state,
+            3,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="survivors_only",
+            num_threads=2,
+            chunk_size=64,
+            relaxed_survivors_only_beam=True,
+        )
+
+        assert result.status in ['solved', 'exhausted']
+
+    def test_projective_iw_relaxed_survivors_only_beam_lifted_delivery_does_not_throw(self):
+        problem = _make_problem('delivery', mode='lifted')
+        start_state = problem.get_initial_state()
+        layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(problem._advanced_problem)
+
+        result = projective_iw(
+            problem,
+            start_state,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="survivors_only",
+            num_threads=2,
+            chunk_size=64,
+            relaxed_survivors_only_beam=True,
+        )
+
+        assert result.status in ['solved', 'exhausted']
+
+
 
 if __name__ == '__main__':
     unittest.main()

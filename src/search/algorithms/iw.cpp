@@ -71,6 +71,7 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
         options_i.max_next_layer_states = options.max_next_layer_states;
         options_i.beam_width = options.beam_width;
         options_i.beam_novelty_mode = options.beam_novelty_mode;
+        options_i.relaxed_survivors_only_beam = options.relaxed_survivors_only_beam;
         options_i.randomize_equal_score_ties = options.randomize_equal_score_ties;
         options_i.equal_score_tie_seed = options.equal_score_tie_seed;
         options_i.parallel_beam_num_threads = options.parallel_beam_num_threads;

@@ -48,6 +48,12 @@ bool IPruningStrategy::supports_staged_beam_pruning(BeamNoveltyMode beam_novelty
     return false;
 }
 
+bool IPruningStrategy::supports_relaxed_staged_beam_pruning(BeamNoveltyMode beam_novelty_mode) const
+{
+    [[maybe_unused]] const auto ignored_beam_novelty_mode = beam_novelty_mode;
+    return false;
+}
+
 bool IPruningStrategy::test_prune_staged_successor_state_for_beam_selection(const State& state,
                                                                             const FlatBitset& succ_fluent_atoms,
                                                                             const FlatBitset& succ_derived_atoms,
@@ -64,6 +70,22 @@ bool IPruningStrategy::test_prune_staged_successor_state_for_beam_selection(cons
     [[maybe_unused]] const auto ignored_is_new_succ = is_new_succ;
     [[maybe_unused]] const auto ignored_beam_novelty_mode = beam_novelty_mode;
     throw std::invalid_argument("IPruningStrategy does not support staged beam pruning.");
+}
+
+bool IPruningStrategy::test_prune_staged_successor_state_for_relaxed_beam_selection(const State& state,
+                                                                                    const FlatBitset& succ_fluent_atoms,
+                                                                                    const FlatBitset& succ_derived_atoms,
+                                                                                    const FlatDoubleList& succ_numeric_variables,
+                                                                                    const iw::AtomIndexList& succ_fluent_atom_indices,
+                                                                                    BeamNoveltyMode beam_novelty_mode)
+{
+    [[maybe_unused]] const auto& ignored_state = state;
+    [[maybe_unused]] const auto& ignored_succ_fluent_atoms = succ_fluent_atoms;
+    [[maybe_unused]] const auto& ignored_succ_derived_atoms = succ_derived_atoms;
+    [[maybe_unused]] const auto& ignored_succ_numeric_variables = succ_numeric_variables;
+    [[maybe_unused]] const auto& ignored_succ_fluent_atom_indices = succ_fluent_atom_indices;
+    [[maybe_unused]] const auto ignored_beam_novelty_mode = beam_novelty_mode;
+    throw std::invalid_argument("IPruningStrategy does not support relaxed staged beam pruning.");
 }
 
 void IPruningStrategy::on_begin_beam_replay(BeamNoveltyMode beam_novelty_mode)
@@ -130,6 +152,12 @@ bool NoPruningStrategyImpl::supports_staged_beam_pruning(BeamNoveltyMode beam_no
     return true;
 }
 
+bool NoPruningStrategyImpl::supports_relaxed_staged_beam_pruning(BeamNoveltyMode beam_novelty_mode) const
+{
+    [[maybe_unused]] const auto ignored_beam_novelty_mode = beam_novelty_mode;
+    return true;
+}
+
 bool NoPruningStrategyImpl::test_prune_staged_successor_state_for_beam_selection(const State& state,
                                                                                   const FlatBitset& succ_fluent_atoms,
                                                                                   const FlatBitset& succ_derived_atoms,
@@ -165,6 +193,22 @@ bool NoPruningStrategyImpl::test_prune_staged_successor_state_for_beam_replay(co
                                                                 beam_novelty_mode);
 }
 
+bool NoPruningStrategyImpl::test_prune_staged_successor_state_for_relaxed_beam_selection(const State& state,
+                                                                                          const FlatBitset& succ_fluent_atoms,
+                                                                                          const FlatBitset& succ_derived_atoms,
+                                                                                          const FlatDoubleList& succ_numeric_variables,
+                                                                                          const iw::AtomIndexList& succ_fluent_atom_indices,
+                                                                                          BeamNoveltyMode beam_novelty_mode)
+{
+    return test_prune_staged_successor_state_for_beam_selection(state,
+                                                                succ_fluent_atoms,
+                                                                succ_derived_atoms,
+                                                                succ_numeric_variables,
+                                                                succ_fluent_atom_indices,
+                                                                true,
+                                                                beam_novelty_mode);
+}
+
 NoPruningStrategy NoPruningStrategyImpl::create() { return std::make_shared<NoPruningStrategyImpl>(); }
 
 /* DuplicatePruningStrategyImpl */
@@ -179,6 +223,12 @@ bool DuplicatePruningStrategyImpl::supports_beam_novelty_mode(BeamNoveltyMode be
 }
 
 bool DuplicatePruningStrategyImpl::supports_staged_beam_pruning(BeamNoveltyMode beam_novelty_mode) const
+{
+    [[maybe_unused]] const auto ignored_beam_novelty_mode = beam_novelty_mode;
+    return true;
+}
+
+bool DuplicatePruningStrategyImpl::supports_relaxed_staged_beam_pruning(BeamNoveltyMode beam_novelty_mode) const
 {
     [[maybe_unused]] const auto ignored_beam_novelty_mode = beam_novelty_mode;
     return true;
@@ -216,6 +266,22 @@ bool DuplicatePruningStrategyImpl::test_prune_staged_successor_state_for_beam_re
                                                                 succ_fluent_atom_indices,
                                                                 is_new_succ,
                                                                 beam_novelty_mode);
+}
+
+bool DuplicatePruningStrategyImpl::test_prune_staged_successor_state_for_relaxed_beam_selection(const State& state,
+                                                                                                const FlatBitset& succ_fluent_atoms,
+                                                                                                const FlatBitset& succ_derived_atoms,
+                                                                                                const FlatDoubleList& succ_numeric_variables,
+                                                                                                const iw::AtomIndexList& succ_fluent_atom_indices,
+                                                                                                BeamNoveltyMode beam_novelty_mode)
+{
+    [[maybe_unused]] const auto& ignored_state = state;
+    [[maybe_unused]] const auto& ignored_succ_fluent_atoms = succ_fluent_atoms;
+    [[maybe_unused]] const auto& ignored_succ_derived_atoms = succ_derived_atoms;
+    [[maybe_unused]] const auto& ignored_succ_numeric_variables = succ_numeric_variables;
+    [[maybe_unused]] const auto& ignored_succ_fluent_atom_indices = succ_fluent_atom_indices;
+    [[maybe_unused]] const auto ignored_beam_novelty_mode = beam_novelty_mode;
+    return false;
 }
 
 DuplicatePruningStrategy DuplicatePruningStrategyImpl::create() { return std::make_shared<DuplicatePruningStrategyImpl>(); }

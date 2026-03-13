@@ -50,6 +50,7 @@ def iw(
     *,
     num_threads: int = -1,
     chunk_size: int = -1,
+    relaxed_survivors_only_beam: bool = False,
 ) -> "SearchResult":
     assert isinstance(problem, Problem), "Problem must be an instance of Problem."
     assert isinstance(start_state, State), "Start state must be an instance of State."
@@ -73,6 +74,9 @@ def iw(
     ), "equal_score_tie_seed must be an int or None."
     assert isinstance(num_threads, int), "num_threads must be an int."
     assert isinstance(chunk_size, int), "chunk_size must be an int."
+    assert isinstance(
+        relaxed_survivors_only_beam, bool
+    ), "relaxed_survivors_only_beam must be a bool."
     assert layer_ordering_strategy is None or isinstance(
         layer_ordering_strategy, AdvancedILayerOrderingStrategy
     ), "layer_ordering_strategy must be an advanced ILayerOrderingStrategy or None."
@@ -181,6 +185,7 @@ def iw(
     advanced_options.equal_score_tie_seed = (
         0 if equal_score_tie_seed is None else equal_score_tie_seed
     )
+    advanced_options.relaxed_survivors_only_beam = relaxed_survivors_only_beam
     if num_threads > 1:
         advanced_options.parallel_beam_num_threads = num_threads
     if chunk_size > 0:
@@ -218,6 +223,7 @@ def projective_iw(
     *,
     num_threads: int = -1,
     chunk_size: int = -1,
+    relaxed_survivors_only_beam: bool = False,
 ) -> "SearchResult":
     """Run BrFS with projective IW(1) pruning.
 
@@ -232,6 +238,8 @@ def projective_iw(
     best beam states continue. With parallel beam search, `num_threads` can
     parallelize successor evaluation before the main thread merges candidates into the beam.
     `chunk_size` controls how many staged successors are batched before each merge.
+    `relaxed_survivors_only_beam` switches to a faster, non-serial-equivalent
+    SURVIVORS_ONLY variant that only canonicalizes merged worker-local top-k candidates.
     """
     assert isinstance(problem, Problem), "Problem must be an instance of Problem."
     assert isinstance(start_state, State), "Start state must be an instance of State."
@@ -260,6 +268,9 @@ def projective_iw(
     ), "equal_score_tie_seed must be an int or None."
     assert isinstance(num_threads, int), "num_threads must be an int."
     assert isinstance(chunk_size, int), "chunk_size must be an int."
+    assert isinstance(
+        relaxed_survivors_only_beam, bool
+    ), "relaxed_survivors_only_beam must be a bool."
     assert layer_ordering_strategy is None or isinstance(
         layer_ordering_strategy, AdvancedILayerOrderingStrategy
     ), "layer_ordering_strategy must be an advanced ILayerOrderingStrategy or None."
@@ -368,6 +379,7 @@ def projective_iw(
     advanced_options.equal_score_tie_seed = (
         0 if equal_score_tie_seed is None else equal_score_tie_seed
     )
+    advanced_options.relaxed_survivors_only_beam = relaxed_survivors_only_beam
     if num_threads > 1:
         advanced_options.parallel_beam_num_threads = num_threads
     if chunk_size > 0:
