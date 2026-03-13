@@ -124,6 +124,7 @@ private:
     struct ParallelGroundLookupTables;
 
     void prepare_parallel_applicable_action_generation() const;
+    std::vector<ParallelApplicableActionGeneratorWorkerContext>& get_parallel_worker_contexts(size_t thread_count);
 
     formalism::Problem m_problem;
     SearchContextImpl::LiftedOptions::KPKCOptions m_options;
@@ -136,6 +137,7 @@ private:
     GenerationStatistics m_generation_statistics;
     mutable std::once_flag m_parallel_lookup_tables_once_flag;
     mutable std::shared_ptr<const ParallelGroundLookupTables> m_parallel_lookup_tables;
+    std::vector<ParallelApplicableActionGeneratorWorkerContext> m_parallel_worker_contexts;
 };
 
 }  // namespace mimir

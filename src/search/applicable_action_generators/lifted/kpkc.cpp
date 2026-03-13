@@ -70,6 +70,11 @@ struct ParallelActionSchemaResult
     std::vector<ObjectList> candidate_bindings;
 };
 
+struct ParallelActionPartitionResult
+{
+    std::vector<ParallelActionSchemaResult> schema_results;
+};
+
 template<typename Candidate>
 struct LocalBeamRanking
 {
@@ -1256,6 +1261,17 @@ bool KPKCLiftedApplicableActionGeneratorImpl::supports_parallel_applicable_actio
 
 bool KPKCLiftedApplicableActionGeneratorImpl::supports_parallel_relaxed_beam_successor_generation() const { return true; }
 
+std::vector<ParallelApplicableActionGeneratorWorkerContext>&
+KPKCLiftedApplicableActionGeneratorImpl::get_parallel_worker_contexts(size_t thread_count)
+{
+    prepare_parallel_applicable_action_generation();
+    while (m_parallel_worker_contexts.size() < thread_count)
+    {
+        m_parallel_worker_contexts.push_back(create_parallel_worker_context());
+    }
+    return m_parallel_worker_contexts;
+}
+
 ParallelApplicableActionGeneratorWorkerContext KPKCLiftedApplicableActionGeneratorImpl::create_parallel_worker_context() const
 {
     assert(m_parallel_lookup_tables);
@@ -1448,8 +1464,6 @@ mimir::generator<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_a
 std::vector<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_applicable_action_list_parallel(const State& state,
                                                                                                           BS::thread_pool& thread_pool)
 {
-    prepare_parallel_applicable_action_generation();
-
     const auto generation_start = std::chrono::steady_clock::now();
 
     const auto dynamic_assignment_initialization_start = std::chrono::steady_clock::now();
@@ -1469,57 +1483,83 @@ std::vector<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_applic
     const auto schema_tasks = build_parallel_action_schema_tasks(m_problem, m_options, state, m_action_grounding_data, symmetry_setup_time);
     generation_statistics_scope.symmetry_setup_time = symmetry_setup_time;
 
-    auto futures = std::vector<std::future<ParallelActionSchemaResult>> {};
-    futures.reserve(schema_tasks.size());
-    auto worker_contexts = std::vector<ParallelApplicableActionGeneratorWorkerContext> {};
-    worker_contexts.reserve(thread_pool.get_thread_count());
-    for (size_t i = 0; i < thread_pool.get_thread_count(); ++i)
-    {
-        worker_contexts.push_back(create_parallel_worker_context());
-    }
+    const auto thread_count = std::max<size_t>(1, thread_pool.get_thread_count());
+    auto& worker_contexts = get_parallel_worker_contexts(thread_count);
 
-    for (const auto& schema_task : schema_tasks)
+    const auto num_partitions = std::min<size_t>(thread_count, std::max<size_t>(1, schema_tasks.size()));
+    auto futures = std::vector<std::future<ParallelActionPartitionResult>> {};
+    futures.reserve(num_partitions);
+
+    auto begin_index = size_t(0);
+    const auto base_partition_size = schema_tasks.size() / num_partitions;
+    const auto num_larger_partitions = schema_tasks.size() % num_partitions;
+
+    for (size_t partition_index = 0; partition_index < num_partitions; ++partition_index)
     {
+        const auto partition_size = base_partition_size + (partition_index < num_larger_partitions ? 1u : 0u);
+        const auto partition_begin = begin_index;
+        const auto partition_end = partition_begin + partition_size;
+        begin_index = partition_end;
+
         futures.push_back(thread_pool.submit_task(
-            [&unpacked_state, &dynamic_assignment_sets = m_dynamic_assignment_sets, &worker_contexts, lookup_tables = m_parallel_lookup_tables, schema_task]()
+            [&unpacked_state,
+             &dynamic_assignment_sets = m_dynamic_assignment_sets,
+             &schema_tasks,
+             &worker_contexts,
+             lookup_tables = m_parallel_lookup_tables,
+             partition_begin,
+             partition_end]()
             {
                 const auto worker_index = BS::this_thread::get_index();
                 assert(worker_index.has_value());
                 auto& typed_worker_context = static_cast<KPKCParallelApplicableActionWorkerContext&>(*worker_contexts[*worker_index]);
-                auto& condition_grounder = typed_worker_context.action_grounding_data[schema_task.schema_index];
-                auto& action_validator = typed_worker_context.action_validators[schema_task.schema_index];
-                auto candidate_bindings = std::vector<ObjectList> {};
 
-                for (auto&& binding :
-                     condition_grounder.create_candidate_binding_generator(unpacked_state, dynamic_assignment_sets, schema_task.vertex_mask))
+                auto result = ParallelActionPartitionResult {};
+                result.schema_results.reserve(partition_end - partition_begin);
+
+                for (size_t task_index = partition_begin; task_index < partition_end; ++task_index)
                 {
-                    if (action_validator.test_binding(unpacked_state, *lookup_tables, binding))
+                    const auto& schema_task = schema_tasks[task_index];
+                    auto& condition_grounder = typed_worker_context.action_grounding_data[schema_task.schema_index];
+                    auto& action_validator = typed_worker_context.action_validators[schema_task.schema_index];
+                    auto candidate_bindings = std::vector<ObjectList> {};
+
+                    for (auto&& binding :
+                         condition_grounder.create_candidate_binding_generator(unpacked_state, dynamic_assignment_sets, schema_task.vertex_mask))
                     {
-                        candidate_bindings.push_back(std::move(binding));
+                        if (action_validator.test_binding(unpacked_state, *lookup_tables, binding))
+                        {
+                            candidate_bindings.push_back(std::move(binding));
+                        }
                     }
+
+                    result.schema_results.push_back(ParallelActionSchemaResult { schema_task.schema_index, std::move(candidate_bindings) });
                 }
 
-                return ParallelActionSchemaResult { schema_task.schema_index, std::move(candidate_bindings) };
+                return result;
             }));
     }
 
     auto applicable_actions = std::vector<GroundAction> {};
-    for (size_t task_index = 0; task_index < futures.size(); ++task_index)
+    for (size_t partition_index = 0; partition_index < futures.size(); ++partition_index)
     {
-        auto schema_result = futures[task_index].get();
-        auto& condition_grounder = m_action_grounding_data[schema_result.schema_index];
-
-        for (auto& binding : schema_result.candidate_bindings)
+        auto partition_result = futures[partition_index].get();
+        for (auto& schema_result : partition_result.schema_results)
         {
-            const auto num_ground_actions = ground_action_repository.size();
-            const auto ground_action = m_problem->ground(condition_grounder.get_action(), std::move(binding));
+            auto& condition_grounder = m_action_grounding_data[schema_result.schema_index];
 
-            assert(is_applicable(ground_action, state));
+            for (auto& binding : schema_result.candidate_bindings)
+            {
+                const auto num_ground_actions = ground_action_repository.size();
+                const auto ground_action = m_problem->ground(condition_grounder.get_action(), std::move(binding));
 
-            m_event_handler->on_ground_action(ground_action);
-            (ground_action_repository.size() > num_ground_actions) ? m_event_handler->on_ground_action_cache_miss(ground_action) :
-                                                                     m_event_handler->on_ground_action_cache_hit(ground_action);
-            applicable_actions.push_back(ground_action);
+                assert(is_applicable(ground_action, state));
+
+                m_event_handler->on_ground_action(ground_action);
+                (ground_action_repository.size() > num_ground_actions) ? m_event_handler->on_ground_action_cache_miss(ground_action) :
+                                                                         m_event_handler->on_ground_action_cache_hit(ground_action);
+                applicable_actions.push_back(ground_action);
+            }
         }
     }
 
@@ -1540,8 +1580,6 @@ ParallelRelaxedBeamSuccessorGenerationResult KPKCLiftedApplicableActionGenerator
     bool randomize_equal_score_ties,
     uint64_t equal_score_tie_seed)
 {
-    prepare_parallel_applicable_action_generation();
-
     if (beam_novelty_mode != BeamNoveltyMode::SURVIVORS_ONLY)
     {
         throw std::invalid_argument(
@@ -1569,18 +1607,13 @@ ParallelRelaxedBeamSuccessorGenerationResult KPKCLiftedApplicableActionGenerator
         return ParallelRelaxedBeamSuccessorGenerationResult {};
     }
 
-    auto worker_contexts = std::vector<ParallelApplicableActionGeneratorWorkerContext> {};
-    worker_contexts.reserve(thread_pool.get_thread_count());
-    for (size_t i = 0; i < thread_pool.get_thread_count(); ++i)
-    {
-        worker_contexts.push_back(create_parallel_worker_context());
-    }
+    const auto thread_count = std::max<size_t>(1, thread_pool.get_thread_count());
+    auto& worker_contexts = get_parallel_worker_contexts(thread_count);
 
     const auto use_small_beam = beam_width <= 64;
     const auto ranking = LocalBeamRanking<ParallelRelaxedBeamSuccessorCandidate> { layer_ordering_strategy->prefer_higher_scores() };
     const auto heap_compare = LocalBeamHeapCompare<ParallelRelaxedBeamSuccessorCandidate> { ranking };
-    const auto num_partitions =
-        std::min<size_t>(thread_pool.get_thread_count(), std::max<size_t>(1, schema_tasks.size()));
+    const auto num_partitions = std::min<size_t>(thread_count, std::max<size_t>(1, schema_tasks.size()));
     auto futures = std::vector<std::future<ParallelRelaxedBeamSuccessorGenerationResult>> {};
     futures.reserve(num_partitions);
 
