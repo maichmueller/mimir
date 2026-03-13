@@ -21,6 +21,7 @@
 #include "mimir/algorithms/generator.hpp"
 
 #include <boost/dynamic_bitset.hpp>
+#include <functional>
 #include <optional>
 #include <vector>
 
@@ -33,6 +34,10 @@ namespace mimir
 /// @return a generator to enumerate all k-cliques.
 mimir::generator<const std::vector<uint32_t>&> create_k_clique_in_k_partite_graph_generator(const std::vector<boost::dynamic_bitset<>>& adjacency_matrix,
                                                                                             const std::vector<std::vector<uint32_t>>& partitions);
+
+void for_each_k_clique_in_k_partite_graph(const std::vector<boost::dynamic_bitset<>>& adjacency_matrix,
+                                          const std::vector<std::vector<uint32_t>>& partitions,
+                                          const std::function<void(const std::vector<uint32_t>&)>& callback);
 
 }
 

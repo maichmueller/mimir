@@ -43,7 +43,7 @@ struct ParallelRelaxedBeamSuccessorCandidate
 {
     const State* parent_state = nullptr;
     formalism::Action action_schema = nullptr;
-    formalism::ObjectList binding;
+    IndexList binding_object_indices;
     FlatBitset fluent_atoms;
     FlatBitset derived_atoms;
     iw::AtomIndexList fluent_atom_indices;

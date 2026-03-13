@@ -705,7 +705,13 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                     continue;
                 }
 
-                const auto ground_action = problem_handle->ground(candidate.action_schema, candidate.binding);
+                auto binding = formalism::ObjectList(candidate.binding_object_indices.size());
+                const auto& problem_objects = problem_handle->get_problem_and_domain_objects();
+                for (size_t i = 0; i < candidate.binding_object_indices.size(); ++i)
+                {
+                    binding[i] = problem_objects[candidate.binding_object_indices[i]];
+                }
+                const auto ground_action = problem_handle->ground(candidate.action_schema, binding);
                 deferred_beam_candidates.push_back(DeferredBeamCandidate { candidate.parent_state,
                                                                            ground_action,
                                                                            candidate.action_cost,

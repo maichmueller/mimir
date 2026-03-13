@@ -40,6 +40,7 @@
 #include "mimir/search/axiom_evaluators/interface.hpp"
 #include "mimir/search/satisficing_binding_generators/event_handlers/default.hpp"
 #include "mimir/search/satisficing_binding_generators/event_handlers/interface.hpp"
+#include "mimir/search/satisficing_binding_generators/base_impl.hpp"
 #include "mimir/search/state.hpp"
 #include "mimir/search/state_repository.hpp"
 
@@ -67,7 +68,9 @@ struct ParallelActionSchemaTask
 struct ParallelActionSchemaResult
 {
     size_t schema_index;
-    std::vector<ObjectList> candidate_bindings;
+    size_t binding_arity;
+    size_t num_candidate_bindings;
+    IndexList candidate_binding_object_indices;
 };
 
 struct ParallelActionPartitionResult
@@ -460,7 +463,30 @@ Index resolve_term_index(Term term, const ObjectList& binding)
         term->get_variant());
 }
 
-void resolve_terms_to_indices(const TermList& terms, const ObjectList& binding, IndexList& out_indices)
+Index resolve_term_index(Term term, const IndexList& binding_object_indices)
+{
+    return std::visit(
+        [&](auto&& arg) -> Index
+        {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, Object>)
+            {
+                return arg->get_index();
+            }
+            else if constexpr (std::is_same_v<T, Variable>)
+            {
+                return binding_object_indices[arg->get_parameter_index()];
+            }
+            else
+            {
+                static_assert(dependent_false<T>::value, "Missing term variant.");
+            }
+        },
+        term->get_variant());
+}
+
+template<typename BindingT>
+void resolve_terms_to_indices(const TermList& terms, const BindingT& binding, IndexList& out_indices)
 {
     out_indices.clear();
     out_indices.reserve(terms.size());
@@ -470,11 +496,11 @@ void resolve_terms_to_indices(const TermList& terms, const ObjectList& binding, 
     }
 }
 
-template<IsStaticOrFluentOrDerivedTag P>
+template<IsStaticOrFluentOrDerivedTag P, typename BindingT>
 Index lookup_ground_atom_index(const GroundAtomIndexLookup<P>& lookup_tables,
                                Predicate<P> predicate,
                                const TermList& terms,
-                               const ObjectList& binding,
+                               const BindingT& binding,
                                IndexList& scratch_indices)
 {
     resolve_terms_to_indices(terms, binding, scratch_indices);
@@ -483,11 +509,11 @@ Index lookup_ground_atom_index(const GroundAtomIndexLookup<P>& lookup_tables,
     return (it == lookup.end()) ? kMissingIndex : it->second;
 }
 
-template<IsStaticOrFluentTag F>
+template<IsStaticOrFluentTag F, typename BindingT>
 Index lookup_ground_function_index(const GroundFunctionIndexLookup<F>& lookup_tables,
                                    FunctionSkeleton<F> function_skeleton,
                                    const TermList& terms,
-                                   const ObjectList& binding,
+                                   const BindingT& binding,
                                    IndexList& scratch_indices)
 {
     resolve_terms_to_indices(terms, binding, scratch_indices);
@@ -535,9 +561,9 @@ public:
     }
 
     template<typename LookupTablesT>
-    bool test_binding(const UnpackedStateImpl& unpacked_state, const LookupTablesT& lookup_tables, const ObjectList& binding)
+    bool test_binding(const UnpackedStateImpl& unpacked_state, const LookupTablesT& lookup_tables, const IndexList& binding_object_indices)
     {
-        if (!condition_holds(unpacked_state, lookup_tables, m_conjunctive_condition, binding))
+        if (!condition_holds(unpacked_state, lookup_tables, m_conjunctive_condition, binding_object_indices))
         {
             return false;
         }
@@ -547,12 +573,12 @@ public:
 
         for (const auto& conditional_effect : m_action->get_conditional_effects())
         {
-            if (!condition_holds(unpacked_state, lookup_tables, conditional_effect->get_conjunctive_condition(), binding))
+            if (!condition_holds(unpacked_state, lookup_tables, conditional_effect->get_conjunctive_condition(), binding_object_indices))
             {
                 continue;
             }
 
-            if (!effect_holds(unpacked_state, lookup_tables, conditional_effect->get_conjunctive_effect(), binding))
+            if (!effect_holds(unpacked_state, lookup_tables, conditional_effect->get_conjunctive_effect(), binding_object_indices))
             {
                 return false;
             }
@@ -564,7 +590,7 @@ public:
     template<typename LookupTablesT>
     ParallelRelaxedBeamSuccessorCandidate compute_staged_successor_candidate(const State& state,
                                                                              const LookupTablesT& lookup_tables,
-                                                                             const ObjectList& binding,
+                                                                             const IndexList& binding_object_indices,
                                                                              ContinuousCost state_metric_value,
                                                                              const AxiomEvaluator& axiom_evaluator,
                                                                              StateRepositoryImpl::StagedSuccessorScratch& scratch)
@@ -584,7 +610,7 @@ public:
         apply_action_effects(state,
                              *unpacked_state,
                              lookup_tables,
-                             binding,
+                             binding_object_indices,
                              dense_fluent_atoms,
                              scratch.applied_negative_effect_atoms,
                              scratch.applied_positive_effect_atoms,
@@ -612,7 +638,7 @@ public:
         auto candidate = ParallelRelaxedBeamSuccessorCandidate {};
         candidate.parent_state = &state;
         candidate.action_schema = m_action;
-        candidate.binding = binding;
+        candidate.binding_object_indices = binding_object_indices;
         candidate.fluent_atoms = dense_fluent_atoms;
         candidate.derived_atoms = dense_derived_atoms;
         candidate.fluent_numeric_variables = dense_fluent_numeric_variables;
@@ -634,14 +660,14 @@ private:
     bool condition_holds(const UnpackedStateImpl& unpacked_state,
                          const LookupTablesT& lookup_tables,
                          ConjunctiveCondition condition,
-                         const ObjectList& binding)
+                         const IndexList& binding_object_indices)
     {
         for (const auto& literal : condition->get_literals<StaticTag>())
         {
             const auto atom_index = lookup_ground_atom_index(lookup_tables.static_predicates,
                                                              literal->get_atom()->get_predicate(),
                                                              literal->get_atom()->get_terms(),
-                                                             binding,
+                                                             binding_object_indices,
                                                              m_index_scratch);
             if (atom_index == kMissingIndex || literal->get_polarity() != unpacked_state.get_problem().get_positive_static_initial_atoms_bitset().get(atom_index))
             {
@@ -654,7 +680,7 @@ private:
             const auto atom_index = lookup_ground_atom_index(lookup_tables.fluent_predicates,
                                                              literal->get_atom()->get_predicate(),
                                                              literal->get_atom()->get_terms(),
-                                                             binding,
+                                                             binding_object_indices,
                                                              m_index_scratch);
             if (atom_index == kMissingIndex || literal->get_polarity() != unpacked_state.get_atoms<FluentTag>().get(atom_index))
             {
@@ -667,7 +693,7 @@ private:
             const auto atom_index = lookup_ground_atom_index(lookup_tables.derived_predicates,
                                                              literal->get_atom()->get_predicate(),
                                                              literal->get_atom()->get_terms(),
-                                                             binding,
+                                                             binding_object_indices,
                                                              m_index_scratch);
             if (atom_index == kMissingIndex || literal->get_polarity() != unpacked_state.get_atoms<DerivedTag>().get(atom_index))
             {
@@ -677,8 +703,10 @@ private:
 
         for (const auto& numeric_constraint : condition->get_numeric_constraints())
         {
-            const auto lhs = evaluate_function_expression(unpacked_state, lookup_tables, numeric_constraint->get_left_function_expression(), binding);
-            const auto rhs = evaluate_function_expression(unpacked_state, lookup_tables, numeric_constraint->get_right_function_expression(), binding);
+            const auto lhs =
+                evaluate_function_expression(unpacked_state, lookup_tables, numeric_constraint->get_left_function_expression(), binding_object_indices);
+            const auto rhs =
+                evaluate_function_expression(unpacked_state, lookup_tables, numeric_constraint->get_right_function_expression(), binding_object_indices);
             if (!evaluate_comparator(numeric_constraint->get_binary_comparator(), lhs, rhs))
             {
                 return false;
@@ -692,11 +720,11 @@ private:
     bool effect_holds(const UnpackedStateImpl& unpacked_state,
                       const LookupTablesT& lookup_tables,
                       ConjunctiveEffect effect,
-                      const ObjectList& binding)
+                      const IndexList& binding_object_indices)
     {
         for (const auto& numeric_effect : effect->get_fluent_numeric_effects())
         {
-            if (!effect_holds(unpacked_state, lookup_tables, numeric_effect, binding))
+            if (!effect_holds(unpacked_state, lookup_tables, numeric_effect, binding_object_indices))
             {
                 return false;
             }
@@ -704,7 +732,7 @@ private:
 
         if (const auto& auxiliary_numeric_effect = effect->get_auxiliary_numeric_effect(); auxiliary_numeric_effect.has_value())
         {
-            if (!effect_holds(unpacked_state, lookup_tables, auxiliary_numeric_effect.value(), binding))
+            if (!effect_holds(unpacked_state, lookup_tables, auxiliary_numeric_effect.value(), binding_object_indices))
             {
                 return false;
             }
@@ -717,7 +745,7 @@ private:
     void apply_action_effects(const State& state,
                               UnpackedStateImpl& unpacked_state,
                               const LookupTablesT& lookup_tables,
-                              const ObjectList& binding,
+                              const IndexList& binding_object_indices,
                               FlatBitset& ref_dense_fluent_atoms,
                               FlatBitset& ref_negative_applied_effects,
                               FlatBitset& ref_positive_applied_effects,
@@ -729,7 +757,7 @@ private:
 
         for (const auto& conditional_effect : m_action->get_conditional_effects())
         {
-            if (!condition_holds(unpacked_state, lookup_tables, conditional_effect->get_conjunctive_condition(), binding))
+            if (!condition_holds(unpacked_state, lookup_tables, conditional_effect->get_conjunctive_condition(), binding_object_indices))
             {
                 continue;
             }
@@ -737,7 +765,7 @@ private:
             apply_conjunctive_effect(state,
                                      lookup_tables,
                                      conditional_effect->get_conjunctive_effect(),
-                                     binding,
+                                     binding_object_indices,
                                      ref_negative_applied_effects,
                                      ref_positive_applied_effects,
                                      static_numeric_variables,
@@ -766,7 +794,7 @@ private:
     void apply_conjunctive_effect(const State& state,
                                   const LookupTablesT& lookup_tables,
                                   ConjunctiveEffect effect,
-                                  const ObjectList& binding,
+                                  const IndexList& binding_object_indices,
                                   FlatBitset& ref_negative_applied_effects,
                                   FlatBitset& ref_positive_applied_effects,
                                   const FlatDoubleList& static_numeric_variables,
@@ -779,7 +807,7 @@ private:
             const auto atom_index = lookup_ground_atom_index(lookup_tables.fluent_predicates,
                                                              literal->get_atom()->get_predicate(),
                                                              literal->get_atom()->get_terms(),
-                                                             binding,
+                                                             binding_object_indices,
                                                              m_index_scratch);
             if (atom_index == kMissingIndex)
             {
@@ -801,7 +829,7 @@ private:
             const auto function_index = lookup_ground_function_index(lookup_tables.fluent_functions,
                                                                      numeric_effect->get_function()->get_function_skeleton(),
                                                                      numeric_effect->get_function()->get_terms(),
-                                                                     binding,
+                                                                     binding_object_indices,
                                                                      m_index_scratch);
             if (function_index == kMissingIndex)
             {
@@ -816,14 +844,17 @@ private:
             const auto value = evaluate_function_expression(state.get_unpacked_state(),
                                                             lookup_tables,
                                                             numeric_effect->get_function_expression(),
-                                                            binding);
+                                                            binding_object_indices);
             apply_numeric_effect({ numeric_effect->get_assign_operator(), value }, ref_fluent_numeric_variables[function_index]);
         }
 
         if (const auto& auxiliary_numeric_effect = effect->get_auxiliary_numeric_effect(); auxiliary_numeric_effect.has_value())
         {
             const auto value =
-                evaluate_function_expression(state.get_unpacked_state(), lookup_tables, auxiliary_numeric_effect.value()->get_function_expression(), binding);
+                evaluate_function_expression(state.get_unpacked_state(),
+                                             lookup_tables,
+                                             auxiliary_numeric_effect.value()->get_function_expression(),
+                                             binding_object_indices);
             apply_numeric_effect({ auxiliary_numeric_effect.value()->get_assign_operator(), value }, ref_successor_metric_value);
         }
     }
@@ -862,12 +893,12 @@ private:
     bool effect_holds(const UnpackedStateImpl& unpacked_state,
                       const LookupTablesT& lookup_tables,
                       NumericEffect<FluentTag> effect,
-                      const ObjectList& binding)
+                      const IndexList& binding_object_indices)
     {
         const auto function_index = lookup_ground_function_index(lookup_tables.fluent_functions,
                                                                  effect->get_function()->get_function_skeleton(),
                                                                  effect->get_function()->get_terms(),
-                                                                 binding,
+                                                                 binding_object_indices,
                                                                  m_index_scratch);
         if (function_index == kMissingIndex)
         {
@@ -883,7 +914,8 @@ private:
         }
         recorded_effect_family = effect_family;
 
-        const auto value = evaluate_function_expression(unpacked_state, lookup_tables, effect->get_function_expression(), binding);
+        const auto value =
+            evaluate_function_expression(unpacked_state, lookup_tables, effect->get_function_expression(), binding_object_indices);
         const auto is_assignment_operator = (effect->get_assign_operator() == loki::AssignOperatorEnum::ASSIGN);
         const auto is_undefined_value = (function_index >= unpacked_state.get_numeric_variables().size()
                                          || std::isnan(unpacked_state.get_numeric_variables()[function_index]));
@@ -895,7 +927,7 @@ private:
     bool effect_holds(const UnpackedStateImpl& unpacked_state,
                       const LookupTablesT& lookup_tables,
                       NumericEffect<AuxiliaryTag> effect,
-                      const ObjectList& binding)
+                      const IndexList& binding_object_indices)
     {
         const auto effect_family = detail::get_effect_family(effect->get_assign_operator());
         if (!detail::is_compatible_effect_family(m_auxiliary_numeric_change, effect_family))
@@ -903,7 +935,8 @@ private:
             return false;
         }
         m_auxiliary_numeric_change = effect_family;
-        const auto value = evaluate_function_expression(unpacked_state, lookup_tables, effect->get_function_expression(), binding);
+        const auto value =
+            evaluate_function_expression(unpacked_state, lookup_tables, effect->get_function_expression(), binding_object_indices);
         return !std::isnan(value);
     }
 
@@ -911,7 +944,7 @@ private:
     ContinuousCost evaluate_function_expression(const UnpackedStateImpl& unpacked_state,
                                                 const LookupTablesT& lookup_tables,
                                                 FunctionExpression function_expression,
-                                                const ObjectList& binding)
+                                                const IndexList& binding_object_indices)
     {
         return std::visit(
             [&](auto&& arg) -> ContinuousCost
@@ -924,8 +957,10 @@ private:
                 else if constexpr (std::is_same_v<T, FunctionExpressionBinaryOperator>)
                 {
                     return evaluate_binary(arg->get_binary_operator(),
-                                           evaluate_function_expression(unpacked_state, lookup_tables, arg->get_left_function_expression(), binding),
-                                           evaluate_function_expression(unpacked_state, lookup_tables, arg->get_right_function_expression(), binding));
+                                           evaluate_function_expression(
+                                               unpacked_state, lookup_tables, arg->get_left_function_expression(), binding_object_indices),
+                                           evaluate_function_expression(
+                                               unpacked_state, lookup_tables, arg->get_right_function_expression(), binding_object_indices));
                 }
                 else if constexpr (std::is_same_v<T, FunctionExpressionMultiOperator>)
                 {
@@ -934,18 +969,21 @@ private:
                         return UNDEFINED_CONTINUOUS_COST;
                     }
 
-                    auto value = evaluate_function_expression(unpacked_state, lookup_tables, arg->get_function_expressions().front(), binding);
+                    auto value =
+                        evaluate_function_expression(unpacked_state, lookup_tables, arg->get_function_expressions().front(), binding_object_indices);
                     for (size_t i = 1; i < arg->get_function_expressions().size(); ++i)
                     {
                         value = evaluate_multi(arg->get_multi_operator(),
                                                value,
-                                               evaluate_function_expression(unpacked_state, lookup_tables, arg->get_function_expressions()[i], binding));
+                                               evaluate_function_expression(
+                                                   unpacked_state, lookup_tables, arg->get_function_expressions()[i], binding_object_indices));
                     }
                     return value;
                 }
                 else if constexpr (std::is_same_v<T, FunctionExpressionMinus>)
                 {
-                    const auto value = evaluate_function_expression(unpacked_state, lookup_tables, arg->get_function_expression(), binding);
+                    const auto value =
+                        evaluate_function_expression(unpacked_state, lookup_tables, arg->get_function_expression(), binding_object_indices);
                     return std::isnan(value) ? UNDEFINED_CONTINUOUS_COST : -value;
                 }
                 else if constexpr (std::is_same_v<T, FunctionExpressionFunction<StaticTag>>)
@@ -953,7 +991,7 @@ private:
                     const auto function_index = lookup_ground_function_index(lookup_tables.static_functions,
                                                                             arg->get_function()->get_function_skeleton(),
                                                                             arg->get_function()->get_terms(),
-                                                                            binding,
+                                                                            binding_object_indices,
                                                                             m_index_scratch);
                     if (function_index == kMissingIndex || function_index >= unpacked_state.get_problem().get_initial_function_to_value<StaticTag>().size())
                     {
@@ -966,7 +1004,7 @@ private:
                     const auto function_index = lookup_ground_function_index(lookup_tables.fluent_functions,
                                                                             arg->get_function()->get_function_skeleton(),
                                                                             arg->get_function()->get_terms(),
-                                                                            binding,
+                                                                            binding_object_indices,
                                                                             m_index_scratch);
                     if (function_index == kMissingIndex || function_index >= unpacked_state.get_numeric_variables().size())
                     {
@@ -1009,6 +1047,12 @@ public:
         action_validators(),
         successor_scratch()
     {
+        const auto null_event_handler = satisficing_binding_generator::NullEventHandlerImpl::create();
+        for (auto& condition_grounder : this->action_grounding_data)
+        {
+            condition_grounder.set_event_handler(null_event_handler);
+        }
+
         action_validators.reserve(this->action_grounding_data.size());
         for (const auto& condition_grounder : this->action_grounding_data)
         {
@@ -1480,10 +1524,16 @@ std::vector<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_applic
     const auto& ground_action_repository =
         boost::hana::at_key(state.get_problem().get_repositories().get_hana_repositories(), boost::hana::type<GroundActionImpl> {});
 
+    const auto thread_count = std::max<size_t>(1, thread_pool.get_thread_count());
     const auto schema_tasks = build_parallel_action_schema_tasks(m_problem, m_options, state, m_action_grounding_data, symmetry_setup_time);
     generation_statistics_scope.symmetry_setup_time = symmetry_setup_time;
 
-    const auto thread_count = std::max<size_t>(1, thread_pool.get_thread_count());
+    if (schema_tasks.empty())
+    {
+        m_event_handler->on_end_generating_applicable_actions();
+        return {};
+    }
+
     auto& worker_contexts = get_parallel_worker_contexts(thread_count);
 
     const auto num_partitions = std::min<size_t>(thread_count, std::max<size_t>(1, schema_tasks.size()));
@@ -1522,18 +1572,26 @@ std::vector<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_applic
                     const auto& schema_task = schema_tasks[task_index];
                     auto& condition_grounder = typed_worker_context.action_grounding_data[schema_task.schema_index];
                     auto& action_validator = typed_worker_context.action_validators[schema_task.schema_index];
-                    auto candidate_bindings = std::vector<ObjectList> {};
+                    const auto binding_arity = condition_grounder.get_action()->get_arity();
+                    auto candidate_binding_object_indices = IndexList {};
+                    auto num_candidate_bindings = size_t(0);
 
-                    for (auto&& binding :
-                         condition_grounder.create_candidate_binding_generator(unpacked_state, dynamic_assignment_sets, schema_task.vertex_mask))
+                    condition_grounder.for_each_candidate_binding_indices(
+                        unpacked_state, dynamic_assignment_sets, schema_task.vertex_mask, [&](const IndexList& binding_object_indices)
                     {
-                        if (action_validator.test_binding(unpacked_state, *lookup_tables, binding))
+                        if (action_validator.test_binding(unpacked_state, *lookup_tables, binding_object_indices))
                         {
-                            candidate_bindings.push_back(std::move(binding));
+                            ++num_candidate_bindings;
+                            candidate_binding_object_indices.insert(
+                                candidate_binding_object_indices.end(), binding_object_indices.begin(), binding_object_indices.end());
                         }
-                    }
+                    });
 
-                    result.schema_results.push_back(ParallelActionSchemaResult { schema_task.schema_index, std::move(candidate_bindings) });
+                    result.schema_results.push_back(
+                        ParallelActionSchemaResult { schema_task.schema_index,
+                                                     binding_arity,
+                                                     num_candidate_bindings,
+                                                     std::move(candidate_binding_object_indices) });
                 }
 
                 return result;
@@ -1547,11 +1605,22 @@ std::vector<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_applic
         for (auto& schema_result : partition_result.schema_results)
         {
             auto& condition_grounder = m_action_grounding_data[schema_result.schema_index];
+            auto binding = ObjectList(schema_result.binding_arity);
+            const auto& problem_objects = m_problem->get_problem_and_domain_objects();
 
-            for (auto& binding : schema_result.candidate_bindings)
+            for (size_t binding_index = 0; binding_index < schema_result.num_candidate_bindings; ++binding_index)
             {
+                if (schema_result.binding_arity > 0)
+                {
+                    const auto begin = binding_index * schema_result.binding_arity;
+                    for (size_t parameter_index = 0; parameter_index < schema_result.binding_arity; ++parameter_index)
+                    {
+                        binding[parameter_index] = problem_objects[schema_result.candidate_binding_object_indices[begin + parameter_index]];
+                    }
+                }
+
                 const auto num_ground_actions = ground_action_repository.size();
-                const auto ground_action = m_problem->ground(condition_grounder.get_action(), std::move(binding));
+                const auto ground_action = m_problem->ground(condition_grounder.get_action(), binding);
 
                 assert(is_applicable(ground_action, state));
 
@@ -1598,6 +1667,7 @@ ParallelRelaxedBeamSuccessorGenerationResult KPKCLiftedApplicableActionGenerator
 
     m_event_handler->on_start_generating_applicable_actions();
 
+    const auto thread_count = std::max<size_t>(1, thread_pool.get_thread_count());
     const auto schema_tasks = build_parallel_action_schema_tasks(m_problem, m_options, state, m_action_grounding_data, symmetry_setup_time);
     generation_statistics_scope.symmetry_setup_time = symmetry_setup_time;
 
@@ -1607,7 +1677,6 @@ ParallelRelaxedBeamSuccessorGenerationResult KPKCLiftedApplicableActionGenerator
         return ParallelRelaxedBeamSuccessorGenerationResult {};
     }
 
-    const auto thread_count = std::max<size_t>(1, thread_pool.get_thread_count());
     auto& worker_contexts = get_parallel_worker_contexts(thread_count);
 
     const auto use_small_beam = beam_width <= 64;
@@ -1666,20 +1735,21 @@ ParallelRelaxedBeamSuccessorGenerationResult KPKCLiftedApplicableActionGenerator
                                                           auto& action_validator = typed_worker_context.action_validators[schema_task.schema_index];
                                                           auto local_binding_index = uint32_t(0);
 
-                                                          for (auto&& binding :
-                                                               condition_grounder.create_candidate_binding_generator(state.get_unpacked_state(),
-                                                                                                                    dynamic_assignment_sets,
-                                                                                                                    schema_task.vertex_mask))
+                                                          condition_grounder.for_each_candidate_binding_indices(state.get_unpacked_state(),
+                                                                                                                dynamic_assignment_sets,
+                                                                                                                schema_task.vertex_mask,
+                                                                                                                [&](const IndexList& binding_object_indices)
                                                           {
-                                                              if (!action_validator.test_binding(state.get_unpacked_state(), *lookup_tables, binding))
+                                                              if (!action_validator.test_binding(
+                                                                      state.get_unpacked_state(), *lookup_tables, binding_object_indices))
                                                               {
-                                                                  continue;
+                                                                  return;
                                                               }
 
                                                               ++result.num_scored_candidates;
                                                               auto candidate = action_validator.compute_staged_successor_candidate(state,
                                                                                                                                    *lookup_tables,
-                                                                                                                                   binding,
+                                                                                                                                   binding_object_indices,
                                                                                                                                    state_metric_value,
                                                                                                                                    axiom_evaluator,
                                                                                                                                    typed_worker_context.successor_scratch);
@@ -1692,7 +1762,7 @@ ParallelRelaxedBeamSuccessorGenerationResult KPKCLiftedApplicableActionGenerator
                                                                       beam_novelty_mode))
                                                               {
                                                                   ++local_binding_index;
-                                                                  continue;
+                                                                  return;
                                                               }
 
                                                               candidate.score = layer_ordering_strategy->score_staged_state(candidate.fluent_atoms,
@@ -1725,7 +1795,7 @@ ParallelRelaxedBeamSuccessorGenerationResult KPKCLiftedApplicableActionGenerator
                                                                                                    heap_compare,
                                                                                                    reject_candidate);
                                                               }
-                                                          }
+                                                          });
                                                       }
 
                                                       if (!use_small_beam)

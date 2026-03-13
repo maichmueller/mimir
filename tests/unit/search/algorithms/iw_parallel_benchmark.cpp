@@ -329,9 +329,44 @@ int main(int argc, char** argv)
     {
         std::cout << "chunk_size=" << chunk_size << '\n';
         std::optional<double> serial_median_ms;
+        const auto need_explicit_serial_reference =
+            relaxed_survivors_only_beam || std::none_of(thread_counts.begin(), thread_counts.end(), [](const auto count) { return count <= 1; });
+        if (need_explicit_serial_reference)
+        {
+            auto serial_wall_times_ms = std::vector<double> {};
+            serial_wall_times_ms.reserve(reps);
+            for (size_t rep = 0; rep < reps; ++rep)
+            {
+                const auto serial_result = run_once(domain_file,
+                                                    problem_file,
+                                                    search_context_options,
+                                                    max_arity,
+                                                    beam_width,
+                                                    beam_novelty_mode,
+                                                    false,
+                                                    1,
+                                                    chunk_size);
+                serial_wall_times_ms.push_back(serial_result.wall_time_ms);
+            }
+
+            std::sort(serial_wall_times_ms.begin(), serial_wall_times_ms.end());
+            serial_median_ms = serial_wall_times_ms[serial_wall_times_ms.size() / 2];
+            std::cout << "serial_reference_ms=" << serial_median_ms.value() << '\n';
+        }
 
         for (const auto num_threads : thread_counts)
         {
+            if (relaxed_survivors_only_beam && num_threads <= 1)
+            {
+                std::cout << "threads=" << num_threads << " skipped=true reason=relaxed_survivors_only_beam_requires_parallel_threads";
+                if (serial_median_ms.has_value())
+                {
+                    std::cout << " serial_reference_ms=" << serial_median_ms.value();
+                }
+                std::cout << '\n';
+                continue;
+            }
+
             auto wall_times_ms = std::vector<double> {};
             wall_times_ms.reserve(reps);
 
@@ -424,7 +459,7 @@ int main(int argc, char** argv)
                       << " producer_stall_ms=" << parallel_producer_stall_time_ms;
             if (serial_median_ms.has_value())
             {
-                std::cout << " speedup_vs_1=" << (serial_median_ms.value() / median_ms);
+                std::cout << " speedup_vs_serial=" << (serial_median_ms.value() / median_ms);
             }
             std::cout << '\n';
         }
