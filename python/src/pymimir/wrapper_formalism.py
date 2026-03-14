@@ -2089,6 +2089,15 @@ class Problem:
         initial_state, _ = self._search_context.get_state_repository().get_or_create_initial_state()
         return State(initial_state, self)
 
+    def release_parallel_memory(self, clear_shared_caches: bool = False) -> None:
+        """
+        Drop retained parallel worker contexts from the underlying search context.
+
+        If ``clear_shared_caches`` is True, also drop shared lifted parallel lookup
+        tables. This reclaims more memory but makes the next parallel search colder.
+        """
+        self._search_context.release_parallel_memory(clear_shared_caches)
+
     def get_initial_atoms(self, ignore_static = False, ignore_fluent = False, ignore_derived = False) -> 'list[GroundAtom]':
         """
         Get the initial atoms of the problem.

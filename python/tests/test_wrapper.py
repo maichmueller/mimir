@@ -1308,6 +1308,57 @@ class TestBeamWrappers(unittest.TestCase):
 
         assert result.status in ['solved', 'exhausted']
 
+    def test_release_parallel_memory_keeps_lifted_parallel_search_usable(self):
+        problem = _make_problem('delivery', mode='lifted')
+        start_state = problem.get_initial_state()
+        layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(problem._advanced_problem)
+
+        first_result = iw(
+            problem,
+            start_state,
+            3,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="survivors_only",
+            num_threads=4,
+            chunk_size=64,
+        )
+
+        problem.release_parallel_memory()
+
+        second_result = iw(
+            problem,
+            start_state,
+            3,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="survivors_only",
+            num_threads=4,
+            chunk_size=64,
+        )
+
+        problem.release_parallel_memory(clear_shared_caches=True)
+
+        third_result = iw(
+            problem,
+            start_state,
+            3,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="survivors_only",
+            num_threads=4,
+            chunk_size=64,
+        )
+
+        assert first_result.status == second_result.status
+        assert (first_result.solution is None) == (second_result.solution is None)
+        if first_result.solution is not None:
+            assert len(first_result.solution) == len(second_result.solution)
+        assert first_result.status == third_result.status
+        assert (first_result.solution is None) == (third_result.solution is None)
+        if first_result.solution is not None:
+            assert len(first_result.solution) == len(third_result.solution)
+
 
 
 if __name__ == '__main__':

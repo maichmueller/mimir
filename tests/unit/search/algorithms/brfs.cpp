@@ -1390,6 +1390,43 @@ TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamRepeatedMatchesSerialLiftedKPKC
     }
 }
 
+TEST(MimirTests, SearchAlgorithmsBrFSReleaseParallelMemoryKeepsLiftedParallelBeamBehaviorTest)
+{
+    auto brfs = LiftedBrFSPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"),
+                                  fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"));
+
+    auto run = [&](uint32_t parallel_threads)
+    {
+        auto event_handler = std::make_shared<RecordingBrFSEventHandler>(brfs.get_problem());
+
+        auto options = brfs::Options();
+        options.event_handler = event_handler;
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
+        options.pruning_strategy = DuplicatePruningStrategyImpl::create();
+        options.beam_width = 64;
+        options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
+        options.parallel_beam_num_threads = parallel_threads;
+        options.stop_if_goal = true;
+
+        const auto result = brfs::find_solution(brfs.get_search_context(), options);
+        if (result.plan.has_value())
+        {
+            expect_plan_reaches_goal(brfs.get_search_context(), result);
+        }
+
+        return make_brfs_run_trace(result, *event_handler);
+    };
+
+    const auto first_trace = run(4);
+    brfs.get_search_context()->release_parallel_memory(false);
+    const auto second_trace = run(4);
+    brfs.get_search_context()->release_parallel_memory(true);
+    const auto third_trace = run(4);
+
+    expect_brfs_run_traces_match(second_trace, first_trace);
+    expect_brfs_run_traces_match(third_trace, first_trace);
+}
+
 TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamRejectsLiftedExhaustiveContexts)
 {
     auto problem = ProblemImpl::create(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"),

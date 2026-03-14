@@ -113,6 +113,11 @@ public:
     virtual void on_finish_search_layer() = 0;
     virtual void on_end_search() = 0;
 
+    /// @brief Release optional parallel worker memory retained across searches.
+    /// If clear_shared_caches is true, also drop shared immutable parallel lookup
+    /// tables so they will be rebuilt on the next parallel search.
+    virtual void release_parallel_memory(bool clear_shared_caches = false) {}
+
     /**
      * Getters
      */

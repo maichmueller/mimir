@@ -353,7 +353,8 @@ void bind_module_definitions(nb::module_& m)
                     "state_repository"_a)
         .def("get_problem", &SearchContextImpl::get_problem)
         .def("get_applicable_action_generator", &SearchContextImpl::get_applicable_action_generator)
-        .def("get_state_repository", &SearchContextImpl::get_state_repository);
+        .def("get_state_repository", &SearchContextImpl::get_state_repository)
+        .def("release_parallel_memory", &SearchContextImpl::release_parallel_memory, "clear_shared_caches"_a = false);
 
     /* GeneralizedSearchContext */
     nb::class_<GeneralizedSearchContextImpl>(m, "GeneralizedSearchContext")

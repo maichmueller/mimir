@@ -65,6 +65,7 @@ public:
 
     void on_finish_search_layer() override;
     void on_end_search() override;
+    void release_parallel_memory(bool clear_shared_caches = false) override;
 
     /**
      * Getters.
@@ -83,7 +84,7 @@ private:
     formalism::DynamicAssignmentSets m_dynamic_assignment_sets;
 
     struct ParallelGroundLookupTables;
-    mutable std::once_flag m_parallel_lookup_tables_once_flag;
+    mutable std::mutex m_parallel_lookup_tables_mutex;
     mutable std::shared_ptr<const ParallelGroundLookupTables> m_parallel_lookup_tables;
 };
 

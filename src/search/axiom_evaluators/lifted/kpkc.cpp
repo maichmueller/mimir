@@ -620,7 +620,7 @@ KPKCLiftedAxiomEvaluatorImpl::KPKCLiftedAxiomEvaluatorImpl(Problem problem,
     m_binding_event_handler(binding_event_handler ? binding_event_handler : satisficing_binding_generator::DefaultEventHandlerImpl::create()),
     m_condition_grounders(),
     m_dynamic_assignment_sets(*m_problem),
-    m_parallel_lookup_tables_once_flag(),
+    m_parallel_lookup_tables_mutex(),
     m_parallel_lookup_tables()
 {
     /* 3. Initialize condition grounders */
@@ -643,77 +643,83 @@ bool KPKCLiftedAxiomEvaluatorImpl::supports_parallel_staged_successor_evaluation
 
 void KPKCLiftedAxiomEvaluatorImpl::prepare_parallel_staged_successor_evaluation()
 {
-    std::call_once(
-        m_parallel_lookup_tables_once_flag,
-        [this]()
+    if (m_parallel_lookup_tables)
+    {
+        return;
+    }
+
+    auto lock = std::scoped_lock(m_parallel_lookup_tables_mutex);
+    if (m_parallel_lookup_tables)
+    {
+        return;
+    }
+
+    auto lookup_tables = std::make_shared<ParallelGroundLookupTables>();
+
+    auto static_predicates = std::vector<bool> {};
+    auto fluent_predicates = std::vector<bool> {};
+    auto derived_predicates = std::vector<bool> {};
+    auto static_function_skeletons = std::vector<bool> {};
+    auto fluent_function_skeletons = std::vector<bool> {};
+
+    collect_axiom_lookup_requirements(m_problem,
+                                      static_predicates,
+                                      fluent_predicates,
+                                      derived_predicates,
+                                      static_function_skeletons,
+                                      fluent_function_skeletons);
+
+    const auto& static_predicate_repository =
+        boost::hana::at_key(m_problem->get_repositories().get_hana_repositories(), boost::hana::type<PredicateImpl<StaticTag>> {});
+    for (Index i = 0; i < static_predicates.size(); ++i)
+    {
+        if (static_predicates[i])
         {
-            auto lookup_tables = std::make_shared<ParallelGroundLookupTables>();
+            build_ground_atom_lookup(m_problem, static_predicate_repository.at(i), lookup_tables->static_predicates);
+        }
+    }
 
-            auto static_predicates = std::vector<bool> {};
-            auto fluent_predicates = std::vector<bool> {};
-            auto derived_predicates = std::vector<bool> {};
-            auto static_function_skeletons = std::vector<bool> {};
-            auto fluent_function_skeletons = std::vector<bool> {};
+    const auto& fluent_predicate_repository =
+        boost::hana::at_key(m_problem->get_repositories().get_hana_repositories(), boost::hana::type<PredicateImpl<FluentTag>> {});
+    for (Index i = 0; i < fluent_predicates.size(); ++i)
+    {
+        if (fluent_predicates[i])
+        {
+            build_ground_atom_lookup(m_problem, fluent_predicate_repository.at(i), lookup_tables->fluent_predicates);
+        }
+    }
 
-            collect_axiom_lookup_requirements(m_problem,
-                                              static_predicates,
-                                              fluent_predicates,
-                                              derived_predicates,
-                                              static_function_skeletons,
-                                              fluent_function_skeletons);
+    const auto& derived_predicate_repository =
+        boost::hana::at_key(m_problem->get_repositories().get_hana_repositories(), boost::hana::type<PredicateImpl<DerivedTag>> {});
+    for (Index i = 0; i < derived_predicates.size(); ++i)
+    {
+        if (derived_predicates[i])
+        {
+            build_ground_atom_lookup(m_problem, derived_predicate_repository.at(i), lookup_tables->derived_predicates);
+        }
+    }
 
-            const auto& static_predicate_repository =
-                boost::hana::at_key(m_problem->get_repositories().get_hana_repositories(), boost::hana::type<PredicateImpl<StaticTag>> {});
-            for (Index i = 0; i < static_predicates.size(); ++i)
-            {
-                if (static_predicates[i])
-                {
-                    build_ground_atom_lookup(m_problem, static_predicate_repository.at(i), lookup_tables->static_predicates);
-                }
-            }
+    const auto& static_function_repository =
+        boost::hana::at_key(m_problem->get_repositories().get_hana_repositories(), boost::hana::type<FunctionSkeletonImpl<StaticTag>> {});
+    for (Index i = 0; i < static_function_skeletons.size(); ++i)
+    {
+        if (static_function_skeletons[i])
+        {
+            build_ground_function_lookup(m_problem, static_function_repository.at(i), lookup_tables->static_functions);
+        }
+    }
 
-            const auto& fluent_predicate_repository =
-                boost::hana::at_key(m_problem->get_repositories().get_hana_repositories(), boost::hana::type<PredicateImpl<FluentTag>> {});
-            for (Index i = 0; i < fluent_predicates.size(); ++i)
-            {
-                if (fluent_predicates[i])
-                {
-                    build_ground_atom_lookup(m_problem, fluent_predicate_repository.at(i), lookup_tables->fluent_predicates);
-                }
-            }
+    const auto& fluent_function_repository =
+        boost::hana::at_key(m_problem->get_repositories().get_hana_repositories(), boost::hana::type<FunctionSkeletonImpl<FluentTag>> {});
+    for (Index i = 0; i < fluent_function_skeletons.size(); ++i)
+    {
+        if (fluent_function_skeletons[i])
+        {
+            build_ground_function_lookup(m_problem, fluent_function_repository.at(i), lookup_tables->fluent_functions);
+        }
+    }
 
-            const auto& derived_predicate_repository =
-                boost::hana::at_key(m_problem->get_repositories().get_hana_repositories(), boost::hana::type<PredicateImpl<DerivedTag>> {});
-            for (Index i = 0; i < derived_predicates.size(); ++i)
-            {
-                if (derived_predicates[i])
-                {
-                    build_ground_atom_lookup(m_problem, derived_predicate_repository.at(i), lookup_tables->derived_predicates);
-                }
-            }
-
-            const auto& static_function_repository =
-                boost::hana::at_key(m_problem->get_repositories().get_hana_repositories(), boost::hana::type<FunctionSkeletonImpl<StaticTag>> {});
-            for (Index i = 0; i < static_function_skeletons.size(); ++i)
-            {
-                if (static_function_skeletons[i])
-                {
-                    build_ground_function_lookup(m_problem, static_function_repository.at(i), lookup_tables->static_functions);
-                }
-            }
-
-            const auto& fluent_function_repository =
-                boost::hana::at_key(m_problem->get_repositories().get_hana_repositories(), boost::hana::type<FunctionSkeletonImpl<FluentTag>> {});
-            for (Index i = 0; i < fluent_function_skeletons.size(); ++i)
-            {
-                if (fluent_function_skeletons[i])
-                {
-                    build_ground_function_lookup(m_problem, fluent_function_repository.at(i), lookup_tables->fluent_functions);
-                }
-            }
-
-            m_parallel_lookup_tables = std::move(lookup_tables);
-        });
+    m_parallel_lookup_tables = std::move(lookup_tables);
 }
 
 ParallelAxiomWorkerContext KPKCLiftedAxiomEvaluatorImpl::create_parallel_worker_context() const
@@ -866,6 +872,15 @@ void KPKCLiftedAxiomEvaluatorImpl::on_end_search()
 {
     m_event_handler->on_end_search();
     m_binding_event_handler->on_end_search();
+}
+
+void KPKCLiftedAxiomEvaluatorImpl::release_parallel_memory(bool clear_shared_caches)
+{
+    if (clear_shared_caches)
+    {
+        auto lock = std::scoped_lock(m_parallel_lookup_tables_mutex);
+        m_parallel_lookup_tables.reset();
+    }
 }
 
 const Problem& KPKCLiftedAxiomEvaluatorImpl::get_problem() const { return m_problem; }
