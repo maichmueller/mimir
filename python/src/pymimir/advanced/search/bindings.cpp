@@ -965,6 +965,7 @@ void bind_module_definitions(nb::module_& m)
         .def_rw("parallel_beam_num_threads", &brfs::Options::parallel_beam_num_threads)
         .def_rw("parallel_beam_chunk_size", &brfs::Options::parallel_beam_chunk_size)
         .def_rw("stop_if_goal", &brfs::Options::stop_if_goal)
+        .def_rw("max_depth", &brfs::Options::max_depth)
         .def_rw("max_num_states", &brfs::Options::max_num_states)
         .def_rw("max_time_in_ms", &brfs::Options::max_time_in_ms);
 
@@ -1151,6 +1152,7 @@ void bind_module_definitions(nb::module_& m)
         .def_rw("equal_score_tie_seed", &iw::Options::equal_score_tie_seed)
         .def_rw("parallel_beam_num_threads", &iw::Options::parallel_beam_num_threads)
         .def_rw("parallel_beam_chunk_size", &iw::Options::parallel_beam_chunk_size)
+        .def_rw("max_depth", &iw::Options::max_depth)
         .def_rw("max_arity", &iw::Options::max_arity);
 
     m.def("find_solution_iw", &iw::find_solution, "search_context"_a, "options"_a);

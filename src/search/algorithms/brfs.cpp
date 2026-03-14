@@ -62,6 +62,8 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
     const auto relaxed_survivors_only_beam = options.relaxed_survivors_only_beam;
     const auto parallel_beam_num_threads = options.parallel_beam_num_threads;
     const auto parallel_beam_chunk_size = options.parallel_beam_chunk_size;
+    const auto max_depth = options.max_depth;
+    const auto use_max_depth = (max_depth < std::numeric_limits<uint32_t>::max());
 
     if (use_next_layer_limit && (max_next_layer_states == 0))
     {
@@ -240,6 +242,11 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
 
             event_handler->on_expand_state(state);
             search_node.status = SearchNodeStatus::CLOSED;
+
+            if (use_max_depth && (search_node.g_value >= max_depth))
+            {
+                continue;
+            }
 
             for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
             {

@@ -33,6 +33,7 @@ def brfs(
     beam_novelty_mode: 'Union[Literal["all_tested", "survivors_only"], AdvancedBeamNoveltyMode]' = AdvancedBeamNoveltyMode.ALL_TESTED,
     randomize_equal_score_ties: bool = False,
     equal_score_tie_seed: "Union[int, None]" = None,
+    max_depth: int = -1,
     on_expand_state: "Union[Callable[[State], None], None]" = None,
     on_expand_goal_state: "Union[Callable[[State], None], None]" = None,
     on_generate_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
@@ -68,6 +69,8 @@ def brfs(
     :type randomize_equal_score_ties: bool
     :param equal_score_tie_seed: Optional deterministic seed for equal-score randomization. Defaults to 0 when unset.
     :type equal_score_tie_seed: int | None
+    :param max_depth: Optional maximum discrete search depth. Values < 0 keep search unrestricted.
+    :type max_depth: int
     :param num_threads: Thread count for parallel beam evaluation. Values <= 1 keep the serial path.
     :type num_threads: int
     :param chunk_size: Parallel beam chunk size. Values <= 0 keep the engine default.
@@ -113,6 +116,7 @@ def brfs(
     assert equal_score_tie_seed is None or isinstance(
         equal_score_tie_seed, int
     ), "equal_score_tie_seed must be an int or None."
+    assert isinstance(max_depth, int), "max_depth must be an int."
     assert isinstance(num_threads, int), "num_threads must be an int."
     assert isinstance(chunk_size, int), "chunk_size must be an int."
     assert isinstance(
@@ -234,6 +238,8 @@ def brfs(
     advanced_options.equal_score_tie_seed = (
         0 if equal_score_tie_seed is None else equal_score_tie_seed
     )
+    if max_depth >= 0:
+        advanced_options.max_depth = max_depth
     advanced_options.relaxed_survivors_only_beam = relaxed_survivors_only_beam
     if num_threads > 1:
         advanced_options.parallel_beam_num_threads = num_threads

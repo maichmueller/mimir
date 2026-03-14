@@ -76,6 +76,7 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
         options_i.equal_score_tie_seed = options.equal_score_tie_seed;
         options_i.parallel_beam_num_threads = options.parallel_beam_num_threads;
         options_i.parallel_beam_chunk_size = options.parallel_beam_chunk_size;
+        options_i.max_depth = options.max_depth;
         options_i.pruning_strategy = (cur_arity > 0) ? ArityKNoveltyPruningStrategyImpl::create(cur_arity, ground_fluent_atom_repository.size()) :
                                                        ArityZeroNoveltyPruningStrategyImpl::create(start_state);
 

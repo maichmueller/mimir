@@ -42,6 +42,7 @@ def iw(
     beam_novelty_mode: 'Literal["all_tested", "survivors_only"]' = "all_tested",
     randomize_equal_score_ties: bool = False,
     equal_score_tie_seed: "Union[int, None]" = None,
+    max_depth: int = -1,
     on_expand_state: "Union[Callable[[State], None], None]" = None,
     on_expand_goal_state: "Union[Callable[[State], None], None]" = None,
     on_generate_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
@@ -72,6 +73,7 @@ def iw(
     assert equal_score_tie_seed is None or isinstance(
         equal_score_tie_seed, int
     ), "equal_score_tie_seed must be an int or None."
+    assert isinstance(max_depth, int), "max_depth must be an int."
     assert isinstance(num_threads, int), "num_threads must be an int."
     assert isinstance(chunk_size, int), "chunk_size must be an int."
     assert isinstance(
@@ -185,6 +187,8 @@ def iw(
     advanced_options.equal_score_tie_seed = (
         0 if equal_score_tie_seed is None else equal_score_tie_seed
     )
+    if max_depth >= 0:
+        advanced_options.max_depth = max_depth
     advanced_options.relaxed_survivors_only_beam = relaxed_survivors_only_beam
     if num_threads > 1:
         advanced_options.parallel_beam_num_threads = num_threads
@@ -215,6 +219,7 @@ def projective_iw(
     beam_novelty_mode: 'Literal["all_tested", "survivors_only"]' = "all_tested",
     randomize_equal_score_ties: bool = False,
     equal_score_tie_seed: "Union[int, None]" = None,
+    max_depth: int = -1,
     on_expand_state: "Union[Callable[[State], None], None]" = None,
     on_expand_goal_state: "Union[Callable[[State], None], None]" = None,
     on_generate_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
@@ -240,6 +245,7 @@ def projective_iw(
     `chunk_size` controls how many staged successors are batched before each merge.
     `relaxed_survivors_only_beam` switches to a faster, non-serial-equivalent
     SURVIVORS_ONLY variant that only canonicalizes merged worker-local top-k candidates.
+    `max_depth` restricts the deepest BFS layer that may generate successors.
     """
     assert isinstance(problem, Problem), "Problem must be an instance of Problem."
     assert isinstance(start_state, State), "Start state must be an instance of State."
@@ -266,6 +272,7 @@ def projective_iw(
     assert equal_score_tie_seed is None or isinstance(
         equal_score_tie_seed, int
     ), "equal_score_tie_seed must be an int or None."
+    assert isinstance(max_depth, int), "max_depth must be an int."
     assert isinstance(num_threads, int), "num_threads must be an int."
     assert isinstance(chunk_size, int), "chunk_size must be an int."
     assert isinstance(
@@ -379,6 +386,8 @@ def projective_iw(
     advanced_options.equal_score_tie_seed = (
         0 if equal_score_tie_seed is None else equal_score_tie_seed
     )
+    if max_depth >= 0:
+        advanced_options.max_depth = max_depth
     advanced_options.relaxed_survivors_only_beam = relaxed_survivors_only_beam
     if num_threads > 1:
         advanced_options.parallel_beam_num_threads = num_threads

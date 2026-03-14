@@ -1104,6 +1104,32 @@ class TestNumericFluents(unittest.TestCase):
 
 
 class TestBeamWrappers(unittest.TestCase):
+    def test_iw_max_depth(self):
+        problem = _make_problem('delivery', mode='grounded')
+        start_state = problem.get_initial_state()
+
+        shallow_result = iw(problem, start_state, 2, max_depth=3)
+        assert shallow_result.status == 'failed'
+        assert shallow_result.solution is None
+
+        exact_result = iw(problem, start_state, 2, max_depth=4)
+        assert exact_result.status == 'solved'
+        assert exact_result.solution is not None
+        assert len(exact_result.solution) == 4
+
+    def test_projective_iw_max_depth(self):
+        problem = _make_problem('assembly', mode='grounded')
+        start_state = problem.get_initial_state()
+
+        shallow_result = projective_iw(problem, start_state, max_depth=0)
+        assert shallow_result.status == 'exhausted'
+        assert shallow_result.solution is None
+
+        exact_result = projective_iw(problem, start_state, max_depth=1)
+        assert exact_result.status == 'solved'
+        assert exact_result.solution is not None
+        assert len(exact_result.solution) == 1
+
     def test_iw_parallel_beam(self):
         problem = _make_problem('delivery', mode='grounded')
         start_state = problem.get_initial_state()

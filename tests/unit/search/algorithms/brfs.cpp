@@ -802,6 +802,73 @@ TEST(MimirTests, SearchAlgorithmsBrFSReverseLayerOrderingReordersFirstLayer)
     EXPECT_EQ(actual_first_layer_indices, expected_indices);
 }
 
+TEST(MimirTests, SearchAlgorithmsBrFSMaxDepthZeroDoesNotGenerateSuccessorsTest)
+{
+    auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"), fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"));
+    auto event_handler = std::make_shared<RecordingBrFSEventHandler>(brfs.get_problem());
+
+    auto options = brfs::Options();
+    options.event_handler = event_handler;
+    options.max_depth = 0;
+    options.stop_if_goal = false;
+
+    const auto result = brfs::find_solution(brfs.get_search_context(), options);
+    EXPECT_EQ(result.status, SearchStatus::EXHAUSTED);
+    EXPECT_FALSE(result.plan.has_value());
+    EXPECT_TRUE(event_handler->get_root_generated_states().empty());
+
+    const auto [start_state, _] = brfs.get_search_context()->get_state_repository()->get_or_create_initial_state();
+    const auto expanded_indices = get_state_indices(event_handler->get_expanded_states());
+    ASSERT_EQ(expanded_indices.size(), 1);
+    EXPECT_EQ(expanded_indices.front(), start_state.get_index());
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSMaxDepthMatchesSolutionBoundaryOrderedLayerTest)
+{
+    auto shallow_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"), fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"));
+    auto shallow_options = brfs::Options();
+    shallow_options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(shallow_brfs.get_problem());
+    shallow_options.max_depth = 3;
+
+    const auto shallow_result = brfs::find_solution(shallow_brfs.get_search_context(), shallow_options);
+    EXPECT_EQ(shallow_result.status, SearchStatus::EXHAUSTED);
+    EXPECT_FALSE(shallow_result.plan.has_value());
+
+    auto exact_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"), fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"));
+    auto exact_options = brfs::Options();
+    exact_options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(exact_brfs.get_problem());
+    exact_options.max_depth = 4;
+
+    const auto exact_result = brfs::find_solution(exact_brfs.get_search_context(), exact_options);
+    ASSERT_EQ(exact_result.status, SearchStatus::SOLVED);
+    ASSERT_TRUE(exact_result.plan.has_value());
+    EXPECT_EQ(exact_result.plan->get_actions().size(), 4);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSMaxDepthMatchesSolutionBoundaryBeamTest)
+{
+    auto shallow_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"), fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"));
+    auto shallow_options = brfs::Options();
+    shallow_options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(shallow_brfs.get_problem());
+    shallow_options.beam_width = 64;
+    shallow_options.max_depth = 3;
+
+    const auto shallow_result = brfs::find_solution(shallow_brfs.get_search_context(), shallow_options);
+    EXPECT_EQ(shallow_result.status, SearchStatus::EXHAUSTED);
+    EXPECT_FALSE(shallow_result.plan.has_value());
+
+    auto exact_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"), fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"));
+    auto exact_options = brfs::Options();
+    exact_options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(exact_brfs.get_problem());
+    exact_options.beam_width = 64;
+    exact_options.max_depth = 4;
+
+    const auto exact_result = brfs::find_solution(exact_brfs.get_search_context(), exact_options);
+    ASSERT_EQ(exact_result.status, SearchStatus::SOLVED);
+    ASSERT_TRUE(exact_result.plan.has_value());
+    EXPECT_EQ(exact_result.plan->get_actions().size(), 4);
+}
+
 TEST(MimirTests, SearchAlgorithmsBrFSNextLayerLimitRequiresLayerOrderingStrategy)
 {
     auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));

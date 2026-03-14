@@ -56,6 +56,8 @@ SearchResult find_solution_with_ordered_layer(const SearchContext& context,
     auto result = SearchResult();
     const auto max_next_layer_states = options.max_next_layer_states;
     const auto use_next_layer_limit = (max_next_layer_states < std::numeric_limits<uint32_t>::max());
+    const auto max_depth = options.max_depth;
+    const auto use_max_depth = (max_depth < std::numeric_limits<uint32_t>::max());
 
     struct ScoredState
     {
@@ -118,6 +120,11 @@ SearchResult find_solution_with_ordered_layer(const SearchContext& context,
 
             event_handler->on_expand_state(state);
             search_node.status = SearchNodeStatus::CLOSED;
+
+            if (use_max_depth && (search_node.g_value >= max_depth))
+            {
+                continue;
+            }
 
             for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
             {

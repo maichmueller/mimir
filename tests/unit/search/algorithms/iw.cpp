@@ -1368,6 +1368,28 @@ TEST(MimirTests, SearchAlgorithmsIWLiftedDeliveryTest)
     EXPECT_EQ(iw_statistics.get_effective_width(), 2);
 }
 
+TEST(MimirTests, SearchAlgorithmsIWMaxDepthMatchesSolutionBoundaryTest)
+{
+    auto shallow_iw = GroundedIWPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"), fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"), 2);
+    auto shallow_options = iw::Options();
+    shallow_options.max_arity = 2;
+    shallow_options.max_depth = 3;
+
+    const auto shallow_result = iw::find_solution(shallow_iw.get_search_context(), shallow_options);
+    EXPECT_EQ(shallow_result.status, SearchStatus::FAILED);
+    EXPECT_FALSE(shallow_result.plan.has_value());
+
+    auto exact_iw = GroundedIWPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"), fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"), 2);
+    auto exact_options = iw::Options();
+    exact_options.max_arity = 2;
+    exact_options.max_depth = 4;
+
+    const auto exact_result = iw::find_solution(exact_iw.get_search_context(), exact_options);
+    ASSERT_EQ(exact_result.status, SearchStatus::SOLVED);
+    ASSERT_TRUE(exact_result.plan.has_value());
+    EXPECT_EQ(exact_result.plan->get_actions().size(), 4);
+}
+
 /**
  * Miconic-fulladl
  */

@@ -346,6 +346,8 @@ SearchResult find_solution_with_beam(const SearchContext& context,
     const auto use_relaxed_survivors_only_beam = options.relaxed_survivors_only_beam;
     const auto parallel_beam_num_threads = options.parallel_beam_num_threads;
     const auto parallel_beam_chunk_size = options.parallel_beam_chunk_size;
+    const auto max_depth = options.max_depth;
+    const auto use_max_depth = (max_depth < std::numeric_limits<uint32_t>::max());
     const auto use_parallel_beam = parallel_beam_num_threads > 1;
     const auto use_parallel_action_generation = use_parallel_beam && applicable_action_generator.supports_parallel_applicable_action_generation();
     const auto use_staged_parallel_fast_path =
@@ -1007,6 +1009,11 @@ SearchResult find_solution_with_beam(const SearchContext& context,
 
             event_handler->on_expand_state(state);
             search_node.status = SearchNodeStatus::CLOSED;
+
+            if (use_max_depth && (search_node.g_value >= max_depth))
+            {
+                continue;
+            }
 
             if (use_fused_relaxed_parallel_successor_generation)
             {
