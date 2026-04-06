@@ -34,19 +34,23 @@ public:
     virtual bool test_dynamic_goal(const State& state) = 0;
 };
 
+
 /// @brief `ProblemGoalStrategyImpl` identifies a state as a goal if and only if it satisfies the goal in the given problem.
 class ProblemGoalStrategyImpl : public IGoalStrategy
 {
 private:
     formalism::Problem m_problem;
+    formalism::GroundConjunctiveCondition m_condition;
+    const bool m_static_goal_holds;
 
+    bool _compute_static_goal_holds() const;
 public:
-    explicit ProblemGoalStrategyImpl(formalism::Problem problem);
+    explicit ProblemGoalStrategyImpl(formalism::Problem problem, std::optional<formalism::GroundConjunctiveCondition> condition = std::nullopt);
 
     bool test_static_goal() override;
     bool test_dynamic_goal(const State& state) override;
 
-    static ProblemGoalStrategy create(formalism::Problem problem);
+    static ProblemGoalStrategy create(formalism::Problem problem,std::optional<formalism::GroundConjunctiveCondition> condition = std::nullopt);
 };
 }
 

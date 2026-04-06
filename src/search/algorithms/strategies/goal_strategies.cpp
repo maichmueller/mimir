@@ -24,11 +24,41 @@ using namespace mimir::formalism;
 
 namespace mimir::search
 {
-ProblemGoalStrategyImpl::ProblemGoalStrategyImpl(Problem problem) : m_problem(problem) {}
 
-bool ProblemGoalStrategyImpl::test_static_goal() { return m_problem->static_goal_holds(); }
+bool ProblemGoalStrategyImpl::_compute_static_goal_holds() const
+{
+    const auto& initial_bitset = m_problem->get_positive_static_initial_atoms_bitset();
 
-bool ProblemGoalStrategyImpl::test_dynamic_goal(const State& state) { return is_dynamically_applicable(m_problem->get_goal_condition(), state); }
+    for (const Index atom_index : m_condition->get_compressed_precondition<PositiveTag, StaticTag>()->compressed_range())
+    {
+        if (!initial_bitset.get(atom_index))
+        {
+            return false;
+        }
+    }
 
-ProblemGoalStrategy ProblemGoalStrategyImpl::create(formalism::Problem problem) { return std::make_shared<ProblemGoalStrategyImpl>(problem); }
+    for (const Index atom_index : m_condition->get_compressed_precondition<NegativeTag, StaticTag>()->compressed_range())
+    {
+        if (initial_bitset.get(atom_index))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+ProblemGoalStrategyImpl::ProblemGoalStrategyImpl(Problem problem, std::optional<GroundConjunctiveCondition> condition) :
+    m_problem(problem),
+    m_condition(condition ? *condition : m_problem->get_goal_condition()),
+    m_static_goal_holds(condition ? _compute_static_goal_holds() : m_problem->static_goal_holds())
+{
+}
+
+bool ProblemGoalStrategyImpl::test_static_goal() { return m_static_goal_holds; }
+
+bool ProblemGoalStrategyImpl::test_dynamic_goal(const State& state) { return is_dynamically_applicable(m_condition, state); }
+
+ProblemGoalStrategy ProblemGoalStrategyImpl::create(Problem problem, std::optional<GroundConjunctiveCondition> condition)
+{ return std::make_shared<ProblemGoalStrategyImpl>(problem, condition); }
 }

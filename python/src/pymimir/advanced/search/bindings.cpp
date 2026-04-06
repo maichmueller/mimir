@@ -729,7 +729,7 @@ void bind_module_definitions(nb::module_& m)
         .def("test_dynamic_goal", &IGoalStrategy::test_dynamic_goal, "state"_a);
 
     nb::class_<ProblemGoalStrategyImpl, IGoalStrategy>(m, "ProblemGoalStrategy")  //
-        .def_static("create", &ProblemGoalStrategyImpl::create, "problem"_a);
+        .def_static("create", &ProblemGoalStrategyImpl::create, "problem"_a, "goal_condition"_a = std::nullopt);
 
     nb::class_<ILayerOrderingStrategy, IPyLayerOrderingStrategy>(m, "ILayerOrderingStrategy")
         .def(nb::init<>())

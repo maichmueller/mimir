@@ -373,6 +373,28 @@ static void expect_plan_reaches_goal(const SearchContext& search_context, const 
     }
 }
 
+static GroundConjunctiveCondition make_custom_ground_goal(const Problem& problem)
+{
+    auto* mutable_problem = const_cast<ProblemImpl*>(problem.get());
+    auto& repositories = const_cast<Repositories&>(mutable_problem->get_repositories());
+    const auto& static_literals = mutable_problem->get_static_initial_atoms();
+    const auto& fluent_literals = mutable_problem->get_fluent_initial_atoms();
+
+    if (static_literals.empty() || fluent_literals.empty())
+    {
+        throw std::runtime_error("Expected the test problem to provide at least one static and one fluent initial atom.");
+    }
+
+    auto custom_goal_literals = GroundLiteralLists<StaticTag, FluentTag, DerivedTag> {};
+
+    boost::hana::at_key(custom_goal_literals, boost::hana::type<StaticTag> {})
+        .push_back(repositories.get_or_create_ground_literal(true, static_literals.front()));
+    boost::hana::at_key(custom_goal_literals, boost::hana::type<FluentTag> {})
+        .push_back(repositories.get_or_create_ground_literal(true, fluent_literals.front()));
+
+    return mutable_problem->get_or_create_ground_conjunctive_condition(std::move(custom_goal_literals), {});
+}
+
 struct BrFSRunTrace
 {
     SearchStatus status;
@@ -411,6 +433,25 @@ static void expect_brfs_run_traces_match(const BrFSRunTrace& lhs, const BrFSRunT
     EXPECT_EQ(lhs.num_generated_until_g_value, rhs.num_generated_until_g_value);
     EXPECT_EQ(lhs.num_expanded_until_g_value, rhs.num_expanded_until_g_value);
     EXPECT_EQ(lhs.num_pruned_until_g_value, rhs.num_pruned_until_g_value);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSProblemGoalStrategyCustomGroundConjunctiveConditionTest)
+{
+    auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"),
+                                    fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"));
+
+    const auto problem = brfs.get_problem();
+    const auto custom_goal = make_custom_ground_goal(problem);
+    const auto default_goal_strategy = ProblemGoalStrategyImpl::create(problem);
+    const auto custom_goal_strategy = ProblemGoalStrategyImpl::create(problem, std::optional<GroundConjunctiveCondition>(custom_goal));
+
+    ASSERT_TRUE(custom_goal_strategy->test_static_goal());
+
+    const auto [initial_state, initial_metric_value] = brfs.get_search_context()->get_state_repository()->get_or_create_initial_state();
+    [[maybe_unused]] const auto ignored_initial_metric_value = initial_metric_value;
+
+    EXPECT_TRUE(custom_goal_strategy->test_dynamic_goal(initial_state));
+    EXPECT_FALSE(default_goal_strategy->test_dynamic_goal(initial_state));
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
