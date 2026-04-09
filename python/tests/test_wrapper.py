@@ -307,7 +307,7 @@ class TestProblem(unittest.TestCase):
             assert goal_literal.get_polarity() is True
             assert str(goal_literal.get_atom()) in expected_goal_condition
 
-    def test_any_goal_strategy(self):
+    def test_multi_goal_strategy(self):
         domain_path = DATA_DIR / "delivery" / "domain.pddl"
         problem_path = DATA_DIR / "delivery" / "test_problem.pddl"
         domain = Domain(domain_path)
@@ -327,16 +327,13 @@ class TestProblem(unittest.TestCase):
             ]
         )
 
-        any_goal_strategy = advanced_search.ProblemMultiGoalStrategy.create(
-            problem._advanced_problem,
-            [default_goal._advanced_condition, custom_goal._advanced_condition],
-        )
+        multi_goal_strategy = new_multi_goal_strategy(problem, [default_goal, custom_goal])
 
         initial_state = problem.get_initial_state()
         assert not default_goal.holds(initial_state)
         assert custom_goal.holds(initial_state)
-        assert any_goal_strategy.test_static_goal()
-        assert any_goal_strategy.test_dynamic_goal(initial_state._advanced_state)
+        assert multi_goal_strategy.test_static_goal()
+        assert multi_goal_strategy.test_dynamic_goal(initial_state._advanced_state)
 
     def test_numeric_goal_condition(self):
         domain_path = DATA_DIR / "refuel-adl" / "domain.pddl"

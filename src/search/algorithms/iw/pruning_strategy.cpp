@@ -415,6 +415,20 @@ ProjectiveArityOneNoveltyPruningStrategyImpl::ProjectiveArityOneNoveltyPruningSt
     }
 }
 
+size_t ProjectiveArityOneNoveltyPruningStrategyImpl::ProjectedAtomKeyHash::operator()(const ProjectedAtomKey& key) const noexcept
+{
+    size_t seed = 0;
+    loki::hash_combine(seed, static_cast<Index>(key.m_kind));
+    loki::hash_combine(seed, key.m_predicate_index);
+    loki::hash_combine(seed, key.m_position);
+    loki::hash_combine(seed, key.m_projected_object_index);
+    for (const auto type_index : key.m_other_slot_type_signature)
+    {
+        loki::hash_combine(seed, type_index);
+    }
+    return seed;
+}
+
 PruningStrategy ProjectiveArityOneNoveltyPruningStrategyImpl::create(formalism::Problem problem,
                                                                      bool typed_projection,
                                                                      bool keep_depth_one_novel,
@@ -436,16 +450,17 @@ void ProjectiveArityOneNoveltyPruningStrategyImpl::collect_projected_atom_keys(
     const auto ground_atom = m_problem->get_repositories().get_ground_atom<FluentTag>(atom_index);
 
     // Unary atoms are kept as-is. Higher-arity atoms are split into unary features by
-    // argument position, which is the projection used by projective IW(1).
+    // argument position. In typed mode, the feature key additionally stores the ordered
+    // type signature of the *other* arguments.
     if (ground_atom->get_arity() <= 1)
     {
-        out_projected_atom_keys.emplace_back(0, atom_index, 0, 0, 0);
+        out_projected_atom_keys.push_back(ProjectedAtomKey { ProjectionKind::UNARY, atom_index, 0, 0, IndexList {} });
         return;
     }
 
     if (m_keep_goal_nonunary_atoms && m_problem->get_goal_atoms_bitset<PositiveTag, FluentTag>().get(atom_index))
     {
-        out_projected_atom_keys.emplace_back(0, atom_index, 0, 0, 0);
+        out_projected_atom_keys.push_back(ProjectedAtomKey { ProjectionKind::UNARY, atom_index, 0, 0, IndexList {} });
     }
 
     const auto predicate_index = ground_atom->get_predicate()->get_index();
@@ -457,25 +472,52 @@ void ProjectiveArityOneNoveltyPruningStrategyImpl::collect_projected_atom_keys(
 
         if (!m_typed_projection)
         {
-            out_projected_atom_keys.emplace_back(1, predicate_index, static_cast<Index>(position), object->get_index(), 0);
+            out_projected_atom_keys.push_back(ProjectedAtomKey { ProjectionKind::UNTYPED,
+                                                                 predicate_index,
+                                                                 static_cast<Index>(position),
+                                                                 object->get_index(),
+                                                                 IndexList {} });
             continue;
         }
 
-        const auto& object_types = object->get_bases();
-        if (object_types.empty())
-        {
-            out_projected_atom_keys.emplace_back(2, predicate_index, static_cast<Index>(position), object->get_index(), MAX_INDEX);
-            continue;
-        }
+        IndexList other_slot_type_signature;
+        other_slot_type_signature.reserve(objects.size() > 0 ? objects.size() - 1 : 0);
 
-        for (const auto& object_type : object_types)
-        {
-            out_projected_atom_keys.emplace_back(2,
-                                                 predicate_index,
-                                                 static_cast<Index>(position),
-                                                 object->get_index(),
-                                                 object_type->get_index());
-        }
+        const auto emit_typed_keys = [&](auto&& self, size_t object_position) -> void {
+            if (object_position == objects.size())
+            {
+                out_projected_atom_keys.push_back(ProjectedAtomKey { ProjectionKind::TYPED,
+                                                                     predicate_index,
+                                                                     static_cast<Index>(position),
+                                                                     object->get_index(),
+                                                                     other_slot_type_signature });
+                return;
+            }
+
+            if (object_position == position)
+            {
+                self(self, object_position + 1);
+                return;
+            }
+
+            const auto& object_types = objects.at(object_position)->get_bases();
+            if (object_types.empty())
+            {
+                other_slot_type_signature.push_back(MAX_INDEX);
+                self(self, object_position + 1);
+                other_slot_type_signature.pop_back();
+                return;
+            }
+
+            for (const auto& object_type : object_types)
+            {
+                other_slot_type_signature.push_back(object_type->get_index());
+                self(self, object_position + 1);
+                other_slot_type_signature.pop_back();
+            }
+        };
+
+        emit_typed_keys(emit_typed_keys, 0);
     }
 }
 

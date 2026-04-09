@@ -235,6 +235,8 @@ def projective_iw(
     This is width-based search with an IW(1) novelty test over an augmented atom set.
     A non-unary atom `p(x1, ..., xn)` is projected into positional unary features
     `p[1](x1), ..., p[n](xn)`. Novelty is checked on those projections.
+    If `typed_projection` is enabled, the projection key also includes the ordered
+    type signature of the other arguments in the atom.
     If `keep_goal_nonunary_atoms` is set, positive goal atoms of arity > 1 are also
     tracked as full atoms, in addition to their positional projections.
 

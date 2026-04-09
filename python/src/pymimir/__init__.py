@@ -18,6 +18,7 @@ from .wrapper_formalism import (
     Parameter,
     Predicate,
     Problem,
+    new_multi_goal_strategy,
     State,
     Type,
     Variable,

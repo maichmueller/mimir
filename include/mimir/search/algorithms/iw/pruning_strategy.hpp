@@ -135,7 +135,28 @@ public:
 class ProjectiveArityOneNoveltyPruningStrategyImpl : public IPruningStrategy
 {
 private:
-    using ProjectedAtomKey = std::tuple<Index, Index, Index, Index, Index>;
+    enum class ProjectionKind : Index
+    {
+        UNARY = 0,
+        UNTYPED = 1,
+        TYPED = 2
+    };
+
+    struct ProjectedAtomKey
+    {
+        ProjectionKind m_kind;
+        Index m_predicate_index;
+        Index m_position;
+        Index m_projected_object_index;
+        IndexList m_other_slot_type_signature;
+
+        bool operator==(const ProjectedAtomKey& other) const noexcept = default;
+    };
+
+    struct ProjectedAtomKeyHash
+    {
+        size_t operator()(const ProjectedAtomKey& key) const noexcept;
+    };
 
     formalism::Problem m_problem;
     bool m_typed_projection;
@@ -143,9 +164,9 @@ private:
     bool m_keep_goal_nonunary_atoms;
     std::optional<Index> m_root_state_index;
     std::unordered_set<Index> m_generated_states;
-    UnorderedSet<ProjectedAtomKey> m_seen_projected_atoms;
+    std::unordered_set<ProjectedAtomKey, ProjectedAtomKeyHash> m_seen_projected_atoms;
     std::vector<ProjectedAtomKey> m_beam_layer_delta_projected_atoms;
-    UnorderedSet<ProjectedAtomKey> m_beam_layer_delta_projected_atoms_set;
+    std::unordered_set<ProjectedAtomKey, ProjectedAtomKeyHash> m_beam_layer_delta_projected_atoms_set;
     std::vector<ProjectedAtomKey> m_scratch_projected_atom_keys;
 
     void collect_projected_atom_keys(AtomIndex atom_index, std::vector<ProjectedAtomKey>& out_projected_atom_keys) const;

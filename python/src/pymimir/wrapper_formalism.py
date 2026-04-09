@@ -88,6 +88,7 @@ from pymimir.advanced.formalism import TypeList as AdvancedTypeList
 from pymimir.advanced.formalism import Variable as AdvancedVariable
 from pymimir.advanced.formalism import VariableList as AdvancedVariableList
 from pymimir.advanced.search import ConjunctiveConditionSatisficingBindingGenerator
+from pymimir.advanced.search import ProblemMultiGoalStrategy as AdvancedProblemMultiGoalStrategy
 from pymimir.advanced.search import GroundedOptions, LiftedOptions, LiftedKPKCOptions, LiftedExhaustiveOptions, SymmetryPruning, SearchContext, SearchContextOptions
 from pymimir.advanced.search import State as AdvancedState
 
@@ -2293,6 +2294,36 @@ class Problem:
         advanced_objects = AdvancedObjectList([x._advanced_object for x in objects])
         advanced_ground_action = self._advanced_problem.ground(action._advanced_action, advanced_objects)
         return GroundAction(advanced_ground_action, self)
+
+    def new_multi_goal_strategy(self, goal_conditions: 'list[GroundConjunctiveCondition]') -> 'AdvancedProblemMultiGoalStrategy':
+        """
+        Create a goal strategy that accepts any of the provided ground conjunctive conditions.
+
+        :param goal_conditions: A list of ground conjunctive conditions.
+        :type goal_conditions: list[GroundConjunctiveCondition]
+        :return: A goal strategy that succeeds when any condition holds.
+        :rtype: AdvancedProblemMultiGoalStrategy
+        """
+        assert isinstance(goal_conditions, list), "Invalid goal_conditions type."
+        assert all(isinstance(condition, GroundConjunctiveCondition) for condition in goal_conditions), "Invalid goal_conditions elements type."
+        assert all(condition.get_problem()._advanced_problem == self._advanced_problem for condition in goal_conditions), "All goal conditions must belong to this problem."
+        advanced_goal_conditions = [condition._advanced_condition for condition in goal_conditions]
+        return AdvancedProblemMultiGoalStrategy.create(self._advanced_problem, advanced_goal_conditions)
+
+
+def new_multi_goal_strategy(problem: 'Problem', goal_conditions: 'list[GroundConjunctiveCondition]') -> 'AdvancedProblemMultiGoalStrategy':
+    """
+    Create a goal strategy that accepts any of the provided ground conjunctive conditions.
+
+    :param problem: The problem instance to which the goal conditions belong.
+    :type problem: Problem
+    :param goal_conditions: A list of ground conjunctive conditions.
+    :type goal_conditions: list[GroundConjunctiveCondition]
+    :return: A goal strategy that succeeds when any condition holds.
+    :rtype: AdvancedProblemMultiGoalStrategy
+    """
+    assert isinstance(problem, Problem), "Invalid problem type."
+    return problem.new_multi_goal_strategy(goal_conditions)
 
 
 class State:
