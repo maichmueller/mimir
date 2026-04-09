@@ -731,6 +731,12 @@ void bind_module_definitions(nb::module_& m)
     nb::class_<ProblemGoalStrategyImpl, IGoalStrategy>(m, "ProblemGoalStrategy")  //
         .def_static("create", &ProblemGoalStrategyImpl::create, "problem"_a, "goal_condition"_a = std::nullopt);
 
+    nb::class_<ProblemMultiGoalStrategyImpl, IGoalStrategy>(m, "ProblemMultiGoalStrategy")  //
+        .def_static("create",
+                    static_cast<ProblemMultiGoalStrategy (*)(Problem, std::vector<GroundConjunctiveCondition>)>(&ProblemMultiGoalStrategyImpl::create),
+                    "problem"_a,
+                    "goal_conditions"_a);
+
     nb::class_<ILayerOrderingStrategy, IPyLayerOrderingStrategy>(m, "ILayerOrderingStrategy")
         .def(nb::init<>())
         .def("supports_eager_scoring", &ILayerOrderingStrategy::supports_eager_scoring)

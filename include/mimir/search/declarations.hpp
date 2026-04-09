@@ -215,6 +215,8 @@ class IGoalStrategy;
 using GoalStrategy = std::shared_ptr<IGoalStrategy>;
 class ProblemGoalStrategyImpl;
 using ProblemGoalStrategy = std::shared_ptr<ProblemGoalStrategyImpl>;
+class ProblemMultiGoalStrategyImpl;
+using ProblemMultiGoalStrategy = std::shared_ptr<ProblemMultiGoalStrategyImpl>;
 class IExplorationStrategy;
 using ExplorationStategy = std::shared_ptr<IExplorationStrategy>;
 

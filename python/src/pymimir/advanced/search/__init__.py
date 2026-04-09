@@ -52,27 +52,25 @@ from pymimir.pymimir.advanced.search import (
     DefaultSatisficingBindingGeneratorEventHandler,
     ActionSatisficingBindingGenerator,
     AxiomSatisficingBindingGenerator,
-    ConjunctiveConditionSatisficingBindingGenerator
+    ConjunctiveConditionSatisficingBindingGenerator,
 )
 
 # GoalStrategy
 from pymimir.pymimir.advanced.search import (
     IGoalStrategy,
     ProblemGoalStrategy,
-
+    ProblemMultiGoalStrategy,
     ILayerOrderingStrategy,
     InOrderLayerOrderingStrategy,
     ReverseOrderLayerOrderingStrategy,
     RandomizedLayerOrderingStrategy,
     GoalCountLayerOrderingStrategy,
-
     IPruningStrategy,
     NoPruningStrategy,
     DuplicatePruningStrategy,
     ArityZeroNoveltyPruningStrategy,
     ArityKNoveltyPruningStrategy,
     ProjectiveArityOneNoveltyPruningStrategy,
-
     IExplorationStrategy,
 )
 
@@ -133,7 +131,6 @@ from pymimir.pymimir.advanced.search import (
     DefaultIWEventHandler,
     IWOptions,
     find_solution_iw,
-
     TupleIndexMapper,
     DynamicNoveltyTable,
     StateTupleIndexGenerator,
@@ -157,7 +154,6 @@ from pymimir.pymimir.advanced.search import (
     ExhaustiveLiftedAxiomEvaluator,
     IExhaustiveLiftedApplicableActionGeneratorEventHandler,
     IExhaustiveLiftedAxiomEvaluatorEventHandler,
-
     DebugKPKCLiftedApplicableActionGeneratorEventHandler,
     DefaultKPKCLiftedApplicableActionGeneratorEventHandler,
     KPKCLiftedApplicableActionGenerator,

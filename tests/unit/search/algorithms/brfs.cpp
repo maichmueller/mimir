@@ -454,6 +454,25 @@ TEST(MimirTests, SearchAlgorithmsBrFSProblemGoalStrategyCustomGroundConjunctiveC
     EXPECT_FALSE(default_goal_strategy->test_dynamic_goal(initial_state));
 }
 
+TEST(MimirTests, SearchAlgorithmsBrFSProblemMultiGoalStrategyMatchesDisjunctionOfConditionsTest)
+{
+    auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"),
+                                    fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"));
+
+    const auto problem = brfs.get_problem();
+    const auto default_goal = problem->get_goal_condition();
+    const auto custom_goal = make_custom_ground_goal(problem);
+    const auto default_goal_strategy = ProblemGoalStrategyImpl::create(problem);
+    const auto custom_goal_strategy = ProblemGoalStrategyImpl::create(problem, std::optional<GroundConjunctiveCondition>(custom_goal));
+    const auto any_goal_strategy = ProblemMultiGoalStrategyImpl::create(problem, std::vector<GroundConjunctiveCondition> { default_goal, custom_goal });
+
+    const auto [initial_state, initial_metric_value] = brfs.get_search_context()->get_state_repository()->get_or_create_initial_state();
+    [[maybe_unused]] const auto ignored_initial_metric_value = initial_metric_value;
+
+    EXPECT_EQ(any_goal_strategy->test_static_goal(), default_goal_strategy->test_static_goal() || custom_goal_strategy->test_static_goal());
+    EXPECT_EQ(any_goal_strategy->test_dynamic_goal(initial_state), default_goal_strategy->test_dynamic_goal(initial_state) || custom_goal_strategy->test_dynamic_goal(initial_state));
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Classical planning
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
