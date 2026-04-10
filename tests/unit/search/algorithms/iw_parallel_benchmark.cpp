@@ -2,6 +2,7 @@
 #include "mimir/search/algorithms/brfs/event_handlers.hpp"
 #include "mimir/search/algorithms/iw.hpp"
 #include "mimir/search/algorithms/iw/event_handlers.hpp"
+#include "mimir/search/algorithms/iw/pruning_strategy.hpp"
 #include "mimir/search/algorithms/strategies/layer_ordering_strategy.hpp"
 #include "mimir/search/applicable_action_generators.hpp"
 #include "mimir/search/axiom_evaluators.hpp"
@@ -13,11 +14,13 @@
 #include <algorithm>
 #include <filesystem>
 #include <iostream>
+#include <map>
 #include <numeric>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <limits>
 
 using namespace mimir::formalism;
 using namespace mimir::search;
@@ -50,6 +53,23 @@ struct BenchmarkResult
     double parallel_producer_stall_time_ms;
 };
 
+enum class IW1ActionSelectionMode
+{
+    OFF,
+    ACTION_FIRST,
+    ATOM_FIRST,
+    BOTH,
+    ALL
+};
+
+enum class IW1NoveltyBasis
+{
+    CLASSICAL,
+    PROJECTIVE,
+    PROJECTIVE_TYPED,
+    BOTH
+};
+
 SearchContextImpl::Options parse_search_mode(const std::string& mode)
 {
     if (mode == "grounded")
@@ -73,6 +93,88 @@ SearchContextImpl::Options parse_search_mode(const std::string& mode)
     throw std::invalid_argument("Expected search mode to be 'grounded', 'lifted', 'lifted_symmetry_pruning', or 'lifted_exhaustive'.");
 }
 
+IW1ActionSelectionMode parse_iw1_action_selection_mode(const std::string& mode)
+{
+    if (mode == "off")
+    {
+        return IW1ActionSelectionMode::OFF;
+    }
+    if (mode == "action_first")
+    {
+        return IW1ActionSelectionMode::ACTION_FIRST;
+    }
+    if (mode == "atom_first")
+    {
+        return IW1ActionSelectionMode::ATOM_FIRST;
+    }
+    if (mode == "both")
+    {
+        return IW1ActionSelectionMode::BOTH;
+    }
+    if (mode == "all")
+    {
+        return IW1ActionSelectionMode::ALL;
+    }
+
+    throw std::invalid_argument("Expected IW1 action selection mode to be 'off', 'action_first', 'atom_first', 'both', or 'all'.");
+}
+
+const char* to_string(IW1ActionSelectionMode mode)
+{
+    switch (mode)
+    {
+        case IW1ActionSelectionMode::OFF:
+            return "off";
+        case IW1ActionSelectionMode::ACTION_FIRST:
+            return "action_first";
+        case IW1ActionSelectionMode::ATOM_FIRST:
+            return "atom_first";
+        case IW1ActionSelectionMode::BOTH:
+            return "both";
+        case IW1ActionSelectionMode::ALL:
+            return "all";
+    }
+    return "unknown";
+}
+
+IW1NoveltyBasis parse_iw1_novelty_basis(const std::string& basis)
+{
+    if (basis == "classical")
+    {
+        return IW1NoveltyBasis::CLASSICAL;
+    }
+    if (basis == "projective")
+    {
+        return IW1NoveltyBasis::PROJECTIVE;
+    }
+    if (basis == "projective_typed")
+    {
+        return IW1NoveltyBasis::PROJECTIVE_TYPED;
+    }
+    if (basis == "both")
+    {
+        return IW1NoveltyBasis::BOTH;
+    }
+
+    throw std::invalid_argument("Expected IW1 novelty basis to be 'classical', 'projective', 'projective_typed', or 'both'.");
+}
+
+const char* to_string(IW1NoveltyBasis basis)
+{
+    switch (basis)
+    {
+        case IW1NoveltyBasis::CLASSICAL:
+            return "classical";
+        case IW1NoveltyBasis::PROJECTIVE:
+            return "projective";
+        case IW1NoveltyBasis::PROJECTIVE_TYPED:
+            return "projective_typed";
+        case IW1NoveltyBasis::BOTH:
+            return "both";
+    }
+    return "unknown";
+}
+
 BenchmarkResult run_once(const std::filesystem::path& domain_file,
                          const std::filesystem::path& problem_file,
                          const SearchContextImpl::Options& search_context_options,
@@ -81,36 +183,23 @@ BenchmarkResult run_once(const std::filesystem::path& domain_file,
                          BeamNoveltyMode beam_novelty_mode,
                          bool relaxed_survivors_only_beam,
                          uint32_t num_threads,
-                         uint32_t chunk_size)
+                         uint32_t chunk_size,
+                         bool iw1_precheck_add_effect_novelty,
+                         bool iw1_atom_first_mode,
+                         double iw1_atom_first_ratio,
+                         IW1NoveltyBasis iw1_novelty_basis,
+                         bool projective_keep_depth_one_novel)
 {
     auto search_context = SearchContextImpl::create(domain_file, problem_file, search_context_options);
     const auto problem = search_context->get_problem();
     auto brfs_event_handler = brfs::DefaultEventHandlerImpl::create(problem, true);
     auto iw_event_handler = iw::DefaultEventHandlerImpl::create(problem, true);
 
-    auto options = iw::Options();
-    options.max_arity = max_arity;
-    options.beam_width = beam_width;
-    options.beam_novelty_mode = beam_novelty_mode;
-    options.relaxed_survivors_only_beam = relaxed_survivors_only_beam;
-    options.parallel_beam_num_threads = num_threads;
-    options.parallel_beam_chunk_size = chunk_size;
-    options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(problem);
-    options.brfs_event_handler = brfs_event_handler;
-    options.iw_event_handler = iw_event_handler;
-
-    const auto wall_start = std::chrono::steady_clock::now();
-    const auto result = iw::find_solution(search_context, options);
-    const auto wall_end = std::chrono::steady_clock::now();
-
-    const auto& iw_statistics = iw_event_handler->get_statistics();
+    auto status = SearchStatus::FAILED;
     size_t generated = 0;
     uint64_t parallel_chunk_flushes = 0;
     uint64_t parallel_chunk_tasks_total = 0;
     uint64_t max_parallel_chunk_size = 0;
-    double lifted_action_generation_time_ms = 0.0;
-    double lifted_dynamic_assignment_initialization_time_ms = 0.0;
-    double lifted_symmetry_setup_time_ms = 0.0;
     double parallel_worker_compute_time_ms = 0.0;
     double parallel_main_thread_merge_time_ms = 0.0;
     double parallel_main_thread_intern_time_ms = 0.0;
@@ -123,26 +212,99 @@ BenchmarkResult run_once(const std::filesystem::path& domain_file,
     uint64_t parallel_in_flight_chunks_high_water = 0;
     double parallel_consumer_stall_time_ms = 0.0;
     double parallel_producer_stall_time_ms = 0.0;
-    for (const auto& brfs_statistics : iw_statistics.get_brfs_statistics_by_arity())
+
+    const auto wall_start = std::chrono::steady_clock::now();
+    if (iw1_novelty_basis == IW1NoveltyBasis::CLASSICAL)
     {
-        generated += brfs_statistics.get_num_generated();
-        parallel_chunk_flushes += brfs_statistics.get_num_parallel_beam_chunk_flushes();
-        parallel_chunk_tasks_total += brfs_statistics.get_num_parallel_beam_chunk_tasks_total();
-        max_parallel_chunk_size = std::max(max_parallel_chunk_size, brfs_statistics.get_max_parallel_beam_chunk_size());
-        parallel_worker_compute_time_ms += brfs_statistics.get_parallel_beam_worker_compute_time_ms();
-        parallel_main_thread_merge_time_ms += brfs_statistics.get_parallel_beam_main_thread_merge_time_ms();
-        parallel_main_thread_intern_time_ms += brfs_statistics.get_parallel_beam_main_thread_intern_time_ms();
-        parallel_fluent_slot_time_ms += brfs_statistics.get_parallel_beam_fluent_slot_time_ms();
-        parallel_numeric_slot_time_ms += brfs_statistics.get_parallel_beam_numeric_slot_time_ms();
-        parallel_derived_slot_time_ms += brfs_statistics.get_parallel_beam_derived_slot_time_ms();
-        parallel_state_lookup_time_ms += brfs_statistics.get_parallel_beam_state_lookup_time_ms();
-        parallel_reached_atom_update_time_ms += brfs_statistics.get_parallel_beam_reached_atom_update_time_ms();
-        parallel_ready_queue_high_water = std::max(parallel_ready_queue_high_water, brfs_statistics.get_parallel_beam_ready_queue_high_water());
-        parallel_in_flight_chunks_high_water =
-            std::max(parallel_in_flight_chunks_high_water, brfs_statistics.get_parallel_beam_in_flight_chunks_high_water());
-        parallel_consumer_stall_time_ms += brfs_statistics.get_parallel_beam_consumer_stall_time_ms();
-        parallel_producer_stall_time_ms += brfs_statistics.get_parallel_beam_producer_stall_time_ms();
+        auto options = iw::Options();
+        options.max_arity = max_arity;
+        options.beam_width = beam_width;
+        options.beam_novelty_mode = beam_novelty_mode;
+        options.relaxed_survivors_only_beam = relaxed_survivors_only_beam;
+        options.parallel_beam_num_threads = num_threads;
+        options.parallel_beam_chunk_size = chunk_size;
+        options.iw1_precheck_add_effect_novelty = iw1_precheck_add_effect_novelty;
+        options.iw1_atom_first_mode = iw1_atom_first_mode;
+        options.iw1_atom_first_ratio = iw1_atom_first_ratio;
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(problem);
+        options.brfs_event_handler = brfs_event_handler;
+        options.iw_event_handler = iw_event_handler;
+
+        const auto result = iw::find_solution(search_context, options);
+        status = result.status;
+
+        const auto& iw_statistics = iw_event_handler->get_statistics();
+        for (const auto& per_arity_brfs_statistics : iw_statistics.get_brfs_statistics_by_arity())
+        {
+            generated += per_arity_brfs_statistics.get_num_generated();
+            parallel_chunk_flushes += per_arity_brfs_statistics.get_num_parallel_beam_chunk_flushes();
+            parallel_chunk_tasks_total += per_arity_brfs_statistics.get_num_parallel_beam_chunk_tasks_total();
+            max_parallel_chunk_size = std::max(max_parallel_chunk_size, per_arity_brfs_statistics.get_max_parallel_beam_chunk_size());
+            parallel_worker_compute_time_ms += per_arity_brfs_statistics.get_parallel_beam_worker_compute_time_ms();
+            parallel_main_thread_merge_time_ms += per_arity_brfs_statistics.get_parallel_beam_main_thread_merge_time_ms();
+            parallel_main_thread_intern_time_ms += per_arity_brfs_statistics.get_parallel_beam_main_thread_intern_time_ms();
+            parallel_fluent_slot_time_ms += per_arity_brfs_statistics.get_parallel_beam_fluent_slot_time_ms();
+            parallel_numeric_slot_time_ms += per_arity_brfs_statistics.get_parallel_beam_numeric_slot_time_ms();
+            parallel_derived_slot_time_ms += per_arity_brfs_statistics.get_parallel_beam_derived_slot_time_ms();
+            parallel_state_lookup_time_ms += per_arity_brfs_statistics.get_parallel_beam_state_lookup_time_ms();
+            parallel_reached_atom_update_time_ms += per_arity_brfs_statistics.get_parallel_beam_reached_atom_update_time_ms();
+            parallel_ready_queue_high_water = std::max(parallel_ready_queue_high_water, per_arity_brfs_statistics.get_parallel_beam_ready_queue_high_water());
+            parallel_in_flight_chunks_high_water =
+                std::max(parallel_in_flight_chunks_high_water, per_arity_brfs_statistics.get_parallel_beam_in_flight_chunks_high_water());
+            parallel_consumer_stall_time_ms += per_arity_brfs_statistics.get_parallel_beam_consumer_stall_time_ms();
+            parallel_producer_stall_time_ms += per_arity_brfs_statistics.get_parallel_beam_producer_stall_time_ms();
+        }
     }
+    else
+    {
+        if (max_arity != 1)
+        {
+            throw std::invalid_argument("Projective IW1 benchmark requires max_arity=1.");
+        }
+
+        const auto typed_projection = (iw1_novelty_basis == IW1NoveltyBasis::PROJECTIVE_TYPED);
+        auto options = brfs::Options();
+        options.event_handler = brfs_event_handler;
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(problem);
+        options.pruning_strategy =
+            iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem, typed_projection, projective_keep_depth_one_novel, false);
+        options.max_next_layer_states = std::numeric_limits<uint32_t>::max();
+        options.beam_width = static_cast<uint32_t>(beam_width);
+        options.beam_novelty_mode = beam_novelty_mode;
+        options.relaxed_survivors_only_beam = relaxed_survivors_only_beam;
+        options.parallel_beam_num_threads = num_threads;
+        options.parallel_beam_chunk_size = chunk_size;
+        options.iw1_precheck_add_effect_novelty = iw1_precheck_add_effect_novelty;
+        options.iw1_atom_first_mode = iw1_atom_first_mode;
+        options.iw1_atom_first_ratio = iw1_atom_first_ratio;
+
+        const auto result = brfs::find_solution(search_context, options);
+        status = result.status;
+
+        const auto& brfs_statistics = brfs_event_handler->get_statistics();
+        generated = brfs_statistics.get_num_generated();
+        parallel_chunk_flushes = brfs_statistics.get_num_parallel_beam_chunk_flushes();
+        parallel_chunk_tasks_total = brfs_statistics.get_num_parallel_beam_chunk_tasks_total();
+        max_parallel_chunk_size = brfs_statistics.get_max_parallel_beam_chunk_size();
+        parallel_worker_compute_time_ms = brfs_statistics.get_parallel_beam_worker_compute_time_ms();
+        parallel_main_thread_merge_time_ms = brfs_statistics.get_parallel_beam_main_thread_merge_time_ms();
+        parallel_main_thread_intern_time_ms = brfs_statistics.get_parallel_beam_main_thread_intern_time_ms();
+        parallel_fluent_slot_time_ms = brfs_statistics.get_parallel_beam_fluent_slot_time_ms();
+        parallel_numeric_slot_time_ms = brfs_statistics.get_parallel_beam_numeric_slot_time_ms();
+        parallel_derived_slot_time_ms = brfs_statistics.get_parallel_beam_derived_slot_time_ms();
+        parallel_state_lookup_time_ms = brfs_statistics.get_parallel_beam_state_lookup_time_ms();
+        parallel_reached_atom_update_time_ms = brfs_statistics.get_parallel_beam_reached_atom_update_time_ms();
+        parallel_ready_queue_high_water = brfs_statistics.get_parallel_beam_ready_queue_high_water();
+        parallel_in_flight_chunks_high_water = brfs_statistics.get_parallel_beam_in_flight_chunks_high_water();
+        parallel_consumer_stall_time_ms = brfs_statistics.get_parallel_beam_consumer_stall_time_ms();
+        parallel_producer_stall_time_ms = brfs_statistics.get_parallel_beam_producer_stall_time_ms();
+    }
+
+    const auto wall_end = std::chrono::steady_clock::now();
+
+    double lifted_action_generation_time_ms = 0.0;
+    double lifted_dynamic_assignment_initialization_time_ms = 0.0;
+    double lifted_symmetry_setup_time_ms = 0.0;
 
     if (const auto lifted_generator = std::dynamic_pointer_cast<KPKCLiftedApplicableActionGeneratorImpl>(search_context->get_applicable_action_generator()))
     {
@@ -154,7 +316,7 @@ BenchmarkResult run_once(const std::filesystem::path& domain_file,
     }
 
     return BenchmarkResult {
-        result.status,
+        status,
         generated,
         std::chrono::duration<double, std::milli>(wall_end - wall_start).count(),
         lifted_action_generation_time_ms,
@@ -193,6 +355,24 @@ BeamNoveltyMode parse_beam_novelty_mode(const std::string& mode)
     throw std::invalid_argument("Expected beam novelty mode to be 'all_tested' or 'survivors_only'.");
 }
 
+bool is_beam_novelty_mode_token(const std::string& token)
+{
+    return token == "all_tested" || token == "survivors_only";
+}
+
+bool parse_bool_token(const std::string& token)
+{
+    if (token == "true" || token == "1" || token == "on" || token == "yes")
+    {
+        return true;
+    }
+    if (token == "false" || token == "0" || token == "off" || token == "no")
+    {
+        return false;
+    }
+    throw std::invalid_argument("Expected boolean token: true|false|1|0|on|off|yes|no.");
+}
+
 const char* to_string(SearchStatus status)
 {
     switch (status)
@@ -221,28 +401,64 @@ const char* to_string(SearchStatus status)
 
 int main(int argc, char** argv)
 {
-    if (argc < 8)
+    if (argc < 7)
     {
         std::cerr << "Usage: " << argv[0]
-                  << " <domain.pddl> <problem.pddl> <max_arity> <beam_width> <reps> <all_tested|survivors_only> <threads...> [--mode <grounded|lifted|lifted_symmetry_pruning|lifted_exhaustive>] [--chunk-sizes <sizes...>] [--relaxed-survivors-only-beam]\n";
+                  << " <domain.pddl> <problem.pddl> <max_arity> <reps> <all_tested|survivors_only> <threads...> [--beam-width <n>] [--mode <grounded|lifted|lifted_symmetry_pruning|lifted_exhaustive>] [--chunk-sizes <sizes...>] [--relaxed-survivors-only-beam] [--iw1-action-selection <off|action_first|atom_first|both|all>] [--iw1-basis <classical|projective|projective_typed|both>] [--iw1-atom-first-ratio <positive_float>] [--projective-keep-depth-one-novel <true|false>]\n"
+                  << "Legacy usage is still accepted: <...> <max_arity> <beam_width> <reps> <all_tested|survivors_only> <threads...>\n";
         return 1;
     }
 
     const auto domain_file = std::filesystem::path(argv[1]);
     const auto problem_file = std::filesystem::path(argv[2]);
     const auto max_arity = static_cast<size_t>(std::stoul(argv[3]));
-    const auto beam_width = static_cast<size_t>(std::stoul(argv[4]));
-    const auto reps = static_cast<size_t>(std::stoul(argv[5]));
-    const auto beam_novelty_mode = parse_beam_novelty_mode(argv[6]);
+
+    auto beam_width = static_cast<size_t>(std::numeric_limits<uint32_t>::max());
+    auto reps = size_t(0);
+    auto beam_novelty_mode = BeamNoveltyMode::ALL_TESTED;
+    auto positional_start_index = 0;
+
+    // New format (beam optional): <...> <max_arity> <reps> <mode> <threads...>
+    // Legacy format:             <...> <max_arity> <beam_width> <reps> <mode> <threads...>
+    if ((argc >= 8) && is_beam_novelty_mode_token(argv[6]))
+    {
+        beam_width = static_cast<size_t>(std::stoul(argv[4]));
+        reps = static_cast<size_t>(std::stoul(argv[5]));
+        beam_novelty_mode = parse_beam_novelty_mode(argv[6]);
+        positional_start_index = 7;
+    }
+    else if ((argc >= 7) && is_beam_novelty_mode_token(argv[5]))
+    {
+        reps = static_cast<size_t>(std::stoul(argv[4]));
+        beam_novelty_mode = parse_beam_novelty_mode(argv[5]);
+        positional_start_index = 6;
+    }
+    else
+    {
+        throw std::invalid_argument("Could not parse positional arguments. Expected mode token 'all_tested' or 'survivors_only'.");
+    }
 
     std::vector<uint32_t> thread_counts;
     std::vector<uint32_t> chunk_sizes;
     auto relaxed_survivors_only_beam = false;
+    auto iw1_action_selection_mode = IW1ActionSelectionMode::OFF;
+    auto iw1_novelty_basis = IW1NoveltyBasis::CLASSICAL;
+    auto iw1_atom_first_ratio = 1.0;
+    auto projective_keep_depth_one_novel = true;
     auto search_context_options = SearchContextImpl::Options(SearchContextImpl::GroundedOptions());
     auto parsing_chunk_sizes = false;
-    for (int i = 7; i < argc; ++i)
+    for (int i = positional_start_index; i < argc; ++i)
     {
         const auto argument = std::string(argv[i]);
+        if (argument == "--beam-width")
+        {
+            if ((i + 1) >= argc)
+            {
+                throw std::invalid_argument("Expected a beam width after --beam-width.");
+            }
+            beam_width = static_cast<size_t>(std::stoul(argv[++i]));
+            continue;
+        }
         if (argument == "--mode")
         {
             if ((i + 1) >= argc)
@@ -262,6 +478,42 @@ int main(int argc, char** argv)
             relaxed_survivors_only_beam = true;
             continue;
         }
+        if (argument == "--iw1-action-selection")
+        {
+            if ((i + 1) >= argc)
+            {
+                throw std::invalid_argument("Expected IW1 action selection mode after --iw1-action-selection.");
+            }
+            iw1_action_selection_mode = parse_iw1_action_selection_mode(argv[++i]);
+            continue;
+        }
+        if (argument == "--iw1-basis")
+        {
+            if ((i + 1) >= argc)
+            {
+                throw std::invalid_argument("Expected IW1 novelty basis after --iw1-basis.");
+            }
+            iw1_novelty_basis = parse_iw1_novelty_basis(argv[++i]);
+            continue;
+        }
+        if (argument == "--iw1-atom-first-ratio")
+        {
+            if ((i + 1) >= argc)
+            {
+                throw std::invalid_argument("Expected a positive ratio after --iw1-atom-first-ratio.");
+            }
+            iw1_atom_first_ratio = std::stod(argv[++i]);
+            continue;
+        }
+        if (argument == "--projective-keep-depth-one-novel")
+        {
+            if ((i + 1) >= argc)
+            {
+                throw std::invalid_argument("Expected boolean value after --projective-keep-depth-one-novel.");
+            }
+            projective_keep_depth_one_novel = parse_bool_token(argv[++i]);
+            continue;
+        }
         if (parsing_chunk_sizes)
         {
             chunk_sizes.push_back(static_cast<uint32_t>(std::stoul(argument)));
@@ -270,6 +522,15 @@ int main(int argc, char** argv)
         {
             thread_counts.push_back(static_cast<uint32_t>(std::stoul(argument)));
         }
+    }
+
+    if (beam_width == 0)
+    {
+        beam_width = static_cast<size_t>(std::numeric_limits<uint32_t>::max());
+    }
+    if (beam_width > static_cast<size_t>(std::numeric_limits<uint32_t>::max()))
+    {
+        throw std::invalid_argument("Beam width must fit into uint32.");
     }
 
     if (thread_counts.empty())
@@ -286,6 +547,59 @@ int main(int argc, char** argv)
     {
         throw std::invalid_argument("--relaxed-survivors-only-beam requires beam novelty mode 'survivors_only'.");
     }
+    if (iw1_atom_first_ratio <= 0.0)
+    {
+        throw std::invalid_argument("--iw1-atom-first-ratio must be positive.");
+    }
+
+    struct IW1Variant
+    {
+        const char* label;
+        bool iw1_precheck_add_effect_novelty;
+        bool iw1_atom_first_mode;
+    };
+
+    auto iw1_variants = std::vector<IW1Variant> {};
+    switch (iw1_action_selection_mode)
+    {
+        case IW1ActionSelectionMode::OFF:
+            iw1_variants.push_back({ "off", false, false });
+            break;
+        case IW1ActionSelectionMode::ACTION_FIRST:
+            iw1_variants.push_back({ "action_first", true, false });
+            break;
+        case IW1ActionSelectionMode::ATOM_FIRST:
+            iw1_variants.push_back({ "atom_first", true, true });
+            break;
+        case IW1ActionSelectionMode::BOTH:
+            iw1_variants.push_back({ "action_first", true, false });
+            iw1_variants.push_back({ "atom_first", true, true });
+            break;
+        case IW1ActionSelectionMode::ALL:
+            iw1_variants.push_back({ "off", false, false });
+            iw1_variants.push_back({ "action_first", true, false });
+            iw1_variants.push_back({ "atom_first", true, true });
+            break;
+    }
+
+    auto iw1_bases = std::vector<IW1NoveltyBasis> {};
+    switch (iw1_novelty_basis)
+    {
+        case IW1NoveltyBasis::CLASSICAL:
+            iw1_bases.push_back(IW1NoveltyBasis::CLASSICAL);
+            break;
+        case IW1NoveltyBasis::PROJECTIVE:
+            iw1_bases.push_back(IW1NoveltyBasis::PROJECTIVE);
+            break;
+        case IW1NoveltyBasis::PROJECTIVE_TYPED:
+            iw1_bases.push_back(IW1NoveltyBasis::PROJECTIVE_TYPED);
+            break;
+        case IW1NoveltyBasis::BOTH:
+            iw1_bases.push_back(IW1NoveltyBasis::CLASSICAL);
+            iw1_bases.push_back(IW1NoveltyBasis::PROJECTIVE);
+            break;
+    }
+
     const auto mode_name = [&]() -> std::string
     {
         return std::visit(
@@ -321,148 +635,226 @@ int main(int argc, char** argv)
             search_context_options.mode);
     }();
 
-    std::cout << "search_mode=" << mode_name << " domain=" << domain_file << " problem=" << problem_file << " max_arity=" << max_arity
-              << " beam_width=" << beam_width << " mode=" << argv[6] << " reps=" << reps
-              << " relaxed_survivors_only_beam=" << (relaxed_survivors_only_beam ? "true" : "false") << '\n';
+    const auto beam_is_off = (beam_width == static_cast<size_t>(std::numeric_limits<uint32_t>::max()));
+    std::cout << "=== Benchmark Configuration ===\n";
+    std::cout << "search_mode: " << mode_name << '\n';
+    std::cout << "domain:      " << domain_file << '\n';
+    std::cout << "problem:     " << problem_file << '\n';
+    std::cout << "max_arity:   " << max_arity << '\n';
+    std::cout << "beam:        " << (beam_is_off ? "off" : std::to_string(beam_width)) << '\n';
+    std::cout << "beam_mode:   " << (beam_novelty_mode == BeamNoveltyMode::ALL_TESTED ? "all_tested" : "survivors_only") << '\n';
+    std::cout << "reps:        " << reps << '\n';
+    std::cout << "relaxed_survivors_only_beam: " << (relaxed_survivors_only_beam ? "true" : "false") << '\n';
+    std::cout << "iw1_basis:   " << to_string(iw1_novelty_basis) << '\n';
+    std::cout << "iw1_action_selection: " << to_string(iw1_action_selection_mode) << '\n';
+    std::cout << "iw1_atom_first_ratio: " << iw1_atom_first_ratio << "\n";
+    std::cout << "projective_keep_depth_one_novel: " << (projective_keep_depth_one_novel ? "true" : "false") << "\n";
 
-    for (const auto chunk_size : chunk_sizes)
+    for (const auto basis : iw1_bases)
     {
-        std::cout << "chunk_size=" << chunk_size << '\n';
-        std::optional<double> serial_median_ms;
-        const auto need_explicit_serial_reference =
-            relaxed_survivors_only_beam || std::none_of(thread_counts.begin(), thread_counts.end(), [](const auto count) { return count <= 1; });
-        if (need_explicit_serial_reference)
-        {
-            auto serial_wall_times_ms = std::vector<double> {};
-            serial_wall_times_ms.reserve(reps);
-            for (size_t rep = 0; rep < reps; ++rep)
-            {
-                const auto serial_result = run_once(domain_file,
-                                                    problem_file,
-                                                    search_context_options,
-                                                    max_arity,
-                                                    beam_width,
-                                                    beam_novelty_mode,
-                                                    false,
-                                                    1,
-                                                    chunk_size);
-                serial_wall_times_ms.push_back(serial_result.wall_time_ms);
-            }
+        auto action_first_medians_ms = std::map<std::pair<uint32_t, uint32_t>, double> {};
+        auto action_first_generated = std::map<std::pair<uint32_t, uint32_t>, size_t> {};
+        auto action_first_status = std::map<std::pair<uint32_t, uint32_t>, SearchStatus> {};
+        std::cout << "\n=== IW1 Basis: " << to_string(basis) << " ===\n";
 
-            std::sort(serial_wall_times_ms.begin(), serial_wall_times_ms.end());
-            serial_median_ms = serial_wall_times_ms[serial_wall_times_ms.size() / 2];
-            std::cout << "serial_reference_ms=" << serial_median_ms.value() << '\n';
-        }
-
-        for (const auto num_threads : thread_counts)
+        for (const auto& iw1_variant : iw1_variants)
         {
-            if (relaxed_survivors_only_beam && num_threads <= 1)
+            std::cout << "\n  Variant: " << iw1_variant.label << '\n';
+            std::cout << "    iw1_precheck_add_effect_novelty: " << (iw1_variant.iw1_precheck_add_effect_novelty ? "true" : "false") << '\n';
+            std::cout << "    iw1_atom_first_mode: " << (iw1_variant.iw1_atom_first_mode ? "true" : "false") << '\n';
+
+            for (const auto chunk_size : chunk_sizes)
             {
-                std::cout << "threads=" << num_threads << " skipped=true reason=relaxed_survivors_only_beam_requires_parallel_threads";
+                std::cout << "    chunk_size: " << chunk_size << '\n';
+                std::optional<double> serial_median_ms;
+                const auto need_explicit_serial_reference =
+                    relaxed_survivors_only_beam || std::none_of(thread_counts.begin(), thread_counts.end(), [](const auto count) { return count <= 1; });
+                if (need_explicit_serial_reference)
+                {
+                    auto serial_wall_times_ms = std::vector<double> {};
+                    serial_wall_times_ms.reserve(reps);
+                    for (size_t rep = 0; rep < reps; ++rep)
+                    {
+                        const auto serial_result = run_once(domain_file,
+                                                            problem_file,
+                                                            search_context_options,
+                                                            max_arity,
+                                                            beam_width,
+                                                            beam_novelty_mode,
+                                                            false,
+                                                            1,
+                                                            chunk_size,
+                                                            iw1_variant.iw1_precheck_add_effect_novelty,
+                                                            iw1_variant.iw1_atom_first_mode,
+                                                            iw1_atom_first_ratio,
+                                                            basis,
+                                                            projective_keep_depth_one_novel);
+                        serial_wall_times_ms.push_back(serial_result.wall_time_ms);
+                    }
+
+                    std::sort(serial_wall_times_ms.begin(), serial_wall_times_ms.end());
+                    serial_median_ms = serial_wall_times_ms[serial_wall_times_ms.size() / 2];
+                    std::cout << "      serial_reference_ms: " << serial_median_ms.value() << '\n';
+                }
+
+                for (const auto num_threads : thread_counts)
+                {
+                    if (relaxed_survivors_only_beam && num_threads <= 1)
+                    {
+                        std::cout << "      threads: " << num_threads << " (skipped: relaxed_survivors_only_beam requires parallel threads)";
+                        if (serial_median_ms.has_value())
+                        {
+                            std::cout << " serial_reference_ms=" << serial_median_ms.value();
+                        }
+                        std::cout << '\n';
+                        continue;
+                    }
+
+                    auto wall_times_ms = std::vector<double> {};
+                    wall_times_ms.reserve(reps);
+
+                auto status = SearchStatus::FAILED;
+                size_t generated = 0;
+                uint64_t parallel_chunk_flushes = 0;
+                uint64_t parallel_chunk_tasks_total = 0;
+                uint64_t max_parallel_chunk_size = 0;
+                double lifted_action_generation_time_ms = 0.0;
+                double lifted_dynamic_assignment_initialization_time_ms = 0.0;
+                double lifted_symmetry_setup_time_ms = 0.0;
+                double average_parallel_chunk_size = 0.0;
+                double parallel_worker_compute_time_ms = 0.0;
+                double parallel_main_thread_merge_time_ms = 0.0;
+                double parallel_main_thread_intern_time_ms = 0.0;
+                double parallel_fluent_slot_time_ms = 0.0;
+                double parallel_numeric_slot_time_ms = 0.0;
+                double parallel_derived_slot_time_ms = 0.0;
+                double parallel_state_lookup_time_ms = 0.0;
+                double parallel_reached_atom_update_time_ms = 0.0;
+                uint64_t parallel_ready_queue_high_water = 0;
+                uint64_t parallel_in_flight_chunks_high_water = 0;
+                double parallel_consumer_stall_time_ms = 0.0;
+                double parallel_producer_stall_time_ms = 0.0;
+
+                for (size_t rep = 0; rep < reps; ++rep)
+                {
+                    const auto result = run_once(domain_file,
+                                                 problem_file,
+                                                 search_context_options,
+                                                 max_arity,
+                                                 beam_width,
+                                                 beam_novelty_mode,
+                                                 relaxed_survivors_only_beam,
+                                                 num_threads,
+                                                 chunk_size,
+                                                 iw1_variant.iw1_precheck_add_effect_novelty,
+                                                 iw1_variant.iw1_atom_first_mode,
+                                                 iw1_atom_first_ratio,
+                                                 basis,
+                                                 projective_keep_depth_one_novel);
+                    status = result.status;
+                    generated = result.generated;
+                    parallel_chunk_flushes = result.parallel_chunk_flushes;
+                    parallel_chunk_tasks_total = result.parallel_chunk_tasks_total;
+                    max_parallel_chunk_size = result.max_parallel_chunk_size;
+                    lifted_action_generation_time_ms = result.lifted_action_generation_time_ms;
+                    lifted_dynamic_assignment_initialization_time_ms = result.lifted_dynamic_assignment_initialization_time_ms;
+                    lifted_symmetry_setup_time_ms = result.lifted_symmetry_setup_time_ms;
+                    average_parallel_chunk_size = result.average_parallel_chunk_size;
+                    parallel_worker_compute_time_ms = result.parallel_worker_compute_time_ms;
+                    parallel_main_thread_merge_time_ms = result.parallel_main_thread_merge_time_ms;
+                    parallel_main_thread_intern_time_ms = result.parallel_main_thread_intern_time_ms;
+                    parallel_fluent_slot_time_ms = result.parallel_fluent_slot_time_ms;
+                    parallel_numeric_slot_time_ms = result.parallel_numeric_slot_time_ms;
+                    parallel_derived_slot_time_ms = result.parallel_derived_slot_time_ms;
+                    parallel_state_lookup_time_ms = result.parallel_state_lookup_time_ms;
+                    parallel_reached_atom_update_time_ms = result.parallel_reached_atom_update_time_ms;
+                    parallel_ready_queue_high_water = result.parallel_ready_queue_high_water;
+                    parallel_in_flight_chunks_high_water = result.parallel_in_flight_chunks_high_water;
+                    parallel_consumer_stall_time_ms = result.parallel_consumer_stall_time_ms;
+                    parallel_producer_stall_time_ms = result.parallel_producer_stall_time_ms;
+                    wall_times_ms.push_back(result.wall_time_ms);
+                }
+
+                std::sort(wall_times_ms.begin(), wall_times_ms.end());
+                const auto median_ms = wall_times_ms[wall_times_ms.size() / 2];
+                const auto mean_ms = std::accumulate(wall_times_ms.begin(), wall_times_ms.end(), 0.0) / static_cast<double>(wall_times_ms.size());
+                const auto min_ms = wall_times_ms.front();
+                const auto max_ms = wall_times_ms.back();
+
+                if (num_threads <= 1)
+                {
+                    serial_median_ms = median_ms;
+                }
+
+                std::cout << "      threads: " << num_threads << '\n';
+                std::cout << "        status: " << to_string(status) << '\n';
+                std::cout << "        generated: " << generated << '\n';
+                std::cout << "        wall_ms: median=" << median_ms << " mean=" << mean_ms << " min=" << min_ms << " max=" << max_ms << '\n';
+                std::cout << "        chunking: flushes=" << parallel_chunk_flushes
+                          << " avg_chunk_size=" << average_parallel_chunk_size
+                          << " max_chunk_size=" << max_parallel_chunk_size
+                          << " chunk_tasks_total=" << parallel_chunk_tasks_total << '\n';
+                std::cout << "        lifted_ms: action_gen=" << lifted_action_generation_time_ms
+                          << " dynamic_assign=" << lifted_dynamic_assignment_initialization_time_ms
+                          << " symmetry_setup=" << lifted_symmetry_setup_time_ms << '\n';
+                std::cout << "        parallel_ms: worker_compute=" << parallel_worker_compute_time_ms
+                          << " main_merge=" << parallel_main_thread_merge_time_ms
+                          << " main_intern=" << parallel_main_thread_intern_time_ms
+                          << " fluent_slot=" << parallel_fluent_slot_time_ms
+                          << " numeric_slot=" << parallel_numeric_slot_time_ms
+                          << " derived_slot=" << parallel_derived_slot_time_ms
+                          << " state_lookup=" << parallel_state_lookup_time_ms
+                          << " reached_atoms=" << parallel_reached_atom_update_time_ms
+                          << " consumer_stall=" << parallel_consumer_stall_time_ms
+                          << " producer_stall=" << parallel_producer_stall_time_ms << '\n';
+                std::cout << "        parallel_hwm: ready_queue=" << parallel_ready_queue_high_water
+                          << " in_flight=" << parallel_in_flight_chunks_high_water << '\n';
                 if (serial_median_ms.has_value())
                 {
-                    std::cout << " serial_reference_ms=" << serial_median_ms.value();
+                    std::cout << "        speedup_vs_serial: " << (serial_median_ms.value() / median_ms) << '\n';
                 }
-                std::cout << '\n';
-                continue;
+
+                if (iw1_action_selection_mode == IW1ActionSelectionMode::BOTH || iw1_action_selection_mode == IW1ActionSelectionMode::ALL)
+                {
+                    const auto key = std::make_pair(chunk_size, num_threads);
+                    if (std::string(iw1_variant.label) == "action_first")
+                    {
+                        action_first_medians_ms[key] = median_ms;
+                        action_first_generated[key] = generated;
+                        action_first_status[key] = status;
+                    }
+                    else if (std::string(iw1_variant.label) == "atom_first")
+                    {
+                        const auto median_it = action_first_medians_ms.find(key);
+                        if (median_it != action_first_medians_ms.end())
+                        {
+                            const auto action_first_median_ms = median_it->second;
+                            const auto atom_first_speedup_vs_action_first = action_first_median_ms / median_ms;
+                            std::cout << "      comparison (atom_first vs action_first): chunk_size=" << chunk_size
+                                      << " threads=" << num_threads
+                                      << " action_first_median_ms=" << action_first_median_ms
+                                      << " atom_first_median_ms=" << median_ms
+                                      << " atom_first_speedup_vs_action_first=" << atom_first_speedup_vs_action_first;
+                            const auto generated_it = action_first_generated.find(key);
+                            if ((generated_it != action_first_generated.end()) && (generated_it->second != generated))
+                            {
+                                std::cout << " generated_mismatch=true action_first_generated=" << generated_it->second
+                                          << " atom_first_generated=" << generated;
+                            }
+                            const auto status_it = action_first_status.find(key);
+                            if ((status_it != action_first_status.end()) && (status_it->second != status))
+                            {
+                                std::cout << " status_mismatch=true action_first_status=" << to_string(status_it->second)
+                                          << " atom_first_status=" << to_string(status);
+                            }
+                            std::cout << '\n';
+                        }
+                    }
+                }
             }
-
-            auto wall_times_ms = std::vector<double> {};
-            wall_times_ms.reserve(reps);
-
-            auto status = SearchStatus::FAILED;
-            size_t generated = 0;
-            uint64_t parallel_chunk_flushes = 0;
-            uint64_t parallel_chunk_tasks_total = 0;
-            uint64_t max_parallel_chunk_size = 0;
-            double lifted_action_generation_time_ms = 0.0;
-            double lifted_dynamic_assignment_initialization_time_ms = 0.0;
-            double lifted_symmetry_setup_time_ms = 0.0;
-            double average_parallel_chunk_size = 0.0;
-            double parallel_worker_compute_time_ms = 0.0;
-            double parallel_main_thread_merge_time_ms = 0.0;
-            double parallel_main_thread_intern_time_ms = 0.0;
-            double parallel_fluent_slot_time_ms = 0.0;
-            double parallel_numeric_slot_time_ms = 0.0;
-            double parallel_derived_slot_time_ms = 0.0;
-            double parallel_state_lookup_time_ms = 0.0;
-            double parallel_reached_atom_update_time_ms = 0.0;
-            uint64_t parallel_ready_queue_high_water = 0;
-            uint64_t parallel_in_flight_chunks_high_water = 0;
-            double parallel_consumer_stall_time_ms = 0.0;
-            double parallel_producer_stall_time_ms = 0.0;
-
-            for (size_t rep = 0; rep < reps; ++rep)
-            {
-                const auto result = run_once(domain_file,
-                                             problem_file,
-                                             search_context_options,
-                                             max_arity,
-                                             beam_width,
-                                             beam_novelty_mode,
-                                             relaxed_survivors_only_beam,
-                                             num_threads,
-                                             chunk_size);
-                status = result.status;
-                generated = result.generated;
-                parallel_chunk_flushes = result.parallel_chunk_flushes;
-                parallel_chunk_tasks_total = result.parallel_chunk_tasks_total;
-                max_parallel_chunk_size = result.max_parallel_chunk_size;
-                lifted_action_generation_time_ms = result.lifted_action_generation_time_ms;
-                lifted_dynamic_assignment_initialization_time_ms = result.lifted_dynamic_assignment_initialization_time_ms;
-                lifted_symmetry_setup_time_ms = result.lifted_symmetry_setup_time_ms;
-                average_parallel_chunk_size = result.average_parallel_chunk_size;
-                parallel_worker_compute_time_ms = result.parallel_worker_compute_time_ms;
-                parallel_main_thread_merge_time_ms = result.parallel_main_thread_merge_time_ms;
-                parallel_main_thread_intern_time_ms = result.parallel_main_thread_intern_time_ms;
-                parallel_fluent_slot_time_ms = result.parallel_fluent_slot_time_ms;
-                parallel_numeric_slot_time_ms = result.parallel_numeric_slot_time_ms;
-                parallel_derived_slot_time_ms = result.parallel_derived_slot_time_ms;
-                parallel_state_lookup_time_ms = result.parallel_state_lookup_time_ms;
-                parallel_reached_atom_update_time_ms = result.parallel_reached_atom_update_time_ms;
-                parallel_ready_queue_high_water = result.parallel_ready_queue_high_water;
-                parallel_in_flight_chunks_high_water = result.parallel_in_flight_chunks_high_water;
-                parallel_consumer_stall_time_ms = result.parallel_consumer_stall_time_ms;
-                parallel_producer_stall_time_ms = result.parallel_producer_stall_time_ms;
-                wall_times_ms.push_back(result.wall_time_ms);
-            }
-
-            std::sort(wall_times_ms.begin(), wall_times_ms.end());
-            const auto median_ms = wall_times_ms[wall_times_ms.size() / 2];
-            const auto mean_ms = std::accumulate(wall_times_ms.begin(), wall_times_ms.end(), 0.0) / static_cast<double>(wall_times_ms.size());
-            const auto min_ms = wall_times_ms.front();
-            const auto max_ms = wall_times_ms.back();
-
-            if (num_threads <= 1)
-            {
-                serial_median_ms = median_ms;
-            }
-
-            std::cout << "threads=" << num_threads << " median_wall_ms=" << median_ms << " mean_wall_ms=" << mean_ms
-                      << " min_ms=" << min_ms << " max_ms=" << max_ms << " generated=" << generated << " status=" << to_string(status)
-                      << " chunk_flushes=" << parallel_chunk_flushes << " avg_chunk_size=" << average_parallel_chunk_size
-                      << " max_chunk_size=" << max_parallel_chunk_size << " chunk_tasks_total=" << parallel_chunk_tasks_total
-                      << " lifted_action_gen_ms=" << lifted_action_generation_time_ms
-                      << " lifted_dynamic_assign_ms=" << lifted_dynamic_assignment_initialization_time_ms
-                      << " lifted_symmetry_setup_ms=" << lifted_symmetry_setup_time_ms
-                      << " worker_compute_ms=" << parallel_worker_compute_time_ms
-                      << " main_merge_ms=" << parallel_main_thread_merge_time_ms
-                      << " main_intern_ms=" << parallel_main_thread_intern_time_ms
-                      << " fluent_slot_ms=" << parallel_fluent_slot_time_ms
-                      << " numeric_slot_ms=" << parallel_numeric_slot_time_ms
-                      << " derived_slot_ms=" << parallel_derived_slot_time_ms
-                      << " state_lookup_ms=" << parallel_state_lookup_time_ms
-                      << " reached_atoms_ms=" << parallel_reached_atom_update_time_ms
-                      << " ready_queue_hwm=" << parallel_ready_queue_high_water
-                      << " in_flight_hwm=" << parallel_in_flight_chunks_high_water
-                      << " consumer_stall_ms=" << parallel_consumer_stall_time_ms
-                      << " producer_stall_ms=" << parallel_producer_stall_time_ms;
-            if (serial_median_ms.has_value())
-            {
-                std::cout << " speedup_vs_serial=" << (serial_median_ms.value() / median_ms);
-            }
-            std::cout << '\n';
         }
+    }
+
     }
 
     return 0;
