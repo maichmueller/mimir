@@ -357,6 +357,31 @@ std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_successor_st
     return { successor_state, successor_state_metric_value };
 }
 
+void StateRepositoryImpl::collect_action_add_effect_fluent_atom_indices(const State& state,
+                                                                        GroundAction action,
+                                                                        iw::AtomIndexList& out_add_fluent_atom_indices)
+{
+    m_applied_positive_effect_atoms.unset_all();
+    const auto& unpacked_state = state.get_unpacked_state();
+    for (const auto& conditional_effect : action->get_conditional_effects())
+    {
+        if (is_applicable(conditional_effect, unpacked_state))
+        {
+            insert_into_bitset(conditional_effect->get_conjunctive_effect()->get_propositional_effects<PositiveTag>(), m_applied_positive_effect_atoms);
+        }
+    }
+
+    out_add_fluent_atom_indices.clear();
+    const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
+    for (const auto atom_index : m_applied_positive_effect_atoms)
+    {
+        if (!state_fluent_atoms.get(atom_index))
+        {
+            out_add_fluent_atom_indices.push_back(atom_index);
+        }
+    }
+}
+
 StateRepositoryImpl::StagedSuccessorState
 StateRepositoryImpl::compute_staged_successor_state(const State& state,
                                                     GroundAction action,

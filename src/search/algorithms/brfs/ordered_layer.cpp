@@ -58,6 +58,7 @@ SearchResult find_solution_with_ordered_layer(const SearchContext& context,
     const auto use_next_layer_limit = (max_next_layer_states < std::numeric_limits<uint32_t>::max());
     const auto max_depth = options.max_depth;
     const auto use_max_depth = (max_depth < std::numeric_limits<uint32_t>::max());
+    auto iw1_action_precheck = IW1ActionPrecheckController(options, pruning_strategy, context->get_problem(), start_state);
 
     struct ScoredState
     {
@@ -126,53 +127,114 @@ SearchResult find_solution_with_ordered_layer(const SearchContext& context,
                 continue;
             }
 
-            for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
+            if (iw1_action_precheck.is_enabled())
             {
-                const auto [successor_state, successor_state_metric_value] =
-                    state_repository.get_or_create_successor_state(state, action, search_node.g_value);
-                auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
-                auto action_cost = successor_state_metric_value - search_node.g_value;
-
-                event_handler->on_generate_state(state, action, action_cost, successor_state);
-                if (pruning_strategy->test_prune_successor_state(state, successor_state, (successor_search_node.status == SearchNodeStatus::NEW)))
+                auto applicable_actions = std::vector<GroundAction> {};
+                for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
                 {
-                    event_handler->on_generate_state_not_in_search_tree(state, action, action_cost, successor_state);
-                    continue;
+                    applicable_actions.push_back(action);
                 }
-                event_handler->on_generate_state_in_search_tree(state, action, action_cost, successor_state);
-
-                successor_search_node.status = SearchNodeStatus::OPEN;
-                successor_search_node.parent_state = state.get_index();
-                successor_search_node.g_value = search_node.g_value + 1;
-
-                if (use_eager_successor_scoring)
+                const auto filtered_actions = iw1_action_precheck.filter_actions(state, applicable_actions, state_repository);
+                for (const auto& action : filtered_actions)
                 {
-                    const auto successor_score = layer_ordering_strategy->score_state(successor_state, successor_search_node.g_value);
-                    const auto insert_it = std::upper_bound(scored_next_layer.begin(),
-                                                           scored_next_layer.end(),
-                                                           successor_score,
-                                                           [prefer_higher_scores](ContinuousCost lhs, const ScoredState& rhs)
-                                                           {
-                                                               return prefer_higher_scores ? (lhs > rhs.score) : (lhs < rhs.score);
-                                                           });
-                    scored_next_layer.insert(insert_it, ScoredState { successor_state, successor_score });
-                    next_layer_limit_reached = (scored_next_layer.size() >= max_next_layer_states);
+                    const auto [successor_state, successor_state_metric_value] =
+                        state_repository.get_or_create_successor_state(state, action, search_node.g_value);
+                    auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
+                    auto action_cost = successor_state_metric_value - search_node.g_value;
+
+                    event_handler->on_generate_state(state, action, action_cost, successor_state);
+                    if (pruning_strategy->test_prune_successor_state(state, successor_state, (successor_search_node.status == SearchNodeStatus::NEW)))
+                    {
+                        event_handler->on_generate_state_not_in_search_tree(state, action, action_cost, successor_state);
+                        continue;
+                    }
+                    event_handler->on_generate_state_in_search_tree(state, action, action_cost, successor_state);
+
+                    successor_search_node.status = SearchNodeStatus::OPEN;
+                    successor_search_node.parent_state = state.get_index();
+                    successor_search_node.g_value = search_node.g_value + 1;
+
+                    if (use_eager_successor_scoring)
+                    {
+                        const auto successor_score = layer_ordering_strategy->score_state(successor_state, successor_search_node.g_value);
+                        const auto insert_it = std::upper_bound(scored_next_layer.begin(),
+                                                               scored_next_layer.end(),
+                                                               successor_score,
+                                                               [prefer_higher_scores](ContinuousCost lhs, const ScoredState& rhs)
+                                                               {
+                                                                   return prefer_higher_scores ? (lhs > rhs.score) : (lhs < rhs.score);
+                                                               });
+                        scored_next_layer.insert(insert_it, ScoredState { successor_state, successor_score });
+                        next_layer_limit_reached = (scored_next_layer.size() >= max_next_layer_states);
+                    }
+                    else
+                    {
+                        next_layer.emplace_back(successor_state);
+                        next_layer_limit_reached = use_next_layer_limit && (next_layer.size() >= max_next_layer_states);
+                    }
+
+                    if (search_nodes.size() >= options.max_num_states)
+                    {
+                        result.status = SearchStatus::OUT_OF_STATES;
+                        return result;
+                    }
+
+                    if (next_layer_limit_reached)
+                    {
+                        break;
+                    }
                 }
-                else
+            }
+            else
+            {
+                for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
                 {
-                    next_layer.emplace_back(successor_state);
-                    next_layer_limit_reached = use_next_layer_limit && (next_layer.size() >= max_next_layer_states);
-                }
+                    const auto [successor_state, successor_state_metric_value] =
+                        state_repository.get_or_create_successor_state(state, action, search_node.g_value);
+                    auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
+                    auto action_cost = successor_state_metric_value - search_node.g_value;
 
-                if (search_nodes.size() >= options.max_num_states)
-                {
-                    result.status = SearchStatus::OUT_OF_STATES;
-                    return result;
-                }
+                    event_handler->on_generate_state(state, action, action_cost, successor_state);
+                    if (pruning_strategy->test_prune_successor_state(state, successor_state, (successor_search_node.status == SearchNodeStatus::NEW)))
+                    {
+                        event_handler->on_generate_state_not_in_search_tree(state, action, action_cost, successor_state);
+                        continue;
+                    }
+                    event_handler->on_generate_state_in_search_tree(state, action, action_cost, successor_state);
 
-                if (next_layer_limit_reached)
-                {
-                    break;
+                    successor_search_node.status = SearchNodeStatus::OPEN;
+                    successor_search_node.parent_state = state.get_index();
+                    successor_search_node.g_value = search_node.g_value + 1;
+
+                    if (use_eager_successor_scoring)
+                    {
+                        const auto successor_score = layer_ordering_strategy->score_state(successor_state, successor_search_node.g_value);
+                        const auto insert_it = std::upper_bound(scored_next_layer.begin(),
+                                                               scored_next_layer.end(),
+                                                               successor_score,
+                                                               [prefer_higher_scores](ContinuousCost lhs, const ScoredState& rhs)
+                                                               {
+                                                                   return prefer_higher_scores ? (lhs > rhs.score) : (lhs < rhs.score);
+                                                               });
+                        scored_next_layer.insert(insert_it, ScoredState { successor_state, successor_score });
+                        next_layer_limit_reached = (scored_next_layer.size() >= max_next_layer_states);
+                    }
+                    else
+                    {
+                        next_layer.emplace_back(successor_state);
+                        next_layer_limit_reached = use_next_layer_limit && (next_layer.size() >= max_next_layer_states);
+                    }
+
+                    if (search_nodes.size() >= options.max_num_states)
+                    {
+                        result.status = SearchStatus::OUT_OF_STATES;
+                        return result;
+                    }
+
+                    if (next_layer_limit_reached)
+                    {
+                        break;
+                    }
                 }
             }
 

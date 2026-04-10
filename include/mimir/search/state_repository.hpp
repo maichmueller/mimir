@@ -129,6 +129,12 @@ public:
     /// @return the successor state and its associated metric value.
     std::pair<State, ContinuousCost> get_or_create_successor_state(const State& state, formalism::GroundAction action, ContinuousCost state_metric_value);
 
+    /// @brief Collect fluent atoms that are added by currently triggered conditional
+    /// effects of `action` in `state`, excluding atoms already true in `state`.
+    void collect_action_add_effect_fluent_atom_indices(const State& state,
+                                                       formalism::GroundAction action,
+                                                       iw::AtomIndexList& out_add_fluent_atom_indices);
+
     /// @brief Compute a successor into worker-local dense storage for the grounded
     /// parallel beam path. This does not mutate the repository state.
     StagedSuccessorState compute_staged_successor_state(const State& state,

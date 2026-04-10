@@ -43,6 +43,9 @@ def iw(
     randomize_equal_score_ties: bool = False,
     equal_score_tie_seed: "Union[int, None]" = None,
     max_depth: int = -1,
+    iw1_precheck_add_effect_novelty: bool = False,
+    iw1_atom_first_mode: bool = False,
+    iw1_atom_first_ratio: float = 1.0,
     on_expand_state: "Union[Callable[[State], None], None]" = None,
     on_expand_goal_state: "Union[Callable[[State], None], None]" = None,
     on_generate_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
@@ -74,6 +77,14 @@ def iw(
         equal_score_tie_seed, int
     ), "equal_score_tie_seed must be an int or None."
     assert isinstance(max_depth, int), "max_depth must be an int."
+    assert isinstance(
+        iw1_precheck_add_effect_novelty, bool
+    ), "iw1_precheck_add_effect_novelty must be a bool."
+    assert isinstance(iw1_atom_first_mode, bool), "iw1_atom_first_mode must be a bool."
+    assert isinstance(iw1_atom_first_ratio, float) or isinstance(
+        iw1_atom_first_ratio, int
+    ), "iw1_atom_first_ratio must be a float."
+    assert iw1_atom_first_ratio > 0, "iw1_atom_first_ratio must be positive."
     assert isinstance(num_threads, int), "num_threads must be an int."
     assert isinstance(chunk_size, int), "chunk_size must be an int."
     assert isinstance(
@@ -189,6 +200,9 @@ def iw(
     )
     if max_depth >= 0:
         advanced_options.max_depth = max_depth
+    advanced_options.iw1_precheck_add_effect_novelty = iw1_precheck_add_effect_novelty
+    advanced_options.iw1_atom_first_mode = iw1_atom_first_mode
+    advanced_options.iw1_atom_first_ratio = float(iw1_atom_first_ratio)
     advanced_options.relaxed_survivors_only_beam = relaxed_survivors_only_beam
     if num_threads > 1:
         advanced_options.parallel_beam_num_threads = num_threads
@@ -220,6 +234,9 @@ def projective_iw(
     randomize_equal_score_ties: bool = False,
     equal_score_tie_seed: "Union[int, None]" = None,
     max_depth: int = -1,
+    iw1_precheck_add_effect_novelty: bool = False,
+    iw1_atom_first_mode: bool = False,
+    iw1_atom_first_ratio: float = 1.0,
     on_expand_state: "Union[Callable[[State], None], None]" = None,
     on_expand_goal_state: "Union[Callable[[State], None], None]" = None,
     on_generate_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
@@ -275,6 +292,14 @@ def projective_iw(
         equal_score_tie_seed, int
     ), "equal_score_tie_seed must be an int or None."
     assert isinstance(max_depth, int), "max_depth must be an int."
+    assert isinstance(
+        iw1_precheck_add_effect_novelty, bool
+    ), "iw1_precheck_add_effect_novelty must be a bool."
+    assert isinstance(iw1_atom_first_mode, bool), "iw1_atom_first_mode must be a bool."
+    assert isinstance(iw1_atom_first_ratio, float) or isinstance(
+        iw1_atom_first_ratio, int
+    ), "iw1_atom_first_ratio must be a float."
+    assert iw1_atom_first_ratio > 0, "iw1_atom_first_ratio must be positive."
     assert isinstance(num_threads, int), "num_threads must be an int."
     assert isinstance(chunk_size, int), "chunk_size must be an int."
     assert isinstance(
@@ -390,6 +415,9 @@ def projective_iw(
     )
     if max_depth >= 0:
         advanced_options.max_depth = max_depth
+    advanced_options.iw1_precheck_add_effect_novelty = iw1_precheck_add_effect_novelty
+    advanced_options.iw1_atom_first_mode = iw1_atom_first_mode
+    advanced_options.iw1_atom_first_ratio = float(iw1_atom_first_ratio)
     advanced_options.relaxed_survivors_only_beam = relaxed_survivors_only_beam
     if num_threads > 1:
         advanced_options.parallel_beam_num_threads = num_threads

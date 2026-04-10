@@ -24,6 +24,7 @@ ParallelRelaxedBeamSuccessorGenerationResult IApplicableActionGenerator::create_
     const LayerOrderingStrategy&,
     uint32_t,
     bool,
+    bool,
     uint64_t)
 {
     throw std::logic_error(

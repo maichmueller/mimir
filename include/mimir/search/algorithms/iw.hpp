@@ -38,6 +38,9 @@ struct Options
     uint64_t equal_score_tie_seed = 0;
     uint32_t parallel_beam_num_threads = 1;
     uint32_t parallel_beam_chunk_size = 1024;
+    bool iw1_precheck_add_effect_novelty = false;
+    bool iw1_atom_first_mode = false;
+    double iw1_atom_first_ratio = 1.0;
     uint32_t max_depth = std::numeric_limits<uint32_t>::max();
     size_t max_arity = MAX_ARITY - 1;
 

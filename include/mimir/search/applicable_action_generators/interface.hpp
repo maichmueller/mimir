@@ -106,6 +106,7 @@ public:
         BeamNoveltyMode beam_novelty_mode,
         const LayerOrderingStrategy& layer_ordering_strategy,
         uint32_t beam_width,
+        bool iw1_precheck_add_effect_novelty,
         bool randomize_equal_score_ties,
         uint64_t equal_score_tie_seed);
 

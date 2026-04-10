@@ -1977,6 +1977,73 @@ TEST(MimirTests, SearchAlgorithmsBrFSParallelProjectiveBeamOptionMatrixMatchesSe
     }
 }
 
+TEST(MimirTests, SearchAlgorithmsBrFSProjectiveIW1PrecheckAndAtomFirstMatchBaselineTest)
+{
+    auto run = [](BeamNoveltyMode beam_novelty_mode, uint32_t parallel_threads, bool atom_first_mode)
+    {
+        auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "driverlog/domain.pddl"),
+                                        fs::path(std::string(DATA_DIR) + "driverlog/test_problem.pddl"));
+        auto event_handler = std::make_shared<RecordingBrFSEventHandler>(brfs.get_problem());
+
+        auto options = brfs::Options();
+        options.event_handler = event_handler;
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
+        options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(brfs.get_problem(), false, true, false);
+        options.beam_width = 64;
+        options.beam_novelty_mode = beam_novelty_mode;
+        options.parallel_beam_num_threads = parallel_threads;
+        options.stop_if_goal = true;
+        options.iw1_precheck_add_effect_novelty = true;
+        options.iw1_atom_first_mode = atom_first_mode;
+        options.iw1_atom_first_ratio = 2.0;
+
+        const auto result = brfs::find_solution(brfs.get_search_context(), options);
+        if (result.plan.has_value())
+        {
+            expect_plan_reaches_goal(brfs.get_search_context(), result);
+        }
+        return make_brfs_run_trace(result, *event_handler);
+    };
+
+    auto baseline_run = [](BeamNoveltyMode beam_novelty_mode)
+    {
+        auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "driverlog/domain.pddl"),
+                                        fs::path(std::string(DATA_DIR) + "driverlog/test_problem.pddl"));
+        auto event_handler = std::make_shared<RecordingBrFSEventHandler>(brfs.get_problem());
+
+        auto options = brfs::Options();
+        options.event_handler = event_handler;
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
+        options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(brfs.get_problem(), false, true, false);
+        options.beam_width = 64;
+        options.beam_novelty_mode = beam_novelty_mode;
+        options.parallel_beam_num_threads = 1;
+        options.stop_if_goal = true;
+
+        const auto result = brfs::find_solution(brfs.get_search_context(), options);
+        if (result.plan.has_value())
+        {
+            expect_plan_reaches_goal(brfs.get_search_context(), result);
+        }
+        return make_brfs_run_trace(result, *event_handler);
+    };
+
+    for (const auto beam_novelty_mode : { BeamNoveltyMode::ALL_TESTED, BeamNoveltyMode::SURVIVORS_ONLY })
+    {
+        SCOPED_TRACE(beam_novelty_mode == BeamNoveltyMode::ALL_TESTED ? "all_tested" : "survivors_only");
+        const auto baseline_trace = baseline_run(beam_novelty_mode);
+        for (const auto atom_first_mode : { false, true })
+        {
+            SCOPED_TRACE(atom_first_mode ? "atom_first" : "action_first");
+            for (const auto parallel_threads : { 1u, 2u, 4u })
+            {
+                SCOPED_TRACE(parallel_threads);
+                expect_brfs_run_traces_match(run(beam_novelty_mode, parallel_threads, atom_first_mode), baseline_trace);
+            }
+        }
+    }
+}
+
 TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamDuplicatePruningCoversDeliveryStateSpaceTest)
 {
     auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"),

@@ -217,6 +217,28 @@ bool ArityKNoveltyPruningStrategyImpl::test_prune_successor_state(const State& s
     return !m_novelty_table.test_novelty_and_update_table(state, succ_state);
 }
 
+bool ArityKNoveltyPruningStrategyImpl::supports_action_add_effect_precheck() const { return true; }
+
+bool ArityKNoveltyPruningStrategyImpl::test_transition_novelty_from_add_effects(const State& state,
+                                                                                 const AtomIndexList& add_fluent_atom_indices) const
+{
+    return m_novelty_table.test_novelty_read_only(state, add_fluent_atom_indices);
+}
+
+bool ArityKNoveltyPruningStrategyImpl::supports_atom_novelty_query() const
+{
+    return m_novelty_table.get_tuple_index_mapper().get_arity() == 1;
+}
+
+bool ArityKNoveltyPruningStrategyImpl::test_atom_novelty_read_only(Index atom_index) const
+{
+    if (!supports_atom_novelty_query())
+    {
+        throw std::invalid_argument("ArityKNoveltyPruningStrategyImpl::test_atom_novelty_read_only only supports arity 1.");
+    }
+    return m_novelty_table.test_atom_novelty_read_only(atom_index);
+}
+
 bool ArityKNoveltyPruningStrategyImpl::supports_beam_novelty_mode(BeamNoveltyMode beam_novelty_mode) const
 {
     return beam_novelty_mode == BeamNoveltyMode::ALL_TESTED || beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY;
@@ -746,6 +768,29 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_successor_state(co
     }
 
     return !is_novel;
+}
+
+bool ProjectiveArityOneNoveltyPruningStrategyImpl::supports_action_add_effect_precheck() const { return true; }
+
+bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_transition_novelty_from_add_effects(const State& state,
+                                                                                             const AtomIndexList& add_fluent_atom_indices) const
+{
+    [[maybe_unused]] const auto& ignored_state = state;
+    for (const auto atom_index : add_fluent_atom_indices)
+    {
+        if (test_atom_novelty(atom_index))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool ProjectiveArityOneNoveltyPruningStrategyImpl::supports_atom_novelty_query() const { return true; }
+
+bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_atom_novelty_read_only(Index atom_index) const
+{
+    return test_atom_novelty(atom_index);
 }
 
 bool ProjectiveArityOneNoveltyPruningStrategyImpl::supports_beam_novelty_mode(BeamNoveltyMode beam_novelty_mode) const

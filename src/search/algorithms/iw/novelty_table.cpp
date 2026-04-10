@@ -297,6 +297,18 @@ bool DynamicNoveltyTable::test_novelty_read_only(const State& state, const AtomI
     return false;
 }
 
+bool DynamicNoveltyTable::test_atom_novelty_read_only(AtomIndex atom_index) const
+{
+    auto* self = const_cast<DynamicNoveltyTable*>(this);
+    self->resize_to_fit(atom_index);
+
+    const auto& tuple_index_mapper = m_tuple_index_mapper;
+    auto atom_tuple = AtomIndexList { atom_index };
+    const auto tuple_index = tuple_index_mapper.to_tuple_index(atom_tuple);
+    assert(tuple_index < m_table.size());
+    return !m_table[tuple_index];
+}
+
 bool DynamicNoveltyTable::test_novelty_and_update_table(const State& state)
 {
     resize_to_fit(state);

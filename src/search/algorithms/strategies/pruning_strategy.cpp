@@ -23,6 +23,22 @@ using namespace mimir::formalism;
 
 namespace mimir::search
 {
+bool IPruningStrategy::supports_action_add_effect_precheck() const { return false; }
+
+bool IPruningStrategy::test_transition_novelty_from_add_effects(const State& state, const iw::AtomIndexList& add_fluent_atom_indices) const
+{
+    [[maybe_unused]] const auto& ignored_state = state;
+    [[maybe_unused]] const auto& ignored_add_fluent_atom_indices = add_fluent_atom_indices;
+    throw std::invalid_argument("IPruningStrategy does not support add-effect novelty prechecks.");
+}
+
+bool IPruningStrategy::supports_atom_novelty_query() const { return false; }
+
+bool IPruningStrategy::test_atom_novelty_read_only(Index atom_index) const
+{
+    [[maybe_unused]] const auto ignored_atom_index = atom_index;
+    throw std::invalid_argument("IPruningStrategy does not support atom-level novelty queries.");
+}
 
 bool IPruningStrategy::supports_beam_novelty_mode(BeamNoveltyMode beam_novelty_mode) const
 {

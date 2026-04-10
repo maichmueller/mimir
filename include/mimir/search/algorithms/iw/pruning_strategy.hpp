@@ -97,6 +97,10 @@ public:
 
     bool test_prune_initial_state(const State& state) override;
     bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;
+    bool supports_action_add_effect_precheck() const override;
+    bool test_transition_novelty_from_add_effects(const State& state, const AtomIndexList& add_fluent_atom_indices) const override;
+    bool supports_atom_novelty_query() const override;
+    bool test_atom_novelty_read_only(Index atom_index) const override;
     bool supports_beam_novelty_mode(BeamNoveltyMode beam_novelty_mode) const override;
     bool supports_staged_beam_pruning(BeamNoveltyMode beam_novelty_mode) const override;
     bool supports_relaxed_staged_beam_pruning(BeamNoveltyMode beam_novelty_mode) const override;
@@ -195,6 +199,10 @@ public:
 
     bool test_prune_initial_state(const State& state) override;
     bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;
+    bool supports_action_add_effect_precheck() const override;
+    bool test_transition_novelty_from_add_effects(const State& state, const AtomIndexList& add_fluent_atom_indices) const override;
+    bool supports_atom_novelty_query() const override;
+    bool test_atom_novelty_read_only(Index atom_index) const override;
     bool supports_beam_novelty_mode(BeamNoveltyMode beam_novelty_mode) const override;
     bool supports_staged_beam_pruning(BeamNoveltyMode beam_novelty_mode) const override;
     bool supports_relaxed_staged_beam_pruning(BeamNoveltyMode beam_novelty_mode) const override;

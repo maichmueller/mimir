@@ -655,6 +655,56 @@ public:
         return candidate;
     }
 
+    template<typename LookupTablesT>
+    void collect_add_effect_fluent_atom_indices(const State& state,
+                                                const LookupTablesT& lookup_tables,
+                                                const IndexList& binding_object_indices,
+                                                StateRepositoryImpl::StagedSuccessorScratch& scratch,
+                                                iw::AtomIndexList& out_add_fluent_atom_indices)
+    {
+        auto& applied_positive_effect_atoms = scratch.applied_positive_effect_atoms;
+        applied_positive_effect_atoms.unset_all();
+        const auto& unpacked_state = state.get_unpacked_state();
+
+        for (const auto& conditional_effect : m_action->get_conditional_effects())
+        {
+            if (!condition_holds(unpacked_state, lookup_tables, conditional_effect->get_conjunctive_condition(), binding_object_indices))
+            {
+                continue;
+            }
+
+            for (const auto& literal : conditional_effect->get_conjunctive_effect()->get_literals())
+            {
+                if (!literal->get_polarity())
+                {
+                    continue;
+                }
+
+                const auto atom_index = lookup_ground_atom_index(lookup_tables.fluent_predicates,
+                                                                 literal->get_atom()->get_predicate(),
+                                                                 literal->get_atom()->get_terms(),
+                                                                 binding_object_indices,
+                                                                 m_index_scratch);
+                if (atom_index == kMissingIndex)
+                {
+                    continue;
+                }
+
+                applied_positive_effect_atoms.set(atom_index);
+            }
+        }
+
+        out_add_fluent_atom_indices.clear();
+        const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
+        for (const auto atom_index : applied_positive_effect_atoms)
+        {
+            if (!state_fluent_atoms.get(atom_index))
+            {
+                out_add_fluent_atom_indices.push_back(atom_index);
+            }
+        }
+    }
+
 private:
     template<typename LookupTablesT>
     bool condition_holds(const UnpackedStateImpl& unpacked_state,
@@ -1652,6 +1702,7 @@ ParallelRelaxedBeamSuccessorGenerationResult KPKCLiftedApplicableActionGenerator
     BeamNoveltyMode beam_novelty_mode,
     const LayerOrderingStrategy& layer_ordering_strategy,
     uint32_t beam_width,
+    bool iw1_precheck_add_effect_novelty,
     bool randomize_equal_score_ties,
     uint64_t equal_score_tie_seed)
 {
@@ -1718,6 +1769,7 @@ ParallelRelaxedBeamSuccessorGenerationResult KPKCLiftedApplicableActionGenerator
                                                    use_small_beam,
                                                    ranking,
                                                    heap_compare,
+                                                   iw1_precheck_add_effect_novelty,
                                                    randomize_equal_score_ties,
                                                    equal_score_tie_seed,
                                                    partition_begin,
@@ -1740,6 +1792,7 @@ ParallelRelaxedBeamSuccessorGenerationResult KPKCLiftedApplicableActionGenerator
                                                               typed_worker_context.action_grounding_data[schema_task.schema_index];
                                                           auto& action_validator = typed_worker_context.action_validators[schema_task.schema_index];
                                                           auto local_binding_index = uint32_t(0);
+                                                          auto add_effect_atom_indices = iw::AtomIndexList {};
 
                                                           condition_grounder.for_each_candidate_binding_indices(state.get_unpacked_state(),
                                                                                                                 dynamic_assignment_sets,
@@ -1750,6 +1803,21 @@ ParallelRelaxedBeamSuccessorGenerationResult KPKCLiftedApplicableActionGenerator
                                                                       state.get_unpacked_state(), *lookup_tables, binding_object_indices))
                                                               {
                                                                   return;
+                                                              }
+
+                                                              if (iw1_precheck_add_effect_novelty)
+                                                              {
+                                                                  action_validator.collect_add_effect_fluent_atom_indices(state,
+                                                                                                                          *lookup_tables,
+                                                                                                                          binding_object_indices,
+                                                                                                                          typed_worker_context.successor_scratch,
+                                                                                                                          add_effect_atom_indices);
+                                                                  if (!pruning_strategy->test_transition_novelty_from_add_effects(
+                                                                          state, add_effect_atom_indices))
+                                                                  {
+                                                                      ++local_binding_index;
+                                                                      return;
+                                                                  }
                                                               }
 
                                                               ++result.num_scored_candidates;
