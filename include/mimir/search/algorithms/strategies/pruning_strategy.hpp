@@ -37,6 +37,10 @@ public:
     virtual bool test_transition_novelty_from_add_effects(const State& state, const iw::AtomIndexList& add_fluent_atom_indices) const;
     virtual bool supports_atom_novelty_query() const;
     virtual bool test_atom_novelty_read_only(Index atom_index) const;
+    virtual bool supports_transition_novel_witness_query() const;
+    virtual void compute_transition_novel_fluent_atom_indices_read_only(const State& state,
+                                                                        const State& succ_state,
+                                                                        iw::AtomIndexList& out_novel_fluent_atom_indices) const;
 
     virtual bool supports_beam_novelty_mode(BeamNoveltyMode beam_novelty_mode) const;
     virtual bool test_prune_successor_state_for_beam_selection(const State& state,

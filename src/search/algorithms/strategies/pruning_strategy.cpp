@@ -40,6 +40,18 @@ bool IPruningStrategy::test_atom_novelty_read_only(Index atom_index) const
     throw std::invalid_argument("IPruningStrategy does not support atom-level novelty queries.");
 }
 
+bool IPruningStrategy::supports_transition_novel_witness_query() const { return false; }
+
+void IPruningStrategy::compute_transition_novel_fluent_atom_indices_read_only(const State& state,
+                                                                               const State& succ_state,
+                                                                               iw::AtomIndexList& out_novel_fluent_atom_indices) const
+{
+    [[maybe_unused]] const auto& ignored_state = state;
+    [[maybe_unused]] const auto& ignored_succ_state = succ_state;
+    out_novel_fluent_atom_indices.clear();
+    throw std::invalid_argument("IPruningStrategy does not support transition-level novel witness queries.");
+}
+
 bool IPruningStrategy::supports_beam_novelty_mode(BeamNoveltyMode beam_novelty_mode) const
 {
     return beam_novelty_mode == BeamNoveltyMode::ALL_TESTED;

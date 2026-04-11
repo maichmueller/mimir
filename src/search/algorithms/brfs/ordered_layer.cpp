@@ -68,6 +68,9 @@ SearchResult find_solution_with_ordered_layer(const SearchContext& context,
 
     const auto use_eager_successor_scoring = use_next_layer_limit && layer_ordering_strategy->supports_eager_scoring();
     const auto prefer_higher_scores = use_eager_successor_scoring && layer_ordering_strategy->prefer_higher_scores();
+    const auto emit_novel_witness_events =
+        event_handler->supports_novel_witness_events() && pruning_strategy->supports_transition_novel_witness_query();
+    auto novel_witness_atom_indices = iw::AtomIndexList {};
 
     auto current_layer = StateList {};
     auto next_layer = StateList {};
@@ -142,6 +145,11 @@ SearchResult find_solution_with_ordered_layer(const SearchContext& context,
                     auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
                     auto action_cost = successor_state_metric_value - search_node.g_value;
 
+                    if (emit_novel_witness_events)
+                    {
+                        pruning_strategy->compute_transition_novel_fluent_atom_indices_read_only(state, successor_state, novel_witness_atom_indices);
+                        event_handler->on_generate_state_with_novel_witness(state, action, action_cost, successor_state, novel_witness_atom_indices);
+                    }
                     event_handler->on_generate_state(state, action, action_cost, successor_state);
                     if (pruning_strategy->test_prune_successor_state(state, successor_state, (successor_search_node.status == SearchNodeStatus::NEW)))
                     {
@@ -194,6 +202,11 @@ SearchResult find_solution_with_ordered_layer(const SearchContext& context,
                     auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
                     auto action_cost = successor_state_metric_value - search_node.g_value;
 
+                    if (emit_novel_witness_events)
+                    {
+                        pruning_strategy->compute_transition_novel_fluent_atom_indices_read_only(state, successor_state, novel_witness_atom_indices);
+                        event_handler->on_generate_state_with_novel_witness(state, action, action_cost, successor_state, novel_witness_atom_indices);
+                    }
                     event_handler->on_generate_state(state, action, action_cost, successor_state);
                     if (pruning_strategy->test_prune_successor_state(state, successor_state, (successor_search_node.status == SearchNodeStatus::NEW)))
                     {

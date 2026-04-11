@@ -9,6 +9,22 @@ using namespace mimir::formalism;
 namespace mimir::search
 {
 
+namespace
+{
+std::vector<size_t> compute_transition_novel_fluent_atom_indices_read_only(const IPruningStrategy& pruning_strategy,
+                                                                            const State& state,
+                                                                            const State& successor_state)
+{
+    auto novel_atom_indices = iw::AtomIndexList {};
+    if (!pruning_strategy.supports_transition_novel_witness_query())
+    {
+        return {};
+    }
+    pruning_strategy.compute_transition_novel_fluent_atom_indices_read_only(state, successor_state, novel_atom_indices);
+    return std::vector<size_t>(novel_atom_indices.begin(), novel_atom_indices.end());
+}
+}  // namespace
+
 class IPyGoalStrategy : public IGoalStrategy
 {
 public:
@@ -165,7 +181,7 @@ public:
 class IPyBrFSEventHandler : public brfs::IEventHandler
 {
 public:
-    NB_TRAMPOLINE(brfs::IEventHandler, 12);
+    NB_TRAMPOLINE(brfs::IEventHandler, 14);
 
     /* Trampoline (need one for each virtual function) */
     void on_expand_state(const State& state) override { NB_OVERRIDE_PURE(on_expand_state, state); }
@@ -175,6 +191,15 @@ public:
     void on_generate_state(const State& state, GroundAction action, ContinuousCost action_cost, const State& successor_state) override
     {
         NB_OVERRIDE_PURE(on_generate_state, state, action, action_cost, successor_state);
+    }
+    bool supports_novel_witness_events() const override { NB_OVERRIDE(supports_novel_witness_events); }
+    void on_generate_state_with_novel_witness(const State& state,
+                                              GroundAction action,
+                                              ContinuousCost action_cost,
+                                              const State& successor_state,
+                                              const iw::AtomIndexList& novel_fluent_atom_indices) override
+    {
+        NB_OVERRIDE(on_generate_state_with_novel_witness, state, action, action_cost, successor_state, novel_fluent_atom_indices);
     }
     void on_generate_state_in_search_tree(const State& state, GroundAction action, ContinuousCost action_cost, const State& successor_state) override
     {
@@ -523,6 +548,11 @@ void bind_module_definitions(nb::module_& m)
 
     /* ApplicableActionGenerators */
     m.def("is_applicable", nb::overload_cast<GroundAction, const State&>(&search::is_applicable), "action"_a, "state"_a);
+    m.def("compute_transition_novel_fluent_atom_indices_read_only",
+          &compute_transition_novel_fluent_atom_indices_read_only,
+          "pruning_strategy"_a,
+          "state"_a,
+          "successor_state"_a);
 
     nb::class_<IApplicableActionGenerator>(m, "IApplicableActionGenerator")
         .def("get_problem", &IApplicableActionGenerator::get_problem)
@@ -764,7 +794,17 @@ void bind_module_definitions(nb::module_& m)
     nb::class_<IPruningStrategy, IPyPruningStrategy>(m, "IPruningStrategy")
         .def(nb::init<>())
         .def("test_prune_initial_state", &IPruningStrategy::test_prune_initial_state, "initial_state"_a)
-        .def("test_prune_successor_state", &IPruningStrategy::test_prune_successor_state, "state"_a, "successor_state"_a, "is_new_successor"_a);
+        .def("test_prune_successor_state", &IPruningStrategy::test_prune_successor_state, "state"_a, "successor_state"_a, "is_new_successor"_a)
+        .def("supports_transition_novel_witness_query", &IPruningStrategy::supports_transition_novel_witness_query)
+        .def("compute_transition_novel_fluent_atom_indices_read_only",
+             [](const IPruningStrategy& self, const State& state, const State& successor_state)
+             {
+                 auto out_novel_fluent_atom_indices = iw::AtomIndexList {};
+                 self.compute_transition_novel_fluent_atom_indices_read_only(state, successor_state, out_novel_fluent_atom_indices);
+                 return out_novel_fluent_atom_indices;
+             },
+             "state"_a,
+             "successor_state"_a);
 
     nb::class_<NoPruningStrategyImpl, IPruningStrategy>(m, "NoPruningStrategy")  //
         .def(nb::init<>())
@@ -936,6 +976,8 @@ void bind_module_definitions(nb::module_& m)
         .def("on_expand_state", &brfs::IEventHandler::on_expand_state)
         .def("on_expand_goal_state", &brfs::IEventHandler::on_expand_goal_state)
         .def("on_generate_state", &brfs::IEventHandler::on_generate_state)
+        .def("supports_novel_witness_events", &brfs::IEventHandler::supports_novel_witness_events)
+        .def("on_generate_state_with_novel_witness", &brfs::IEventHandler::on_generate_state_with_novel_witness)
         .def("on_generate_state_in_search_tree", &brfs::IEventHandler::on_generate_state_in_search_tree)
         .def("on_generate_state_not_in_search_tree", &brfs::IEventHandler::on_generate_state_not_in_search_tree)
         .def("on_finish_g_layer", &brfs::IEventHandler::on_finish_g_layer)

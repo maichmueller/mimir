@@ -31,6 +31,7 @@ struct BenchmarkResult
 {
     SearchStatus status;
     size_t generated;
+    size_t novel_generated;
     double wall_time_ms;
     double lifted_action_generation_time_ms;
     double lifted_dynamic_assignment_initialization_time_ms;
@@ -197,6 +198,7 @@ BenchmarkResult run_once(const std::filesystem::path& domain_file,
 
     auto status = SearchStatus::FAILED;
     size_t generated = 0;
+    size_t novel_generated = 0;
     uint64_t parallel_chunk_flushes = 0;
     uint64_t parallel_chunk_tasks_total = 0;
     uint64_t max_parallel_chunk_size = 0;
@@ -237,6 +239,7 @@ BenchmarkResult run_once(const std::filesystem::path& domain_file,
         for (const auto& per_arity_brfs_statistics : iw_statistics.get_brfs_statistics_by_arity())
         {
             generated += per_arity_brfs_statistics.get_num_generated();
+            novel_generated += per_arity_brfs_statistics.get_num_generated_in_search_tree();
             parallel_chunk_flushes += per_arity_brfs_statistics.get_num_parallel_beam_chunk_flushes();
             parallel_chunk_tasks_total += per_arity_brfs_statistics.get_num_parallel_beam_chunk_tasks_total();
             max_parallel_chunk_size = std::max(max_parallel_chunk_size, per_arity_brfs_statistics.get_max_parallel_beam_chunk_size());
@@ -283,6 +286,7 @@ BenchmarkResult run_once(const std::filesystem::path& domain_file,
 
         const auto& brfs_statistics = brfs_event_handler->get_statistics();
         generated = brfs_statistics.get_num_generated();
+        novel_generated = brfs_statistics.get_num_generated_in_search_tree();
         parallel_chunk_flushes = brfs_statistics.get_num_parallel_beam_chunk_flushes();
         parallel_chunk_tasks_total = brfs_statistics.get_num_parallel_beam_chunk_tasks_total();
         max_parallel_chunk_size = brfs_statistics.get_max_parallel_beam_chunk_size();
@@ -318,6 +322,7 @@ BenchmarkResult run_once(const std::filesystem::path& domain_file,
     return BenchmarkResult {
         status,
         generated,
+        novel_generated,
         std::chrono::duration<double, std::milli>(wall_end - wall_start).count(),
         lifted_action_generation_time_ms,
         lifted_dynamic_assignment_initialization_time_ms,
@@ -654,6 +659,7 @@ int main(int argc, char** argv)
     {
         auto action_first_medians_ms = std::map<std::pair<uint32_t, uint32_t>, double> {};
         auto action_first_generated = std::map<std::pair<uint32_t, uint32_t>, size_t> {};
+        auto action_first_novel_generated = std::map<std::pair<uint32_t, uint32_t>, size_t> {};
         auto action_first_status = std::map<std::pair<uint32_t, uint32_t>, SearchStatus> {};
         std::cout << "\n=== IW1 Basis: " << to_string(basis) << " ===\n";
 
@@ -715,6 +721,7 @@ int main(int argc, char** argv)
 
                 auto status = SearchStatus::FAILED;
                 size_t generated = 0;
+                size_t novel_generated = 0;
                 uint64_t parallel_chunk_flushes = 0;
                 uint64_t parallel_chunk_tasks_total = 0;
                 uint64_t max_parallel_chunk_size = 0;
@@ -753,6 +760,7 @@ int main(int argc, char** argv)
                                                  projective_keep_depth_one_novel);
                     status = result.status;
                     generated = result.generated;
+                    novel_generated = result.novel_generated;
                     parallel_chunk_flushes = result.parallel_chunk_flushes;
                     parallel_chunk_tasks_total = result.parallel_chunk_tasks_total;
                     max_parallel_chunk_size = result.max_parallel_chunk_size;
@@ -789,6 +797,7 @@ int main(int argc, char** argv)
                 std::cout << "      threads: " << num_threads << '\n';
                 std::cout << "        status: " << to_string(status) << '\n';
                 std::cout << "        generated: " << generated << '\n';
+                std::cout << "        novel_generated: " << novel_generated << '\n';
                 std::cout << "        wall_ms: median=" << median_ms << " mean=" << mean_ms << " min=" << min_ms << " max=" << max_ms << '\n';
                 std::cout << "        chunking: flushes=" << parallel_chunk_flushes
                           << " avg_chunk_size=" << average_parallel_chunk_size
@@ -821,6 +830,7 @@ int main(int argc, char** argv)
                     {
                         action_first_medians_ms[key] = median_ms;
                         action_first_generated[key] = generated;
+                        action_first_novel_generated[key] = novel_generated;
                         action_first_status[key] = status;
                     }
                     else if (std::string(iw1_variant.label) == "atom_first")
@@ -840,6 +850,12 @@ int main(int argc, char** argv)
                             {
                                 std::cout << " generated_mismatch=true action_first_generated=" << generated_it->second
                                           << " atom_first_generated=" << generated;
+                            }
+                            const auto novel_generated_it = action_first_novel_generated.find(key);
+                            if ((novel_generated_it != action_first_novel_generated.end()) && (novel_generated_it->second != novel_generated))
+                            {
+                                std::cout << " novel_generated_mismatch=true action_first_novel_generated=" << novel_generated_it->second
+                                          << " atom_first_novel_generated=" << novel_generated;
                             }
                             const auto status_it = action_first_status.find(key);
                             if ((status_it != action_first_status.end()) && (status_it->second != status))

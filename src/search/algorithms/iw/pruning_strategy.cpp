@@ -239,6 +239,52 @@ bool ArityKNoveltyPruningStrategyImpl::test_atom_novelty_read_only(Index atom_in
     return m_novelty_table.test_atom_novelty_read_only(atom_index);
 }
 
+bool ArityKNoveltyPruningStrategyImpl::supports_transition_novel_witness_query() const { return supports_atom_novelty_query(); }
+
+void ArityKNoveltyPruningStrategyImpl::compute_transition_novel_fluent_atom_indices_read_only(const State& state,
+                                                                                               const State& succ_state,
+                                                                                               AtomIndexList& out_novel_fluent_atom_indices) const
+{
+    if (!supports_transition_novel_witness_query())
+    {
+        throw std::invalid_argument("ArityKNoveltyPruningStrategyImpl transition witness query only supports arity 1.");
+    }
+
+    out_novel_fluent_atom_indices.clear();
+    const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
+    const auto& succ_state_fluent_atoms = succ_state.get_atoms<FluentTag>();
+
+    auto it_state = state_fluent_atoms.begin();
+    auto it_succ_state = succ_state_fluent_atoms.begin();
+    for (; (it_state != state_fluent_atoms.end()) && (it_succ_state != succ_state_fluent_atoms.end());)
+    {
+        if (*it_state < *it_succ_state)
+        {
+            ++it_state;
+        }
+        else if (*it_state > *it_succ_state)
+        {
+            if (m_novelty_table.test_atom_novelty_read_only(*it_succ_state))
+            {
+                out_novel_fluent_atom_indices.push_back(*it_succ_state);
+            }
+            ++it_succ_state;
+        }
+        else
+        {
+            ++it_state;
+            ++it_succ_state;
+        }
+    }
+    for (; it_succ_state != succ_state_fluent_atoms.end(); ++it_succ_state)
+    {
+        if (m_novelty_table.test_atom_novelty_read_only(*it_succ_state))
+        {
+            out_novel_fluent_atom_indices.push_back(*it_succ_state);
+        }
+    }
+}
+
 bool ArityKNoveltyPruningStrategyImpl::supports_beam_novelty_mode(BeamNoveltyMode beam_novelty_mode) const
 {
     return beam_novelty_mode == BeamNoveltyMode::ALL_TESTED || beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY;
@@ -791,6 +837,48 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::supports_atom_novelty_query()
 bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_atom_novelty_read_only(Index atom_index) const
 {
     return test_atom_novelty(atom_index);
+}
+
+bool ProjectiveArityOneNoveltyPruningStrategyImpl::supports_transition_novel_witness_query() const { return true; }
+
+void ProjectiveArityOneNoveltyPruningStrategyImpl::compute_transition_novel_fluent_atom_indices_read_only(
+    const State& state,
+    const State& succ_state,
+    AtomIndexList& out_novel_fluent_atom_indices) const
+{
+    out_novel_fluent_atom_indices.clear();
+    const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
+    const auto& succ_state_fluent_atoms = succ_state.get_atoms<FluentTag>();
+
+    auto it_state = state_fluent_atoms.begin();
+    auto it_succ_state = succ_state_fluent_atoms.begin();
+    for (; (it_state != state_fluent_atoms.end()) && (it_succ_state != succ_state_fluent_atoms.end());)
+    {
+        if (*it_state < *it_succ_state)
+        {
+            ++it_state;
+        }
+        else if (*it_state > *it_succ_state)
+        {
+            if (test_atom_novelty(*it_succ_state))
+            {
+                out_novel_fluent_atom_indices.push_back(*it_succ_state);
+            }
+            ++it_succ_state;
+        }
+        else
+        {
+            ++it_state;
+            ++it_succ_state;
+        }
+    }
+    for (; it_succ_state != succ_state_fluent_atoms.end(); ++it_succ_state)
+    {
+        if (test_atom_novelty(*it_succ_state))
+        {
+            out_novel_fluent_atom_indices.push_back(*it_succ_state);
+        }
+    }
 }
 
 bool ProjectiveArityOneNoveltyPruningStrategyImpl::supports_beam_novelty_mode(BeamNoveltyMode beam_novelty_mode) const

@@ -32,6 +32,7 @@ class Statistics
 {
 private:
     uint64_t m_num_generated;
+    uint64_t m_num_generated_in_search_tree;
     uint64_t m_num_expanded;
     uint64_t m_num_deadends;
     uint64_t m_num_pruned;
@@ -69,6 +70,7 @@ private:
 public:
     Statistics() :
         m_num_generated(0),
+        m_num_generated_in_search_tree(0),
         m_num_expanded(0),
         m_num_deadends(0),
         m_num_pruned(0),
@@ -114,6 +116,7 @@ public:
     }
 
     void increment_num_generated() { ++m_num_generated; }
+    void increment_num_generated_in_search_tree() { ++m_num_generated_in_search_tree; }
     void increment_num_expanded() { ++m_num_expanded; }
     void increment_num_deadends() { ++m_num_deadends; }
     void increment_num_pruned() { ++m_num_pruned; }
@@ -165,6 +168,7 @@ public:
      */
 
     uint64_t get_num_generated() const { return m_num_generated; }
+    uint64_t get_num_generated_in_search_tree() const { return m_num_generated_in_search_tree; }
     uint64_t get_num_expanded() const { return m_num_expanded; }
     uint64_t get_num_deadends() const { return m_num_deadends; }
     uint64_t get_num_pruned() const { return m_num_pruned; }

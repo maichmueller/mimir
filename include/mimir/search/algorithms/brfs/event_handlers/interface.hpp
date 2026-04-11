@@ -46,6 +46,14 @@ public:
 
     /// @brief React on generating a state by applying an action.
     virtual void on_generate_state(const State& state, formalism::GroundAction action, ContinuousCost action_cost, const State& successor_state) = 0;
+    virtual bool supports_novel_witness_events() const { return false; }
+    virtual void on_generate_state_with_novel_witness(const State& state,
+                                                       formalism::GroundAction action,
+                                                       ContinuousCost action_cost,
+                                                       const State& successor_state,
+                                                       const iw::AtomIndexList& novel_fluent_atom_indices)
+    {
+    }
 
     /// @brief Lightweight generated-state hook for quiet handlers in the staged beam fast path.
     virtual bool supports_payloadless_generated_state_events() const { return false; }
@@ -160,16 +168,33 @@ public:
         }
     }
 
+    bool supports_novel_witness_events() const override { return !m_quiet; }
+
+    void on_generate_state_with_novel_witness(const State& state,
+                                              formalism::GroundAction action,
+                                              ContinuousCost action_cost,
+                                              const State& successor_state,
+                                              const iw::AtomIndexList& novel_fluent_atom_indices) override
+    {
+        [[maybe_unused]] const auto& ignored_state = state;
+        [[maybe_unused]] const auto ignored_action = action;
+        [[maybe_unused]] const auto ignored_action_cost = action_cost;
+        [[maybe_unused]] const auto& ignored_successor_state = successor_state;
+        [[maybe_unused]] const auto& ignored_novel_fluent_atom_indices = novel_fluent_atom_indices;
+    }
+
     bool supports_payloadless_generated_state_events() const override { return m_quiet; }
 
     void on_generate_state_without_payload() override { m_statistics.increment_num_generated(); }
 
-    void on_generate_state_in_search_tree_without_payload() override {}
+    void on_generate_state_in_search_tree_without_payload() override { m_statistics.increment_num_generated_in_search_tree(); }
 
     void on_generate_state_not_in_search_tree_without_payload() override {}
 
     void on_generate_state_in_search_tree(const State& state, formalism::GroundAction action, ContinuousCost action_cost, const State& successor_state) override
     {
+        m_statistics.increment_num_generated_in_search_tree();
+
         if (!m_quiet)
         {
             self().on_generate_state_in_search_tree_impl(state, action, action_cost, successor_state);

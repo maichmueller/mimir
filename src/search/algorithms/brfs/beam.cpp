@@ -507,7 +507,10 @@ SearchResult find_solution_with_beam(const SearchContext& context,
     const auto ranking = BeamRanking { prefer_higher_scores, options.randomize_equal_score_ties };
     const auto heap_compare = BeamHeapCompare<BeamCandidate> { ranking };
     const auto deferred_heap_compare = BeamHeapCompare<DeferredBeamCandidate> { ranking };
+    const auto emit_novel_witness_events =
+        event_handler->supports_novel_witness_events() && pruning_strategy->supports_transition_novel_witness_query();
     auto tie_break_rng = std::mt19937_64(options.equal_score_tie_seed);
+    auto novel_witness_atom_indices = iw::AtomIndexList {};
     auto generated_state_indices = UnorderedSet<Index> {};
     generated_state_indices.insert(start_state.get_index());
 
@@ -704,6 +707,18 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                 else
                 {
                     auto successor_state = state_repository.materialize_staged_successor_state(evaluated_candidate.successor_state, successor_handle);
+                    if (emit_novel_witness_events)
+                    {
+                        pruning_strategy->compute_transition_novel_fluent_atom_indices_read_only(
+                            *evaluated_candidate.task.parent_state,
+                            successor_state,
+                            novel_witness_atom_indices);
+                        event_handler->on_generate_state_with_novel_witness(*evaluated_candidate.task.parent_state,
+                                                                            evaluated_candidate.task.action,
+                                                                            evaluated_candidate.action_cost,
+                                                                            successor_state,
+                                                                            novel_witness_atom_indices);
+                    }
                     event_handler->on_generate_state(*evaluated_candidate.task.parent_state,
                                                      evaluated_candidate.task.action,
                                                      evaluated_candidate.action_cost,
@@ -1184,6 +1199,19 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                     const auto successor_g_value = search_node.g_value + 1;
                     const auto is_new_successor = generated_state_indices.insert(successor_state.get_index()).second;
 
+                    if (emit_novel_witness_events)
+                    {
+                        pruning_strategy->compute_transition_novel_fluent_atom_indices_read_only(
+                            state,
+                            successor_state,
+                            novel_witness_atom_indices);
+                        event_handler->on_generate_state_with_novel_witness(
+                            state,
+                            action,
+                            action_cost,
+                            successor_state,
+                            novel_witness_atom_indices);
+                    }
                     event_handler->on_generate_state(state, action, action_cost, successor_state);
                     if (pruning_strategy->test_prune_successor_state_for_beam_selection(state, successor_state, is_new_successor, beam_novelty_mode))
                     {
