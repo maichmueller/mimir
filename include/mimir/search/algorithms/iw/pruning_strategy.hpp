@@ -166,6 +166,11 @@ private:
         size_t operator()(const ProjectedAtomKey& key) const noexcept;
     };
 
+    struct AtomIndexListHash
+    {
+        size_t operator()(const AtomIndexList& atom_indices) const noexcept;
+    };
+
     formalism::Problem m_problem;
     bool m_typed_projection;
     bool m_keep_depth_one_novel;
@@ -176,6 +181,7 @@ private:
     std::vector<ProjectedAtomKey> m_beam_layer_delta_projected_atoms;
     std::unordered_set<ProjectedAtomKey, ProjectedAtomKeyHash> m_beam_layer_delta_projected_atoms_set;
     std::vector<ProjectedAtomKey> m_scratch_projected_atom_keys;
+    std::unordered_set<AtomIndexList, AtomIndexListHash> m_skip_depth_one_expansion_fluent_atom_indices;
 
     void collect_projected_atom_keys(AtomIndex atom_index, std::vector<ProjectedAtomKey>& out_projected_atom_keys) const;
     bool test_atom_novelty(AtomIndex atom_index) const;
@@ -193,12 +199,12 @@ public:
     /// Optionally, positive goal atoms of arity > 1 can also stay as full atoms in this feature set.
     explicit ProjectiveArityOneNoveltyPruningStrategyImpl(formalism::Problem problem,
                                                           bool typed_projection = false,
-                                                          bool keep_depth_one_novel = true,
+                                                          bool keep_depth_one_novel = false,
                                                           bool keep_goal_nonunary_atoms = false);
 
     static PruningStrategy create(formalism::Problem problem,
                                   bool typed_projection = false,
-                                  bool keep_depth_one_novel = true,
+                                  bool keep_depth_one_novel = false,
                                   bool keep_goal_nonunary_atoms = false);
 
     bool test_prune_initial_state(const State& state) override;
@@ -206,6 +212,7 @@ public:
     bool supports_action_add_effect_precheck() const override;
     bool should_bypass_action_add_effect_precheck(const State& state) const override;
     bool test_transition_novelty_from_add_effects(const State& state, const AtomIndexList& add_fluent_atom_indices) const override;
+    bool consume_skip_state_expansion(const State& state) override;
     bool supports_atom_novelty_query() const override;
     bool test_atom_novelty_read_only(Index atom_index) const override;
     bool supports_transition_novel_witness_query() const override;

@@ -1153,6 +1153,11 @@ SearchResult find_solution_with_beam(const SearchContext& context,
             event_handler->on_expand_state(state);
             search_node.status = SearchNodeStatus::CLOSED;
 
+            if (pruning_strategy->consume_skip_state_expansion(state))
+            {
+                continue;
+            }
+
             if (use_max_depth && (search_node.g_value >= max_depth))
             {
                 continue;

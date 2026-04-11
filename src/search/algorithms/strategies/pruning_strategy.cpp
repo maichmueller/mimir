@@ -38,6 +38,12 @@ bool IPruningStrategy::test_transition_novelty_from_add_effects(const State& sta
     throw std::invalid_argument("IPruningStrategy does not support add-effect novelty prechecks.");
 }
 
+bool IPruningStrategy::consume_skip_state_expansion(const State& state)
+{
+    [[maybe_unused]] const auto& ignored_state = state;
+    return false;
+}
+
 bool IPruningStrategy::supports_atom_novelty_query() const { return false; }
 
 bool IPruningStrategy::test_atom_novelty_read_only(Index atom_index) const

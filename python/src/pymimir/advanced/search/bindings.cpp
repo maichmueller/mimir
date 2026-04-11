@@ -826,13 +826,13 @@ void bind_module_definitions(nb::module_& m)
         .def(nb::init<Problem, bool, bool, bool>(),
              "problem"_a,
              "typed_projection"_a = false,
-             "keep_depth_one_novel"_a = true,
+             "keep_depth_one_novel"_a = false,
              "keep_goal_nonunary_atoms"_a = false)
         .def_static("create",
                     &iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create,
                     "problem"_a,
                     "typed_projection"_a = false,
-                    "keep_depth_one_novel"_a = true,
+                    "keep_depth_one_novel"_a = false,
                     "keep_goal_nonunary_atoms"_a = false);
 
     // ExplorationStrategy

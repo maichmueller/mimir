@@ -152,6 +152,16 @@ size_t ArityKNoveltyPruningStrategyImpl::AtomIndexListHash::operator()(const Ato
     return seed;
 }
 
+size_t ProjectiveArityOneNoveltyPruningStrategyImpl::AtomIndexListHash::operator()(const AtomIndexList& atom_indices) const noexcept
+{
+    auto seed = atom_indices.size();
+    for (const auto atom_index : atom_indices)
+    {
+        seed ^= std::hash<AtomIndex> {}(atom_index) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    }
+    return seed;
+}
+
 ArityKNoveltyPruningStrategyImpl::ArityKNoveltyPruningStrategyImpl(size_t arity, size_t num_atoms) :
     m_novelty_table(arity, num_atoms),
     m_generated_states(),
@@ -794,6 +804,8 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_initial_state(cons
 
 bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ)
 {
+    [[maybe_unused]] const auto ignored_is_new_succ = is_new_succ;
+
     if (state == succ_state)
     {
         return true;
@@ -808,8 +820,12 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_successor_state(co
     m_generated_states.insert(succ_state.get_index());
 
     const auto is_novel = test_transition_novelty_and_update_table(state, succ_state);
-    if (m_keep_depth_one_novel && m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
+    if (m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
     {
+        if (!is_novel && !m_keep_depth_one_novel)
+        {
+            m_skip_depth_one_expansion_fluent_atom_indices.emplace(succ_state.get_atoms<FluentTag>().begin(), succ_state.get_atoms<FluentTag>().end());
+        }
         return false;
     }
 
@@ -820,7 +836,7 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::supports_action_add_effect_pr
 
 bool ProjectiveArityOneNoveltyPruningStrategyImpl::should_bypass_action_add_effect_precheck(const State& state) const
 {
-    return m_keep_depth_one_novel && m_root_state_index.has_value() && (state.get_index() == *m_root_state_index);
+    return m_root_state_index.has_value() && (state.get_index() == *m_root_state_index);
 }
 
 bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_transition_novelty_from_add_effects(const State& state,
@@ -839,6 +855,13 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_transition_novelty_from_
         }
     }
     return false;
+}
+
+bool ProjectiveArityOneNoveltyPruningStrategyImpl::consume_skip_state_expansion(const State& state)
+{
+    auto fluent_atom_indices = AtomIndexList {};
+    fluent_atom_indices.assign(state.get_atoms<FluentTag>().begin(), state.get_atoms<FluentTag>().end());
+    return m_skip_depth_one_expansion_fluent_atom_indices.erase(fluent_atom_indices) > 0;
 }
 
 bool ProjectiveArityOneNoveltyPruningStrategyImpl::supports_atom_novelty_query() const { return true; }
@@ -923,8 +946,12 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_successor_state_fo
     // Beam selection uses the same projective width-1 novelty test. In SURVIVORS_ONLY the
     // test is read-only here, and the kept states replay novelty updates later in beam order.
     const auto is_novel = test_transition_novelty(state, succ_state);
-    if (m_keep_depth_one_novel && m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
+    if (m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
     {
+        if (!is_novel && !m_keep_depth_one_novel)
+        {
+            m_skip_depth_one_expansion_fluent_atom_indices.emplace(succ_state.get_atoms<FluentTag>().begin(), succ_state.get_atoms<FluentTag>().end());
+        }
         return false;
     }
 
@@ -990,8 +1017,12 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_staged_successor_s
             }
         }
 
-        if (m_keep_depth_one_novel && m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
+        if (m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
         {
+            if (!is_novel && !m_keep_depth_one_novel)
+            {
+                m_skip_depth_one_expansion_fluent_atom_indices.emplace(succ_fluent_atom_indices.begin(), succ_fluent_atom_indices.end());
+            }
             return false;
         }
 
@@ -1038,8 +1069,12 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_staged_successor_s
         }
     }
 
-    if (m_keep_depth_one_novel && m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
+    if (m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
     {
+        if (!is_novel && !m_keep_depth_one_novel)
+        {
+            m_skip_depth_one_expansion_fluent_atom_indices.emplace(succ_fluent_atom_indices.begin(), succ_fluent_atom_indices.end());
+        }
         return false;
     }
 
@@ -1115,8 +1150,12 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_staged_successor_s
         }
     }
 
-    if (m_keep_depth_one_novel && m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
+    if (m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
     {
+        if (!is_novel && !m_keep_depth_one_novel)
+        {
+            m_skip_depth_one_expansion_fluent_atom_indices.emplace(succ_fluent_atom_indices.begin(), succ_fluent_atom_indices.end());
+        }
         return false;
     }
 
@@ -1139,8 +1178,12 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_successor_state_fo
     }
 
     const auto is_novel = test_transition_novelty_and_update_delta(state, succ_state);
-    if (m_keep_depth_one_novel && m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
+    if (m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
     {
+        if (!is_novel && !m_keep_depth_one_novel)
+        {
+            m_skip_depth_one_expansion_fluent_atom_indices.emplace(succ_state.get_atoms<FluentTag>().begin(), succ_state.get_atoms<FluentTag>().end());
+        }
         return false;
     }
 
@@ -1211,8 +1254,12 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_staged_successor_s
         }
     }
 
-    if (m_keep_depth_one_novel && m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
+    if (m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
     {
+        if (!is_novel && !m_keep_depth_one_novel)
+        {
+            m_skip_depth_one_expansion_fluent_atom_indices.emplace(succ_fluent_atom_indices.begin(), succ_fluent_atom_indices.end());
+        }
         return false;
     }
 

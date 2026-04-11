@@ -449,7 +449,7 @@ int main(int argc, char** argv)
     auto iw1_action_selection_mode = IW1ActionSelectionMode::OFF;
     auto iw1_novelty_basis = IW1NoveltyBasis::CLASSICAL;
     auto iw1_atom_first_ratio = 1.0;
-    auto projective_keep_depth_one_novel = true;
+    auto projective_keep_depth_one_novel = false;
     auto search_context_options = SearchContextImpl::Options(SearchContextImpl::GroundedOptions());
     auto parsing_chunk_sizes = false;
     for (int i = positional_start_index; i < argc; ++i)

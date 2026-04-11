@@ -36,6 +36,7 @@ public:
     virtual bool supports_action_add_effect_precheck() const;
     virtual bool should_bypass_action_add_effect_precheck(const State& state) const;
     virtual bool test_transition_novelty_from_add_effects(const State& state, const iw::AtomIndexList& add_fluent_atom_indices) const;
+    virtual bool consume_skip_state_expansion(const State& state);
     virtual bool supports_atom_novelty_query() const;
     virtual bool test_atom_novelty_read_only(Index atom_index) const;
     virtual bool supports_transition_novel_witness_query() const;

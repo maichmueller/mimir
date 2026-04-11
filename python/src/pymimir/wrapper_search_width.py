@@ -225,7 +225,7 @@ def projective_iw(
     problem: "Problem",
     start_state: "State",
     typed_projection: bool = False,
-    keep_depth_one_novel: bool = True,
+    keep_depth_one_novel: bool = False,
     keep_goal_nonunary_atoms: bool = False,
     layer_ordering_strategy: "Union[AdvancedILayerOrderingStrategy, None]" = None,
     max_next_layer_states: int = -1,

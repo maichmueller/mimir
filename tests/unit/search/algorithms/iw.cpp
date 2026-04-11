@@ -641,7 +641,7 @@ TEST(MimirTests, SearchAlgorithmsIWStatePairTupleIndexGeneratorWidth2Test3)
     EXPECT_EQ(++iter, generator.end());
 }
 
-TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyDepthOneNovelByDefaultTest)
+TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyKeepDepthOneNovelTest)
 {
     const auto domain_file = fs::path(std::string(DATA_DIR) + "gripper/domain.pddl");
     const auto problem_file = fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl");
@@ -663,7 +663,7 @@ TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyDepth
     const auto [succ_state, succ_state_metric_value] = state_repository.get_or_create_state(covering_atoms, numeric_values);
     [[maybe_unused]] const auto ignored_succ_state_metric_value = succ_state_metric_value;
 
-    const auto projective_iw1 = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem);
+    const auto projective_iw1 = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem, false, true);
 
     EXPECT_FALSE(projective_iw1->test_prune_initial_state(state));
     EXPECT_FALSE(projective_iw1->test_prune_successor_state(state, succ_state, true));
@@ -686,20 +686,20 @@ TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyDepth
 
     auto add_fluent_atom_indices = iw::AtomIndexList { target_atom->get_index() };
 
-    const auto keep_depth_one_projective_iw1 = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem);
+    const auto keep_depth_one_projective_iw1 = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem, false, true);
     const auto opt_out_projective_iw1 = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem, false, false);
 
     EXPECT_FALSE(keep_depth_one_projective_iw1->test_prune_initial_state(state));
     EXPECT_FALSE(opt_out_projective_iw1->test_prune_initial_state(state));
 
     EXPECT_TRUE(keep_depth_one_projective_iw1->should_bypass_action_add_effect_precheck(state));
-    EXPECT_FALSE(opt_out_projective_iw1->should_bypass_action_add_effect_precheck(state));
+    EXPECT_TRUE(opt_out_projective_iw1->should_bypass_action_add_effect_precheck(state));
 
     EXPECT_TRUE(keep_depth_one_projective_iw1->test_transition_novelty_from_add_effects(state, add_fluent_atom_indices));
-    EXPECT_FALSE(opt_out_projective_iw1->test_transition_novelty_from_add_effects(state, add_fluent_atom_indices));
+    EXPECT_TRUE(opt_out_projective_iw1->test_transition_novelty_from_add_effects(state, add_fluent_atom_indices));
 }
 
-TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyOptOutDepthOneNoveltyTest)
+TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyOptOutDepthOneContinuationTest)
 {
     const auto domain_file = fs::path(std::string(DATA_DIR) + "gripper/domain.pddl");
     const auto problem_file = fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl");
@@ -727,8 +727,10 @@ TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyOptOu
     EXPECT_FALSE(projective_iw1->test_prune_initial_state(state));
     EXPECT_FALSE(iw1->test_prune_initial_state(state));
 
-    EXPECT_TRUE(projective_iw1->test_prune_successor_state(state, succ_state, true));
+    EXPECT_FALSE(projective_iw1->test_prune_successor_state(state, succ_state, true));
     EXPECT_FALSE(iw1->test_prune_successor_state(state, succ_state, true));
+    EXPECT_TRUE(projective_iw1->consume_skip_state_expansion(succ_state));
+    EXPECT_FALSE(projective_iw1->consume_skip_state_expansion(succ_state));
 }
 
 TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyTypedProjectionRequiresTypingTest)
