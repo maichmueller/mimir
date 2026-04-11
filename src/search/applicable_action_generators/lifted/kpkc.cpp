@@ -1805,7 +1805,8 @@ ParallelRelaxedBeamSuccessorGenerationResult KPKCLiftedApplicableActionGenerator
                                                                   return;
                                                               }
 
-                                                              if (iw1_precheck_add_effect_novelty)
+                                                              if (iw1_precheck_add_effect_novelty
+                                                                  && !pruning_strategy->should_bypass_action_add_effect_precheck(state))
                                                               {
                                                                   action_validator.collect_add_effect_fluent_atom_indices(state,
                                                                                                                           *lookup_tables,

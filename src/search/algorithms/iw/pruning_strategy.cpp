@@ -818,10 +818,19 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_successor_state(co
 
 bool ProjectiveArityOneNoveltyPruningStrategyImpl::supports_action_add_effect_precheck() const { return true; }
 
+bool ProjectiveArityOneNoveltyPruningStrategyImpl::should_bypass_action_add_effect_precheck(const State& state) const
+{
+    return m_keep_depth_one_novel && m_root_state_index.has_value() && (state.get_index() == *m_root_state_index);
+}
+
 bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_transition_novelty_from_add_effects(const State& state,
                                                                                              const AtomIndexList& add_fluent_atom_indices) const
 {
-    [[maybe_unused]] const auto& ignored_state = state;
+    if (should_bypass_action_add_effect_precheck(state))
+    {
+        return true;
+    }
+
     for (const auto atom_index : add_fluent_atom_indices)
     {
         if (test_atom_novelty(atom_index))

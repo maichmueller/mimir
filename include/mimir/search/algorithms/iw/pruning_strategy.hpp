@@ -204,6 +204,7 @@ public:
     bool test_prune_initial_state(const State& state) override;
     bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;
     bool supports_action_add_effect_precheck() const override;
+    bool should_bypass_action_add_effect_precheck(const State& state) const override;
     bool test_transition_novelty_from_add_effects(const State& state, const AtomIndexList& add_fluent_atom_indices) const override;
     bool supports_atom_novelty_query() const override;
     bool test_atom_novelty_read_only(Index atom_index) const override;

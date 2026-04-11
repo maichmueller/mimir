@@ -34,6 +34,7 @@ public:
     virtual bool test_prune_initial_state(const State& state) = 0;
     virtual bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) = 0;
     virtual bool supports_action_add_effect_precheck() const;
+    virtual bool should_bypass_action_add_effect_precheck(const State& state) const;
     virtual bool test_transition_novelty_from_add_effects(const State& state, const iw::AtomIndexList& add_fluent_atom_indices) const;
     virtual bool supports_atom_novelty_query() const;
     virtual bool test_atom_novelty_read_only(Index atom_index) const;

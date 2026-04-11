@@ -387,6 +387,11 @@ IW1ActionPrecheckController::filter_actions(const State& state, const std::span<
         return actions;
     }
 
+    if (m_pruning_strategy->should_bypass_action_add_effect_precheck(state))
+    {
+        return actions;
+    }
+
     m_filtered_actions.clear();
     m_action_add_atoms.clear();
     m_action_add_atoms.resize(actions.size());

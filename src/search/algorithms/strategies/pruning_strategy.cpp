@@ -25,6 +25,12 @@ namespace mimir::search
 {
 bool IPruningStrategy::supports_action_add_effect_precheck() const { return false; }
 
+bool IPruningStrategy::should_bypass_action_add_effect_precheck(const State& state) const
+{
+    [[maybe_unused]] const auto& ignored_state = state;
+    return false;
+}
+
 bool IPruningStrategy::test_transition_novelty_from_add_effects(const State& state, const iw::AtomIndexList& add_fluent_atom_indices) const
 {
     [[maybe_unused]] const auto& ignored_state = state;

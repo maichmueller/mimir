@@ -669,6 +669,36 @@ TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyDepth
     EXPECT_FALSE(projective_iw1->test_prune_successor_state(state, succ_state, true));
 }
 
+TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyDepthOnePrecheckBypassTest)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "gripper/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl");
+    const auto problem = ProblemImpl::create(domain_file, problem_file);
+
+    const auto search_context = SearchContextImpl::create(problem, SearchContextImpl::Options(SearchContextImpl::LiftedOptions()));
+    auto& state_repository = *search_context->get_state_repository();
+
+    auto [covering_atoms, target_atom] = find_projective_iw1_candidate(problem);
+    const auto numeric_values = problem->get_initial_function_to_value<FluentTag>();
+
+    const auto [state, state_metric_value] = state_repository.get_or_create_state(covering_atoms, numeric_values);
+    [[maybe_unused]] const auto ignored_state_metric_value = state_metric_value;
+
+    auto add_fluent_atom_indices = iw::AtomIndexList { target_atom->get_index() };
+
+    const auto keep_depth_one_projective_iw1 = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem);
+    const auto opt_out_projective_iw1 = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem, false, false);
+
+    EXPECT_FALSE(keep_depth_one_projective_iw1->test_prune_initial_state(state));
+    EXPECT_FALSE(opt_out_projective_iw1->test_prune_initial_state(state));
+
+    EXPECT_TRUE(keep_depth_one_projective_iw1->should_bypass_action_add_effect_precheck(state));
+    EXPECT_FALSE(opt_out_projective_iw1->should_bypass_action_add_effect_precheck(state));
+
+    EXPECT_TRUE(keep_depth_one_projective_iw1->test_transition_novelty_from_add_effects(state, add_fluent_atom_indices));
+    EXPECT_FALSE(opt_out_projective_iw1->test_transition_novelty_from_add_effects(state, add_fluent_atom_indices));
+}
+
 TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyOptOutDepthOneNoveltyTest)
 {
     const auto domain_file = fs::path(std::string(DATA_DIR) + "gripper/domain.pddl");
