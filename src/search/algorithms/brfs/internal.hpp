@@ -66,6 +66,7 @@ private:
 
     std::vector<formalism::GroundAction> m_filtered_actions;
     std::vector<iw::AtomIndexList> m_action_add_atoms;
+    iw::AtomIndexList m_single_action_add_atoms;
     std::vector<uint8_t> m_selected_action_mask;
     std::vector<Index> m_remaining_atoms;
     std::vector<uint8_t> m_atom_in_remaining;
@@ -77,6 +78,9 @@ public:
     IW1ActionPrecheckController(const Options& options, const PruningStrategy& pruning_strategy, const formalism::Problem& problem, const State& start_state);
 
     [[nodiscard]] bool is_enabled() const { return m_enabled; }
+    [[nodiscard]] bool supports_online_filtering() const { return m_enabled && !m_atom_first_mode; }
+
+    bool test_action(const State& state, formalism::GroundAction action, StateRepositoryImpl& state_repository);
 
     std::span<const formalism::GroundAction>
     filter_actions(const State& state, const std::span<const formalism::GroundAction>& actions, StateRepositoryImpl& state_repository);

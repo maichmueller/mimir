@@ -324,6 +324,7 @@ IW1ActionPrecheckController::IW1ActionPrecheckController(const Options& options,
     m_pruning_strategy(pruning_strategy),
     m_filtered_actions(),
     m_action_add_atoms(),
+    m_single_action_add_atoms(),
     m_selected_action_mask(),
     m_remaining_atoms(),
     m_atom_in_remaining(),
@@ -460,6 +461,17 @@ IW1ActionPrecheckController::filter_actions(const State& state, const std::span<
         }
     }
     return m_filtered_actions;
+}
+
+bool IW1ActionPrecheckController::test_action(const State& state, formalism::GroundAction action, StateRepositoryImpl& state_repository)
+{
+    if (!m_enabled || m_pruning_strategy->should_bypass_action_add_effect_precheck(state))
+    {
+        return true;
+    }
+
+    state_repository.collect_action_add_effect_fluent_atom_indices(state, action, m_single_action_add_atoms);
+    return m_pruning_strategy->test_transition_novelty_from_add_effects(state, m_single_action_add_atoms);
 }
 
 SearchResult find_solution_with_beam(const SearchContext& context,

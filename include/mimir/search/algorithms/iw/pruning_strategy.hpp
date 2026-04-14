@@ -81,8 +81,6 @@ private:
     };
 
     DynamicNoveltyTable m_novelty_table;
-
-    std::unordered_set<Index> m_generated_states;
     std::vector<AtomIndexList> m_beam_layer_delta_tuples;
     std::unordered_set<AtomIndexList, AtomIndexListHash> m_beam_layer_delta_tuple_set;
     std::vector<AtomIndexList> m_scratch_novel_tuples;
@@ -176,14 +174,17 @@ private:
     bool m_keep_depth_one_novel;
     bool m_keep_goal_nonunary_atoms;
     std::optional<Index> m_root_state_index;
-    std::unordered_set<Index> m_generated_states;
+    mutable std::vector<std::vector<ProjectedAtomKey>> m_projected_atom_keys_by_atom_index;
     std::unordered_set<ProjectedAtomKey, ProjectedAtomKeyHash> m_seen_projected_atoms;
     std::vector<ProjectedAtomKey> m_beam_layer_delta_projected_atoms;
     std::unordered_set<ProjectedAtomKey, ProjectedAtomKeyHash> m_beam_layer_delta_projected_atoms_set;
-    std::vector<ProjectedAtomKey> m_scratch_projected_atom_keys;
-    std::unordered_set<AtomIndexList, AtomIndexListHash> m_skip_depth_one_expansion_fluent_atom_indices;
+    std::unordered_set<Index> m_skip_depth_one_expansion_state_indices;
+    std::unordered_set<AtomIndexList, AtomIndexListHash> m_skip_depth_one_expansion_fluent_atom_indices_fallback;
 
-    void collect_projected_atom_keys(AtomIndex atom_index, std::vector<ProjectedAtomKey>& out_projected_atom_keys) const;
+    void compute_projected_atom_keys_for_atom(formalism::GroundAtom<formalism::FluentTag> ground_atom,
+                                              std::vector<ProjectedAtomKey>& out_projected_atom_keys) const;
+    void precompute_projected_atom_keys();
+    const std::vector<ProjectedAtomKey>& get_projected_atom_keys(AtomIndex atom_index) const;
     bool test_atom_novelty(AtomIndex atom_index) const;
     bool test_atom_novelty_and_update_table(AtomIndex atom_index);
     bool test_atom_novelty_and_update_delta(AtomIndex atom_index);

@@ -164,7 +164,6 @@ size_t ProjectiveArityOneNoveltyPruningStrategyImpl::AtomIndexListHash::operator
 
 ArityKNoveltyPruningStrategyImpl::ArityKNoveltyPruningStrategyImpl(size_t arity, size_t num_atoms) :
     m_novelty_table(arity, num_atoms),
-    m_generated_states(),
     m_beam_layer_delta_tuples(),
     m_beam_layer_delta_tuple_set(),
     m_scratch_novel_tuples()
@@ -199,13 +198,6 @@ bool ArityKNoveltyPruningStrategyImpl::test_transition_novelty_and_update_delta(
 
 bool ArityKNoveltyPruningStrategyImpl::test_prune_initial_state(const State& state)
 {
-    if (m_generated_states.count(state.get_index()))
-    {
-        assert(!m_novelty_table.test_novelty_and_update_table(state));
-        return true;
-    }
-    m_generated_states.insert(state.get_index());
-
     return !m_novelty_table.test_novelty_and_update_table(state);
 }
 
@@ -216,13 +208,12 @@ bool ArityKNoveltyPruningStrategyImpl::test_prune_successor_state(const State& s
         return true;
     }
 
-    if (m_generated_states.count(succ_state.get_index()))
+    if (!is_new_succ)
     {
         // Transition novelty depends on the predecessor as well. A duplicate successor
         // can still expose a novel transition, but duplicate states are pruned either way.
         return true;
     }
-    m_generated_states.insert(succ_state.get_index());
 
     return !m_novelty_table.test_novelty_and_update_table(state, succ_state);
 }
@@ -481,16 +472,19 @@ ProjectiveArityOneNoveltyPruningStrategyImpl::ProjectiveArityOneNoveltyPruningSt
     m_keep_depth_one_novel(keep_depth_one_novel),
     m_keep_goal_nonunary_atoms(keep_goal_nonunary_atoms),
     m_root_state_index(std::nullopt),
-    m_generated_states(),
+    m_projected_atom_keys_by_atom_index(),
     m_seen_projected_atoms(),
     m_beam_layer_delta_projected_atoms(),
     m_beam_layer_delta_projected_atoms_set(),
-    m_scratch_projected_atom_keys()
+    m_skip_depth_one_expansion_state_indices(),
+    m_skip_depth_one_expansion_fluent_atom_indices_fallback()
 {
     if (m_typed_projection && !m_problem->get_requirements()->test(loki::RequirementEnum::TYPING))
     {
         throw std::runtime_error("ProjectiveArityOneNoveltyPruningStrategyImpl: typed_projection requires the :typing requirement.");
     }
+
+    precompute_projected_atom_keys();
 }
 
 size_t ProjectiveArityOneNoveltyPruningStrategyImpl::ProjectedAtomKeyHash::operator()(const ProjectedAtomKey& key) const noexcept
@@ -519,13 +513,34 @@ PruningStrategy ProjectiveArityOneNoveltyPruningStrategyImpl::create(formalism::
         keep_goal_nonunary_atoms);
 }
 
-void ProjectiveArityOneNoveltyPruningStrategyImpl::collect_projected_atom_keys(
-    AtomIndex atom_index,
+void ProjectiveArityOneNoveltyPruningStrategyImpl::precompute_projected_atom_keys()
+{
+    const auto ground_atoms = m_problem->get_repositories().get_ground_atoms<FluentTag>();
+    m_projected_atom_keys_by_atom_index.clear();
+
+    auto max_atom_index = Index(0);
+    auto has_ground_atoms = false;
+    for (const auto& ground_atom : ground_atoms)
+    {
+        max_atom_index = std::max(max_atom_index, ground_atom.get_index());
+        has_ground_atoms = true;
+    }
+    m_projected_atom_keys_by_atom_index.resize(has_ground_atoms ? (max_atom_index + 1) : 0);
+
+    for (const auto& ground_atom : ground_atoms)
+    {
+        auto& projected_atom_keys = m_projected_atom_keys_by_atom_index[ground_atom.get_index()];
+        compute_projected_atom_keys_for_atom(&ground_atom, projected_atom_keys);
+    }
+}
+
+void ProjectiveArityOneNoveltyPruningStrategyImpl::compute_projected_atom_keys_for_atom(
+    formalism::GroundAtom<FluentTag> ground_atom,
     std::vector<ProjectedAtomKey>& out_projected_atom_keys) const
 {
     out_projected_atom_keys.clear();
 
-    const auto ground_atom = m_problem->get_repositories().get_ground_atom<FluentTag>(atom_index);
+    const auto atom_index = ground_atom->get_index();
 
     // Unary atoms are kept as-is. Higher-arity atoms are split into unary features by
     // argument position. In typed mode, the feature key additionally stores the ordered
@@ -599,10 +614,26 @@ void ProjectiveArityOneNoveltyPruningStrategyImpl::collect_projected_atom_keys(
     }
 }
 
+const std::vector<ProjectiveArityOneNoveltyPruningStrategyImpl::ProjectedAtomKey>&
+ProjectiveArityOneNoveltyPruningStrategyImpl::get_projected_atom_keys(AtomIndex atom_index) const
+{
+    if (atom_index >= m_projected_atom_keys_by_atom_index.size())
+    {
+        m_projected_atom_keys_by_atom_index.resize(atom_index + 1);
+    }
+
+    auto& projected_atom_keys = m_projected_atom_keys_by_atom_index[atom_index];
+    if (projected_atom_keys.empty())
+    {
+        compute_projected_atom_keys_for_atom(m_problem->get_repositories().get_ground_atom<FluentTag>(atom_index), projected_atom_keys);
+    }
+
+    return projected_atom_keys;
+}
+
 bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_atom_novelty(AtomIndex atom_index) const
 {
-    auto projected_atom_keys = std::vector<ProjectedAtomKey> {};
-    collect_projected_atom_keys(atom_index, projected_atom_keys);
+    const auto& projected_atom_keys = get_projected_atom_keys(atom_index);
 
     return std::ranges::any_of(projected_atom_keys,
                                [this](const auto& projected_atom) { return !m_seen_projected_atoms.count(projected_atom); });
@@ -610,10 +641,10 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_atom_novelty(AtomIndex a
 
 bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_atom_novelty_and_update_table(AtomIndex atom_index)
 {
-    collect_projected_atom_keys(atom_index, m_scratch_projected_atom_keys);
+    const auto& projected_atom_keys = get_projected_atom_keys(atom_index);
 
     bool is_novel = false;
-    for (const auto& projected_atom : m_scratch_projected_atom_keys)
+    for (const auto& projected_atom : projected_atom_keys)
     {
         if (m_seen_projected_atoms.emplace(projected_atom).second)
         {
@@ -625,10 +656,10 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_atom_novelty_and_update_
 
 bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_atom_novelty_and_update_delta(AtomIndex atom_index)
 {
-    collect_projected_atom_keys(atom_index, m_scratch_projected_atom_keys);
+    const auto& projected_atom_keys = get_projected_atom_keys(atom_index);
 
     bool is_novel = false;
-    for (const auto& projected_atom : m_scratch_projected_atom_keys)
+    for (const auto& projected_atom : projected_atom_keys)
     {
         if (!m_seen_projected_atoms.count(projected_atom) && m_beam_layer_delta_projected_atoms_set.emplace(projected_atom).second)
         {
@@ -792,13 +823,6 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_initial_state(cons
         m_root_state_index = state.get_index();
     }
 
-    if (m_generated_states.count(state.get_index()))
-    {
-        assert(!test_state_novelty_and_update_table(state));
-        return true;
-    }
-    m_generated_states.insert(state.get_index());
-
     return !test_state_novelty_and_update_table(state);
 }
 
@@ -811,20 +835,19 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_successor_state(co
         return true;
     }
 
-    if (m_generated_states.count(succ_state.get_index()))
+    if (!is_new_succ)
     {
         // Projective width-1 novelty is still transition-based, so a duplicate successor
         // can remain novel relative to a different predecessor even though it is pruned.
         return true;
     }
-    m_generated_states.insert(succ_state.get_index());
 
     const auto is_novel = test_transition_novelty_and_update_table(state, succ_state);
     if (m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
     {
         if (!is_novel && !m_keep_depth_one_novel)
         {
-            m_skip_depth_one_expansion_fluent_atom_indices.emplace(succ_state.get_atoms<FluentTag>().begin(), succ_state.get_atoms<FluentTag>().end());
+            m_skip_depth_one_expansion_state_indices.emplace(succ_state.get_index());
         }
         return false;
     }
@@ -859,9 +882,14 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_transition_novelty_from_
 
 bool ProjectiveArityOneNoveltyPruningStrategyImpl::consume_skip_state_expansion(const State& state)
 {
+    if (m_skip_depth_one_expansion_state_indices.erase(state.get_index()) > 0)
+    {
+        return true;
+    }
+
     auto fluent_atom_indices = AtomIndexList {};
     fluent_atom_indices.assign(state.get_atoms<FluentTag>().begin(), state.get_atoms<FluentTag>().end());
-    return m_skip_depth_one_expansion_fluent_atom_indices.erase(fluent_atom_indices) > 0;
+    return m_skip_depth_one_expansion_fluent_atom_indices_fallback.erase(fluent_atom_indices) > 0;
 }
 
 bool ProjectiveArityOneNoveltyPruningStrategyImpl::supports_atom_novelty_query() const { return true; }
@@ -950,7 +978,7 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_successor_state_fo
     {
         if (!is_novel && !m_keep_depth_one_novel)
         {
-            m_skip_depth_one_expansion_fluent_atom_indices.emplace(succ_state.get_atoms<FluentTag>().begin(), succ_state.get_atoms<FluentTag>().end());
+            m_skip_depth_one_expansion_state_indices.emplace(succ_state.get_index());
         }
         return false;
     }
@@ -1021,7 +1049,7 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_staged_successor_s
         {
             if (!is_novel && !m_keep_depth_one_novel)
             {
-                m_skip_depth_one_expansion_fluent_atom_indices.emplace(succ_fluent_atom_indices.begin(), succ_fluent_atom_indices.end());
+                m_skip_depth_one_expansion_fluent_atom_indices_fallback.emplace(succ_fluent_atom_indices.begin(), succ_fluent_atom_indices.end());
             }
             return false;
         }
@@ -1073,7 +1101,7 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_staged_successor_s
     {
         if (!is_novel && !m_keep_depth_one_novel)
         {
-            m_skip_depth_one_expansion_fluent_atom_indices.emplace(succ_fluent_atom_indices.begin(), succ_fluent_atom_indices.end());
+            m_skip_depth_one_expansion_fluent_atom_indices_fallback.emplace(succ_fluent_atom_indices.begin(), succ_fluent_atom_indices.end());
         }
         return false;
     }
@@ -1090,7 +1118,6 @@ void ProjectiveArityOneNoveltyPruningStrategyImpl::on_begin_beam_replay(BeamNove
 
     m_beam_layer_delta_projected_atoms.clear();
     m_beam_layer_delta_projected_atoms_set.clear();
-    m_scratch_projected_atom_keys.clear();
 }
 
 bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_staged_successor_state_for_relaxed_beam_selection(
@@ -1154,7 +1181,7 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_staged_successor_s
     {
         if (!is_novel && !m_keep_depth_one_novel)
         {
-            m_skip_depth_one_expansion_fluent_atom_indices.emplace(succ_fluent_atom_indices.begin(), succ_fluent_atom_indices.end());
+            m_skip_depth_one_expansion_fluent_atom_indices_fallback.emplace(succ_fluent_atom_indices.begin(), succ_fluent_atom_indices.end());
         }
         return false;
     }
@@ -1182,7 +1209,7 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_successor_state_fo
     {
         if (!is_novel && !m_keep_depth_one_novel)
         {
-            m_skip_depth_one_expansion_fluent_atom_indices.emplace(succ_state.get_atoms<FluentTag>().begin(), succ_state.get_atoms<FluentTag>().end());
+            m_skip_depth_one_expansion_state_indices.emplace(succ_state.get_index());
         }
         return false;
     }
@@ -1258,7 +1285,7 @@ bool ProjectiveArityOneNoveltyPruningStrategyImpl::test_prune_staged_successor_s
     {
         if (!is_novel && !m_keep_depth_one_novel)
         {
-            m_skip_depth_one_expansion_fluent_atom_indices.emplace(succ_fluent_atom_indices.begin(), succ_fluent_atom_indices.end());
+            m_skip_depth_one_expansion_fluent_atom_indices_fallback.emplace(succ_fluent_atom_indices.begin(), succ_fluent_atom_indices.end());
         }
         return false;
     }
@@ -1279,6 +1306,5 @@ void ProjectiveArityOneNoveltyPruningStrategyImpl::on_end_beam_replay(BeamNovelt
     }
     m_beam_layer_delta_projected_atoms.clear();
     m_beam_layer_delta_projected_atoms_set.clear();
-    m_scratch_projected_atom_keys.clear();
 }
 }

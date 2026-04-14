@@ -267,41 +267,83 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
 
             if (iw1_action_precheck.is_enabled())
             {
-                auto applicable_actions = std::vector<GroundAction> {};
-                for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
+                if (iw1_action_precheck.supports_online_filtering())
                 {
-                    applicable_actions.push_back(action);
+                    for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
+                    {
+                        if (!iw1_action_precheck.test_action(state, action, state_repository))
+                        {
+                            continue;
+                        }
+
+                        const auto [successor_state, successor_state_metric_value] = state_repository.get_or_create_successor_state(state, action, search_node.g_value);
+                        auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
+                        auto action_cost = successor_state_metric_value - search_node.g_value;
+
+                        if (emit_novel_witness_events)
+                        {
+                            pruning_strategy->compute_transition_novel_fluent_atom_indices_read_only(state, successor_state, novel_witness_atom_indices);
+                            event_handler->on_generate_state_with_novel_witness(state, action, action_cost, successor_state, novel_witness_atom_indices);
+                        }
+                        event_handler->on_generate_state(state, action, action_cost, successor_state);
+                        if (pruning_strategy->test_prune_successor_state(state, successor_state, (successor_search_node.status == SearchNodeStatus::NEW)))
+                        {
+                            event_handler->on_generate_state_not_in_search_tree(state, action, action_cost, successor_state);
+                            continue;
+                        }
+                        event_handler->on_generate_state_in_search_tree(state, action, action_cost, successor_state);
+
+                        successor_search_node.status = SearchNodeStatus::OPEN;
+                        successor_search_node.parent_state = state.get_index();
+                        successor_search_node.g_value = search_node.g_value + 1;
+
+                        queue.emplace_back(successor_state.get_packed_state());
+
+                        if (search_nodes.size() >= options.max_num_states)
+                        {
+                            result.status = SearchStatus::OUT_OF_STATES;
+                            return result;
+                        }
+                    }
                 }
-                const auto filtered_actions = iw1_action_precheck.filter_actions(state, applicable_actions, state_repository);
-                for (const auto& action : filtered_actions)
+                else
                 {
-                    const auto [successor_state, successor_state_metric_value] = state_repository.get_or_create_successor_state(state, action, search_node.g_value);
-                    auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
-                    auto action_cost = successor_state_metric_value - search_node.g_value;
-
-                    if (emit_novel_witness_events)
+                    auto applicable_actions = std::vector<GroundAction> {};
+                    for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
                     {
-                        pruning_strategy->compute_transition_novel_fluent_atom_indices_read_only(state, successor_state, novel_witness_atom_indices);
-                        event_handler->on_generate_state_with_novel_witness(state, action, action_cost, successor_state, novel_witness_atom_indices);
+                        applicable_actions.push_back(action);
                     }
-                    event_handler->on_generate_state(state, action, action_cost, successor_state);
-                    if (pruning_strategy->test_prune_successor_state(state, successor_state, (successor_search_node.status == SearchNodeStatus::NEW)))
+                    const auto filtered_actions = iw1_action_precheck.filter_actions(state, applicable_actions, state_repository);
+                    for (const auto& action : filtered_actions)
                     {
-                        event_handler->on_generate_state_not_in_search_tree(state, action, action_cost, successor_state);
-                        continue;
-                    }
-                    event_handler->on_generate_state_in_search_tree(state, action, action_cost, successor_state);
+                        const auto [successor_state, successor_state_metric_value] = state_repository.get_or_create_successor_state(state, action, search_node.g_value);
+                        auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
+                        auto action_cost = successor_state_metric_value - search_node.g_value;
 
-                    successor_search_node.status = SearchNodeStatus::OPEN;
-                    successor_search_node.parent_state = state.get_index();
-                    successor_search_node.g_value = search_node.g_value + 1;
+                        if (emit_novel_witness_events)
+                        {
+                            pruning_strategy->compute_transition_novel_fluent_atom_indices_read_only(state, successor_state, novel_witness_atom_indices);
+                            event_handler->on_generate_state_with_novel_witness(state, action, action_cost, successor_state, novel_witness_atom_indices);
+                        }
+                        event_handler->on_generate_state(state, action, action_cost, successor_state);
+                        if (pruning_strategy->test_prune_successor_state(state, successor_state, (successor_search_node.status == SearchNodeStatus::NEW)))
+                        {
+                            event_handler->on_generate_state_not_in_search_tree(state, action, action_cost, successor_state);
+                            continue;
+                        }
+                        event_handler->on_generate_state_in_search_tree(state, action, action_cost, successor_state);
 
-                    queue.emplace_back(successor_state.get_packed_state());
+                        successor_search_node.status = SearchNodeStatus::OPEN;
+                        successor_search_node.parent_state = state.get_index();
+                        successor_search_node.g_value = search_node.g_value + 1;
 
-                    if (search_nodes.size() >= options.max_num_states)
-                    {
-                        result.status = SearchStatus::OUT_OF_STATES;
-                        return result;
+                        queue.emplace_back(successor_state.get_packed_state());
+
+                        if (search_nodes.size() >= options.max_num_states)
+                        {
+                            result.status = SearchStatus::OUT_OF_STATES;
+                            return result;
+                        }
                     }
                 }
             }
