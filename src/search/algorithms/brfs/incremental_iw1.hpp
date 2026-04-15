@@ -60,7 +60,6 @@ private:
     IW1IncrementalFirstApplicabilityStatistics m_statistics;
 
     void build_trigger_index();
-    bool has_tested_action(formalism::GroundAction action) const;
     void ensure_ground_action_capacity(Index action_index);
     void run_debug_crosscheck(const State& state, SearchNode search_node);
 
@@ -68,6 +67,7 @@ public:
     IW1IncrementalActionDiscoveryController(const SearchContext& context, const Options& options);
 
     [[nodiscard]] bool is_enabled() const { return m_enabled; }
+    [[nodiscard]] bool has_tested_action(formalism::GroundAction action) const;
     void on_root_action_fully_enumerated();
     void mark_action_tested(formalism::GroundAction action);
     std::span<const formalism::GroundAction> get_actions_to_expand(const State& state, SearchNode search_node);

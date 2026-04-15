@@ -23,6 +23,7 @@
 #include "mimir/common/timers.hpp"
 #include "mimir/formalism/domain.hpp"
 #include "mimir/formalism/effects.hpp"
+#include "mimir/formalism/formatter.hpp"
 #include "mimir/formalism/problem.hpp"
 #include "mimir/search/algorithms/brfs/event_handlers.hpp"
 #include "mimir/search/algorithms/brfs/event_handlers/interface.hpp"
@@ -39,7 +40,9 @@
 
 #include <algorithm>
 #include <deque>
+#include <sstream>
 #include <stdexcept>
+#include <unordered_set>
 
 using namespace mimir::formalism;
 
@@ -47,6 +50,34 @@ namespace mimir::search::brfs
 {
 namespace
 {
+std::string format_ground_action(GroundAction action, Problem problem)
+{
+    if (!action)
+    {
+        return "<invalid-action>";
+    }
+
+    auto out = std::ostringstream {};
+    out << std::tuple<const GroundActionImpl&, const ProblemImpl&, PlanFormatterTag> { *action, *problem, PlanFormatterTag {} };
+    return out.str();
+}
+
+std::string format_ground_action_list(const std::span<const GroundAction>& actions, Problem problem)
+{
+    auto out = std::ostringstream {};
+    out << "[";
+    for (size_t i = 0; i < actions.size(); ++i)
+    {
+        if (i != 0)
+        {
+            out << ", ";
+        }
+        out << format_ground_action(actions[i], problem);
+    }
+    out << "]";
+    return out.str();
+}
+
 bool is_empty_conjunctive_condition(ConjunctiveCondition condition)
 {
     return condition->get_literals<StaticTag>().empty() && condition->get_literals<FluentTag>().empty() && condition->get_literals<DerivedTag>().empty()
@@ -105,6 +136,69 @@ struct IW1IncrementalStatisticsReporter
         }
     }
 };
+
+void run_incremental_precheck_filtered_crosscheck(const SearchContext& context,
+                                                 const Options& options,
+                                                 const State& start_state,
+                                                 const State& state,
+                                                 const PruningStrategy& pruning_strategy,
+                                                 StateRepositoryImpl& state_repository,
+                                                 const IW1IncrementalActionDiscoveryController& iw1_incremental_action_discovery,
+                                                 const std::span<const GroundAction>& filtered_incremental_actions)
+{
+    auto baseline_never_tested = std::vector<GroundAction> {};
+    for (const auto action : context->get_applicable_action_generator()->create_applicable_action_generator(state))
+    {
+        if (!iw1_incremental_action_discovery.has_tested_action(action))
+        {
+            baseline_never_tested.push_back(action);
+        }
+    }
+
+    auto debug_precheck = IW1ActionPrecheckController(options, pruning_strategy, context->get_problem(), start_state);
+    const auto filtered_baseline_actions = debug_precheck.filter_actions(state, baseline_never_tested, state_repository);
+
+    auto filtered_incremental_indices = std::unordered_set<Index> {};
+    for (const auto action : filtered_incremental_actions)
+    {
+        filtered_incremental_indices.insert(action->get_index());
+    }
+
+    auto baseline_indices = std::unordered_set<Index> {};
+    auto missing_actions = std::vector<GroundAction> {};
+    auto spurious_actions = std::vector<GroundAction> {};
+
+    for (const auto action : filtered_baseline_actions)
+    {
+        baseline_indices.insert(action->get_index());
+        if (!filtered_incremental_indices.contains(action->get_index()))
+        {
+            missing_actions.push_back(action);
+        }
+    }
+
+    for (const auto action : filtered_incremental_actions)
+    {
+        if (!baseline_indices.contains(action->get_index()))
+        {
+            spurious_actions.push_back(action);
+        }
+    }
+
+    if (missing_actions.empty() && spurious_actions.empty())
+    {
+        return;
+    }
+
+    auto message = std::ostringstream {};
+    message << "IW(1) incremental first-applicability filtered precheck cross-check failed.\n";
+    message << "state_id: " << state.get_index() << "\n";
+    message << "filtered_incremental_candidates: " << format_ground_action_list(filtered_incremental_actions, context->get_problem()) << "\n";
+    message << "filtered_baseline_candidates: " << format_ground_action_list(filtered_baseline_actions, context->get_problem()) << "\n";
+    message << "missing_actions: " << format_ground_action_list(missing_actions, context->get_problem()) << "\n";
+    message << "spurious_actions: " << format_ground_action_list(spurious_actions, context->get_problem()) << "\n";
+    throw std::runtime_error(message.str());
+}
 }
 
 SearchResult find_solution(const SearchContext& context, const Options& options)
@@ -213,20 +307,30 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
 
     if (iw1_incremental_first_applicability)
     {
-        if (layer_ordering_strategy)
+        if (use_next_layer_limit)
         {
             throw std::invalid_argument(
-                "BrFS::Options.iw1_incremental_first_applicability currently supports only plain BrFS without layer ordering or beam search.");
+                "BrFS::Options.iw1_incremental_first_applicability currently supports only plain BrFS and beam search, but not ordered-layer search.");
         }
-        if (use_beam || use_next_layer_limit || relaxed_survivors_only_beam)
+        if (use_beam && (beam_novelty_mode != BeamNoveltyMode::ALL_TESTED))
         {
             throw std::invalid_argument(
-                "BrFS::Options.iw1_incremental_first_applicability currently supports only plain BrFS without beam search.");
+                "BrFS::Options.iw1_incremental_first_applicability currently supports beam search only with BeamNoveltyMode::ALL_TESTED.");
         }
-        if (iw1_precheck_add_effect_novelty || iw1_atom_first_mode)
+        if (!use_beam && layer_ordering_strategy)
         {
             throw std::invalid_argument(
-                "BrFS::Options.iw1_incremental_first_applicability cannot currently be combined with IW(1) action precheck or atom-first mode.");
+                "BrFS::Options.iw1_incremental_first_applicability currently supports plain BrFS without layer ordering, or beam search with BeamNoveltyMode::ALL_TESTED.");
+        }
+        if (relaxed_survivors_only_beam)
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.iw1_incremental_first_applicability does not support relaxed SURVIVORS_ONLY beam search.");
+        }
+        if (iw1_atom_first_mode)
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.iw1_incremental_first_applicability cannot currently be combined with IW(1) atom-first mode.");
         }
         if (!supports_iw1_incremental_first_applicability(problem))
         {
@@ -295,8 +399,6 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
 
     auto g_value = DiscreteCost(0);
     auto iw1_action_precheck = IW1ActionPrecheckController(options, pruning_strategy, context->get_problem(), start_state);
-    auto iw1_incremental_action_discovery = IW1IncrementalActionDiscoveryController(context, options);
-    auto iw1_incremental_statistics_reporter = IW1IncrementalStatisticsReporter { event_handler, &iw1_incremental_action_discovery };
     const auto emit_novel_witness_events =
         event_handler->supports_novel_witness_events() && pruning_strategy->supports_transition_novel_witness_query();
     auto novel_witness_atom_indices = iw::AtomIndexList {};
@@ -308,8 +410,89 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
 
     if (!layer_ordering_strategy)
     {
+        auto iw1_incremental_action_discovery = IW1IncrementalActionDiscoveryController(context, options);
+        auto iw1_incremental_statistics_reporter = IW1IncrementalStatisticsReporter { event_handler, &iw1_incremental_action_discovery };
         auto queue = std::deque<PackedState>();
+        auto candidate_actions = std::vector<GroundAction> {};
         queue.emplace_back(start_state.get_packed_state());
+
+        const auto collect_full_applicable_actions = [&](const State& state) -> std::span<const GroundAction>
+        {
+            candidate_actions.clear();
+            for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
+            {
+                candidate_actions.push_back(action);
+                if (iw1_incremental_action_discovery.is_enabled() && (state.get_index() == start_state.get_index()))
+                {
+                    iw1_incremental_action_discovery.on_root_action_fully_enumerated();
+                }
+            }
+            return candidate_actions;
+        };
+
+        const auto filter_candidate_actions = [&](const State& state,
+                                                  const std::span<const GroundAction>& raw_actions,
+                                                  bool is_incremental_non_root) -> std::span<const GroundAction>
+        {
+            if (!iw1_action_precheck.is_enabled())
+            {
+                return raw_actions;
+            }
+
+            const auto filtered_actions = iw1_action_precheck.filter_actions(state, raw_actions, state_repository);
+            if (is_incremental_non_root && iw1_incremental_first_applicability_debug_crosscheck)
+            {
+                run_incremental_precheck_filtered_crosscheck(context,
+                                                             options,
+                                                             start_state,
+                                                             state,
+                                                             pruning_strategy,
+                                                             state_repository,
+                                                             iw1_incremental_action_discovery,
+                                                             filtered_actions);
+            }
+            return filtered_actions;
+        };
+
+        const auto handle_surviving_action = [&](const State& state, SearchNode& search_node, GroundAction action) -> bool
+        {
+            if (iw1_incremental_action_discovery.is_enabled())
+            {
+                iw1_incremental_action_discovery.mark_action_tested(action);
+            }
+
+            const auto [successor_state, successor_state_metric_value] = state_repository.get_or_create_successor_state(state, action, search_node.g_value);
+            auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
+            auto action_cost = successor_state_metric_value - search_node.g_value;
+
+            if (emit_novel_witness_events)
+            {
+                pruning_strategy->compute_transition_novel_fluent_atom_indices_read_only(state, successor_state, novel_witness_atom_indices);
+                event_handler->on_generate_state_with_novel_witness(state, action, action_cost, successor_state, novel_witness_atom_indices);
+            }
+            event_handler->on_generate_state(state, action, action_cost, successor_state);
+            if (pruning_strategy->test_prune_successor_state(state, successor_state, (successor_search_node.status == SearchNodeStatus::NEW)))
+            {
+                event_handler->on_generate_state_not_in_search_tree(state, action, action_cost, successor_state);
+                return true;
+            }
+            event_handler->on_generate_state_in_search_tree(state, action, action_cost, successor_state);
+
+            successor_search_node.status = SearchNodeStatus::OPEN;
+            successor_search_node.parent_state = state.get_index();
+            successor_search_node.incoming_action = action->get_index();
+            successor_search_node.g_value = search_node.g_value + 1;
+
+            queue.emplace_back(successor_state.get_packed_state());
+
+            if (search_nodes.size() >= options.max_num_states)
+            {
+                result.status = SearchStatus::OUT_OF_STATES;
+                return false;
+            }
+
+            return true;
+        };
 
         while (!queue.empty())
         {
@@ -376,40 +559,16 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
                 continue;
             }
 
-            if (iw1_incremental_action_discovery.is_enabled() && (state.get_index() != start_state.get_index()))
+            if (iw1_incremental_action_discovery.is_enabled())
             {
-                const auto incremental_actions = iw1_incremental_action_discovery.get_actions_to_expand(state, search_node);
-                for (const auto& action : incremental_actions)
+                const auto is_incremental_non_root = (state.get_index() != start_state.get_index());
+                const auto raw_actions = is_incremental_non_root ? iw1_incremental_action_discovery.get_actions_to_expand(state, search_node) :
+                                                                   collect_full_applicable_actions(state);
+                const auto filtered_actions = filter_candidate_actions(state, raw_actions, is_incremental_non_root);
+                for (const auto& action : filtered_actions)
                 {
-                    iw1_incremental_action_discovery.mark_action_tested(action);
-
-                    const auto [successor_state, successor_state_metric_value] = state_repository.get_or_create_successor_state(state, action, search_node.g_value);
-                    auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
-                    auto action_cost = successor_state_metric_value - search_node.g_value;
-
-                    if (emit_novel_witness_events)
+                    if (!handle_surviving_action(state, search_node, action))
                     {
-                        pruning_strategy->compute_transition_novel_fluent_atom_indices_read_only(state, successor_state, novel_witness_atom_indices);
-                        event_handler->on_generate_state_with_novel_witness(state, action, action_cost, successor_state, novel_witness_atom_indices);
-                    }
-                    event_handler->on_generate_state(state, action, action_cost, successor_state);
-                    if (pruning_strategy->test_prune_successor_state(state, successor_state, (successor_search_node.status == SearchNodeStatus::NEW)))
-                    {
-                        event_handler->on_generate_state_not_in_search_tree(state, action, action_cost, successor_state);
-                        continue;
-                    }
-                    event_handler->on_generate_state_in_search_tree(state, action, action_cost, successor_state);
-
-                    successor_search_node.status = SearchNodeStatus::OPEN;
-                    successor_search_node.parent_state = state.get_index();
-                    successor_search_node.incoming_action = action->get_index();
-                    successor_search_node.g_value = search_node.g_value + 1;
-
-                    queue.emplace_back(successor_state.get_packed_state());
-
-                    if (search_nodes.size() >= options.max_num_states)
-                    {
-                        result.status = SearchStatus::OUT_OF_STATES;
                         return result;
                     }
                 }
@@ -427,33 +586,8 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
                             continue;
                         }
 
-                        const auto [successor_state, successor_state_metric_value] = state_repository.get_or_create_successor_state(state, action, search_node.g_value);
-                        auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
-                        auto action_cost = successor_state_metric_value - search_node.g_value;
-
-                        if (emit_novel_witness_events)
+                        if (!handle_surviving_action(state, search_node, action))
                         {
-                            pruning_strategy->compute_transition_novel_fluent_atom_indices_read_only(state, successor_state, novel_witness_atom_indices);
-                            event_handler->on_generate_state_with_novel_witness(state, action, action_cost, successor_state, novel_witness_atom_indices);
-                        }
-                        event_handler->on_generate_state(state, action, action_cost, successor_state);
-                        if (pruning_strategy->test_prune_successor_state(state, successor_state, (successor_search_node.status == SearchNodeStatus::NEW)))
-                        {
-                            event_handler->on_generate_state_not_in_search_tree(state, action, action_cost, successor_state);
-                            continue;
-                        }
-                        event_handler->on_generate_state_in_search_tree(state, action, action_cost, successor_state);
-
-                        successor_search_node.status = SearchNodeStatus::OPEN;
-                        successor_search_node.parent_state = state.get_index();
-                        successor_search_node.incoming_action = action->get_index();
-                        successor_search_node.g_value = search_node.g_value + 1;
-
-                        queue.emplace_back(successor_state.get_packed_state());
-
-                        if (search_nodes.size() >= options.max_num_states)
-                        {
-                            result.status = SearchStatus::OUT_OF_STATES;
                             return result;
                         }
                     }
@@ -468,33 +602,8 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
                     const auto filtered_actions = iw1_action_precheck.filter_actions(state, applicable_actions, state_repository);
                     for (const auto& action : filtered_actions)
                     {
-                        const auto [successor_state, successor_state_metric_value] = state_repository.get_or_create_successor_state(state, action, search_node.g_value);
-                        auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
-                        auto action_cost = successor_state_metric_value - search_node.g_value;
-
-                        if (emit_novel_witness_events)
+                        if (!handle_surviving_action(state, search_node, action))
                         {
-                            pruning_strategy->compute_transition_novel_fluent_atom_indices_read_only(state, successor_state, novel_witness_atom_indices);
-                            event_handler->on_generate_state_with_novel_witness(state, action, action_cost, successor_state, novel_witness_atom_indices);
-                        }
-                        event_handler->on_generate_state(state, action, action_cost, successor_state);
-                        if (pruning_strategy->test_prune_successor_state(state, successor_state, (successor_search_node.status == SearchNodeStatus::NEW)))
-                        {
-                            event_handler->on_generate_state_not_in_search_tree(state, action, action_cost, successor_state);
-                            continue;
-                        }
-                        event_handler->on_generate_state_in_search_tree(state, action, action_cost, successor_state);
-
-                        successor_search_node.status = SearchNodeStatus::OPEN;
-                        successor_search_node.parent_state = state.get_index();
-                        successor_search_node.incoming_action = action->get_index();
-                        successor_search_node.g_value = search_node.g_value + 1;
-
-                        queue.emplace_back(successor_state.get_packed_state());
-
-                        if (search_nodes.size() >= options.max_num_states)
-                        {
-                            result.status = SearchStatus::OUT_OF_STATES;
                             return result;
                         }
                     }
@@ -504,42 +613,8 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
             {
                 for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
                 {
-                    if (iw1_incremental_action_discovery.is_enabled())
+                    if (!handle_surviving_action(state, search_node, action))
                     {
-                        if (state.get_index() == start_state.get_index())
-                        {
-                            iw1_incremental_action_discovery.on_root_action_fully_enumerated();
-                        }
-                        iw1_incremental_action_discovery.mark_action_tested(action);
-                    }
-
-                    const auto [successor_state, successor_state_metric_value] = state_repository.get_or_create_successor_state(state, action, search_node.g_value);
-                    auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
-                    auto action_cost = successor_state_metric_value - search_node.g_value;
-
-                    if (emit_novel_witness_events)
-                    {
-                        pruning_strategy->compute_transition_novel_fluent_atom_indices_read_only(state, successor_state, novel_witness_atom_indices);
-                        event_handler->on_generate_state_with_novel_witness(state, action, action_cost, successor_state, novel_witness_atom_indices);
-                    }
-                    event_handler->on_generate_state(state, action, action_cost, successor_state);
-                    if (pruning_strategy->test_prune_successor_state(state, successor_state, (successor_search_node.status == SearchNodeStatus::NEW)))
-                    {
-                        event_handler->on_generate_state_not_in_search_tree(state, action, action_cost, successor_state);
-                        continue;
-                    }
-                    event_handler->on_generate_state_in_search_tree(state, action, action_cost, successor_state);
-
-                    successor_search_node.status = SearchNodeStatus::OPEN;
-                    successor_search_node.parent_state = state.get_index();
-                    successor_search_node.incoming_action = action->get_index();
-                    successor_search_node.g_value = search_node.g_value + 1;
-
-                    queue.emplace_back(successor_state.get_packed_state());
-
-                    if (search_nodes.size() >= options.max_num_states)
-                    {
-                        result.status = SearchStatus::OUT_OF_STATES;
                         return result;
                     }
                 }

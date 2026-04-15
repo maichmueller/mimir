@@ -16,7 +16,9 @@
  */
 
 #include "internal.hpp"
+#include "incremental_iw1.hpp"
 #include "mimir/algorithms/BS_thread_pool.hpp"
+#include "mimir/formalism/formatter.hpp"
 #include "mimir/formalism/problem.hpp"
 #include "mimir/search/algorithms/brfs/event_handlers.hpp"
 #include "mimir/search/algorithms/brfs/event_handlers/interface.hpp"
@@ -36,6 +38,8 @@
 #include <map>
 #include <memory>
 #include <random>
+#include <sstream>
+#include <unordered_set>
 
 using namespace mimir::formalism;
 
@@ -43,6 +47,97 @@ namespace mimir::search::brfs
 {
 namespace
 {
+std::string format_ground_action(GroundAction action, Problem problem)
+{
+    if (!action)
+    {
+        return "<invalid-action>";
+    }
+
+    auto out = std::ostringstream {};
+    out << std::tuple<const GroundActionImpl&, const ProblemImpl&, PlanFormatterTag> { *action, *problem, PlanFormatterTag {} };
+    return out.str();
+}
+
+std::string format_ground_action_list(const std::span<const GroundAction>& actions, Problem problem)
+{
+    auto out = std::ostringstream {};
+    out << "[";
+    for (size_t i = 0; i < actions.size(); ++i)
+    {
+        if (i != 0)
+        {
+            out << ", ";
+        }
+        out << format_ground_action(actions[i], problem);
+    }
+    out << "]";
+    return out.str();
+}
+
+void run_incremental_precheck_filtered_crosscheck(const SearchContext& context,
+                                                 const Options& options,
+                                                 const State& start_state,
+                                                 const State& state,
+                                                 const PruningStrategy& pruning_strategy,
+                                                 StateRepositoryImpl& state_repository,
+                                                 const IW1IncrementalActionDiscoveryController& iw1_incremental_action_discovery,
+                                                 const std::span<const GroundAction>& filtered_incremental_actions)
+{
+    auto baseline_never_tested = std::vector<GroundAction> {};
+    for (const auto action : context->get_applicable_action_generator()->create_applicable_action_generator(state))
+    {
+        if (!iw1_incremental_action_discovery.has_tested_action(action))
+        {
+            baseline_never_tested.push_back(action);
+        }
+    }
+
+    auto debug_precheck = IW1ActionPrecheckController(options, pruning_strategy, context->get_problem(), start_state);
+    const auto filtered_baseline_actions = debug_precheck.filter_actions(state, baseline_never_tested, state_repository);
+
+    auto filtered_incremental_indices = std::unordered_set<Index> {};
+    for (const auto action : filtered_incremental_actions)
+    {
+        filtered_incremental_indices.insert(action->get_index());
+    }
+
+    auto baseline_indices = std::unordered_set<Index> {};
+    auto missing_actions = std::vector<GroundAction> {};
+    auto spurious_actions = std::vector<GroundAction> {};
+
+    for (const auto action : filtered_baseline_actions)
+    {
+        baseline_indices.insert(action->get_index());
+        if (!filtered_incremental_indices.contains(action->get_index()))
+        {
+            missing_actions.push_back(action);
+        }
+    }
+
+    for (const auto action : filtered_incremental_actions)
+    {
+        if (!baseline_indices.contains(action->get_index()))
+        {
+            spurious_actions.push_back(action);
+        }
+    }
+
+    if (missing_actions.empty() && spurious_actions.empty())
+    {
+        return;
+    }
+
+    auto message = std::ostringstream {};
+    message << "IW(1) incremental first-applicability filtered precheck cross-check failed.\n";
+    message << "state_id: " << state.get_index() << "\n";
+    message << "filtered_incremental_candidates: " << format_ground_action_list(filtered_incremental_actions, context->get_problem()) << "\n";
+    message << "filtered_baseline_candidates: " << format_ground_action_list(filtered_baseline_actions, context->get_problem()) << "\n";
+    message << "missing_actions: " << format_ground_action_list(missing_actions, context->get_problem()) << "\n";
+    message << "spurious_actions: " << format_ground_action_list(spurious_actions, context->get_problem()) << "\n";
+    throw std::runtime_error(message.str());
+}
+
 struct BeamCandidate
 {
     const State* parent_state;
@@ -508,6 +603,11 @@ SearchResult find_solution_with_beam(const SearchContext& context,
     const auto max_depth = options.max_depth;
     const auto use_max_depth = (max_depth < std::numeric_limits<uint32_t>::max());
     auto iw1_action_precheck = IW1ActionPrecheckController(options, pruning_strategy, context->get_problem(), start_state);
+    auto iw1_incremental_action_discovery = IW1IncrementalActionDiscoveryController(context, options);
+    if (options.iw1_incremental_first_applicability && !iw1_incremental_action_discovery.is_enabled())
+    {
+        throw std::logic_error("find_solution_with_beam: incremental action discovery controller unexpectedly disabled.");
+    }
     const auto use_iw1_action_precheck = iw1_action_precheck.is_enabled();
     const auto use_iw1_add_effect_precheck = options.iw1_precheck_add_effect_novelty && use_iw1_action_precheck;
     const auto disable_fused_for_iw1_atom_first = options.iw1_atom_first_mode && use_iw1_action_precheck;
@@ -535,6 +635,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
 
     auto current_layer = StateList {};
     auto next_layer = StateList {};
+    auto candidate_actions = std::vector<GroundAction> {};
     auto beam_candidates = std::vector<BeamCandidate> {};
     auto deferred_beam_candidates = std::vector<DeferredBeamCandidate> {};
     auto parallel_chunk_tasks = std::vector<ParallelBeamTaskInput> {};
@@ -562,6 +663,13 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                                                             parallel_in_flight_chunks_high_water,
                                                             parallel_consumer_stall_time,
                                                             parallel_producer_stall_time);
+        }
+    };
+    const auto report_incremental_statistics = [&]()
+    {
+        if (iw1_incremental_action_discovery.is_enabled())
+        {
+            event_handler->on_finish_iw1_incremental_first_applicability(iw1_incremental_action_discovery.get_statistics());
         }
     };
 
@@ -1127,6 +1235,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
             {
                 result.status = SearchStatus::OUT_OF_TIME;
                 finalize_parallel_pipeline();
+                report_incremental_statistics();
                 return result;
             }
 
@@ -1160,6 +1269,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                     event_handler->on_solved(result.plan.value());
 
                     finalize_parallel_pipeline();
+                    report_incremental_statistics();
                     return result;
                 }
             }
@@ -1197,6 +1307,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                                                     generation_result.worker_compute_time))
                 {
                     finalize_parallel_pipeline();
+                    report_incremental_statistics();
                     return result;
                 }
                 continue;
@@ -1204,6 +1315,11 @@ SearchResult find_solution_with_beam(const SearchContext& context,
 
             const auto handle_action = [&](const auto& action) -> bool
             {
+                if (iw1_incremental_action_discovery.is_enabled())
+                {
+                    iw1_incremental_action_discovery.mark_action_tested(action);
+                }
+
                 if (use_relaxed_staged_parallel_fast_path)
                 {
                     parallel_chunk_tasks.push_back(ParallelBeamTaskInput { &state,
@@ -1305,7 +1421,59 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                 return true;
             };
 
-            if (use_iw1_action_precheck)
+            if (iw1_incremental_action_discovery.is_enabled())
+            {
+                const auto is_incremental_non_root = (state.get_index() != start_state.get_index());
+                const auto raw_actions = [&]() -> std::span<const GroundAction>
+                {
+                    if (is_incremental_non_root)
+                    {
+                        return iw1_incremental_action_discovery.get_actions_to_expand(state, search_node);
+                    }
+
+                    candidate_actions.clear();
+                    if (use_parallel_action_generation)
+                    {
+                        candidate_actions = applicable_action_generator.create_applicable_action_list_parallel(state, *parallel_beam_pool);
+                    }
+                    else
+                    {
+                        for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
+                        {
+                            candidate_actions.push_back(action);
+                        }
+                    }
+                    for (size_t i = 0; i < candidate_actions.size(); ++i)
+                    {
+                        iw1_incremental_action_discovery.on_root_action_fully_enumerated();
+                    }
+                    return candidate_actions;
+                }();
+
+                const auto filtered_actions = use_iw1_action_precheck ? iw1_action_precheck.filter_actions(state, raw_actions, state_repository) : raw_actions;
+                if (is_incremental_non_root && use_iw1_action_precheck && options.iw1_incremental_first_applicability_debug_crosscheck)
+                {
+                    run_incremental_precheck_filtered_crosscheck(context,
+                                                                 options,
+                                                                 start_state,
+                                                                 state,
+                                                                 pruning_strategy,
+                                                                 state_repository,
+                                                                 iw1_incremental_action_discovery,
+                                                                 filtered_actions);
+                }
+
+                for (const auto& action : filtered_actions)
+                {
+                    if (!handle_action(action))
+                    {
+                        finalize_parallel_pipeline();
+                        report_incremental_statistics();
+                        return result;
+                    }
+                }
+            }
+            else if (use_iw1_action_precheck)
             {
                 auto applicable_actions = std::vector<GroundAction> {};
                 if (use_parallel_action_generation)
@@ -1326,6 +1494,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                     if (!handle_action(action))
                     {
                         finalize_parallel_pipeline();
+                        report_incremental_statistics();
                         return result;
                     }
                 }
@@ -1337,6 +1506,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                     if (!handle_action(action))
                     {
                         finalize_parallel_pipeline();
+                        report_incremental_statistics();
                         return result;
                     }
                 }
@@ -1348,6 +1518,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                     if (!handle_action(action))
                     {
                         finalize_parallel_pipeline();
+                        report_incremental_statistics();
                         return result;
                     }
                 }
@@ -1359,6 +1530,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
             if (!process_relaxed_parallel_layer())
             {
                 finalize_parallel_pipeline();
+                report_incremental_statistics();
                 return result;
             }
         }
@@ -1369,6 +1541,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
             if (!drain_ready_chunks())
             {
                 finalize_parallel_pipeline();
+                report_incremental_statistics();
                 return result;
             }
 
@@ -1379,6 +1552,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                 if (!drain_ready_chunks())
                 {
                     finalize_parallel_pipeline();
+                    report_incremental_statistics();
                     return result;
                 }
 
@@ -1398,6 +1572,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
             if (!drain_ready_chunks())
             {
                 finalize_parallel_pipeline();
+                report_incremental_statistics();
                 return result;
             }
         }
@@ -1455,6 +1630,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
 
     result.status = SearchStatus::EXHAUSTED;
     finalize_parallel_pipeline();
+    report_incremental_statistics();
     return result;
 }
 }

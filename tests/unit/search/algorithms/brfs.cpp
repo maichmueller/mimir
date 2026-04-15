@@ -464,6 +464,34 @@ static brfs::Options make_projective_iw1_brfs_options(const Problem& problem,
     return options;
 }
 
+static brfs::Options make_classical_iw1_beam_options(const Problem& problem,
+                                                     brfs::EventHandler event_handler,
+                                                     bool incremental = true,
+                                                     bool debug_crosscheck = true,
+                                                     bool add_effect_precheck = true)
+{
+    auto options = make_classical_iw1_brfs_options(problem, std::move(event_handler), incremental, debug_crosscheck);
+    options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(problem);
+    options.beam_width = 64;
+    options.beam_novelty_mode = BeamNoveltyMode::ALL_TESTED;
+    options.iw1_precheck_add_effect_novelty = add_effect_precheck;
+    return options;
+}
+
+static brfs::Options make_projective_iw1_beam_options(const Problem& problem,
+                                                      brfs::EventHandler event_handler,
+                                                      bool incremental = true,
+                                                      bool debug_crosscheck = true,
+                                                      bool add_effect_precheck = true)
+{
+    auto options = make_projective_iw1_brfs_options(problem, std::move(event_handler), incremental, debug_crosscheck);
+    options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(problem);
+    options.beam_width = 64;
+    options.beam_novelty_mode = BeamNoveltyMode::ALL_TESTED;
+    options.iw1_precheck_add_effect_novelty = add_effect_precheck;
+    return options;
+}
+
 TEST(MimirTests, SearchAlgorithmsBrFSProblemGoalStrategyCustomGroundConjunctiveConditionTest)
 {
     auto brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"),
@@ -2489,6 +2517,24 @@ TEST(MimirTests, SearchAlgorithmsBrFSIW1IncrementalPositiveTriggerTest)
     EXPECT_GT(incremental_statistics.get_num_ground_actions_returned_by_partial_completion(), 0);
 }
 
+TEST(MimirTests, SearchAlgorithmsBrFSIW1IncrementalAddEffectPrecheckPlainMatchesBaselineTest)
+{
+    auto planner = LiftedBrFSPlanner(fs::path(std::string(DATA_DIR) + "iw1_incremental/domain.pddl"),
+                                     fs::path(std::string(DATA_DIR) + "iw1_incremental/positive_problem.pddl"));
+
+    const auto combined_event_handler = brfs::DefaultEventHandlerImpl::create(planner.get_problem());
+    auto combined_options = make_classical_iw1_brfs_options(planner.get_problem(), combined_event_handler, true, true);
+    combined_options.iw1_precheck_add_effect_novelty = true;
+    const auto combined_result = brfs::find_solution(planner.get_search_context(), combined_options);
+
+    EXPECT_EQ(combined_result.status, SearchStatus::SOLVED);
+    ASSERT_TRUE(combined_result.plan.has_value());
+    EXPECT_EQ(get_plan_action_signatures(*combined_result.plan), std::vector<std::string>({ "enable(a)", "use-enabled(a)" }));
+
+    const auto& incremental_statistics = combined_event_handler->get_statistics().get_iw1_incremental_first_applicability_statistics();
+    EXPECT_GE(incremental_statistics.get_num_non_root_states_using_incremental_path(), 1);
+}
+
 TEST(MimirTests, SearchAlgorithmsBrFSIW1IncrementalNegativeTriggerTest)
 {
     auto planner = LiftedBrFSPlanner(fs::path(std::string(DATA_DIR) + "iw1_incremental/domain.pddl"),
@@ -2554,6 +2600,73 @@ TEST(MimirTests, SearchAlgorithmsBrFSIW1IncrementalEverTestedGroundActionsTest)
     EXPECT_GE(incremental_statistics.get_num_non_root_states_with_zero_returned_actions(), 1);
 }
 
+TEST(MimirTests, SearchAlgorithmsBrFSIW1IncrementalFilteredCandidatesDoNotEnterEverTestedTest)
+{
+    auto planner = LiftedBrFSPlanner(fs::path(std::string(DATA_DIR) + "iw1_incremental/domain.pddl"),
+                                     fs::path(std::string(DATA_DIR) + "iw1_incremental/precheck_filtered_problem.pddl"));
+    const auto event_handler = brfs::DefaultEventHandlerImpl::create(planner.get_problem());
+    auto options = make_classical_iw1_brfs_options(planner.get_problem(), event_handler, true, false);
+    options.iw1_precheck_add_effect_novelty = true;
+    options.stop_if_goal = false;
+    options.max_depth = 2;
+
+    const auto result = brfs::find_solution(planner.get_search_context(), options);
+
+    EXPECT_EQ(result.status, SearchStatus::EXHAUSTED);
+
+    const auto& incremental_statistics = event_handler->get_statistics().get_iw1_incremental_first_applicability_statistics();
+    EXPECT_GE(incremental_statistics.get_num_non_root_states_using_incremental_path(), 2);
+    EXPECT_GT(incremental_statistics.get_num_partial_seeds_created(), 0);
+    EXPECT_EQ(incremental_statistics.get_num_already_tested_actions_skipped(), 0);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSIW1IncrementalBeamAllTestedAddEffectPrecheckMatchesBaselineTest)
+{
+    auto planner = LiftedBrFSPlanner(fs::path(std::string(DATA_DIR) + "iw1_incremental/domain.pddl"),
+                                     fs::path(std::string(DATA_DIR) + "iw1_incremental/positive_problem.pddl"));
+
+    const auto combined_event_handler = brfs::DefaultEventHandlerImpl::create(planner.get_problem());
+    auto combined_options = make_classical_iw1_beam_options(planner.get_problem(), combined_event_handler, true, true, true);
+    const auto combined_result = brfs::find_solution(planner.get_search_context(), combined_options);
+
+    EXPECT_EQ(combined_result.status, SearchStatus::SOLVED);
+    ASSERT_TRUE(combined_result.plan.has_value());
+    EXPECT_EQ(get_plan_action_signatures(*combined_result.plan), std::vector<std::string>({ "enable(a)", "use-enabled(a)" }));
+
+    const auto& incremental_statistics = combined_event_handler->get_statistics().get_iw1_incremental_first_applicability_statistics();
+    EXPECT_GE(incremental_statistics.get_num_root_actions_fully_enumerated(), 1);
+    EXPECT_GE(incremental_statistics.get_num_non_root_states_using_incremental_path(), 1);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSProjectiveIW1IncrementalBeamAllTestedAddEffectPrecheckMatchesBaselineTest)
+{
+    auto planner = LiftedBrFSPlanner(fs::path(std::string(DATA_DIR) + "iw1_incremental/domain.pddl"),
+                                     fs::path(std::string(DATA_DIR) + "iw1_incremental/positive_problem.pddl"));
+
+    const auto combined_event_handler = brfs::DefaultEventHandlerImpl::create(planner.get_problem());
+    auto combined_options = make_projective_iw1_beam_options(planner.get_problem(), combined_event_handler, true, true, true);
+    const auto combined_result = brfs::find_solution(planner.get_search_context(), combined_options);
+
+    EXPECT_EQ(combined_result.status, SearchStatus::SOLVED);
+    ASSERT_TRUE(combined_result.plan.has_value());
+    EXPECT_EQ(get_plan_action_signatures(*combined_result.plan), std::vector<std::string>({ "enable(a)", "use-enabled(a)" }));
+
+    const auto& incremental_statistics = combined_event_handler->get_statistics().get_iw1_incremental_first_applicability_statistics();
+    EXPECT_GE(incremental_statistics.get_num_root_actions_fully_enumerated(), 1);
+    EXPECT_GE(incremental_statistics.get_num_non_root_states_using_incremental_path(), 1);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSIW1IncrementalBeamSurvivorsOnlyRejectedTest)
+{
+    auto planner = LiftedBrFSPlanner(fs::path(std::string(DATA_DIR) + "iw1_incremental/domain.pddl"),
+                                     fs::path(std::string(DATA_DIR) + "iw1_incremental/positive_problem.pddl"));
+    const auto event_handler = brfs::DefaultEventHandlerImpl::create(planner.get_problem());
+    auto options = make_classical_iw1_beam_options(planner.get_problem(), event_handler, true, false, true);
+    options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
+
+    EXPECT_THROW(brfs::find_solution(planner.get_search_context(), options), std::invalid_argument);
+}
+
 TEST(MimirTests, SearchAlgorithmsBrFSProjectiveIW1IncrementalCrosscheckTest)
 {
     auto planner = LiftedBrFSPlanner(fs::path(std::string(DATA_DIR) + "iw1_incremental/domain.pddl"),
@@ -2587,6 +2700,27 @@ TEST(MimirTests, SearchAlgorithmsBrFSIW1IncrementalSpannerRegressionTest)
     EXPECT_EQ(incremental_statistics.get_num_changed_atoms_processed(), 3);
     EXPECT_EQ(incremental_statistics.get_num_partial_seeds_created(), 0);
     EXPECT_EQ(incremental_statistics.get_num_non_root_states_with_zero_returned_actions(), 1);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSIW1IncrementalBeamAllTestedSpannerRegressionTest)
+{
+    auto planner = LiftedBrFSPlanner(fs::path(std::string(DATA_DIR) + "spanner/domain.pddl"),
+                                     fs::path(std::string(DATA_DIR) + "spanner/iw1_incremental_regression.pddl"));
+    const auto event_handler = brfs::DefaultEventHandlerImpl::create(planner.get_problem());
+    auto options = make_classical_iw1_beam_options(planner.get_problem(), event_handler, true, false, true);
+    options.stop_if_goal = false;
+    options.max_depth = 2;
+
+    const auto result = brfs::find_solution(planner.get_search_context(), options);
+
+    EXPECT_EQ(result.status, SearchStatus::EXHAUSTED);
+
+    const auto& incremental_statistics = event_handler->get_statistics().get_iw1_incremental_first_applicability_statistics();
+    EXPECT_EQ(incremental_statistics.get_num_root_actions_fully_enumerated(), 5);
+    EXPECT_EQ(incremental_statistics.get_num_non_root_states_using_incremental_path(), 1);
+    EXPECT_EQ(incremental_statistics.get_num_changed_atoms_processed(), 3);
+    EXPECT_EQ(incremental_statistics.get_num_non_root_states_with_zero_returned_actions(), 1);
+
 }
 
 /**

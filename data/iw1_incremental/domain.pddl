@@ -10,9 +10,15 @@
     (mode-same)
     (mode-const)
     (mode-ever)
+    (mode-precheck-branch)
+    (mode-precheck-repeat)
     (branch-left)
     (branch-right)
+    (cycle-ready)
+    (cycle-two)
+    (cycle-reenabled)
     (enabled ?x - thing)
+    (prechecked ?x - thing)
     (present ?x - thing)
     (diag ?x - thing ?y - thing)
     (goal-pos)
@@ -86,4 +92,45 @@
  (:action use-shared
     :parameters (?x - item)
     :precondition (and (enabled ?x))
-    :effect (and (used ?x))))
+    :effect (and (used ?x)))
+
+ (:action branch-left-precheck
+    :parameters (?x - item)
+    :precondition (and (mode-precheck-branch))
+    :effect (and (prechecked ?x)
+                 (branch-left)
+                 (not (mode-precheck-branch))))
+
+ (:action branch-right-precheck
+    :parameters (?x - item)
+    :precondition (and (mode-precheck-branch))
+    :effect (and (prechecked ?x)
+                 (branch-right)
+                 (not (mode-precheck-branch))))
+
+ (:action use-prechecked
+    :parameters (?x - item)
+    :precondition (and (prechecked ?x))
+    :effect (and (used ?x)))
+
+ (:action precheck-enable
+    :parameters (?x - item)
+    :precondition (and (mode-precheck-repeat))
+    :effect (and (enabled ?x)
+                 (cycle-ready)
+                 (not (mode-precheck-repeat))))
+
+ (:action disable-enabled
+    :parameters (?x - item)
+    :precondition (and (enabled ?x)
+                       (cycle-ready)
+                       (not (cycle-reenabled)))
+    :effect (and (not (enabled ?x))
+                 (cycle-two)))
+
+ (:action reenable
+    :parameters (?x - item)
+    :precondition (and (cycle-two))
+    :effect (and (enabled ?x)
+                 (cycle-reenabled)
+                 (not (cycle-two)))))
