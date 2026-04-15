@@ -52,6 +52,18 @@ struct BenchmarkResult
     uint64_t parallel_in_flight_chunks_high_water;
     double parallel_consumer_stall_time_ms;
     double parallel_producer_stall_time_ms;
+    uint64_t incremental_root_actions_fully_enumerated;
+    uint64_t incremental_non_root_states_using_incremental_path;
+    uint64_t incremental_changed_atoms_processed;
+    uint64_t incremental_trigger_records_visited;
+    uint64_t incremental_partial_seeds_created;
+    uint64_t incremental_ground_actions_returned_by_partial_completion;
+    uint64_t incremental_local_duplicate_candidates_removed;
+    uint64_t incremental_already_tested_actions_skipped;
+    uint64_t incremental_non_root_states_with_zero_returned_actions;
+    double incremental_trigger_lookup_time_ms;
+    double incremental_partial_completion_time_ms;
+    double incremental_debug_crosscheck_time_ms;
 };
 
 enum class IW1ActionSelectionMode
@@ -185,9 +197,12 @@ BenchmarkResult run_once(const std::filesystem::path& domain_file,
                          bool relaxed_survivors_only_beam,
                          uint32_t num_threads,
                          uint32_t chunk_size,
+                         bool plain_brfs,
                          bool iw1_precheck_add_effect_novelty,
                          bool iw1_atom_first_mode,
                          double iw1_atom_first_ratio,
+                         bool iw1_incremental_first_applicability,
+                         bool iw1_incremental_first_applicability_debug_crosscheck,
                          IW1NoveltyBasis iw1_novelty_basis,
                          bool projective_keep_depth_one_novel)
 {
@@ -214,48 +229,142 @@ BenchmarkResult run_once(const std::filesystem::path& domain_file,
     uint64_t parallel_in_flight_chunks_high_water = 0;
     double parallel_consumer_stall_time_ms = 0.0;
     double parallel_producer_stall_time_ms = 0.0;
+    uint64_t incremental_root_actions_fully_enumerated = 0;
+    uint64_t incremental_non_root_states_using_incremental_path = 0;
+    uint64_t incremental_changed_atoms_processed = 0;
+    uint64_t incremental_trigger_records_visited = 0;
+    uint64_t incremental_partial_seeds_created = 0;
+    uint64_t incremental_ground_actions_returned_by_partial_completion = 0;
+    uint64_t incremental_local_duplicate_candidates_removed = 0;
+    uint64_t incremental_already_tested_actions_skipped = 0;
+    uint64_t incremental_non_root_states_with_zero_returned_actions = 0;
+    double incremental_trigger_lookup_time_ms = 0.0;
+    double incremental_partial_completion_time_ms = 0.0;
+    double incremental_debug_crosscheck_time_ms = 0.0;
 
     const auto wall_start = std::chrono::steady_clock::now();
     if (iw1_novelty_basis == IW1NoveltyBasis::CLASSICAL)
     {
-        auto options = iw::Options();
-        options.max_arity = max_arity;
-        options.beam_width = beam_width;
-        options.beam_novelty_mode = beam_novelty_mode;
-        options.relaxed_survivors_only_beam = relaxed_survivors_only_beam;
-        options.parallel_beam_num_threads = num_threads;
-        options.parallel_beam_chunk_size = chunk_size;
-        options.iw1_precheck_add_effect_novelty = iw1_precheck_add_effect_novelty;
-        options.iw1_atom_first_mode = iw1_atom_first_mode;
-        options.iw1_atom_first_ratio = iw1_atom_first_ratio;
-        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(problem);
-        options.brfs_event_handler = brfs_event_handler;
-        options.iw_event_handler = iw_event_handler;
-
-        const auto result = iw::find_solution(search_context, options);
-        status = result.status;
-
-        const auto& iw_statistics = iw_event_handler->get_statistics();
-        for (const auto& per_arity_brfs_statistics : iw_statistics.get_brfs_statistics_by_arity())
+        if (plain_brfs && max_arity == 1)
         {
-            generated += per_arity_brfs_statistics.get_num_generated();
-            novel_generated += per_arity_brfs_statistics.get_num_generated_in_search_tree();
-            parallel_chunk_flushes += per_arity_brfs_statistics.get_num_parallel_beam_chunk_flushes();
-            parallel_chunk_tasks_total += per_arity_brfs_statistics.get_num_parallel_beam_chunk_tasks_total();
-            max_parallel_chunk_size = std::max(max_parallel_chunk_size, per_arity_brfs_statistics.get_max_parallel_beam_chunk_size());
-            parallel_worker_compute_time_ms += per_arity_brfs_statistics.get_parallel_beam_worker_compute_time_ms();
-            parallel_main_thread_merge_time_ms += per_arity_brfs_statistics.get_parallel_beam_main_thread_merge_time_ms();
-            parallel_main_thread_intern_time_ms += per_arity_brfs_statistics.get_parallel_beam_main_thread_intern_time_ms();
-            parallel_fluent_slot_time_ms += per_arity_brfs_statistics.get_parallel_beam_fluent_slot_time_ms();
-            parallel_numeric_slot_time_ms += per_arity_brfs_statistics.get_parallel_beam_numeric_slot_time_ms();
-            parallel_derived_slot_time_ms += per_arity_brfs_statistics.get_parallel_beam_derived_slot_time_ms();
-            parallel_state_lookup_time_ms += per_arity_brfs_statistics.get_parallel_beam_state_lookup_time_ms();
-            parallel_reached_atom_update_time_ms += per_arity_brfs_statistics.get_parallel_beam_reached_atom_update_time_ms();
-            parallel_ready_queue_high_water = std::max(parallel_ready_queue_high_water, per_arity_brfs_statistics.get_parallel_beam_ready_queue_high_water());
-            parallel_in_flight_chunks_high_water =
-                std::max(parallel_in_flight_chunks_high_water, per_arity_brfs_statistics.get_parallel_beam_in_flight_chunks_high_water());
-            parallel_consumer_stall_time_ms += per_arity_brfs_statistics.get_parallel_beam_consumer_stall_time_ms();
-            parallel_producer_stall_time_ms += per_arity_brfs_statistics.get_parallel_beam_producer_stall_time_ms();
+            const auto& ground_fluent_atom_repository =
+                boost::hana::at_key(search_context->get_problem()->get_repositories().get_hana_repositories(), boost::hana::type<GroundAtomImpl<FluentTag>> {});
+
+            auto options = brfs::Options();
+            options.event_handler = brfs_event_handler;
+            options.pruning_strategy = iw::ArityKNoveltyPruningStrategyImpl::create(1, ground_fluent_atom_repository.size());
+            options.beam_width = static_cast<uint32_t>(beam_width);
+            options.beam_novelty_mode = beam_novelty_mode;
+            options.relaxed_survivors_only_beam = relaxed_survivors_only_beam;
+            options.parallel_beam_num_threads = num_threads;
+            options.parallel_beam_chunk_size = chunk_size;
+            options.iw1_precheck_add_effect_novelty = iw1_precheck_add_effect_novelty;
+            options.iw1_atom_first_mode = iw1_atom_first_mode;
+            options.iw1_atom_first_ratio = iw1_atom_first_ratio;
+            options.iw1_incremental_first_applicability = iw1_incremental_first_applicability;
+            options.iw1_incremental_first_applicability_debug_crosscheck = iw1_incremental_first_applicability_debug_crosscheck;
+
+            const auto result = brfs::find_solution(search_context, options);
+            status = result.status;
+
+            const auto& brfs_statistics = brfs_event_handler->get_statistics();
+            generated = brfs_statistics.get_num_generated();
+            novel_generated = brfs_statistics.get_num_generated_in_search_tree();
+            parallel_chunk_flushes = brfs_statistics.get_num_parallel_beam_chunk_flushes();
+            parallel_chunk_tasks_total = brfs_statistics.get_num_parallel_beam_chunk_tasks_total();
+            max_parallel_chunk_size = brfs_statistics.get_max_parallel_beam_chunk_size();
+            parallel_worker_compute_time_ms = brfs_statistics.get_parallel_beam_worker_compute_time_ms();
+            parallel_main_thread_merge_time_ms = brfs_statistics.get_parallel_beam_main_thread_merge_time_ms();
+            parallel_main_thread_intern_time_ms = brfs_statistics.get_parallel_beam_main_thread_intern_time_ms();
+            parallel_fluent_slot_time_ms = brfs_statistics.get_parallel_beam_fluent_slot_time_ms();
+            parallel_numeric_slot_time_ms = brfs_statistics.get_parallel_beam_numeric_slot_time_ms();
+            parallel_derived_slot_time_ms = brfs_statistics.get_parallel_beam_derived_slot_time_ms();
+            parallel_state_lookup_time_ms = brfs_statistics.get_parallel_beam_state_lookup_time_ms();
+            parallel_reached_atom_update_time_ms = brfs_statistics.get_parallel_beam_reached_atom_update_time_ms();
+            parallel_ready_queue_high_water = brfs_statistics.get_parallel_beam_ready_queue_high_water();
+            parallel_in_flight_chunks_high_water = brfs_statistics.get_parallel_beam_in_flight_chunks_high_water();
+            parallel_consumer_stall_time_ms = brfs_statistics.get_parallel_beam_consumer_stall_time_ms();
+            parallel_producer_stall_time_ms = brfs_statistics.get_parallel_beam_producer_stall_time_ms();
+
+            const auto& incremental_statistics = brfs_statistics.get_iw1_incremental_first_applicability_statistics();
+            incremental_root_actions_fully_enumerated = incremental_statistics.get_num_root_actions_fully_enumerated();
+            incremental_non_root_states_using_incremental_path = incremental_statistics.get_num_non_root_states_using_incremental_path();
+            incremental_changed_atoms_processed = incremental_statistics.get_num_changed_atoms_processed();
+            incremental_trigger_records_visited = incremental_statistics.get_num_trigger_records_visited();
+            incremental_partial_seeds_created = incremental_statistics.get_num_partial_seeds_created();
+            incremental_ground_actions_returned_by_partial_completion =
+                incremental_statistics.get_num_ground_actions_returned_by_partial_completion();
+            incremental_local_duplicate_candidates_removed = incremental_statistics.get_num_local_duplicate_candidates_removed();
+            incremental_already_tested_actions_skipped = incremental_statistics.get_num_already_tested_actions_skipped();
+            incremental_non_root_states_with_zero_returned_actions =
+                incremental_statistics.get_num_non_root_states_with_zero_returned_actions();
+            incremental_trigger_lookup_time_ms = incremental_statistics.get_trigger_lookup_time_ms();
+            incremental_partial_completion_time_ms = incremental_statistics.get_partial_completion_time_ms();
+            incremental_debug_crosscheck_time_ms = incremental_statistics.get_debug_crosscheck_time_ms();
+        }
+        else
+        {
+            auto options = iw::Options();
+            options.max_arity = max_arity;
+            options.beam_width = beam_width;
+            options.beam_novelty_mode = beam_novelty_mode;
+            options.relaxed_survivors_only_beam = relaxed_survivors_only_beam;
+            options.parallel_beam_num_threads = num_threads;
+            options.parallel_beam_chunk_size = chunk_size;
+            options.iw1_precheck_add_effect_novelty = iw1_precheck_add_effect_novelty;
+            options.iw1_atom_first_mode = iw1_atom_first_mode;
+            options.iw1_atom_first_ratio = iw1_atom_first_ratio;
+            options.iw1_incremental_first_applicability = iw1_incremental_first_applicability;
+            options.iw1_incremental_first_applicability_debug_crosscheck = iw1_incremental_first_applicability_debug_crosscheck;
+            if (!plain_brfs)
+            {
+                options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(problem);
+            }
+            options.brfs_event_handler = brfs_event_handler;
+            options.iw_event_handler = iw_event_handler;
+
+            const auto result = iw::find_solution(search_context, options);
+            status = result.status;
+
+            const auto& iw_statistics = iw_event_handler->get_statistics();
+            for (const auto& per_arity_brfs_statistics : iw_statistics.get_brfs_statistics_by_arity())
+            {
+                generated += per_arity_brfs_statistics.get_num_generated();
+                novel_generated += per_arity_brfs_statistics.get_num_generated_in_search_tree();
+                parallel_chunk_flushes += per_arity_brfs_statistics.get_num_parallel_beam_chunk_flushes();
+                parallel_chunk_tasks_total += per_arity_brfs_statistics.get_num_parallel_beam_chunk_tasks_total();
+                max_parallel_chunk_size = std::max(max_parallel_chunk_size, per_arity_brfs_statistics.get_max_parallel_beam_chunk_size());
+                parallel_worker_compute_time_ms += per_arity_brfs_statistics.get_parallel_beam_worker_compute_time_ms();
+                parallel_main_thread_merge_time_ms += per_arity_brfs_statistics.get_parallel_beam_main_thread_merge_time_ms();
+                parallel_main_thread_intern_time_ms += per_arity_brfs_statistics.get_parallel_beam_main_thread_intern_time_ms();
+                parallel_fluent_slot_time_ms += per_arity_brfs_statistics.get_parallel_beam_fluent_slot_time_ms();
+                parallel_numeric_slot_time_ms += per_arity_brfs_statistics.get_parallel_beam_numeric_slot_time_ms();
+                parallel_derived_slot_time_ms += per_arity_brfs_statistics.get_parallel_beam_derived_slot_time_ms();
+                parallel_state_lookup_time_ms += per_arity_brfs_statistics.get_parallel_beam_state_lookup_time_ms();
+                parallel_reached_atom_update_time_ms += per_arity_brfs_statistics.get_parallel_beam_reached_atom_update_time_ms();
+                parallel_ready_queue_high_water =
+                    std::max(parallel_ready_queue_high_water, per_arity_brfs_statistics.get_parallel_beam_ready_queue_high_water());
+                parallel_in_flight_chunks_high_water =
+                    std::max(parallel_in_flight_chunks_high_water, per_arity_brfs_statistics.get_parallel_beam_in_flight_chunks_high_water());
+                parallel_consumer_stall_time_ms += per_arity_brfs_statistics.get_parallel_beam_consumer_stall_time_ms();
+                parallel_producer_stall_time_ms += per_arity_brfs_statistics.get_parallel_beam_producer_stall_time_ms();
+
+                const auto& incremental_statistics = per_arity_brfs_statistics.get_iw1_incremental_first_applicability_statistics();
+                incremental_root_actions_fully_enumerated += incremental_statistics.get_num_root_actions_fully_enumerated();
+                incremental_non_root_states_using_incremental_path += incremental_statistics.get_num_non_root_states_using_incremental_path();
+                incremental_changed_atoms_processed += incremental_statistics.get_num_changed_atoms_processed();
+                incremental_trigger_records_visited += incremental_statistics.get_num_trigger_records_visited();
+                incremental_partial_seeds_created += incremental_statistics.get_num_partial_seeds_created();
+                incremental_ground_actions_returned_by_partial_completion +=
+                    incremental_statistics.get_num_ground_actions_returned_by_partial_completion();
+                incremental_local_duplicate_candidates_removed += incremental_statistics.get_num_local_duplicate_candidates_removed();
+                incremental_already_tested_actions_skipped += incremental_statistics.get_num_already_tested_actions_skipped();
+                incremental_non_root_states_with_zero_returned_actions +=
+                    incremental_statistics.get_num_non_root_states_with_zero_returned_actions();
+                incremental_trigger_lookup_time_ms += incremental_statistics.get_trigger_lookup_time_ms();
+                incremental_partial_completion_time_ms += incremental_statistics.get_partial_completion_time_ms();
+                incremental_debug_crosscheck_time_ms += incremental_statistics.get_debug_crosscheck_time_ms();
+            }
         }
     }
     else
@@ -268,7 +377,6 @@ BenchmarkResult run_once(const std::filesystem::path& domain_file,
         const auto typed_projection = (iw1_novelty_basis == IW1NoveltyBasis::PROJECTIVE_TYPED);
         auto options = brfs::Options();
         options.event_handler = brfs_event_handler;
-        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(problem);
         options.pruning_strategy =
             iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem, typed_projection, projective_keep_depth_one_novel, false);
         options.max_next_layer_states = std::numeric_limits<uint32_t>::max();
@@ -280,6 +388,12 @@ BenchmarkResult run_once(const std::filesystem::path& domain_file,
         options.iw1_precheck_add_effect_novelty = iw1_precheck_add_effect_novelty;
         options.iw1_atom_first_mode = iw1_atom_first_mode;
         options.iw1_atom_first_ratio = iw1_atom_first_ratio;
+        options.iw1_incremental_first_applicability = iw1_incremental_first_applicability;
+        options.iw1_incremental_first_applicability_debug_crosscheck = iw1_incremental_first_applicability_debug_crosscheck;
+        if (!plain_brfs)
+        {
+            options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(problem);
+        }
 
         const auto result = brfs::find_solution(search_context, options);
         status = result.status;
@@ -302,6 +416,21 @@ BenchmarkResult run_once(const std::filesystem::path& domain_file,
         parallel_in_flight_chunks_high_water = brfs_statistics.get_parallel_beam_in_flight_chunks_high_water();
         parallel_consumer_stall_time_ms = brfs_statistics.get_parallel_beam_consumer_stall_time_ms();
         parallel_producer_stall_time_ms = brfs_statistics.get_parallel_beam_producer_stall_time_ms();
+
+        const auto& incremental_statistics = brfs_statistics.get_iw1_incremental_first_applicability_statistics();
+        incremental_root_actions_fully_enumerated = incremental_statistics.get_num_root_actions_fully_enumerated();
+        incremental_non_root_states_using_incremental_path = incremental_statistics.get_num_non_root_states_using_incremental_path();
+        incremental_changed_atoms_processed = incremental_statistics.get_num_changed_atoms_processed();
+        incremental_trigger_records_visited = incremental_statistics.get_num_trigger_records_visited();
+        incremental_partial_seeds_created = incremental_statistics.get_num_partial_seeds_created();
+        incremental_ground_actions_returned_by_partial_completion =
+            incremental_statistics.get_num_ground_actions_returned_by_partial_completion();
+        incremental_local_duplicate_candidates_removed = incremental_statistics.get_num_local_duplicate_candidates_removed();
+        incremental_already_tested_actions_skipped = incremental_statistics.get_num_already_tested_actions_skipped();
+        incremental_non_root_states_with_zero_returned_actions = incremental_statistics.get_num_non_root_states_with_zero_returned_actions();
+        incremental_trigger_lookup_time_ms = incremental_statistics.get_trigger_lookup_time_ms();
+        incremental_partial_completion_time_ms = incremental_statistics.get_partial_completion_time_ms();
+        incremental_debug_crosscheck_time_ms = incremental_statistics.get_debug_crosscheck_time_ms();
     }
 
     const auto wall_end = std::chrono::steady_clock::now();
@@ -343,6 +472,18 @@ BenchmarkResult run_once(const std::filesystem::path& domain_file,
         parallel_in_flight_chunks_high_water,
         parallel_consumer_stall_time_ms,
         parallel_producer_stall_time_ms,
+        incremental_root_actions_fully_enumerated,
+        incremental_non_root_states_using_incremental_path,
+        incremental_changed_atoms_processed,
+        incremental_trigger_records_visited,
+        incremental_partial_seeds_created,
+        incremental_ground_actions_returned_by_partial_completion,
+        incremental_local_duplicate_candidates_removed,
+        incremental_already_tested_actions_skipped,
+        incremental_non_root_states_with_zero_returned_actions,
+        incremental_trigger_lookup_time_ms,
+        incremental_partial_completion_time_ms,
+        incremental_debug_crosscheck_time_ms,
     };
 }
 
@@ -409,7 +550,7 @@ int main(int argc, char** argv)
     if (argc < 7)
     {
         std::cerr << "Usage: " << argv[0]
-                  << " <domain.pddl> <problem.pddl> <max_arity> <reps> <all_tested|survivors_only> <threads...> [--beam-width <n>] [--mode <grounded|lifted|lifted_symmetry_pruning|lifted_exhaustive>] [--chunk-sizes <sizes...>] [--relaxed-survivors-only-beam] [--iw1-action-selection <off|action_first|atom_first|both|all>] [--iw1-basis <classical|projective|projective_typed|both>] [--iw1-atom-first-ratio <positive_float>] [--projective-keep-depth-one-novel <true|false>]\n"
+                  << " <domain.pddl> <problem.pddl> <max_arity> <reps> <all_tested|survivors_only> <threads...> [--beam-width <n>] [--mode <grounded|lifted|lifted_symmetry_pruning|lifted_exhaustive>] [--chunk-sizes <sizes...>] [--relaxed-survivors-only-beam] [--plain-brfs] [--iw1-action-selection <off|action_first|atom_first|both|all>] [--iw1-basis <classical|projective|projective_typed|both>] [--iw1-atom-first-ratio <positive_float>] [--iw1-incremental-first-applicability] [--iw1-incremental-first-applicability-debug-crosscheck] [--projective-keep-depth-one-novel <true|false>]\n"
                   << "Legacy usage is still accepted: <...> <max_arity> <beam_width> <reps> <all_tested|survivors_only> <threads...>\n";
         return 1;
     }
@@ -446,9 +587,12 @@ int main(int argc, char** argv)
     std::vector<uint32_t> thread_counts;
     std::vector<uint32_t> chunk_sizes;
     auto relaxed_survivors_only_beam = false;
+    auto plain_brfs = false;
     auto iw1_action_selection_mode = IW1ActionSelectionMode::OFF;
     auto iw1_novelty_basis = IW1NoveltyBasis::CLASSICAL;
     auto iw1_atom_first_ratio = 1.0;
+    auto iw1_incremental_first_applicability = false;
+    auto iw1_incremental_first_applicability_debug_crosscheck = false;
     auto projective_keep_depth_one_novel = false;
     auto search_context_options = SearchContextImpl::Options(SearchContextImpl::GroundedOptions());
     auto parsing_chunk_sizes = false;
@@ -483,6 +627,11 @@ int main(int argc, char** argv)
             relaxed_survivors_only_beam = true;
             continue;
         }
+        if (argument == "--plain-brfs")
+        {
+            plain_brfs = true;
+            continue;
+        }
         if (argument == "--iw1-action-selection")
         {
             if ((i + 1) >= argc)
@@ -508,6 +657,16 @@ int main(int argc, char** argv)
                 throw std::invalid_argument("Expected a positive ratio after --iw1-atom-first-ratio.");
             }
             iw1_atom_first_ratio = std::stod(argv[++i]);
+            continue;
+        }
+        if (argument == "--iw1-incremental-first-applicability")
+        {
+            iw1_incremental_first_applicability = true;
+            continue;
+        }
+        if (argument == "--iw1-incremental-first-applicability-debug-crosscheck")
+        {
+            iw1_incremental_first_applicability_debug_crosscheck = true;
             continue;
         }
         if (argument == "--projective-keep-depth-one-novel")
@@ -555,6 +714,11 @@ int main(int argc, char** argv)
     if (iw1_atom_first_ratio <= 0.0)
     {
         throw std::invalid_argument("--iw1-atom-first-ratio must be positive.");
+    }
+    if (iw1_incremental_first_applicability_debug_crosscheck && !iw1_incremental_first_applicability)
+    {
+        throw std::invalid_argument(
+            "--iw1-incremental-first-applicability-debug-crosscheck requires --iw1-incremental-first-applicability.");
     }
 
     struct IW1Variant
@@ -650,9 +814,13 @@ int main(int argc, char** argv)
     std::cout << "beam_mode:   " << (beam_novelty_mode == BeamNoveltyMode::ALL_TESTED ? "all_tested" : "survivors_only") << '\n';
     std::cout << "reps:        " << reps << '\n';
     std::cout << "relaxed_survivors_only_beam: " << (relaxed_survivors_only_beam ? "true" : "false") << '\n';
+    std::cout << "plain_brfs: " << (plain_brfs ? "true" : "false") << '\n';
     std::cout << "iw1_basis:   " << to_string(iw1_novelty_basis) << '\n';
     std::cout << "iw1_action_selection: " << to_string(iw1_action_selection_mode) << '\n';
     std::cout << "iw1_atom_first_ratio: " << iw1_atom_first_ratio << "\n";
+    std::cout << "iw1_incremental_first_applicability: " << (iw1_incremental_first_applicability ? "true" : "false") << "\n";
+    std::cout << "iw1_incremental_first_applicability_debug_crosscheck: "
+              << (iw1_incremental_first_applicability_debug_crosscheck ? "true" : "false") << "\n";
     std::cout << "projective_keep_depth_one_novel: " << (projective_keep_depth_one_novel ? "true" : "false") << "\n";
 
     for (const auto basis : iw1_bases)
@@ -690,9 +858,12 @@ int main(int argc, char** argv)
                                                             false,
                                                             1,
                                                             chunk_size,
+                                                            plain_brfs,
                                                             iw1_variant.iw1_precheck_add_effect_novelty,
                                                             iw1_variant.iw1_atom_first_mode,
                                                             iw1_atom_first_ratio,
+                                                            iw1_incremental_first_applicability,
+                                                            iw1_incremental_first_applicability_debug_crosscheck,
                                                             basis,
                                                             projective_keep_depth_one_novel);
                         serial_wall_times_ms.push_back(serial_result.wall_time_ms);
@@ -741,6 +912,18 @@ int main(int argc, char** argv)
                 uint64_t parallel_in_flight_chunks_high_water = 0;
                 double parallel_consumer_stall_time_ms = 0.0;
                 double parallel_producer_stall_time_ms = 0.0;
+                uint64_t incremental_root_actions_fully_enumerated = 0;
+                uint64_t incremental_non_root_states_using_incremental_path = 0;
+                uint64_t incremental_changed_atoms_processed = 0;
+                uint64_t incremental_trigger_records_visited = 0;
+                uint64_t incremental_partial_seeds_created = 0;
+                uint64_t incremental_ground_actions_returned_by_partial_completion = 0;
+                uint64_t incremental_local_duplicate_candidates_removed = 0;
+                uint64_t incremental_already_tested_actions_skipped = 0;
+                uint64_t incremental_non_root_states_with_zero_returned_actions = 0;
+                double incremental_trigger_lookup_time_ms = 0.0;
+                double incremental_partial_completion_time_ms = 0.0;
+                double incremental_debug_crosscheck_time_ms = 0.0;
 
                 for (size_t rep = 0; rep < reps; ++rep)
                 {
@@ -753,9 +936,12 @@ int main(int argc, char** argv)
                                                  relaxed_survivors_only_beam,
                                                  num_threads,
                                                  chunk_size,
+                                                 plain_brfs,
                                                  iw1_variant.iw1_precheck_add_effect_novelty,
                                                  iw1_variant.iw1_atom_first_mode,
                                                  iw1_atom_first_ratio,
+                                                 iw1_incremental_first_applicability,
+                                                 iw1_incremental_first_applicability_debug_crosscheck,
                                                  basis,
                                                  projective_keep_depth_one_novel);
                     status = result.status;
@@ -780,6 +966,20 @@ int main(int argc, char** argv)
                     parallel_in_flight_chunks_high_water = result.parallel_in_flight_chunks_high_water;
                     parallel_consumer_stall_time_ms = result.parallel_consumer_stall_time_ms;
                     parallel_producer_stall_time_ms = result.parallel_producer_stall_time_ms;
+                    incremental_root_actions_fully_enumerated = result.incremental_root_actions_fully_enumerated;
+                    incremental_non_root_states_using_incremental_path = result.incremental_non_root_states_using_incremental_path;
+                    incremental_changed_atoms_processed = result.incremental_changed_atoms_processed;
+                    incremental_trigger_records_visited = result.incremental_trigger_records_visited;
+                    incremental_partial_seeds_created = result.incremental_partial_seeds_created;
+                    incremental_ground_actions_returned_by_partial_completion =
+                        result.incremental_ground_actions_returned_by_partial_completion;
+                    incremental_local_duplicate_candidates_removed = result.incremental_local_duplicate_candidates_removed;
+                    incremental_already_tested_actions_skipped = result.incremental_already_tested_actions_skipped;
+                    incremental_non_root_states_with_zero_returned_actions =
+                        result.incremental_non_root_states_with_zero_returned_actions;
+                    incremental_trigger_lookup_time_ms = result.incremental_trigger_lookup_time_ms;
+                    incremental_partial_completion_time_ms = result.incremental_partial_completion_time_ms;
+                    incremental_debug_crosscheck_time_ms = result.incremental_debug_crosscheck_time_ms;
                     wall_times_ms.push_back(result.wall_time_ms);
                 }
 
@@ -818,6 +1018,18 @@ int main(int argc, char** argv)
                           << " producer_stall=" << parallel_producer_stall_time_ms << '\n';
                 std::cout << "        parallel_hwm: ready_queue=" << parallel_ready_queue_high_water
                           << " in_flight=" << parallel_in_flight_chunks_high_water << '\n';
+                std::cout << "        incremental: root_actions=" << incremental_root_actions_fully_enumerated
+                          << " non_root_states=" << incremental_non_root_states_using_incremental_path
+                          << " changed_atoms=" << incremental_changed_atoms_processed
+                          << " triggers=" << incremental_trigger_records_visited
+                          << " seeds=" << incremental_partial_seeds_created
+                          << " completed_actions=" << incremental_ground_actions_returned_by_partial_completion
+                          << " local_duplicates_removed=" << incremental_local_duplicate_candidates_removed
+                          << " already_tested_skipped=" << incremental_already_tested_actions_skipped
+                          << " zero_return_states=" << incremental_non_root_states_with_zero_returned_actions << '\n';
+                std::cout << "        incremental_ms: trigger_lookup=" << incremental_trigger_lookup_time_ms
+                          << " partial_completion=" << incremental_partial_completion_time_ms
+                          << " debug_crosscheck=" << incremental_debug_crosscheck_time_ms << '\n';
                 if (serial_median_ms.has_value())
                 {
                     std::cout << "        speedup_vs_serial: " << (serial_median_ms.value() / median_ms) << '\n';

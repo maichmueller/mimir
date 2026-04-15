@@ -83,6 +83,11 @@ public:
                                uint64_t num_actions,
                                uint64_t num_axioms) = 0;
 
+    virtual void on_finish_iw1_incremental_first_applicability(
+        const IW1IncrementalFirstApplicabilityStatistics& iw1_incremental_first_applicability_statistics)
+    {
+    }
+
     /// @brief React on finishing one parallel beam chunk.
     virtual void on_finish_parallel_beam_chunk(size_t chunk_size,
                                                std::chrono::nanoseconds worker_compute_time,
@@ -252,6 +257,12 @@ public:
         {
             self().on_end_search_impl(num_reached_fluent_atoms, num_reached_derived_atoms, num_states, num_nodes, num_actions, num_axioms);
         }
+    }
+
+    void on_finish_iw1_incremental_first_applicability(
+        const IW1IncrementalFirstApplicabilityStatistics& iw1_incremental_first_applicability_statistics) override
+    {
+        m_statistics.set_iw1_incremental_first_applicability_statistics(iw1_incremental_first_applicability_statistics);
     }
 
     void on_finish_parallel_beam_chunk(size_t chunk_size,

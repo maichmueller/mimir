@@ -56,6 +56,7 @@ ContinuousCost compute_state_metric_value(const State& state)
 StateRepositoryImpl::StateRepositoryImpl(AxiomEvaluator axiom_evaluator) :
     m_axiom_evaluator(std::move(axiom_evaluator)),
     m_states(),
+    m_packed_states_by_index(),
     m_fluent_atom_slots(),
     m_reached_fluent_atoms(),
     m_reached_derived_atoms(),
@@ -152,6 +153,7 @@ std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_state(const 
 
     // Cache and return the extended state.
     auto result = m_states.emplace(PackedStateImpl(state_fluent_atoms_slot, state_derived_atoms_slot, state_numeric_variables), m_states.size());
+    m_packed_states_by_index.push_back(&result.first->first);
     auto state = State(result.first->second, &result.first->first, std::move(unpacked_state), shared_from_this());
 
     return { state, compute_state_metric_value(state) };
@@ -352,6 +354,7 @@ std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_successor_st
 
     // Cache and return the extended state.
     auto result = m_states.emplace(PackedStateImpl(state_fluent_atoms_slot, state_derived_atoms_slot, state_numeric_variables), m_states.size());
+    m_packed_states_by_index.push_back(&result.first->first);
     auto successor_state = State(result.first->second, &result.first->first, std::move(unpacked_state), shared_from_this());
 
     return { successor_state, successor_state_metric_value };
@@ -361,23 +364,42 @@ void StateRepositoryImpl::collect_action_add_effect_fluent_atom_indices(const St
                                                                         GroundAction action,
                                                                         iw::AtomIndexList& out_add_fluent_atom_indices)
 {
+    auto ignored_del_fluent_atom_indices = iw::AtomIndexList {};
+    collect_action_change_effect_fluent_atom_indices(state, action, out_add_fluent_atom_indices, ignored_del_fluent_atom_indices);
+}
+
+void StateRepositoryImpl::collect_action_change_effect_fluent_atom_indices(const State& state,
+                                                                           GroundAction action,
+                                                                           iw::AtomIndexList& out_add_fluent_atom_indices,
+                                                                           iw::AtomIndexList& out_del_fluent_atom_indices)
+{
     m_applied_positive_effect_atoms.unset_all();
+    m_applied_negative_effect_atoms.unset_all();
     const auto& unpacked_state = state.get_unpacked_state();
     for (const auto& conditional_effect : action->get_conditional_effects())
     {
         if (is_applicable(conditional_effect, unpacked_state))
         {
             insert_into_bitset(conditional_effect->get_conjunctive_effect()->get_propositional_effects<PositiveTag>(), m_applied_positive_effect_atoms);
+            insert_into_bitset(conditional_effect->get_conjunctive_effect()->get_propositional_effects<NegativeTag>(), m_applied_negative_effect_atoms);
         }
     }
 
     out_add_fluent_atom_indices.clear();
+    out_del_fluent_atom_indices.clear();
     const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
     for (const auto atom_index : m_applied_positive_effect_atoms)
     {
         if (!state_fluent_atoms.get(atom_index))
         {
             out_add_fluent_atom_indices.push_back(atom_index);
+        }
+    }
+    for (const auto atom_index : m_applied_negative_effect_atoms)
+    {
+        if (state_fluent_atoms.get(atom_index))
+        {
+            out_del_fluent_atom_indices.push_back(atom_index);
         }
     }
 }
@@ -516,6 +538,7 @@ StateRepositoryImpl::get_or_create_staged_successor_handle(const StagedSuccessor
 
     const auto state_emplace_start = std::chrono::steady_clock::now();
     auto result = m_states.emplace(std::move(packed_state), m_states.size());
+    m_packed_states_by_index.push_back(&result.first->first);
     if (timings)
     {
         timings->state_lookup_time += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - state_emplace_start);
@@ -579,6 +602,8 @@ State StateRepositoryImpl::get_state(const PackedStateImpl& state)
 }
 
 Index StateRepositoryImpl::get_state_index(const PackedStateImpl& state) { return m_states.at(state); }
+
+PackedState StateRepositoryImpl::get_packed_state(Index state_index) const { return m_packed_states_by_index.at(state_index); }
 
 const Problem& StateRepositoryImpl::get_problem() const { return m_axiom_evaluator->get_problem(); }
 

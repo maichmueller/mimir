@@ -40,14 +40,17 @@ struct SearchNode
 {
     DiscreteCost g_value;
     Index parent_state;
+    Index incoming_action;
     SearchNodeStatus status;
 };
+
+static constexpr auto kInvalidGroundActionIndex = std::numeric_limits<Index>::max();
 
 using SearchNodeVector = SegmentedVector<SearchNode>;
 
 inline SearchNode& get_or_create_search_node(size_t state_index, SearchNodeVector& search_nodes)
 {
-    static constexpr auto default_node = SearchNode { DiscreteCost(0), std::numeric_limits<Index>::max(), SearchNodeStatus::NEW };
+    static constexpr auto default_node = SearchNode { DiscreteCost(0), std::numeric_limits<Index>::max(), kInvalidGroundActionIndex, SearchNodeStatus::NEW };
 
     while (state_index >= search_nodes.size())
     {
@@ -85,6 +88,8 @@ public:
     std::span<const formalism::GroundAction>
     filter_actions(const State& state, const std::span<const formalism::GroundAction>& actions, StateRepositoryImpl& state_repository);
 };
+
+class IW1IncrementalActionDiscoveryController;
 
 SearchResult find_solution_with_beam(const SearchContext& context,
                                      const Options& options,

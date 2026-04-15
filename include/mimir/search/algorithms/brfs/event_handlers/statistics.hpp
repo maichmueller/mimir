@@ -28,6 +28,66 @@
 namespace mimir::search::brfs
 {
 
+class IW1IncrementalFirstApplicabilityStatistics
+{
+private:
+    uint64_t m_num_root_actions_fully_enumerated;
+    uint64_t m_num_non_root_states_using_incremental_path;
+    uint64_t m_num_changed_atoms_processed;
+    uint64_t m_num_trigger_records_visited;
+    uint64_t m_num_partial_seeds_created;
+    uint64_t m_num_ground_actions_returned_by_partial_completion;
+    uint64_t m_num_local_duplicate_candidates_removed;
+    uint64_t m_num_already_tested_actions_skipped;
+    uint64_t m_num_non_root_states_with_zero_returned_actions;
+    uint64_t m_trigger_lookup_time_ns;
+    uint64_t m_partial_completion_time_ns;
+    uint64_t m_debug_crosscheck_time_ns;
+
+public:
+    IW1IncrementalFirstApplicabilityStatistics() :
+        m_num_root_actions_fully_enumerated(0),
+        m_num_non_root_states_using_incremental_path(0),
+        m_num_changed_atoms_processed(0),
+        m_num_trigger_records_visited(0),
+        m_num_partial_seeds_created(0),
+        m_num_ground_actions_returned_by_partial_completion(0),
+        m_num_local_duplicate_candidates_removed(0),
+        m_num_already_tested_actions_skipped(0),
+        m_num_non_root_states_with_zero_returned_actions(0),
+        m_trigger_lookup_time_ns(0),
+        m_partial_completion_time_ns(0),
+        m_debug_crosscheck_time_ns(0)
+    {
+    }
+
+    void set_num_root_actions_fully_enumerated(uint64_t value) { m_num_root_actions_fully_enumerated = value; }
+    void set_num_non_root_states_using_incremental_path(uint64_t value) { m_num_non_root_states_using_incremental_path = value; }
+    void set_num_changed_atoms_processed(uint64_t value) { m_num_changed_atoms_processed = value; }
+    void set_num_trigger_records_visited(uint64_t value) { m_num_trigger_records_visited = value; }
+    void set_num_partial_seeds_created(uint64_t value) { m_num_partial_seeds_created = value; }
+    void set_num_ground_actions_returned_by_partial_completion(uint64_t value) { m_num_ground_actions_returned_by_partial_completion = value; }
+    void set_num_local_duplicate_candidates_removed(uint64_t value) { m_num_local_duplicate_candidates_removed = value; }
+    void set_num_already_tested_actions_skipped(uint64_t value) { m_num_already_tested_actions_skipped = value; }
+    void set_num_non_root_states_with_zero_returned_actions(uint64_t value) { m_num_non_root_states_with_zero_returned_actions = value; }
+    void set_trigger_lookup_time(std::chrono::nanoseconds value) { m_trigger_lookup_time_ns = static_cast<uint64_t>(value.count()); }
+    void set_partial_completion_time(std::chrono::nanoseconds value) { m_partial_completion_time_ns = static_cast<uint64_t>(value.count()); }
+    void set_debug_crosscheck_time(std::chrono::nanoseconds value) { m_debug_crosscheck_time_ns = static_cast<uint64_t>(value.count()); }
+
+    uint64_t get_num_root_actions_fully_enumerated() const { return m_num_root_actions_fully_enumerated; }
+    uint64_t get_num_non_root_states_using_incremental_path() const { return m_num_non_root_states_using_incremental_path; }
+    uint64_t get_num_changed_atoms_processed() const { return m_num_changed_atoms_processed; }
+    uint64_t get_num_trigger_records_visited() const { return m_num_trigger_records_visited; }
+    uint64_t get_num_partial_seeds_created() const { return m_num_partial_seeds_created; }
+    uint64_t get_num_ground_actions_returned_by_partial_completion() const { return m_num_ground_actions_returned_by_partial_completion; }
+    uint64_t get_num_local_duplicate_candidates_removed() const { return m_num_local_duplicate_candidates_removed; }
+    uint64_t get_num_already_tested_actions_skipped() const { return m_num_already_tested_actions_skipped; }
+    uint64_t get_num_non_root_states_with_zero_returned_actions() const { return m_num_non_root_states_with_zero_returned_actions; }
+    double get_trigger_lookup_time_ms() const { return static_cast<double>(m_trigger_lookup_time_ns) / 1'000'000.0; }
+    double get_partial_completion_time_ms() const { return static_cast<double>(m_partial_completion_time_ns) / 1'000'000.0; }
+    double get_debug_crosscheck_time_ms() const { return static_cast<double>(m_debug_crosscheck_time_ns) / 1'000'000.0; }
+};
+
 class Statistics
 {
 private:
@@ -66,6 +126,7 @@ private:
     uint64_t m_num_nodes;
     uint64_t m_num_actions;
     uint64_t m_num_axioms;
+    IW1IncrementalFirstApplicabilityStatistics m_iw1_incremental_first_applicability_statistics;
 
 public:
     Statistics() :
@@ -98,7 +159,8 @@ public:
         m_num_states(0),
         m_num_nodes(0),
         m_num_actions(0),
-        m_num_axioms(0)
+        m_num_axioms(0),
+        m_iw1_incremental_first_applicability_statistics()
     {
     }
 
@@ -162,6 +224,10 @@ public:
     void set_num_nodes(uint64_t num_nodes) { m_num_nodes = num_nodes; }
     void set_num_actions(uint64_t num_actions) { m_num_actions = num_actions; }
     void set_num_axioms(uint64_t num_axioms) { m_num_axioms = num_axioms; }
+    void set_iw1_incremental_first_applicability_statistics(const IW1IncrementalFirstApplicabilityStatistics& statistics)
+    {
+        m_iw1_incremental_first_applicability_statistics = statistics;
+    }
 
     /**
      * Getters
@@ -225,6 +291,10 @@ public:
     uint64_t get_num_nodes() const { return m_num_nodes; }
     uint64_t get_num_actions() const { return m_num_actions; }
     uint64_t get_num_axioms() const { return m_num_axioms; }
+    const IW1IncrementalFirstApplicabilityStatistics& get_iw1_incremental_first_applicability_statistics() const
+    {
+        return m_iw1_incremental_first_applicability_statistics;
+    }
 
     const std::vector<uint64_t>& get_num_generated_until_g_value() const { return m_num_generated_until_g_value; }
     const std::vector<uint64_t>& get_num_expanded_until_g_value() const { return m_num_expanded_until_g_value; }

@@ -13,6 +13,14 @@ std::vector<formalism::GroundAction> IApplicableActionGenerator::create_applicab
         "IApplicableActionGenerator::create_applicable_action_list_parallel: parallel applicable-action generation is not supported.");
 }
 
+void IApplicableActionGenerator::create_applicable_actions_from_partial_binding(const State&,
+                                                                                const PartialGroundActionSeed&,
+                                                                                std::vector<formalism::GroundAction>&)
+{
+    throw std::logic_error(
+        "IApplicableActionGenerator::create_applicable_actions_from_partial_binding: partial-binding completion is not supported.");
+}
+
 ParallelRelaxedBeamSuccessorGenerationResult IApplicableActionGenerator::create_relaxed_parallel_beam_successor_candidates(
     const State&,
     ContinuousCost,

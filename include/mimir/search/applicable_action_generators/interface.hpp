@@ -64,6 +64,13 @@ struct ParallelRelaxedBeamSuccessorGenerationResult
     size_t num_scored_candidates = 0;
 };
 
+struct PartialGroundActionSeed
+{
+    formalism::Action action_schema = nullptr;
+    IndexList bound_parameter_object_indices;
+    std::vector<uint8_t> parameter_is_bound;
+};
+
 /**
  * Dynamic interface class.
  */
@@ -85,6 +92,16 @@ public:
 
     /// @brief Generate all applicable actions for a given state.
     virtual mimir::generator<formalism::GroundAction> create_applicable_action_generator(const State& state) = 0;
+
+    /// @brief Return whether this generator can complete a partially bound lifted action
+    /// into fully applicable ground actions in the given state.
+    virtual bool supports_partial_binding_completion() const { return false; }
+
+    /// @brief Complete a partially bound lifted action into applicable ground actions.
+    /// Only valid if supports_partial_binding_completion() returns true.
+    virtual void create_applicable_actions_from_partial_binding(const State& state,
+                                                                const PartialGroundActionSeed& seed,
+                                                                std::vector<formalism::GroundAction>& out_actions);
 
     /// @brief Deterministic parallel applicable-action enumeration. Only valid if
     /// supports_parallel_applicable_action_generation() returns true.

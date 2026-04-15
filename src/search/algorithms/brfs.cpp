@@ -18,11 +18,15 @@
 #include "mimir/search/algorithms/brfs.hpp"
 
 #include "brfs/internal.hpp"
+#include "brfs/incremental_iw1.hpp"
 
 #include "mimir/common/timers.hpp"
+#include "mimir/formalism/domain.hpp"
+#include "mimir/formalism/effects.hpp"
 #include "mimir/formalism/problem.hpp"
 #include "mimir/search/algorithms/brfs/event_handlers.hpp"
 #include "mimir/search/algorithms/brfs/event_handlers/interface.hpp"
+#include "mimir/search/algorithms/iw/pruning_strategy.hpp"
 #include "mimir/search/algorithms/strategies/goal_strategy.hpp"
 #include "mimir/search/algorithms/strategies/layer_ordering_strategy.hpp"
 #include "mimir/search/algorithms/strategies/pruning_strategy.hpp"
@@ -41,6 +45,68 @@ using namespace mimir::formalism;
 
 namespace mimir::search::brfs
 {
+namespace
+{
+bool is_empty_conjunctive_condition(ConjunctiveCondition condition)
+{
+    return condition->get_literals<StaticTag>().empty() && condition->get_literals<FluentTag>().empty() && condition->get_literals<DerivedTag>().empty()
+           && condition->get_numeric_constraints().empty();
+}
+
+bool supports_iw1_incremental_first_applicability(const ProblemImpl& problem)
+{
+    if (!problem.get_problem_and_domain_axioms().empty())
+    {
+        return false;
+    }
+
+    for (const auto action : problem.get_domain()->get_actions())
+    {
+        const auto condition = action->get_conjunctive_condition();
+        if (!condition->get_literals<DerivedTag>().empty() || !condition->get_numeric_constraints().empty())
+        {
+            return false;
+        }
+
+        for (const auto& conditional_effect : action->get_conditional_effects())
+        {
+            if (!is_empty_conjunctive_condition(conditional_effect->get_conjunctive_condition()))
+            {
+                return false;
+            }
+
+            const auto conjunctive_effect = conditional_effect->get_conjunctive_effect();
+            if (!conjunctive_effect->get_fluent_numeric_effects().empty() || conjunctive_effect->get_auxiliary_numeric_effect().has_value())
+            {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+bool supports_iw1_incremental_first_applicability(const PruningStrategy& pruning_strategy)
+{
+    return std::dynamic_pointer_cast<iw::ProjectiveArityOneNoveltyPruningStrategyImpl>(pruning_strategy) != nullptr
+           || pruning_strategy->supports_atom_novelty_query();
+}
+
+struct IW1IncrementalStatisticsReporter
+{
+    EventHandler event_handler;
+    IW1IncrementalActionDiscoveryController* controller;
+
+    ~IW1IncrementalStatisticsReporter()
+    {
+        if (event_handler && controller)
+        {
+            event_handler->on_finish_iw1_incremental_first_applicability(controller->get_statistics());
+        }
+    }
+};
+}
+
 SearchResult find_solution(const SearchContext& context, const Options& options)
 {
     const auto& problem = *context->get_problem();
@@ -65,6 +131,8 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
     const auto iw1_precheck_add_effect_novelty = options.iw1_precheck_add_effect_novelty;
     const auto iw1_atom_first_mode = options.iw1_atom_first_mode;
     const auto iw1_atom_first_ratio = options.iw1_atom_first_ratio;
+    const auto iw1_incremental_first_applicability = options.iw1_incremental_first_applicability;
+    const auto iw1_incremental_first_applicability_debug_crosscheck = options.iw1_incremental_first_applicability_debug_crosscheck;
     const auto max_depth = options.max_depth;
     const auto use_max_depth = (max_depth < std::numeric_limits<uint32_t>::max());
 
@@ -137,6 +205,46 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
         throw std::invalid_argument("BrFS::Options.iw1_atom_first_ratio must be positive.");
     }
 
+    if (iw1_incremental_first_applicability_debug_crosscheck && !iw1_incremental_first_applicability)
+    {
+        throw std::invalid_argument(
+            "BrFS::Options.iw1_incremental_first_applicability_debug_crosscheck requires BrFS::Options.iw1_incremental_first_applicability.");
+    }
+
+    if (iw1_incremental_first_applicability)
+    {
+        if (layer_ordering_strategy)
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.iw1_incremental_first_applicability currently supports only plain BrFS without layer ordering or beam search.");
+        }
+        if (use_beam || use_next_layer_limit || relaxed_survivors_only_beam)
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.iw1_incremental_first_applicability currently supports only plain BrFS without beam search.");
+        }
+        if (iw1_precheck_add_effect_novelty || iw1_atom_first_mode)
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.iw1_incremental_first_applicability cannot currently be combined with IW(1) action precheck or atom-first mode.");
+        }
+        if (!supports_iw1_incremental_first_applicability(problem))
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.iw1_incremental_first_applicability requires deterministic STRIPS-style fluent actions without numeric features, derived preconditions, or axioms.");
+        }
+        if (!supports_iw1_incremental_first_applicability(pruning_strategy))
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.iw1_incremental_first_applicability requires a width-1 novelty pruning strategy.");
+        }
+        if (!applicable_action_generator.supports_partial_binding_completion())
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.iw1_incremental_first_applicability requires an applicable-action generator with partial-binding completion support.");
+        }
+    }
+
     if (parallel_beam_num_threads > 1)
     {
         if (!use_beam)
@@ -164,6 +272,7 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
     auto& start_search_node = get_or_create_search_node(start_state.get_index(), search_nodes);
     start_search_node.status = SearchNodeStatus::OPEN;
     start_search_node.g_value = 0;
+    start_search_node.incoming_action = kInvalidGroundActionIndex;
 
     event_handler->on_start_search(start_state);
 
@@ -186,6 +295,8 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
 
     auto g_value = DiscreteCost(0);
     auto iw1_action_precheck = IW1ActionPrecheckController(options, pruning_strategy, context->get_problem(), start_state);
+    auto iw1_incremental_action_discovery = IW1IncrementalActionDiscoveryController(context, options);
+    auto iw1_incremental_statistics_reporter = IW1IncrementalStatisticsReporter { event_handler, &iw1_incremental_action_discovery };
     const auto emit_novel_witness_events =
         event_handler->supports_novel_witness_events() && pruning_strategy->supports_transition_novel_witness_query();
     auto novel_witness_atom_indices = iw::AtomIndexList {};
@@ -265,6 +376,46 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
                 continue;
             }
 
+            if (iw1_incremental_action_discovery.is_enabled() && (state.get_index() != start_state.get_index()))
+            {
+                const auto incremental_actions = iw1_incremental_action_discovery.get_actions_to_expand(state, search_node);
+                for (const auto& action : incremental_actions)
+                {
+                    iw1_incremental_action_discovery.mark_action_tested(action);
+
+                    const auto [successor_state, successor_state_metric_value] = state_repository.get_or_create_successor_state(state, action, search_node.g_value);
+                    auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
+                    auto action_cost = successor_state_metric_value - search_node.g_value;
+
+                    if (emit_novel_witness_events)
+                    {
+                        pruning_strategy->compute_transition_novel_fluent_atom_indices_read_only(state, successor_state, novel_witness_atom_indices);
+                        event_handler->on_generate_state_with_novel_witness(state, action, action_cost, successor_state, novel_witness_atom_indices);
+                    }
+                    event_handler->on_generate_state(state, action, action_cost, successor_state);
+                    if (pruning_strategy->test_prune_successor_state(state, successor_state, (successor_search_node.status == SearchNodeStatus::NEW)))
+                    {
+                        event_handler->on_generate_state_not_in_search_tree(state, action, action_cost, successor_state);
+                        continue;
+                    }
+                    event_handler->on_generate_state_in_search_tree(state, action, action_cost, successor_state);
+
+                    successor_search_node.status = SearchNodeStatus::OPEN;
+                    successor_search_node.parent_state = state.get_index();
+                    successor_search_node.incoming_action = action->get_index();
+                    successor_search_node.g_value = search_node.g_value + 1;
+
+                    queue.emplace_back(successor_state.get_packed_state());
+
+                    if (search_nodes.size() >= options.max_num_states)
+                    {
+                        result.status = SearchStatus::OUT_OF_STATES;
+                        return result;
+                    }
+                }
+                continue;
+            }
+
             if (iw1_action_precheck.is_enabled())
             {
                 if (iw1_action_precheck.supports_online_filtering())
@@ -295,6 +446,7 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
 
                         successor_search_node.status = SearchNodeStatus::OPEN;
                         successor_search_node.parent_state = state.get_index();
+                        successor_search_node.incoming_action = action->get_index();
                         successor_search_node.g_value = search_node.g_value + 1;
 
                         queue.emplace_back(successor_state.get_packed_state());
@@ -335,6 +487,7 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
 
                         successor_search_node.status = SearchNodeStatus::OPEN;
                         successor_search_node.parent_state = state.get_index();
+                        successor_search_node.incoming_action = action->get_index();
                         successor_search_node.g_value = search_node.g_value + 1;
 
                         queue.emplace_back(successor_state.get_packed_state());
@@ -351,6 +504,15 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
             {
                 for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
                 {
+                    if (iw1_incremental_action_discovery.is_enabled())
+                    {
+                        if (state.get_index() == start_state.get_index())
+                        {
+                            iw1_incremental_action_discovery.on_root_action_fully_enumerated();
+                        }
+                        iw1_incremental_action_discovery.mark_action_tested(action);
+                    }
+
                     const auto [successor_state, successor_state_metric_value] = state_repository.get_or_create_successor_state(state, action, search_node.g_value);
                     auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
                     auto action_cost = successor_state_metric_value - search_node.g_value;
@@ -370,6 +532,7 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
 
                     successor_search_node.status = SearchNodeStatus::OPEN;
                     successor_search_node.parent_state = state.get_index();
+                    successor_search_node.incoming_action = action->get_index();
                     successor_search_node.g_value = search_node.g_value + 1;
 
                     queue.emplace_back(successor_state.get_packed_state());

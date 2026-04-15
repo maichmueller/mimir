@@ -166,6 +166,7 @@ SearchResult find_solution_with_ordered_layer(const SearchContext& context,
 
                         successor_search_node.status = SearchNodeStatus::OPEN;
                         successor_search_node.parent_state = state.get_index();
+                        successor_search_node.incoming_action = action->get_index();
                         successor_search_node.g_value = search_node.g_value + 1;
 
                         if (use_eager_successor_scoring)
@@ -229,6 +230,7 @@ SearchResult find_solution_with_ordered_layer(const SearchContext& context,
 
                         successor_search_node.status = SearchNodeStatus::OPEN;
                         successor_search_node.parent_state = state.get_index();
+                        successor_search_node.incoming_action = action->get_index();
                         successor_search_node.g_value = search_node.g_value + 1;
 
                         if (use_eager_successor_scoring)
@@ -287,6 +289,7 @@ SearchResult find_solution_with_ordered_layer(const SearchContext& context,
 
                     successor_search_node.status = SearchNodeStatus::OPEN;
                     successor_search_node.parent_state = state.get_index();
+                    successor_search_node.incoming_action = action->get_index();
                     successor_search_node.g_value = search_node.g_value + 1;
 
                     if (use_eager_successor_scoring)

@@ -79,6 +79,8 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
         options_i.iw1_precheck_add_effect_novelty = options.iw1_precheck_add_effect_novelty;
         options_i.iw1_atom_first_mode = options.iw1_atom_first_mode;
         options_i.iw1_atom_first_ratio = options.iw1_atom_first_ratio;
+        options_i.iw1_incremental_first_applicability = options.iw1_incremental_first_applicability;
+        options_i.iw1_incremental_first_applicability_debug_crosscheck = options.iw1_incremental_first_applicability_debug_crosscheck;
         options_i.max_depth = options.max_depth;
         options_i.pruning_strategy = (cur_arity > 0) ? ArityKNoveltyPruningStrategyImpl::create(cur_arity, ground_fluent_atom_repository.size()) :
                                                        ArityZeroNoveltyPruningStrategyImpl::create(start_state);

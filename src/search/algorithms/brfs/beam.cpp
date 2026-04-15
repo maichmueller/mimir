@@ -159,6 +159,7 @@ void admit_beam_candidate(const BeamCandidate& candidate, SearchNodeVector& sear
     auto& successor_search_node = get_or_create_search_node(candidate.successor_state.get_index(), search_nodes);
     successor_search_node.status = SearchNodeStatus::OPEN;
     successor_search_node.parent_state = candidate.parent_state->get_index();
+    successor_search_node.incoming_action = candidate.action->get_index();
     successor_search_node.g_value = candidate.successor_g_value;
 
     next_layer.emplace_back(candidate.successor_state);
@@ -301,6 +302,7 @@ void finalize_deferred_beam_layer(const EventHandler& event_handler,
         auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
         successor_search_node.status = SearchNodeStatus::OPEN;
         successor_search_node.parent_state = candidate.parent_state->get_index();
+        successor_search_node.incoming_action = candidate.action->get_index();
         successor_search_node.g_value = candidate.successor_g_value;
 
         next_layer.emplace_back(successor_state);

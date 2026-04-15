@@ -191,6 +191,87 @@ struct IndexListHash
     }
 };
 
+enum class PartialBindingMaskStatus
+{
+    COMPATIBLE,
+    IMPOSSIBLE,
+};
+
+std::pair<PartialBindingMaskStatus, std::optional<boost::dynamic_bitset<>>>
+create_partial_binding_vertex_mask(ActionSatisficingBindingGenerator& condition_grounder, const PartialGroundActionSeed& seed)
+{
+    const auto action = condition_grounder.get_action();
+    const auto arity = action->get_arity();
+
+    if (seed.action_schema != action)
+    {
+        throw std::invalid_argument("create_partial_binding_vertex_mask: action schema mismatch.");
+    }
+
+    if (seed.bound_parameter_object_indices.size() != arity || seed.parameter_is_bound.size() != arity)
+    {
+        throw std::invalid_argument("create_partial_binding_vertex_mask: seed arrays must match the action arity.");
+    }
+
+    if (arity == 0)
+    {
+        return { PartialBindingMaskStatus::COMPATIBLE, std::nullopt };
+    }
+
+    auto has_bound_parameter = false;
+    for (size_t parameter_index = 0; parameter_index < arity; ++parameter_index)
+    {
+        if (seed.parameter_is_bound[parameter_index])
+        {
+            has_bound_parameter = true;
+            break;
+        }
+    }
+
+    if (!has_bound_parameter)
+    {
+        return { PartialBindingMaskStatus::COMPATIBLE, std::nullopt };
+    }
+
+    const auto& static_consistency_graph = condition_grounder.get_static_consistency_graph();
+    auto vertex_mask = boost::dynamic_bitset<>(static_consistency_graph.get_num_vertices());
+
+    const auto& vertices_by_parameter_index = static_consistency_graph.get_vertices_by_parameter_index();
+    const auto& objects_by_parameter_index = static_consistency_graph.get_objects_by_parameter_index();
+
+    for (size_t parameter_index = 0; parameter_index < arity; ++parameter_index)
+    {
+        if (!seed.parameter_is_bound[parameter_index])
+        {
+            for (const auto vertex_index : vertices_by_parameter_index[parameter_index])
+            {
+                vertex_mask.set(vertex_index);
+            }
+            continue;
+        }
+
+        const auto required_object_index = seed.bound_parameter_object_indices[parameter_index];
+        bool matched_vertex = false;
+        for (size_t position = 0; position < objects_by_parameter_index[parameter_index].size(); ++position)
+        {
+            if (objects_by_parameter_index[parameter_index][position] != required_object_index)
+            {
+                continue;
+            }
+
+            vertex_mask.set(vertices_by_parameter_index[parameter_index][position]);
+            matched_vertex = true;
+        }
+
+        if (!matched_vertex)
+        {
+            return { PartialBindingMaskStatus::IMPOSSIBLE, std::nullopt };
+        }
+    }
+
+    return { PartialBindingMaskStatus::COMPATIBLE, std::optional<boost::dynamic_bitset<>>(std::move(vertex_mask)) };
+}
+
 template<IsStaticOrFluentOrDerivedTag P>
 using GroundAtomIndexLookup = std::vector<absl::flat_hash_map<IndexList, Index, IndexListHash>>;
 
@@ -1361,6 +1442,11 @@ bool KPKCLiftedApplicableActionGeneratorImpl::supports_parallel_applicable_actio
 
 bool KPKCLiftedApplicableActionGeneratorImpl::supports_parallel_relaxed_beam_successor_generation() const { return true; }
 
+bool KPKCLiftedApplicableActionGeneratorImpl::supports_partial_binding_completion() const
+{
+    return m_options.pruning == SearchContextImpl::SymmetryPruning::OFF;
+}
+
 std::vector<ParallelApplicableActionGeneratorWorkerContext>&
 KPKCLiftedApplicableActionGeneratorImpl::get_parallel_worker_contexts(size_t thread_count)
 {
@@ -1376,6 +1462,76 @@ ParallelApplicableActionGeneratorWorkerContext KPKCLiftedApplicableActionGenerat
 {
     assert(m_parallel_lookup_tables);
     return std::make_unique<KPKCParallelApplicableActionWorkerContext>(this, m_action_grounding_data);
+}
+
+void KPKCLiftedApplicableActionGeneratorImpl::create_applicable_actions_from_partial_binding(const State& state,
+                                                                                             const PartialGroundActionSeed& seed,
+                                                                                             std::vector<GroundAction>& out_actions)
+{
+    if (!supports_partial_binding_completion())
+    {
+        throw std::logic_error(
+            "KPKCLiftedApplicableActionGeneratorImpl::create_applicable_actions_from_partial_binding requires symmetry pruning to be disabled.");
+    }
+
+    if (!seed.action_schema)
+    {
+        throw std::invalid_argument("KPKCLiftedApplicableActionGeneratorImpl::create_applicable_actions_from_partial_binding requires a valid action schema.");
+    }
+
+    const auto action_index = seed.action_schema->get_index();
+    if (action_index >= m_action_grounding_data.size())
+    {
+        throw std::invalid_argument(
+            "KPKCLiftedApplicableActionGeneratorImpl::create_applicable_actions_from_partial_binding received an unknown action schema.");
+    }
+
+    const auto generation_start = std::chrono::steady_clock::now();
+
+    const auto dynamic_assignment_initialization_start = std::chrono::steady_clock::now();
+    initialize(state.get_unpacked_state(), m_dynamic_assignment_sets);
+    const auto dynamic_assignment_initialization_time =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - dynamic_assignment_initialization_start);
+    auto symmetry_setup_time = std::chrono::nanoseconds::zero();
+    auto generation_statistics_scope =
+        GenerationStatisticsScope { &m_generation_statistics, generation_start, dynamic_assignment_initialization_time, symmetry_setup_time };
+
+    m_event_handler->on_start_generating_applicable_actions();
+
+    auto& condition_grounder = m_action_grounding_data[action_index];
+    if (!nullary_conditions_hold(condition_grounder.get_conjunctive_condition(), state.get_unpacked_state()))
+    {
+        m_event_handler->on_end_generating_applicable_actions();
+        return;
+    }
+
+    const auto [mask_status, vertex_mask] = create_partial_binding_vertex_mask(condition_grounder, seed);
+    if (mask_status == PartialBindingMaskStatus::IMPOSSIBLE)
+    {
+        m_event_handler->on_end_generating_applicable_actions();
+        return;
+    }
+
+    const auto& ground_action_repository =
+        boost::hana::at_key(state.get_problem().get_repositories().get_hana_repositories(), boost::hana::type<GroundActionImpl> {});
+
+    for (auto&& binding : condition_grounder.create_binding_generator(state, m_dynamic_assignment_sets, vertex_mask))
+    {
+        const auto num_ground_actions = ground_action_repository.size();
+
+        const auto ground_action = m_problem->ground(condition_grounder.get_action(), std::move(binding));
+
+        assert(is_applicable(ground_action, state));
+
+        m_event_handler->on_ground_action(ground_action);
+
+        (ground_action_repository.size() > num_ground_actions) ? m_event_handler->on_ground_action_cache_miss(ground_action) :
+                                                                 m_event_handler->on_ground_action_cache_hit(ground_action);
+
+        out_actions.push_back(ground_action);
+    }
+
+    m_event_handler->on_end_generating_applicable_actions();
 }
 
 mimir::generator<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_applicable_action_generator(const State& state)

@@ -47,6 +47,8 @@ struct Options
     bool iw1_precheck_add_effect_novelty = false;
     bool iw1_atom_first_mode = false;
     double iw1_atom_first_ratio = 1.0;
+    bool iw1_incremental_first_applicability = false;
+    bool iw1_incremental_first_applicability_debug_crosscheck = false;
     bool stop_if_goal = true;
     uint32_t max_depth = std::numeric_limits<uint32_t>::max();
     uint32_t max_num_states = std::numeric_limits<uint32_t>::max();

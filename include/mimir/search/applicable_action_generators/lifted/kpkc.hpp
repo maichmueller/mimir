@@ -96,6 +96,10 @@ public:
     bool supports_parallel_relaxed_beam_successor_generation() const override;
     ParallelApplicableActionGeneratorWorkerContext create_parallel_worker_context() const override;
     mimir::generator<formalism::GroundAction> create_applicable_action_generator(const State& state) override;
+    bool supports_partial_binding_completion() const override;
+    void create_applicable_actions_from_partial_binding(const State& state,
+                                                        const PartialGroundActionSeed& seed,
+                                                        std::vector<formalism::GroundAction>& out_actions) override;
     std::vector<formalism::GroundAction> create_applicable_action_list_parallel(const State& state, BS::thread_pool& thread_pool) override;
     ParallelRelaxedBeamSuccessorGenerationResult create_relaxed_parallel_beam_successor_candidates(
         const State& state,

@@ -87,6 +87,7 @@ private:
     AxiomEvaluator m_axiom_evaluator;  ///< The axiom evaluator.
 
     PackedStateImplMap m_states;  ///< Stores all created extended states.
+    std::vector<PackedState> m_packed_states_by_index;
     absl::flat_hash_map<IndexList, valla::Slot<Index>, IndexListHash> m_fluent_atom_slots;  ///< Memoizes fluent atom sequences to tree slots.
 
     FlatBitset m_reached_fluent_atoms;   ///< Stores all encountered fluent atoms.
@@ -135,6 +136,13 @@ public:
                                                        formalism::GroundAction action,
                                                        iw::AtomIndexList& out_add_fluent_atom_indices);
 
+    /// @brief Collect fluent atoms that actually change truth value when applying
+    /// `action` in `state`.
+    void collect_action_change_effect_fluent_atom_indices(const State& state,
+                                                          formalism::GroundAction action,
+                                                          iw::AtomIndexList& out_add_fluent_atom_indices,
+                                                          iw::AtomIndexList& out_del_fluent_atom_indices);
+
     /// @brief Compute a successor into worker-local dense storage for the grounded
     /// parallel beam path. This does not mutate the repository state.
     StagedSuccessorState compute_staged_successor_state(const State& state,
@@ -167,6 +175,8 @@ public:
     /// @param state is the packed state.
     /// @return the index.
     Index get_state_index(const PackedStateImpl& state);
+
+    PackedState get_packed_state(Index state_index) const;
 
     /**
      * Getters
