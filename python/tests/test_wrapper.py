@@ -1323,6 +1323,44 @@ class TestBeamWrappers(unittest.TestCase):
         assert exact_result.solution is not None
         assert len(exact_result.solution) == 1
 
+    def test_advanced_width_option_bindings_expose_incremental_iw1_fields(self):
+        brfs_options = advanced_search.BrFSOptions()
+        brfs_options.iw1_incremental_first_applicability = True
+        brfs_options.iw1_incremental_first_applicability_debug_crosscheck = True
+        assert brfs_options.iw1_incremental_first_applicability is True
+        assert brfs_options.iw1_incremental_first_applicability_debug_crosscheck is True
+
+        iw_options = advanced_search.IWOptions()
+        iw_options.iw1_incremental_first_applicability = True
+        iw_options.iw1_incremental_first_applicability_debug_crosscheck = True
+        assert iw_options.iw1_incremental_first_applicability is True
+        assert iw_options.iw1_incremental_first_applicability_debug_crosscheck is True
+
+    def test_projective_iw_incremental_add_effect_precheck_all_tested(self):
+        domain_path = DATA_DIR / "iw1_incremental" / "domain.pddl"
+        problem_path = DATA_DIR / "iw1_incremental" / "positive_problem.pddl"
+        domain = Domain(domain_path)
+        problem = Problem(domain, problem_path)
+        start_state = problem.get_initial_state()
+        layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(
+            problem._advanced_problem
+        )
+
+        result = projective_iw(
+            problem,
+            start_state,
+            typed_projection=True,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="all_tested",
+            iw1_precheck_add_effect_novelty=True,
+            iw1_incremental_first_applicability=True,
+        )
+
+        assert result.status == "solved"
+        assert result.solution is not None
+        assert len(result.solution) == 2
+
     def test_iw_parallel_beam(self):
         problem = _make_problem("delivery", mode="grounded")
         start_state = problem.get_initial_state()

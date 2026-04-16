@@ -1015,6 +1015,9 @@ void bind_module_definitions(nb::module_& m)
         .def_rw("iw1_precheck_add_effect_novelty", &brfs::Options::iw1_precheck_add_effect_novelty)
         .def_rw("iw1_atom_first_mode", &brfs::Options::iw1_atom_first_mode)
         .def_rw("iw1_atom_first_ratio", &brfs::Options::iw1_atom_first_ratio)
+        .def_rw("iw1_incremental_first_applicability", &brfs::Options::iw1_incremental_first_applicability)
+        .def_rw("iw1_incremental_first_applicability_debug_crosscheck",
+                &brfs::Options::iw1_incremental_first_applicability_debug_crosscheck)
         .def_rw("stop_if_goal", &brfs::Options::stop_if_goal)
         .def_rw("max_depth", &brfs::Options::max_depth)
         .def_rw("max_num_states", &brfs::Options::max_num_states)
@@ -1206,6 +1209,9 @@ void bind_module_definitions(nb::module_& m)
         .def_rw("iw1_precheck_add_effect_novelty", &iw::Options::iw1_precheck_add_effect_novelty)
         .def_rw("iw1_atom_first_mode", &iw::Options::iw1_atom_first_mode)
         .def_rw("iw1_atom_first_ratio", &iw::Options::iw1_atom_first_ratio)
+        .def_rw("iw1_incremental_first_applicability", &iw::Options::iw1_incremental_first_applicability)
+        .def_rw("iw1_incremental_first_applicability_debug_crosscheck",
+                &iw::Options::iw1_incremental_first_applicability_debug_crosscheck)
         .def_rw("max_depth", &iw::Options::max_depth)
         .def_rw("max_arity", &iw::Options::max_arity);
 

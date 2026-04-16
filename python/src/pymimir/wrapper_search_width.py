@@ -46,6 +46,8 @@ def iw(
     iw1_precheck_add_effect_novelty: bool = False,
     iw1_atom_first_mode: bool = False,
     iw1_atom_first_ratio: float = 1.0,
+    iw1_incremental_first_applicability: bool = False,
+    iw1_incremental_first_applicability_debug_crosscheck: bool = False,
     on_expand_state: "Union[Callable[[State], None], None]" = None,
     on_expand_goal_state: "Union[Callable[[State], None], None]" = None,
     on_generate_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
@@ -85,6 +87,12 @@ def iw(
         iw1_atom_first_ratio, int
     ), "iw1_atom_first_ratio must be a float."
     assert iw1_atom_first_ratio > 0, "iw1_atom_first_ratio must be positive."
+    assert isinstance(
+        iw1_incremental_first_applicability, bool
+    ), "iw1_incremental_first_applicability must be a bool."
+    assert isinstance(
+        iw1_incremental_first_applicability_debug_crosscheck, bool
+    ), "iw1_incremental_first_applicability_debug_crosscheck must be a bool."
     assert isinstance(num_threads, int), "num_threads must be an int."
     assert isinstance(chunk_size, int), "chunk_size must be an int."
     assert isinstance(
@@ -203,6 +211,12 @@ def iw(
     advanced_options.iw1_precheck_add_effect_novelty = iw1_precheck_add_effect_novelty
     advanced_options.iw1_atom_first_mode = iw1_atom_first_mode
     advanced_options.iw1_atom_first_ratio = float(iw1_atom_first_ratio)
+    advanced_options.iw1_incremental_first_applicability = (
+        iw1_incremental_first_applicability
+    )
+    advanced_options.iw1_incremental_first_applicability_debug_crosscheck = (
+        iw1_incremental_first_applicability_debug_crosscheck
+    )
     advanced_options.relaxed_survivors_only_beam = relaxed_survivors_only_beam
     if num_threads > 1:
         advanced_options.parallel_beam_num_threads = num_threads
@@ -237,6 +251,8 @@ def projective_iw(
     iw1_precheck_add_effect_novelty: bool = False,
     iw1_atom_first_mode: bool = False,
     iw1_atom_first_ratio: float = 1.0,
+    iw1_incremental_first_applicability: bool = False,
+    iw1_incremental_first_applicability_debug_crosscheck: bool = False,
     on_expand_state: "Union[Callable[[State], None], None]" = None,
     on_expand_goal_state: "Union[Callable[[State], None], None]" = None,
     on_generate_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
@@ -265,6 +281,11 @@ def projective_iw(
     `relaxed_survivors_only_beam` switches to a faster, non-serial-equivalent
     SURVIVORS_ONLY variant that only canonicalizes merged worker-local top-k candidates.
     `max_depth` restricts the deepest BFS layer that may generate successors.
+    `iw1_precheck_add_effect_novelty` enables add-effect novelty precheck.
+    `iw1_atom_first_mode` enables the older atom-first ordering mode.
+    `iw1_incremental_first_applicability` enables incremental discovery of newly
+    first-applicable actions from parent transition deltas. The debug-crosscheck flag
+    verifies exact candidate equivalence against the baseline path.
     """
     assert isinstance(problem, Problem), "Problem must be an instance of Problem."
     assert isinstance(start_state, State), "Start state must be an instance of State."
@@ -300,6 +321,12 @@ def projective_iw(
         iw1_atom_first_ratio, int
     ), "iw1_atom_first_ratio must be a float."
     assert iw1_atom_first_ratio > 0, "iw1_atom_first_ratio must be positive."
+    assert isinstance(
+        iw1_incremental_first_applicability, bool
+    ), "iw1_incremental_first_applicability must be a bool."
+    assert isinstance(
+        iw1_incremental_first_applicability_debug_crosscheck, bool
+    ), "iw1_incremental_first_applicability_debug_crosscheck must be a bool."
     assert isinstance(num_threads, int), "num_threads must be an int."
     assert isinstance(chunk_size, int), "chunk_size must be an int."
     assert isinstance(
@@ -418,6 +445,12 @@ def projective_iw(
     advanced_options.iw1_precheck_add_effect_novelty = iw1_precheck_add_effect_novelty
     advanced_options.iw1_atom_first_mode = iw1_atom_first_mode
     advanced_options.iw1_atom_first_ratio = float(iw1_atom_first_ratio)
+    advanced_options.iw1_incremental_first_applicability = (
+        iw1_incremental_first_applicability
+    )
+    advanced_options.iw1_incremental_first_applicability_debug_crosscheck = (
+        iw1_incremental_first_applicability_debug_crosscheck
+    )
     advanced_options.relaxed_survivors_only_beam = relaxed_survivors_only_beam
     if num_threads > 1:
         advanced_options.parallel_beam_num_threads = num_threads

@@ -34,6 +34,11 @@ def brfs(
     randomize_equal_score_ties: bool = False,
     equal_score_tie_seed: "Union[int, None]" = None,
     max_depth: int = -1,
+    iw1_precheck_add_effect_novelty: bool = False,
+    iw1_atom_first_mode: bool = False,
+    iw1_atom_first_ratio: float = 1.0,
+    iw1_incremental_first_applicability: bool = False,
+    iw1_incremental_first_applicability_debug_crosscheck: bool = False,
     on_expand_state: "Union[Callable[[State], None], None]" = None,
     on_expand_goal_state: "Union[Callable[[State], None], None]" = None,
     on_generate_state: "Union[Callable[[State, GroundAction, float, State], None], None]" = None,
@@ -71,6 +76,19 @@ def brfs(
     :type equal_score_tie_seed: int | None
     :param max_depth: Optional maximum discrete search depth. Values < 0 keep search unrestricted.
     :type max_depth: int
+    :param iw1_precheck_add_effect_novelty: Enable IW(1) add-effect novelty precheck before successor generation.
+        This only has an effect with a compatible width-1 novelty pruning strategy.
+    :type iw1_precheck_add_effect_novelty: bool
+    :param iw1_atom_first_mode: Enable the older atom-first IW(1) action ordering mode.
+        This only has an effect with a compatible width-1 novelty pruning strategy.
+    :type iw1_atom_first_mode: bool
+    :param iw1_atom_first_ratio: Positive tuning parameter used by atom-first mode and the add-effect precheck machinery.
+    :type iw1_atom_first_ratio: float
+    :param iw1_incremental_first_applicability: Enable incremental discovery of newly first-applicable actions in supported width-1 setups.
+    :type iw1_incremental_first_applicability: bool
+    :param iw1_incremental_first_applicability_debug_crosscheck: Enable exact debug cross-checking for incremental first-applicability.
+        Requires iw1_incremental_first_applicability=True.
+    :type iw1_incremental_first_applicability_debug_crosscheck: bool
     :param num_threads: Thread count for parallel beam evaluation. Values <= 1 keep the serial path.
     :type num_threads: int
     :param chunk_size: Parallel beam chunk size. Values <= 0 keep the engine default.
@@ -117,6 +135,20 @@ def brfs(
         equal_score_tie_seed, int
     ), "equal_score_tie_seed must be an int or None."
     assert isinstance(max_depth, int), "max_depth must be an int."
+    assert isinstance(
+        iw1_precheck_add_effect_novelty, bool
+    ), "iw1_precheck_add_effect_novelty must be a bool."
+    assert isinstance(iw1_atom_first_mode, bool), "iw1_atom_first_mode must be a bool."
+    assert isinstance(iw1_atom_first_ratio, (int, float)), (
+        "iw1_atom_first_ratio must be a float."
+    )
+    assert iw1_atom_first_ratio > 0, "iw1_atom_first_ratio must be positive."
+    assert isinstance(
+        iw1_incremental_first_applicability, bool
+    ), "iw1_incremental_first_applicability must be a bool."
+    assert isinstance(
+        iw1_incremental_first_applicability_debug_crosscheck, bool
+    ), "iw1_incremental_first_applicability_debug_crosscheck must be a bool."
     assert isinstance(num_threads, int), "num_threads must be an int."
     assert isinstance(chunk_size, int), "chunk_size must be an int."
     assert isinstance(
@@ -240,6 +272,17 @@ def brfs(
     )
     if max_depth >= 0:
         advanced_options.max_depth = max_depth
+    advanced_options.iw1_precheck_add_effect_novelty = (
+        iw1_precheck_add_effect_novelty
+    )
+    advanced_options.iw1_atom_first_mode = iw1_atom_first_mode
+    advanced_options.iw1_atom_first_ratio = float(iw1_atom_first_ratio)
+    advanced_options.iw1_incremental_first_applicability = (
+        iw1_incremental_first_applicability
+    )
+    advanced_options.iw1_incremental_first_applicability_debug_crosscheck = (
+        iw1_incremental_first_applicability_debug_crosscheck
+    )
     advanced_options.relaxed_survivors_only_beam = relaxed_survivors_only_beam
     if num_threads > 1:
         advanced_options.parallel_beam_num_threads = num_threads
