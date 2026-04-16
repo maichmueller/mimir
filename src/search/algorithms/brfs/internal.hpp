@@ -90,6 +90,22 @@ public:
 };
 
 class IW1IncrementalActionDiscoveryController;
+struct IW1IncrementalStatisticsReporter
+{
+    EventHandler event_handler;
+    const IW1IncrementalActionDiscoveryController* controller;
+
+    ~IW1IncrementalStatisticsReporter();
+};
+
+void run_incremental_precheck_filtered_crosscheck(const SearchContext& context,
+                                                  const Options& options,
+                                                  const State& start_state,
+                                                  const State& state,
+                                                  const PruningStrategy& pruning_strategy,
+                                                  StateRepositoryImpl& state_repository,
+                                                  const IW1IncrementalActionDiscoveryController& iw1_incremental_action_discovery,
+                                                  const std::span<const formalism::GroundAction>& filtered_incremental_actions);
 
 SearchResult find_solution_with_beam(const SearchContext& context,
                                      const Options& options,

@@ -18,8 +18,6 @@
 #include "internal.hpp"
 #include "incremental_iw1.hpp"
 #include "mimir/algorithms/BS_thread_pool.hpp"
-#include "mimir/formalism/formatter.hpp"
-#include "mimir/formalism/problem.hpp"
 #include "mimir/search/algorithms/brfs/event_handlers.hpp"
 #include "mimir/search/algorithms/brfs/event_handlers/interface.hpp"
 #include "mimir/search/algorithms/strategies/goal_strategy.hpp"
@@ -38,8 +36,6 @@
 #include <map>
 #include <memory>
 #include <random>
-#include <sstream>
-#include <unordered_set>
 
 using namespace mimir::formalism;
 
@@ -47,97 +43,6 @@ namespace mimir::search::brfs
 {
 namespace
 {
-std::string format_ground_action(GroundAction action, Problem problem)
-{
-    if (!action)
-    {
-        return "<invalid-action>";
-    }
-
-    auto out = std::ostringstream {};
-    out << std::tuple<const GroundActionImpl&, const ProblemImpl&, PlanFormatterTag> { *action, *problem, PlanFormatterTag {} };
-    return out.str();
-}
-
-std::string format_ground_action_list(const std::span<const GroundAction>& actions, Problem problem)
-{
-    auto out = std::ostringstream {};
-    out << "[";
-    for (size_t i = 0; i < actions.size(); ++i)
-    {
-        if (i != 0)
-        {
-            out << ", ";
-        }
-        out << format_ground_action(actions[i], problem);
-    }
-    out << "]";
-    return out.str();
-}
-
-void run_incremental_precheck_filtered_crosscheck(const SearchContext& context,
-                                                 const Options& options,
-                                                 const State& start_state,
-                                                 const State& state,
-                                                 const PruningStrategy& pruning_strategy,
-                                                 StateRepositoryImpl& state_repository,
-                                                 const IW1IncrementalActionDiscoveryController& iw1_incremental_action_discovery,
-                                                 const std::span<const GroundAction>& filtered_incremental_actions)
-{
-    auto baseline_never_tested = std::vector<GroundAction> {};
-    for (const auto action : context->get_applicable_action_generator()->create_applicable_action_generator(state))
-    {
-        if (!iw1_incremental_action_discovery.has_tested_action(action))
-        {
-            baseline_never_tested.push_back(action);
-        }
-    }
-
-    auto debug_precheck = IW1ActionPrecheckController(options, pruning_strategy, context->get_problem(), start_state);
-    const auto filtered_baseline_actions = debug_precheck.filter_actions(state, baseline_never_tested, state_repository);
-
-    auto filtered_incremental_indices = std::unordered_set<Index> {};
-    for (const auto action : filtered_incremental_actions)
-    {
-        filtered_incremental_indices.insert(action->get_index());
-    }
-
-    auto baseline_indices = std::unordered_set<Index> {};
-    auto missing_actions = std::vector<GroundAction> {};
-    auto spurious_actions = std::vector<GroundAction> {};
-
-    for (const auto action : filtered_baseline_actions)
-    {
-        baseline_indices.insert(action->get_index());
-        if (!filtered_incremental_indices.contains(action->get_index()))
-        {
-            missing_actions.push_back(action);
-        }
-    }
-
-    for (const auto action : filtered_incremental_actions)
-    {
-        if (!baseline_indices.contains(action->get_index()))
-        {
-            spurious_actions.push_back(action);
-        }
-    }
-
-    if (missing_actions.empty() && spurious_actions.empty())
-    {
-        return;
-    }
-
-    auto message = std::ostringstream {};
-    message << "IW(1) incremental first-applicability filtered precheck cross-check failed.\n";
-    message << "state_id: " << state.get_index() << "\n";
-    message << "filtered_incremental_candidates: " << format_ground_action_list(filtered_incremental_actions, context->get_problem()) << "\n";
-    message << "filtered_baseline_candidates: " << format_ground_action_list(filtered_baseline_actions, context->get_problem()) << "\n";
-    message << "missing_actions: " << format_ground_action_list(missing_actions, context->get_problem()) << "\n";
-    message << "spurious_actions: " << format_ground_action_list(spurious_actions, context->get_problem()) << "\n";
-    throw std::runtime_error(message.str());
-}
-
 struct BeamCandidate
 {
     const State* parent_state;
@@ -665,13 +570,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                                                             parallel_producer_stall_time);
         }
     };
-    const auto report_incremental_statistics = [&]()
-    {
-        if (iw1_incremental_action_discovery.is_enabled())
-        {
-            event_handler->on_finish_iw1_incremental_first_applicability(iw1_incremental_action_discovery.get_statistics());
-        }
-    };
+    auto iw1_incremental_statistics_reporter = IW1IncrementalStatisticsReporter { event_handler, &iw1_incremental_action_discovery };
 
     while (!current_layer.empty())
     {
@@ -1235,7 +1134,6 @@ SearchResult find_solution_with_beam(const SearchContext& context,
             {
                 result.status = SearchStatus::OUT_OF_TIME;
                 finalize_parallel_pipeline();
-                report_incremental_statistics();
                 return result;
             }
 
@@ -1269,7 +1167,6 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                     event_handler->on_solved(result.plan.value());
 
                     finalize_parallel_pipeline();
-                    report_incremental_statistics();
                     return result;
                 }
             }
@@ -1307,7 +1204,6 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                                                     generation_result.worker_compute_time))
                 {
                     finalize_parallel_pipeline();
-                    report_incremental_statistics();
                     return result;
                 }
                 continue;
@@ -1468,7 +1364,6 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                     if (!handle_action(action))
                     {
                         finalize_parallel_pipeline();
-                        report_incremental_statistics();
                         return result;
                     }
                 }
@@ -1494,7 +1389,6 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                     if (!handle_action(action))
                     {
                         finalize_parallel_pipeline();
-                        report_incremental_statistics();
                         return result;
                     }
                 }
@@ -1506,7 +1400,6 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                     if (!handle_action(action))
                     {
                         finalize_parallel_pipeline();
-                        report_incremental_statistics();
                         return result;
                     }
                 }
@@ -1518,7 +1411,6 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                     if (!handle_action(action))
                     {
                         finalize_parallel_pipeline();
-                        report_incremental_statistics();
                         return result;
                     }
                 }
@@ -1530,7 +1422,6 @@ SearchResult find_solution_with_beam(const SearchContext& context,
             if (!process_relaxed_parallel_layer())
             {
                 finalize_parallel_pipeline();
-                report_incremental_statistics();
                 return result;
             }
         }
@@ -1541,7 +1432,6 @@ SearchResult find_solution_with_beam(const SearchContext& context,
             if (!drain_ready_chunks())
             {
                 finalize_parallel_pipeline();
-                report_incremental_statistics();
                 return result;
             }
 
@@ -1552,7 +1442,6 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                 if (!drain_ready_chunks())
                 {
                     finalize_parallel_pipeline();
-                    report_incremental_statistics();
                     return result;
                 }
 
@@ -1572,7 +1461,6 @@ SearchResult find_solution_with_beam(const SearchContext& context,
             if (!drain_ready_chunks())
             {
                 finalize_parallel_pipeline();
-                report_incremental_statistics();
                 return result;
             }
         }
@@ -1630,7 +1518,6 @@ SearchResult find_solution_with_beam(const SearchContext& context,
 
     result.status = SearchStatus::EXHAUSTED;
     finalize_parallel_pipeline();
-    report_incremental_statistics();
     return result;
 }
 }
