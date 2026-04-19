@@ -1492,6 +1492,66 @@ TEST(MimirTests, SearchAlgorithmsIWParallelBeamTieBreakingMatchesSerialLiftedKPK
     }
 }
 
+TEST(MimirTests, SearchAlgorithmsIWArityOneIncrementalAddEffectPrecheckPlainTest)
+{
+    auto iw = LiftedIWPlanner(fs::path(std::string(DATA_DIR) + "iw1_incremental/domain.pddl"),
+                              fs::path(std::string(DATA_DIR) + "iw1_incremental/positive_problem.pddl"),
+                              1);
+    auto iw_event_handler = iw::DefaultEventHandlerImpl::create(iw.get_problem());
+    auto brfs_event_handler = brfs::DefaultEventHandlerImpl::create(iw.get_problem());
+
+    auto options = iw::Options();
+    options.max_arity = 1;
+    options.iw_event_handler = iw_event_handler;
+    options.brfs_event_handler = brfs_event_handler;
+    options.iw1_precheck_add_effect_novelty = true;
+    options.iw1_incremental_first_applicability = true;
+    options.iw1_incremental_first_applicability_debug_crosscheck = true;
+
+    const auto result = iw::find_solution(iw.get_search_context(), options);
+
+    EXPECT_EQ(result.status, SearchStatus::SOLVED);
+    ASSERT_TRUE(result.plan.has_value());
+    EXPECT_EQ(get_plan_action_signatures(*result.plan), std::vector<std::string>({ "enable(a)", "use-enabled(a)" }));
+
+    const auto& brfs_statistics_by_arity = iw_event_handler->get_statistics().get_brfs_statistics_by_arity();
+    ASSERT_EQ(brfs_statistics_by_arity.size(), 2);
+    const auto& iw1_incremental_statistics = brfs_statistics_by_arity[1].get_iw1_incremental_first_applicability_statistics();
+    EXPECT_GE(iw1_incremental_statistics.get_num_non_root_states_using_incremental_path(), 1);
+}
+
+TEST(MimirTests, SearchAlgorithmsIWArityOneIncrementalAddEffectPrecheckBeamAllTestedTest)
+{
+    auto iw = LiftedIWPlanner(fs::path(std::string(DATA_DIR) + "iw1_incremental/domain.pddl"),
+                              fs::path(std::string(DATA_DIR) + "iw1_incremental/positive_problem.pddl"),
+                              1);
+    auto iw_event_handler = iw::DefaultEventHandlerImpl::create(iw.get_problem());
+    auto brfs_event_handler = brfs::DefaultEventHandlerImpl::create(iw.get_problem());
+
+    auto options = iw::Options();
+    options.max_arity = 1;
+    options.iw_event_handler = iw_event_handler;
+    options.brfs_event_handler = brfs_event_handler;
+    options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(iw.get_problem());
+    options.beam_width = 4;
+    options.beam_novelty_mode = BeamNoveltyMode::ALL_TESTED;
+    options.iw1_precheck_add_effect_novelty = true;
+    options.iw1_incremental_first_applicability = true;
+    options.iw1_incremental_first_applicability_debug_crosscheck = true;
+
+    const auto result = iw::find_solution(iw.get_search_context(), options);
+
+    EXPECT_EQ(result.status, SearchStatus::SOLVED);
+    ASSERT_TRUE(result.plan.has_value());
+    EXPECT_EQ(get_plan_action_signatures(*result.plan), std::vector<std::string>({ "enable(a)", "use-enabled(a)" }));
+
+    const auto& brfs_statistics_by_arity = iw_event_handler->get_statistics().get_brfs_statistics_by_arity();
+    ASSERT_EQ(brfs_statistics_by_arity.size(), 2);
+    const auto& iw1_incremental_statistics = brfs_statistics_by_arity[1].get_iw1_incremental_first_applicability_statistics();
+    EXPECT_GE(iw1_incremental_statistics.get_num_root_actions_fully_enumerated(), 1);
+    EXPECT_GE(iw1_incremental_statistics.get_num_non_root_states_using_incremental_path(), 1);
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Classical planning
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

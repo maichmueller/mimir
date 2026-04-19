@@ -63,6 +63,8 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
     {
         iw_event_handler->on_start_arity_search(start_state, cur_arity);
 
+        const auto use_iw1_specific_options = (cur_arity == 1);
+
         auto options_i = brfs::Options();
         options_i.start_state = start_state;
         options_i.event_handler = brfs_event_handler;
@@ -76,11 +78,15 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
         options_i.equal_score_tie_seed = options.equal_score_tie_seed;
         options_i.parallel_beam_num_threads = options.parallel_beam_num_threads;
         options_i.parallel_beam_chunk_size = options.parallel_beam_chunk_size;
-        options_i.iw1_precheck_add_effect_novelty = options.iw1_precheck_add_effect_novelty;
-        options_i.iw1_atom_first_mode = options.iw1_atom_first_mode;
+        // These controls are width-1-specific and must not be applied to the arity-0
+        // warm-up pass or any wider IW(k) pass.
+        options_i.iw1_precheck_add_effect_novelty = use_iw1_specific_options && options.iw1_precheck_add_effect_novelty;
+        options_i.iw1_atom_first_mode = use_iw1_specific_options && options.iw1_atom_first_mode;
         options_i.iw1_atom_first_ratio = options.iw1_atom_first_ratio;
-        options_i.iw1_incremental_first_applicability = options.iw1_incremental_first_applicability;
-        options_i.iw1_incremental_first_applicability_debug_crosscheck = options.iw1_incremental_first_applicability_debug_crosscheck;
+        options_i.iw1_incremental_first_applicability =
+            use_iw1_specific_options && options.iw1_incremental_first_applicability;
+        options_i.iw1_incremental_first_applicability_debug_crosscheck =
+            use_iw1_specific_options && options.iw1_incremental_first_applicability_debug_crosscheck;
         options_i.max_depth = options.max_depth;
         options_i.pruning_strategy = (cur_arity > 0) ? ArityKNoveltyPruningStrategyImpl::create(cur_arity, ground_fluent_atom_repository.size()) :
                                                        ArityZeroNoveltyPruningStrategyImpl::create(start_state);
