@@ -81,22 +81,28 @@ private:
     };
 
     DynamicNoveltyTable m_novelty_table;
+    bool m_optimize_root_depth_one_continuation;
+    std::optional<Index> m_root_state_index;
     std::vector<AtomIndexList> m_beam_layer_delta_tuples;
     std::unordered_set<AtomIndexList, AtomIndexListHash> m_beam_layer_delta_tuple_set;
     std::vector<AtomIndexList> m_scratch_novel_tuples;
+    std::unordered_set<Index> m_skip_depth_one_expansion_state_indices;
+    std::unordered_set<AtomIndexList, AtomIndexListHash> m_skip_depth_one_expansion_fluent_atom_indices_fallback;
 
     bool test_transition_novelty(const State& state, const State& succ_state);
     bool test_transition_novelty_and_update_delta(const State& state, const State& succ_state);
 
 public:
-    ArityKNoveltyPruningStrategyImpl(size_t arity, size_t num_atoms);
+    ArityKNoveltyPruningStrategyImpl(size_t arity, size_t num_atoms, bool optimize_root_depth_one_continuation = false);
 
-    static PruningStrategy create(size_t arity, size_t num_atoms);
+    static PruningStrategy create(size_t arity, size_t num_atoms, bool optimize_root_depth_one_continuation = false);
 
     bool test_prune_initial_state(const State& state) override;
     bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;
     bool supports_action_add_effect_precheck() const override;
+    bool should_bypass_action_add_effect_precheck(const State& state) const override;
     bool test_transition_novelty_from_add_effects(const State& state, const AtomIndexList& add_fluent_atom_indices) const override;
+    bool consume_skip_state_expansion(const State& state) override;
     bool supports_atom_novelty_query() const override;
     bool test_atom_novelty_read_only(Index atom_index) const override;
     bool supports_transition_novel_witness_query() const override;

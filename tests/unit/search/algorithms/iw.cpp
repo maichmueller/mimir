@@ -733,6 +733,37 @@ TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyOptOu
     EXPECT_FALSE(projective_iw1->consume_skip_state_expansion(succ_state));
 }
 
+TEST(MimirTests, SearchAlgorithmsIWArityOneNoveltyPruningStrategyRootDepthOneContinuationTest)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "gripper/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl");
+    const auto problem = ProblemImpl::create(domain_file, problem_file);
+
+    const auto search_context = SearchContextImpl::create(problem, SearchContextImpl::Options(SearchContextImpl::LiftedOptions()));
+    auto& state_repository = *search_context->get_state_repository();
+
+    auto fluent_atoms = GroundAtomList<FluentTag> {};
+    for (const auto& atom : problem->get_repositories().get_ground_atoms<FluentTag>())
+    {
+        fluent_atoms.push_back(&atom);
+    }
+    ASSERT_FALSE(fluent_atoms.empty());
+
+    const auto numeric_values = problem->get_initial_function_to_value<FluentTag>();
+    const auto [state, state_metric_value] = state_repository.get_or_create_state(GroundAtomList<FluentTag> { fluent_atoms[0] }, numeric_values);
+    const auto [succ_state, succ_state_metric_value] = state_repository.get_or_create_state(GroundAtomList<FluentTag> {}, numeric_values);
+    [[maybe_unused]] const auto ignored_state_metric_value = state_metric_value;
+    [[maybe_unused]] const auto ignored_succ_state_metric_value = succ_state_metric_value;
+
+    const auto iw1 = iw::ArityKNoveltyPruningStrategyImpl::create(1, fluent_atoms.size(), true);
+
+    EXPECT_FALSE(iw1->test_prune_initial_state(state));
+    EXPECT_TRUE(iw1->should_bypass_action_add_effect_precheck(state));
+    EXPECT_FALSE(iw1->test_prune_successor_state(state, succ_state, true));
+    EXPECT_TRUE(iw1->consume_skip_state_expansion(succ_state));
+    EXPECT_FALSE(iw1->consume_skip_state_expansion(succ_state));
+}
+
 TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyTypedProjectionRequiresTypingTest)
 {
     const auto domain_file = fs::path(std::string(DATA_DIR) + "gripper/domain.pddl");

@@ -162,17 +162,21 @@ size_t ProjectiveArityOneNoveltyPruningStrategyImpl::AtomIndexListHash::operator
     return seed;
 }
 
-ArityKNoveltyPruningStrategyImpl::ArityKNoveltyPruningStrategyImpl(size_t arity, size_t num_atoms) :
+ArityKNoveltyPruningStrategyImpl::ArityKNoveltyPruningStrategyImpl(size_t arity, size_t num_atoms, bool optimize_root_depth_one_continuation) :
     m_novelty_table(arity, num_atoms),
+    m_optimize_root_depth_one_continuation(optimize_root_depth_one_continuation),
+    m_root_state_index(std::nullopt),
     m_beam_layer_delta_tuples(),
     m_beam_layer_delta_tuple_set(),
-    m_scratch_novel_tuples()
+    m_scratch_novel_tuples(),
+    m_skip_depth_one_expansion_state_indices(),
+    m_skip_depth_one_expansion_fluent_atom_indices_fallback()
 {
 }
 
-PruningStrategy ArityKNoveltyPruningStrategyImpl::create(size_t arity, size_t num_atoms)
+PruningStrategy ArityKNoveltyPruningStrategyImpl::create(size_t arity, size_t num_atoms, bool optimize_root_depth_one_continuation)
 {
-    return std::make_shared<ArityKNoveltyPruningStrategyImpl>(arity, num_atoms);
+    return std::make_shared<ArityKNoveltyPruningStrategyImpl>(arity, num_atoms, optimize_root_depth_one_continuation);
 }
 
 bool ArityKNoveltyPruningStrategyImpl::test_transition_novelty(const State& state, const State& succ_state)
@@ -198,6 +202,11 @@ bool ArityKNoveltyPruningStrategyImpl::test_transition_novelty_and_update_delta(
 
 bool ArityKNoveltyPruningStrategyImpl::test_prune_initial_state(const State& state)
 {
+    if (m_optimize_root_depth_one_continuation && (m_novelty_table.get_tuple_index_mapper().get_arity() == 1) && !m_root_state_index)
+    {
+        m_root_state_index = state.get_index();
+    }
+
     return !m_novelty_table.test_novelty_and_update_table(state);
 }
 
@@ -215,15 +224,47 @@ bool ArityKNoveltyPruningStrategyImpl::test_prune_successor_state(const State& s
         return true;
     }
 
-    return !m_novelty_table.test_novelty_and_update_table(state, succ_state);
+    const auto is_novel = m_novelty_table.test_novelty_and_update_table(state, succ_state);
+    if (m_optimize_root_depth_one_continuation && m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
+    {
+        if (!is_novel)
+        {
+            m_skip_depth_one_expansion_state_indices.emplace(succ_state.get_index());
+        }
+        return false;
+    }
+
+    return !is_novel;
 }
 
 bool ArityKNoveltyPruningStrategyImpl::supports_action_add_effect_precheck() const { return true; }
 
+bool ArityKNoveltyPruningStrategyImpl::should_bypass_action_add_effect_precheck(const State& state) const
+{
+    return m_optimize_root_depth_one_continuation && m_root_state_index.has_value() && (state.get_index() == *m_root_state_index);
+}
+
 bool ArityKNoveltyPruningStrategyImpl::test_transition_novelty_from_add_effects(const State& state,
                                                                                  const AtomIndexList& add_fluent_atom_indices) const
 {
+    if (should_bypass_action_add_effect_precheck(state))
+    {
+        return true;
+    }
+
     return m_novelty_table.test_novelty_read_only(state, add_fluent_atom_indices);
+}
+
+bool ArityKNoveltyPruningStrategyImpl::consume_skip_state_expansion(const State& state)
+{
+    if (m_skip_depth_one_expansion_state_indices.erase(state.get_index()) > 0)
+    {
+        return true;
+    }
+
+    auto fluent_atom_indices = AtomIndexList {};
+    fluent_atom_indices.assign(state.get_atoms<FluentTag>().begin(), state.get_atoms<FluentTag>().end());
+    return m_skip_depth_one_expansion_fluent_atom_indices_fallback.erase(fluent_atom_indices) > 0;
 }
 
 bool ArityKNoveltyPruningStrategyImpl::supports_atom_novelty_query() const
@@ -316,7 +357,17 @@ bool ArityKNoveltyPruningStrategyImpl::test_prune_successor_state_for_beam_selec
         return true;
     }
 
-    return !test_transition_novelty(state, succ_state);
+    const auto is_novel = test_transition_novelty(state, succ_state);
+    if (m_optimize_root_depth_one_continuation && m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
+    {
+        if (!is_novel)
+        {
+            m_skip_depth_one_expansion_state_indices.emplace(succ_state.get_index());
+        }
+        return false;
+    }
+
+    return !is_novel;
 }
 
 bool ArityKNoveltyPruningStrategyImpl::test_prune_staged_successor_state_for_beam_selection(const State& state,
@@ -343,7 +394,17 @@ bool ArityKNoveltyPruningStrategyImpl::test_prune_staged_successor_state_for_bea
             return true;
         }
 
-        return !m_novelty_table.test_novelty_and_update_table(state, succ_fluent_atom_indices);
+        const auto is_novel = m_novelty_table.test_novelty_and_update_table(state, succ_fluent_atom_indices);
+        if (m_optimize_root_depth_one_continuation && m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
+        {
+            if (!is_novel)
+            {
+                m_skip_depth_one_expansion_fluent_atom_indices_fallback.emplace(succ_fluent_atom_indices.begin(), succ_fluent_atom_indices.end());
+            }
+            return false;
+        }
+
+        return !is_novel;
     }
 
     if (!is_new_succ)
@@ -351,7 +412,17 @@ bool ArityKNoveltyPruningStrategyImpl::test_prune_staged_successor_state_for_bea
         return true;
     }
 
-    return !m_novelty_table.test_novelty_read_only(state, succ_fluent_atom_indices);
+    const auto is_novel = m_novelty_table.test_novelty_read_only(state, succ_fluent_atom_indices);
+    if (m_optimize_root_depth_one_continuation && m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
+    {
+        if (!is_novel)
+        {
+            m_skip_depth_one_expansion_fluent_atom_indices_fallback.emplace(succ_fluent_atom_indices.begin(), succ_fluent_atom_indices.end());
+        }
+        return false;
+    }
+
+    return !is_novel;
 }
 
 void ArityKNoveltyPruningStrategyImpl::on_begin_beam_replay(BeamNoveltyMode beam_novelty_mode)
@@ -381,7 +452,17 @@ bool ArityKNoveltyPruningStrategyImpl::test_prune_successor_state_for_beam_repla
         return true;
     }
 
-    return !test_transition_novelty_and_update_delta(state, succ_state);
+    const auto is_novel = test_transition_novelty_and_update_delta(state, succ_state);
+    if (m_optimize_root_depth_one_continuation && m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
+    {
+        if (!is_novel)
+        {
+            m_skip_depth_one_expansion_state_indices.emplace(succ_state.get_index());
+        }
+        return false;
+    }
+
+    return !is_novel;
 }
 
 bool ArityKNoveltyPruningStrategyImpl::test_prune_staged_successor_state_for_beam_replay(const State& state,
@@ -424,6 +505,15 @@ bool ArityKNoveltyPruningStrategyImpl::test_prune_staged_successor_state_for_bea
             is_novel = true;
         }
     }
+    if (m_optimize_root_depth_one_continuation && m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
+    {
+        if (!is_novel)
+        {
+            m_skip_depth_one_expansion_fluent_atom_indices_fallback.emplace(succ_fluent_atom_indices.begin(), succ_fluent_atom_indices.end());
+        }
+        return false;
+    }
+
     return !is_novel;
 }
 
@@ -447,7 +537,17 @@ bool ArityKNoveltyPruningStrategyImpl::test_prune_staged_successor_state_for_rel
         return true;
     }
 
-    return !m_novelty_table.test_novelty_read_only(state, succ_fluent_atom_indices);
+    const auto is_novel = m_novelty_table.test_novelty_read_only(state, succ_fluent_atom_indices);
+    if (m_optimize_root_depth_one_continuation && m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
+    {
+        if (!is_novel)
+        {
+            m_skip_depth_one_expansion_fluent_atom_indices_fallback.emplace(succ_fluent_atom_indices.begin(), succ_fluent_atom_indices.end());
+        }
+        return false;
+    }
+
+    return !is_novel;
 }
 
 void ArityKNoveltyPruningStrategyImpl::on_end_beam_replay(BeamNoveltyMode beam_novelty_mode)

@@ -58,7 +58,18 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
     const auto& ground_fluent_atom_repository =
         boost::hana::at_key(context->get_problem()->get_repositories().get_hana_repositories(), boost::hana::type<GroundAtomImpl<FluentTag>> {});
 
-    size_t cur_arity = 0;
+    const auto optimize_iw1_root_actions = (max_arity == 1);
+    if (optimize_iw1_root_actions)
+    {
+        // Optimized IW(1) skips the standalone width-0 BrFS run and lets the width-1
+        // pruning strategy admit all root successors once while deciding continuation
+        // from actual width-1 novelty. Keep a placeholder entry so per-arity statistics
+        // still line up with width indices.
+        iw_event_handler->on_start_arity_search(start_state, 0);
+        iw_event_handler->on_end_arity_search(brfs::Statistics());
+    }
+
+    size_t cur_arity = optimize_iw1_root_actions ? 1 : 0;
     while (cur_arity <= max_arity)
     {
         iw_event_handler->on_start_arity_search(start_state, cur_arity);
@@ -88,7 +99,9 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
         options_i.iw1_incremental_first_applicability_debug_crosscheck =
             use_iw1_specific_options && options.iw1_incremental_first_applicability_debug_crosscheck;
         options_i.max_depth = options.max_depth;
-        options_i.pruning_strategy = (cur_arity > 0) ? ArityKNoveltyPruningStrategyImpl::create(cur_arity, ground_fluent_atom_repository.size()) :
+        options_i.pruning_strategy = (cur_arity > 0) ? ArityKNoveltyPruningStrategyImpl::create(cur_arity,
+                                                                                                  ground_fluent_atom_repository.size(),
+                                                                                                  optimize_iw1_root_actions && (cur_arity == 1)) :
                                                        ArityZeroNoveltyPruningStrategyImpl::create(start_state);
 
         const auto result = brfs::find_solution(context, options_i);
