@@ -56,6 +56,7 @@ from .wrapper_search_gbfs import (
 from .wrapper_search_width import (
     iw,
     projective_iw,
+    abstracted_iw,
 )
 
 from .wrapper_datasets import (

@@ -1310,6 +1310,32 @@ class TestBeamWrappers(unittest.TestCase):
         assert exact_result.solution is not None
         assert len(exact_result.solution) == 4
 
+
+    def test_abstracted_iw_max_depth(self):
+        problem = _make_problem("assembly", mode="grounded")
+        start_state = problem.get_initial_state()
+
+        shallow_result = abstracted_iw(problem, start_state, width=1, base_abstracted=True, preserve_goal_atoms=False, max_depth=0)
+        assert shallow_result.status == "exhausted"
+        assert shallow_result.solution is None
+
+        exact_result = abstracted_iw(problem, start_state, width=1, base_abstracted=True, preserve_goal_atoms=False, max_depth=1)
+        assert exact_result.status == "solved"
+        assert exact_result.solution is not None
+        assert len(exact_result.solution) == 1
+
+    def test_abstracted_iw_projective_alias_parity(self):
+        problem = _make_problem("assembly", mode="grounded")
+        start_state = problem.get_initial_state()
+
+        projective_result = projective_iw(problem, start_state, typed_projection=False, keep_goal_nonunary_atoms=False, max_depth=1)
+        abstracted_result = abstracted_iw(problem, start_state, width=1, base_abstracted=True, preserve_goal_atoms=False, max_depth=1)
+
+        assert projective_result.status == abstracted_result.status
+        assert projective_result.solution is not None
+        assert abstracted_result.solution is not None
+        assert [str(action) for action in projective_result.solution] == [str(action) for action in abstracted_result.solution]
+
     def test_projective_iw_max_depth(self):
         problem = _make_problem("assembly", mode="grounded")
         start_state = problem.get_initial_state()
@@ -1350,6 +1376,33 @@ class TestBeamWrappers(unittest.TestCase):
             problem,
             start_state,
             typed_projection=True,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="all_tested",
+            iw1_precheck_add_effect_novelty=True,
+            iw1_incremental_first_applicability=True,
+        )
+
+        assert result.status == "solved"
+        assert result.solution is not None
+        assert len(result.solution) == 2
+
+    def test_abstracted_iw_incremental_add_effect_precheck_all_tested(self):
+        domain_path = DATA_DIR / "iw1_incremental" / "domain.pddl"
+        problem_path = DATA_DIR / "iw1_incremental" / "positive_problem.pddl"
+        domain = Domain(domain_path)
+        problem = Problem(domain, problem_path)
+        start_state = problem.get_initial_state()
+        layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(
+            problem._advanced_problem
+        )
+
+        result = abstracted_iw(
+            problem,
+            start_state,
+            width=1,
+            base_abstracted=False,
+            preserve_goal_atoms=False,
             layer_ordering_strategy=layer_ordering_strategy,
             beam_width=64,
             beam_novelty_mode="all_tested",

@@ -21,6 +21,8 @@
 #include "mimir/search/state.hpp"
 
 #include <algorithm>
+#include <array>
+#include <cstdint>
 #include <ranges>
 #include <stdexcept>
 
@@ -561,6 +563,1074 @@ void ArityKNoveltyPruningStrategyImpl::on_end_beam_replay(BeamNoveltyMode beam_n
     m_beam_layer_delta_tuples.clear();
     m_beam_layer_delta_tuple_set.clear();
     m_scratch_novel_tuples.clear();
+}
+
+
+namespace
+{
+static constexpr auto NO_ABSTRACTED_POSITION = MAX_INDEX;
+}
+
+size_t AbstractedNoveltyPruningStrategyImpl::FeatureKeyHash::operator()(const FeatureKey& key) const noexcept
+{
+    size_t seed = 0;
+    loki::hash_combine(seed, static_cast<Index>(key.m_kind));
+    loki::hash_combine(seed, key.m_predicate_index);
+    loki::hash_combine(seed, key.m_preserved_position);
+    loki::hash_combine(seed, key.m_preserved_object_index);
+    for (const auto value : key.m_signature)
+    {
+        loki::hash_combine(seed, value);
+    }
+    return seed;
+}
+
+size_t AbstractedNoveltyPruningStrategyImpl::PairKeyHash::operator()(const PairKey& key) const noexcept
+{
+    size_t seed = 0;
+    loki::hash_combine(seed, key.m_a);
+    loki::hash_combine(seed, key.m_b);
+    return seed;
+}
+
+size_t AbstractedNoveltyPruningStrategyImpl::TripleKeyHash::operator()(const TripleKey& key) const noexcept
+{
+    size_t seed = 0;
+    loki::hash_combine(seed, key.m_a);
+    loki::hash_combine(seed, key.m_b);
+    loki::hash_combine(seed, key.m_c);
+    return seed;
+}
+
+size_t AbstractedNoveltyPruningStrategyImpl::AtomIndexListHash::operator()(const AtomIndexList& atom_indices) const noexcept
+{
+    size_t seed = 0;
+    for (const auto atom_index : atom_indices)
+    {
+        loki::hash_combine(seed, atom_index);
+    }
+    return seed;
+}
+
+AbstractedNoveltyPruningStrategyImpl::NoveltyTables::NoveltyTables(size_t width) :
+    m_width(width),
+    m_dense_singletons(false),
+    m_seen_singletons(),
+    m_delta_singletons(),
+    m_seen_singletons_dense(),
+    m_delta_singletons_dense(),
+    m_delta_singleton_touched(),
+    m_seen_pairs(),
+    m_delta_pairs(),
+    m_seen_triples(),
+    m_delta_triples()
+{
+}
+
+void AbstractedNoveltyPruningStrategyImpl::NoveltyTables::ensure_dense_singleton_capacity(FeatureId feature)
+{
+    const auto required_size = static_cast<size_t>(feature) + 1;
+    if (required_size <= m_seen_singletons_dense.size())
+    {
+        return;
+    }
+    m_seen_singletons_dense.resize(required_size, 0);
+    m_delta_singletons_dense.resize(required_size, 0);
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::NoveltyTables::contains_single(FeatureId feature) const
+{
+    if (m_dense_singletons)
+    {
+        return feature < m_seen_singletons_dense.size() && m_seen_singletons_dense[feature] != 0;
+    }
+    return m_seen_singletons.contains(feature);
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::NoveltyTables::contains_pair(PairKey pair) const { return m_seen_pairs.contains(pair); }
+
+bool AbstractedNoveltyPruningStrategyImpl::NoveltyTables::contains_triple(TripleKey triple) const { return m_seen_triples.contains(triple); }
+
+bool AbstractedNoveltyPruningStrategyImpl::NoveltyTables::contains_single_or_delta(FeatureId feature) const
+{
+    if (m_dense_singletons)
+    {
+        return contains_single(feature) || (feature < m_delta_singletons_dense.size() && m_delta_singletons_dense[feature] != 0);
+    }
+    return m_seen_singletons.contains(feature) || m_delta_singletons.contains(feature);
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::NoveltyTables::contains_pair_or_delta(PairKey pair) const
+{
+    return m_seen_pairs.contains(pair) || m_delta_pairs.contains(pair);
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::NoveltyTables::contains_triple_or_delta(TripleKey triple) const
+{
+    return m_seen_triples.contains(triple) || m_delta_triples.contains(triple);
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::NoveltyTables::insert_single(FeatureId feature)
+{
+    if (!m_dense_singletons)
+    {
+        return m_seen_singletons.emplace(feature).second;
+    }
+    ensure_dense_singleton_capacity(feature);
+    if (m_seen_singletons_dense[feature] != 0)
+    {
+        return false;
+    }
+    m_seen_singletons_dense[feature] = 1;
+    return true;
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::NoveltyTables::insert_pair(PairKey pair)
+{
+    return m_width >= 2 && m_seen_pairs.emplace(pair).second;
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::NoveltyTables::insert_triple(TripleKey triple)
+{
+    return m_width >= 3 && m_seen_triples.emplace(triple).second;
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::NoveltyTables::insert_delta_single(FeatureId feature)
+{
+    if (!m_dense_singletons)
+    {
+        return m_delta_singletons.emplace(feature).second;
+    }
+    ensure_dense_singleton_capacity(feature);
+    if (m_delta_singletons_dense[feature] != 0)
+    {
+        return false;
+    }
+    m_delta_singletons_dense[feature] = 1;
+    m_delta_singleton_touched.push_back(feature);
+    return true;
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::NoveltyTables::insert_delta_pair(PairKey pair)
+{
+    return m_width >= 2 && m_delta_pairs.emplace(pair).second;
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::NoveltyTables::insert_delta_triple(TripleKey triple)
+{
+    return m_width >= 3 && m_delta_triples.emplace(triple).second;
+}
+
+void AbstractedNoveltyPruningStrategyImpl::NoveltyTables::clear_delta()
+{
+    if (m_dense_singletons)
+    {
+        for (const auto feature : m_delta_singleton_touched)
+        {
+            m_delta_singletons_dense[feature] = 0;
+        }
+        m_delta_singleton_touched.clear();
+    }
+    else
+    {
+        m_delta_singletons.clear();
+    }
+    m_delta_pairs.clear();
+    m_delta_triples.clear();
+}
+
+void AbstractedNoveltyPruningStrategyImpl::NoveltyTables::reserve_singletons(size_t count)
+{
+    m_dense_singletons = true;
+    m_seen_singletons_dense.assign(count, 0);
+    m_delta_singletons_dense.assign(count, 0);
+    m_delta_singleton_touched.reserve(count);
+}
+
+void AbstractedNoveltyPruningStrategyImpl::NoveltyTables::commit_delta()
+{
+    if (m_dense_singletons)
+    {
+        for (const auto feature : m_delta_singleton_touched)
+        {
+            insert_single(feature);
+        }
+    }
+    else
+    {
+        m_seen_singletons.insert(m_delta_singletons.begin(), m_delta_singletons.end());
+    }
+    m_seen_pairs.insert(m_delta_pairs.begin(), m_delta_pairs.end());
+    m_seen_triples.insert(m_delta_triples.begin(), m_delta_triples.end());
+    clear_delta();
+}
+
+AbstractedNoveltyPruningStrategyImpl::AbstractedNoveltyPruningStrategyImpl(formalism::Problem problem,
+                                                                           size_t width,
+                                                                           bool base_abstracted,
+                                                                           bool preserve_goal_atoms,
+                                                                           bool keep_depth_one_novel) :
+    m_problem(std::move(problem)),
+    m_width(width),
+    m_base_abstracted(base_abstracted),
+    m_preserve_goal_atoms(preserve_goal_atoms),
+    m_keep_depth_one_novel(keep_depth_one_novel),
+    m_root_state_index(std::nullopt),
+    m_feature_ids(),
+    m_features_by_atom_index(),
+    m_goal_fluent_atom_indices(),
+    m_skip_depth_one_expansion_state_indices(),
+    m_skip_depth_one_expansion_fluent_atom_indices_fallback(),
+    m_tables(width)
+{
+    if (m_width < 1 || m_width > 3)
+    {
+        throw std::invalid_argument("AbstractedNoveltyPruningStrategyImpl: width must be in {1, 2, 3}.");
+    }
+    precompute_goal_atom_indices();
+    precompute_atom_features();
+}
+
+PruningStrategy AbstractedNoveltyPruningStrategyImpl::create(formalism::Problem problem,
+                                                             size_t width,
+                                                             bool base_abstracted,
+                                                             bool preserve_goal_atoms,
+                                                             bool keep_depth_one_novel)
+{
+    return std::make_shared<AbstractedNoveltyPruningStrategyImpl>(std::move(problem), width, base_abstracted, preserve_goal_atoms, keep_depth_one_novel);
+}
+
+void AbstractedNoveltyPruningStrategyImpl::precompute_goal_atom_indices()
+{
+    if (!m_preserve_goal_atoms)
+    {
+        return;
+    }
+    const auto goal_atoms = m_problem->get_goal_atoms<PositiveTag, FluentTag>();
+    m_goal_fluent_atom_indices.reserve(goal_atoms.size());
+    for (const auto atom : goal_atoms)
+    {
+        m_goal_fluent_atom_indices.emplace(atom->get_index());
+    }
+}
+
+void AbstractedNoveltyPruningStrategyImpl::precompute_atom_features()
+{
+    const auto ground_atoms = m_problem->get_repositories().get_ground_atoms<FluentTag>();
+    auto max_atom_index = Index(0);
+    auto has_ground_atoms = false;
+    auto estimated_feature_count = size_t(0);
+    for (const auto& ground_atom : ground_atoms)
+    {
+        max_atom_index = std::max(max_atom_index, ground_atom.get_index());
+        has_ground_atoms = true;
+        estimated_feature_count += ground_atom.get_arity() == 0 ? 1 : ground_atom.get_arity();
+    }
+    m_features_by_atom_index.resize(has_ground_atoms ? (max_atom_index + 1) : 0);
+    m_feature_ids.reserve(estimated_feature_count);
+    for (const auto& ground_atom : ground_atoms)
+    {
+        m_features_by_atom_index[ground_atom.get_index()] = compute_features_for_atom(&ground_atom);
+    }
+    if (m_width == 1)
+    {
+        m_tables.reserve_singletons(m_feature_ids.size());
+    }
+}
+
+void AbstractedNoveltyPruningStrategyImpl::ensure_atom_feature_capacity(AtomIndex atom_index) const
+{
+    if (atom_index >= m_features_by_atom_index.size())
+    {
+        m_features_by_atom_index.resize(atom_index + 1);
+    }
+}
+
+const std::vector<AbstractedNoveltyPruningStrategyImpl::FeatureId>& AbstractedNoveltyPruningStrategyImpl::get_atom_features(AtomIndex atom_index) const
+{
+    ensure_atom_feature_capacity(atom_index);
+    auto& features = m_features_by_atom_index[atom_index];
+    if (features.empty())
+    {
+        features = compute_features_for_atom(m_problem->get_repositories().get_ground_atom<FluentTag>(atom_index));
+    }
+    return features;
+}
+
+AbstractedNoveltyPruningStrategyImpl::FeatureId AbstractedNoveltyPruningStrategyImpl::intern_feature(const FeatureKey& key) const
+{
+    const auto [it, inserted] = m_feature_ids.emplace(key, static_cast<FeatureId>(m_feature_ids.size()));
+    [[maybe_unused]] const auto ignored_inserted = inserted;
+    return it->second;
+}
+
+std::vector<AbstractedNoveltyPruningStrategyImpl::FeatureId>
+AbstractedNoveltyPruningStrategyImpl::compute_features_for_atom(formalism::GroundAtom<FluentTag> atom) const
+{
+    if (m_preserve_goal_atoms && m_goal_fluent_atom_indices.contains(atom->get_index()))
+    {
+        return { intern_feature(make_full_atom_key(atom)) };
+    }
+
+    const auto& objects = atom->get_objects();
+    if (objects.empty())
+    {
+        return { intern_feature(make_full_atom_key(atom)) };
+    }
+
+    auto features = std::vector<FeatureId> {};
+    features.reserve(objects.size());
+    for (auto position = Index(0); position < objects.size(); ++position)
+    {
+        features.push_back(intern_feature(make_abstracted_key(atom, position)));
+    }
+    return features;
+}
+
+AbstractedNoveltyPruningStrategyImpl::FeatureKey
+AbstractedNoveltyPruningStrategyImpl::make_full_atom_key(formalism::GroundAtom<FluentTag> atom) const
+{
+    auto key = FeatureKey { FeatureKind::FULL_ATOM, atom->get_predicate()->get_index(), NO_ABSTRACTED_POSITION, NO_ABSTRACTED_POSITION, IndexList {} };
+    key.m_signature.reserve(atom->get_objects().size());
+    for (const auto object : atom->get_objects())
+    {
+        key.m_signature.push_back(object->get_index());
+    }
+    return key;
+}
+
+AbstractedNoveltyPruningStrategyImpl::FeatureKey
+AbstractedNoveltyPruningStrategyImpl::make_abstracted_key(formalism::GroundAtom<FluentTag> atom, Index preserved_position) const
+{
+    const auto& objects = atom->get_objects();
+    auto key = FeatureKey { FeatureKind::ABSTRACTED,
+                            atom->get_predicate()->get_index(),
+                            preserved_position,
+                            objects[preserved_position]->get_index(),
+                            IndexList {} };
+    if (m_base_abstracted)
+    {
+        return key;
+    }
+    key.m_signature.reserve(objects.size() * 2);
+    for (auto position = Index(0); position < objects.size(); ++position)
+    {
+        if (position == preserved_position)
+        {
+            continue;
+        }
+        append_object_type_signature(objects[position], key.m_signature);
+    }
+    return key;
+}
+
+void AbstractedNoveltyPruningStrategyImpl::append_object_type_signature(formalism::Object object, IndexList& out) const
+{
+    const auto& bases = object->get_bases();
+    if (bases.empty())
+    {
+        out.push_back(1);
+        out.push_back(MAX_INDEX);
+        return;
+    }
+    out.push_back(static_cast<Index>(bases.size()));
+    for (const auto type : bases)
+    {
+        out.push_back(type->get_index());
+    }
+}
+
+std::vector<AbstractedNoveltyPruningStrategyImpl::AtomFeatureGroup> AbstractedNoveltyPruningStrategyImpl::state_groups(const State& state) const
+{
+    auto groups = std::vector<AtomFeatureGroup> {};
+    const auto& atoms = state.get_atoms<FluentTag>();
+    for (const auto atom_index : atoms)
+    {
+        const auto fluent_atom_index = static_cast<AtomIndex>(atom_index);
+        groups.push_back(AtomFeatureGroup { fluent_atom_index, false, &get_atom_features(fluent_atom_index) });
+    }
+    return groups;
+}
+
+std::vector<AbstractedNoveltyPruningStrategyImpl::AtomFeatureGroup>
+AbstractedNoveltyPruningStrategyImpl::successor_groups(const State& state, const AtomIndexList& succ_fluent_atom_indices) const
+{
+    const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
+    auto groups = std::vector<AtomFeatureGroup> {};
+    groups.reserve(succ_fluent_atom_indices.size());
+    for (const auto atom_index : succ_fluent_atom_indices)
+    {
+        groups.push_back(AtomFeatureGroup { atom_index, !state_fluent_atoms.get(atom_index), &get_atom_features(atom_index) });
+    }
+    return groups;
+}
+
+AtomIndexList AbstractedNoveltyPruningStrategyImpl::atom_indices_key(const State& state) const
+{
+    auto atom_indices = AtomIndexList {};
+    atom_indices.assign(state.get_atoms<FluentTag>().begin(), state.get_atoms<FluentTag>().end());
+    return atom_indices;
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::test_atom_novelty(AtomIndex atom_index) const
+{
+    for (const auto feature : get_atom_features(atom_index))
+    {
+        if (!m_tables.contains_single(feature))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::test_atom_novelty_and_update_table(AtomIndex atom_index)
+{
+    auto is_novel = false;
+    for (const auto feature : get_atom_features(atom_index))
+    {
+        if (m_tables.insert_single(feature))
+        {
+            is_novel = true;
+        }
+    }
+    return is_novel;
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::test_atom_novelty_and_update_delta(AtomIndex atom_index)
+{
+    auto is_novel = false;
+    for (const auto feature : get_atom_features(atom_index))
+    {
+        if (!m_tables.contains_single(feature) && m_tables.insert_delta_single(feature))
+        {
+            is_novel = true;
+        }
+    }
+    return is_novel;
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::test_state_novelty_and_update_table(const State& state)
+{
+    if (m_width == 1)
+    {
+        auto is_novel = false;
+        for (const auto atom_index : state.get_atoms<FluentTag>())
+        {
+            if (test_atom_novelty_and_update_table(atom_index))
+            {
+                is_novel = true;
+            }
+        }
+        return is_novel;
+    }
+
+    auto groups = state_groups(state);
+    for (auto& group : groups)
+    {
+        group.m_added = true;
+    }
+    const auto tuples = generate_tuples(groups, false);
+    const auto is_novel = !tuples.m_singles.empty() || !tuples.m_pairs.empty() || !tuples.m_triples.empty();
+    if (is_novel)
+    {
+        insert_tuples(tuples);
+    }
+    return is_novel;
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::test_transition_novelty(const State& state, const State& succ_state) const
+{
+    if (m_width != 1)
+    {
+        return test_transition_novelty(state, atom_indices_key(succ_state));
+    }
+
+    const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
+    const auto& succ_state_fluent_atoms = succ_state.get_atoms<FluentTag>();
+
+    auto it_state = state_fluent_atoms.begin();
+    auto it_succ_state = succ_state_fluent_atoms.begin();
+    while (it_state != state_fluent_atoms.end() && it_succ_state != succ_state_fluent_atoms.end())
+    {
+        if (*it_succ_state < *it_state)
+        {
+            if (test_atom_novelty(*it_succ_state))
+            {
+                return true;
+            }
+            ++it_succ_state;
+        }
+        else if (*it_state < *it_succ_state)
+        {
+            ++it_state;
+        }
+        else
+        {
+            ++it_state;
+            ++it_succ_state;
+        }
+    }
+
+    for (; it_succ_state != succ_state_fluent_atoms.end(); ++it_succ_state)
+    {
+        if (test_atom_novelty(*it_succ_state))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::test_transition_novelty(const State& state, const AtomIndexList& succ_fluent_atom_indices) const
+{
+    if (m_width == 1)
+    {
+        const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
+        for (const auto atom_index : succ_fluent_atom_indices)
+        {
+            if (!state_fluent_atoms.get(atom_index) && test_atom_novelty(atom_index))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+    const auto groups = successor_groups(state, succ_fluent_atom_indices);
+    const auto tuples = generate_tuples(groups, false);
+    return !tuples.m_singles.empty() || !tuples.m_pairs.empty() || !tuples.m_triples.empty();
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::test_transition_novelty_and_update_table(const State& state, const State& succ_state)
+{
+    if (m_width != 1)
+    {
+        return test_transition_novelty_and_update_table(state, atom_indices_key(succ_state));
+    }
+
+    const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
+    const auto& succ_state_fluent_atoms = succ_state.get_atoms<FluentTag>();
+
+    auto is_novel = false;
+    auto it_state = state_fluent_atoms.begin();
+    auto it_succ_state = succ_state_fluent_atoms.begin();
+    while (it_state != state_fluent_atoms.end() && it_succ_state != succ_state_fluent_atoms.end())
+    {
+        if (*it_succ_state < *it_state)
+        {
+            if (test_atom_novelty_and_update_table(*it_succ_state))
+            {
+                is_novel = true;
+            }
+            ++it_succ_state;
+        }
+        else if (*it_state < *it_succ_state)
+        {
+            ++it_state;
+        }
+        else
+        {
+            ++it_state;
+            ++it_succ_state;
+        }
+    }
+
+    for (; it_succ_state != succ_state_fluent_atoms.end(); ++it_succ_state)
+    {
+        if (test_atom_novelty_and_update_table(*it_succ_state))
+        {
+            is_novel = true;
+        }
+    }
+    return is_novel;
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::test_transition_novelty_and_update_table(const State& state, const AtomIndexList& succ_fluent_atom_indices)
+{
+    return test_transition_and_update(state, succ_fluent_atom_indices, false);
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::test_transition_novelty_and_update_delta(const State& state, const State& succ_state)
+{
+    if (m_width != 1)
+    {
+        return test_transition_novelty_and_update_delta(state, atom_indices_key(succ_state));
+    }
+
+    const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
+    const auto& succ_state_fluent_atoms = succ_state.get_atoms<FluentTag>();
+
+    auto is_novel = false;
+    auto it_state = state_fluent_atoms.begin();
+    auto it_succ_state = succ_state_fluent_atoms.begin();
+    while (it_state != state_fluent_atoms.end() && it_succ_state != succ_state_fluent_atoms.end())
+    {
+        if (*it_succ_state < *it_state)
+        {
+            if (test_atom_novelty_and_update_delta(*it_succ_state))
+            {
+                is_novel = true;
+            }
+            ++it_succ_state;
+        }
+        else if (*it_state < *it_succ_state)
+        {
+            ++it_state;
+        }
+        else
+        {
+            ++it_state;
+            ++it_succ_state;
+        }
+    }
+
+    for (; it_succ_state != succ_state_fluent_atoms.end(); ++it_succ_state)
+    {
+        if (test_atom_novelty_and_update_delta(*it_succ_state))
+        {
+            is_novel = true;
+        }
+    }
+    return is_novel;
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::test_transition_novelty_and_update_delta(const State& state, const AtomIndexList& succ_fluent_atom_indices)
+{
+    return test_transition_and_update(state, succ_fluent_atom_indices, true);
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::test_transition_and_update(const State& state, const AtomIndexList& succ_fluent_atom_indices, bool use_delta)
+{
+    if (m_width == 1)
+    {
+        auto is_novel = false;
+        const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
+        for (const auto atom_index : succ_fluent_atom_indices)
+        {
+            if (state_fluent_atoms.get(atom_index))
+            {
+                continue;
+            }
+            const auto atom_is_novel = use_delta ? test_atom_novelty_and_update_delta(atom_index) : test_atom_novelty_and_update_table(atom_index);
+            if (atom_is_novel)
+            {
+                is_novel = true;
+            }
+        }
+        return is_novel;
+    }
+
+    const auto groups = successor_groups(state, succ_fluent_atom_indices);
+    const auto tuples = generate_tuples(groups, use_delta);
+    const auto is_novel = !tuples.m_singles.empty() || !tuples.m_pairs.empty() || !tuples.m_triples.empty();
+    if (is_novel)
+    {
+        if (use_delta)
+        {
+            insert_delta_tuples(tuples);
+        }
+        else
+        {
+            insert_tuples(tuples);
+        }
+    }
+    return is_novel;
+}
+
+AbstractedNoveltyPruningStrategyImpl::GeneratedTuples
+AbstractedNoveltyPruningStrategyImpl::generate_tuples(const std::vector<AtomFeatureGroup>& groups, bool use_delta) const
+{
+    auto tuples = GeneratedTuples {};
+    auto local_singletons = absl::flat_hash_set<FeatureId> {};
+    auto local_pairs = absl::flat_hash_set<PairKey, PairKeyHash> {};
+    auto local_triples = absl::flat_hash_set<TripleKey, TripleKeyHash> {};
+
+    for (size_t i = 0; i < groups.size(); ++i)
+    {
+        const auto& gi = groups[i];
+        if (gi.m_added)
+        {
+            for (const auto fi : *gi.m_features)
+            {
+                if (is_single_novel(fi, use_delta) && local_singletons.emplace(fi).second)
+                {
+                    tuples.m_singles.push_back(fi);
+                }
+            }
+        }
+        if (m_width < 2)
+        {
+            continue;
+        }
+        for (size_t j = i + 1; j < groups.size(); ++j)
+        {
+            const auto& gj = groups[j];
+            if (!gi.m_added && !gj.m_added)
+            {
+                continue;
+            }
+            for (const auto fi : *gi.m_features)
+            {
+                for (const auto fj : *gj.m_features)
+                {
+                    if (fi == fj)
+                    {
+                        continue;
+                    }
+                    auto pair_lhs = fi;
+                    auto pair_rhs = fj;
+                    if (pair_rhs < pair_lhs)
+                    {
+                        std::swap(pair_lhs, pair_rhs);
+                    }
+                    const auto pair = PairKey { pair_lhs, pair_rhs };
+                    if (is_pair_novel(pair, use_delta) && local_pairs.emplace(pair).second)
+                    {
+                        tuples.m_pairs.push_back(pair);
+                    }
+                }
+            }
+        }
+    }
+
+    if (m_width < 3)
+    {
+        return tuples;
+    }
+
+    for (size_t i = 0; i < groups.size(); ++i)
+    {
+        const auto& gi = groups[i];
+        for (size_t j = i + 1; j < groups.size(); ++j)
+        {
+            const auto& gj = groups[j];
+            for (size_t k = j + 1; k < groups.size(); ++k)
+            {
+                const auto& gk = groups[k];
+                if (!gi.m_added && !gj.m_added && !gk.m_added)
+                {
+                    continue;
+                }
+                for (const auto fi : *gi.m_features)
+                {
+                    for (const auto fj : *gj.m_features)
+                    {
+                        for (const auto fk : *gk.m_features)
+                        {
+                            auto triple_values = std::array<FeatureId, 3> { fi, fj, fk };
+                            std::ranges::sort(triple_values);
+                            if (triple_values[0] == triple_values[1] || triple_values[1] == triple_values[2])
+                            {
+                                continue;
+                            }
+                            const auto triple = TripleKey { triple_values[0], triple_values[1], triple_values[2] };
+                            if (is_triple_novel(triple, use_delta) && local_triples.emplace(triple).second)
+                            {
+                                tuples.m_triples.push_back(triple);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return tuples;
+}
+
+void AbstractedNoveltyPruningStrategyImpl::insert_tuples(const GeneratedTuples& tuples)
+{
+    for (const auto feature : tuples.m_singles)
+    {
+        m_tables.insert_single(feature);
+    }
+    for (const auto pair : tuples.m_pairs)
+    {
+        m_tables.insert_pair(pair);
+    }
+    for (const auto triple : tuples.m_triples)
+    {
+        m_tables.insert_triple(triple);
+    }
+}
+
+void AbstractedNoveltyPruningStrategyImpl::insert_delta_tuples(const GeneratedTuples& tuples)
+{
+    for (const auto feature : tuples.m_singles)
+    {
+        m_tables.insert_delta_single(feature);
+    }
+    for (const auto pair : tuples.m_pairs)
+    {
+        m_tables.insert_delta_pair(pair);
+    }
+    for (const auto triple : tuples.m_triples)
+    {
+        m_tables.insert_delta_triple(triple);
+    }
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::is_single_novel(FeatureId feature, bool use_delta) const
+{
+    return use_delta ? !m_tables.contains_single_or_delta(feature) : !m_tables.contains_single(feature);
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::is_pair_novel(PairKey pair, bool use_delta) const
+{
+    return use_delta ? !m_tables.contains_pair_or_delta(pair) : !m_tables.contains_pair(pair);
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::is_triple_novel(TripleKey triple, bool use_delta) const
+{
+    return use_delta ? !m_tables.contains_triple_or_delta(triple) : !m_tables.contains_triple(triple);
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::maybe_prune_depth_one_successor(const State& state, const State& succ_state, bool is_novel)
+{
+    if (m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
+    {
+        if (!is_novel && !m_keep_depth_one_novel)
+        {
+            m_skip_depth_one_expansion_state_indices.emplace(succ_state.get_index());
+        }
+        return false;
+    }
+    return !is_novel;
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::maybe_prune_staged_depth_one_successor(const State& state,
+                                                                                   const AtomIndexList& succ_fluent_atom_indices,
+                                                                                   bool is_novel)
+{
+    if (m_root_state_index.has_value() && (state.get_index() == *m_root_state_index))
+    {
+        if (!is_novel && !m_keep_depth_one_novel)
+        {
+            m_skip_depth_one_expansion_fluent_atom_indices_fallback.emplace(succ_fluent_atom_indices.begin(), succ_fluent_atom_indices.end());
+        }
+        return false;
+    }
+    return !is_novel;
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::test_prune_initial_state(const State& state)
+{
+    if (!m_root_state_index)
+    {
+        m_root_state_index = state.get_index();
+    }
+    test_state_novelty_and_update_table(state);
+    return false;
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ)
+{
+    if (state == succ_state)
+    {
+        return true;
+    }
+    if (!is_new_succ)
+    {
+        return true;
+    }
+    const auto is_novel = test_transition_novelty_and_update_table(state, succ_state);
+    return maybe_prune_depth_one_successor(state, succ_state, is_novel);
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::supports_action_add_effect_precheck() const { return m_width == 1; }
+
+bool AbstractedNoveltyPruningStrategyImpl::should_bypass_action_add_effect_precheck(const State& state) const
+{
+    return m_width == 1 && m_root_state_index.has_value() && (state.get_index() == *m_root_state_index);
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::test_transition_novelty_from_add_effects(const State& state,
+                                                                                    const AtomIndexList& add_fluent_atom_indices) const
+{
+    if (m_width != 1 || should_bypass_action_add_effect_precheck(state))
+    {
+        return true;
+    }
+    for (const auto atom_index : add_fluent_atom_indices)
+    {
+        if (test_atom_novelty(atom_index))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::consume_skip_state_expansion(const State& state)
+{
+    if (m_skip_depth_one_expansion_state_indices.erase(state.get_index()) > 0)
+    {
+        return true;
+    }
+    return m_skip_depth_one_expansion_fluent_atom_indices_fallback.erase(atom_indices_key(state)) > 0;
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::supports_atom_novelty_query() const { return m_width == 1; }
+
+bool AbstractedNoveltyPruningStrategyImpl::test_atom_novelty_read_only(Index atom_index) const
+{
+    if (m_width != 1)
+    {
+        throw std::invalid_argument("AbstractedNoveltyPruningStrategyImpl::test_atom_novelty_read_only only supports width 1.");
+    }
+    return test_atom_novelty(atom_index);
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::supports_transition_novel_witness_query() const { return m_width == 1; }
+
+void AbstractedNoveltyPruningStrategyImpl::compute_transition_novel_fluent_atom_indices_read_only(const State& state,
+                                                                                                  const State& succ_state,
+                                                                                                  AtomIndexList& out_novel_fluent_atom_indices) const
+{
+    if (m_width != 1)
+    {
+        throw std::invalid_argument("AbstractedNoveltyPruningStrategyImpl transition witness query only supports width 1.");
+    }
+    out_novel_fluent_atom_indices.clear();
+    const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
+    for (const auto atom_index : succ_state.get_atoms<FluentTag>())
+    {
+        if (!state_fluent_atoms.get(atom_index) && test_atom_novelty(atom_index))
+        {
+            out_novel_fluent_atom_indices.push_back(atom_index);
+        }
+    }
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::supports_beam_novelty_mode(BeamNoveltyMode beam_novelty_mode) const
+{
+    return beam_novelty_mode == BeamNoveltyMode::ALL_TESTED || beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY;
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::supports_staged_beam_pruning(BeamNoveltyMode beam_novelty_mode) const
+{
+    return supports_beam_novelty_mode(beam_novelty_mode);
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::supports_relaxed_staged_beam_pruning(BeamNoveltyMode beam_novelty_mode) const
+{
+    return beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY;
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::test_prune_successor_state_for_beam_selection(const State& state,
+                                                                                         const State& succ_state,
+                                                                                         bool is_new_succ,
+                                                                                         BeamNoveltyMode beam_novelty_mode)
+{
+    if (beam_novelty_mode == BeamNoveltyMode::ALL_TESTED)
+    {
+        return test_prune_successor_state(state, succ_state, is_new_succ);
+    }
+    if (!is_new_succ || state == succ_state)
+    {
+        return true;
+    }
+    const auto is_novel = test_transition_novelty(state, succ_state);
+    return maybe_prune_depth_one_successor(state, succ_state, is_novel);
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::test_prune_staged_successor_state_for_beam_selection(const State& state,
+                                                                                                const FlatBitset& succ_fluent_atoms,
+                                                                                                const FlatBitset& succ_derived_atoms,
+                                                                                                const FlatDoubleList& succ_numeric_variables,
+                                                                                                const AtomIndexList& succ_fluent_atom_indices,
+                                                                                                bool is_new_succ,
+                                                                                                BeamNoveltyMode beam_novelty_mode)
+{
+    if (is_staged_self_loop(state, succ_fluent_atoms, succ_derived_atoms, succ_numeric_variables))
+    {
+        return true;
+    }
+    if (!is_new_succ)
+    {
+        return true;
+    }
+    const auto is_novel = (beam_novelty_mode == BeamNoveltyMode::ALL_TESTED)
+        ? test_transition_novelty_and_update_table(state, succ_fluent_atom_indices)
+        : test_transition_novelty(state, succ_fluent_atom_indices);
+    return maybe_prune_staged_depth_one_successor(state, succ_fluent_atom_indices, is_novel);
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::test_prune_staged_successor_state_for_relaxed_beam_selection(const State& state,
+                                                                                                        const FlatBitset& succ_fluent_atoms,
+                                                                                                        const FlatBitset& succ_derived_atoms,
+                                                                                                        const FlatDoubleList& succ_numeric_variables,
+                                                                                                        const AtomIndexList& succ_fluent_atom_indices,
+                                                                                                        BeamNoveltyMode beam_novelty_mode)
+{
+    if (beam_novelty_mode != BeamNoveltyMode::SURVIVORS_ONLY)
+    {
+        throw std::invalid_argument("AbstractedNoveltyPruningStrategyImpl only supports relaxed staged beam selection in SURVIVORS_ONLY mode.");
+    }
+    if (is_staged_self_loop(state, succ_fluent_atoms, succ_derived_atoms, succ_numeric_variables))
+    {
+        return true;
+    }
+    const auto is_novel = test_transition_novelty(state, succ_fluent_atom_indices);
+    return maybe_prune_staged_depth_one_successor(state, succ_fluent_atom_indices, is_novel);
+}
+
+void AbstractedNoveltyPruningStrategyImpl::on_begin_beam_replay(BeamNoveltyMode beam_novelty_mode)
+{
+    if (beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY)
+    {
+        m_tables.clear_delta();
+    }
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::test_prune_successor_state_for_beam_replay(const State& state,
+                                                                                       const State& succ_state,
+                                                                                       bool is_new_succ,
+                                                                                       BeamNoveltyMode beam_novelty_mode)
+{
+    if (beam_novelty_mode == BeamNoveltyMode::ALL_TESTED)
+    {
+        return test_prune_successor_state(state, succ_state, is_new_succ);
+    }
+    if (state == succ_state)
+    {
+        return true;
+    }
+    const auto is_novel = test_transition_novelty_and_update_delta(state, succ_state);
+    return maybe_prune_depth_one_successor(state, succ_state, is_novel);
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::test_prune_staged_successor_state_for_beam_replay(const State& state,
+                                                                                              const FlatBitset& succ_fluent_atoms,
+                                                                                              const FlatBitset& succ_derived_atoms,
+                                                                                              const FlatDoubleList& succ_numeric_variables,
+                                                                                              const AtomIndexList& succ_fluent_atom_indices,
+                                                                                              bool is_new_succ,
+                                                                                              BeamNoveltyMode beam_novelty_mode)
+{
+    if (beam_novelty_mode == BeamNoveltyMode::ALL_TESTED)
+    {
+        return test_prune_staged_successor_state_for_beam_selection(state,
+                                                                    succ_fluent_atoms,
+                                                                    succ_derived_atoms,
+                                                                    succ_numeric_variables,
+                                                                    succ_fluent_atom_indices,
+                                                                    is_new_succ,
+                                                                    beam_novelty_mode);
+    }
+    if (is_staged_self_loop(state, succ_fluent_atoms, succ_derived_atoms, succ_numeric_variables))
+    {
+        return true;
+    }
+    const auto is_novel = test_transition_novelty_and_update_delta(state, succ_fluent_atom_indices);
+    return maybe_prune_staged_depth_one_successor(state, succ_fluent_atom_indices, is_novel);
+}
+
+void AbstractedNoveltyPruningStrategyImpl::on_end_beam_replay(BeamNoveltyMode beam_novelty_mode)
+{
+    if (beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY)
+    {
+        m_tables.commit_delta();
+    }
 }
 
 ProjectiveArityOneNoveltyPruningStrategyImpl::ProjectiveArityOneNoveltyPruningStrategyImpl(formalism::Problem problem,

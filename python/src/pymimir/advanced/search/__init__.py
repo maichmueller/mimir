@@ -72,6 +72,7 @@ from pymimir.pymimir.advanced.search import (
     ArityZeroNoveltyPruningStrategy,
     ArityKNoveltyPruningStrategy,
     ProjectiveArityOneNoveltyPruningStrategy,
+    AbstractedNoveltyPruningStrategy,
     IExplorationStrategy,
 )
 

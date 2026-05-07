@@ -39,6 +39,8 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
+#include <ostream>
 #include <string>
 #include <stdexcept>
 #include <vector>
@@ -852,6 +854,350 @@ TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyTyped
 
     // Typed projection must distinguish the different non-projected slot types.
     EXPECT_FALSE(typed_projective_iw1->test_prune_successor_state(parent_state, succ_state, true));
+}
+
+
+TEST(MimirTests, SearchAlgorithmsIWAbstractedArityOneUntypedProjectiveParityTest)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "gripper/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl");
+    const auto problem = ProblemImpl::create(domain_file, problem_file);
+
+    const auto search_context = SearchContextImpl::create(problem, SearchContextImpl::Options(SearchContextImpl::LiftedOptions()));
+    auto& state_repository = *search_context->get_state_repository();
+
+    auto [covering_atoms, target_atom] = find_projective_iw1_candidate(problem);
+    const auto numeric_values = problem->get_initial_function_to_value<FluentTag>();
+    const auto [state, state_metric_value] = state_repository.get_or_create_state(covering_atoms, numeric_values);
+    [[maybe_unused]] const auto ignored_state_metric_value = state_metric_value;
+
+    covering_atoms.push_back(target_atom);
+    std::ranges::sort(covering_atoms, [](const auto lhs, const auto rhs) { return lhs->get_index() < rhs->get_index(); });
+    covering_atoms.erase(std::unique(covering_atoms.begin(), covering_atoms.end()), covering_atoms.end());
+    const auto [succ_state, succ_state_metric_value] = state_repository.get_or_create_state(covering_atoms, numeric_values);
+    [[maybe_unused]] const auto ignored_succ_state_metric_value = succ_state_metric_value;
+
+    const auto projective_iw1 = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem, false, false, false);
+    const auto abstracted_iw1 = iw::AbstractedNoveltyPruningStrategyImpl::create(problem, 1, true, false, false);
+
+    EXPECT_EQ(projective_iw1->test_prune_initial_state(state), abstracted_iw1->test_prune_initial_state(state));
+    EXPECT_EQ(projective_iw1->test_prune_successor_state(state, succ_state, true), abstracted_iw1->test_prune_successor_state(state, succ_state, true));
+}
+
+TEST(MimirTests, SearchAlgorithmsIWAbstractedArityOneTypedProjectiveParityTest)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "driverlog/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "driverlog/test_problem.pddl");
+    const auto problem = ProblemImpl::create(domain_file, problem_file);
+
+    const auto search_context = SearchContextImpl::create(problem, SearchContextImpl::Options(SearchContextImpl::LiftedOptions()));
+    auto& state_repository = *search_context->get_state_repository();
+
+    auto [covering_atoms, target_atom] = find_projective_iw1_candidate(problem);
+    const auto numeric_values = problem->get_initial_function_to_value<FluentTag>();
+    const auto [state, state_metric_value] = state_repository.get_or_create_state(covering_atoms, numeric_values);
+    [[maybe_unused]] const auto ignored_state_metric_value = state_metric_value;
+
+    covering_atoms.push_back(target_atom);
+    std::ranges::sort(covering_atoms, [](const auto lhs, const auto rhs) { return lhs->get_index() < rhs->get_index(); });
+    covering_atoms.erase(std::unique(covering_atoms.begin(), covering_atoms.end()), covering_atoms.end());
+    const auto [succ_state, succ_state_metric_value] = state_repository.get_or_create_state(covering_atoms, numeric_values);
+    [[maybe_unused]] const auto ignored_succ_state_metric_value = succ_state_metric_value;
+
+    const auto projective_iw1 = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem, true, false, false);
+    const auto abstracted_iw1 = iw::AbstractedNoveltyPruningStrategyImpl::create(problem, 1, false, false, false);
+
+    EXPECT_EQ(projective_iw1->test_prune_initial_state(state), abstracted_iw1->test_prune_initial_state(state));
+    EXPECT_EQ(projective_iw1->test_prune_successor_state(state, succ_state, true), abstracted_iw1->test_prune_successor_state(state, succ_state, true));
+}
+
+
+namespace
+{
+struct AbstractedProjectiveParityRun
+{
+    SearchStatus status;
+    bool has_plan;
+    bool has_goal_state;
+    size_t generated;
+    size_t novel_generated;
+    std::vector<std::string> action_signatures;
+};
+
+struct IncrementalStatisticsSignature
+{
+    uint64_t root_actions_fully_enumerated;
+    uint64_t non_root_states_using_incremental_path;
+    uint64_t changed_atoms_processed;
+    uint64_t trigger_records_visited;
+    uint64_t partial_seeds_created;
+    uint64_t ground_actions_returned_by_partial_completion;
+    uint64_t local_duplicate_candidates_removed;
+    uint64_t already_tested_actions_skipped;
+    uint64_t non_root_states_with_zero_returned_actions;
+
+    bool operator==(const IncrementalStatisticsSignature&) const = default;
+};
+
+std::ostream& operator<<(std::ostream& out, const IncrementalStatisticsSignature& signature)
+{
+    return out << "{root=" << signature.root_actions_fully_enumerated << ", non_root=" << signature.non_root_states_using_incremental_path
+               << ", changed=" << signature.changed_atoms_processed << ", triggers=" << signature.trigger_records_visited
+               << ", seeds=" << signature.partial_seeds_created << ", returned=" << signature.ground_actions_returned_by_partial_completion
+               << ", duplicates=" << signature.local_duplicate_candidates_removed << ", skipped=" << signature.already_tested_actions_skipped
+               << ", zero=" << signature.non_root_states_with_zero_returned_actions << "}";
+}
+
+IncrementalStatisticsSignature make_incremental_statistics_signature(const brfs::IW1IncrementalFirstApplicabilityStatistics& statistics)
+{
+    return IncrementalStatisticsSignature { statistics.get_num_root_actions_fully_enumerated(),
+                                            statistics.get_num_non_root_states_using_incremental_path(),
+                                            statistics.get_num_changed_atoms_processed(),
+                                            statistics.get_num_trigger_records_visited(),
+                                            statistics.get_num_partial_seeds_created(),
+                                            statistics.get_num_ground_actions_returned_by_partial_completion(),
+                                            statistics.get_num_local_duplicate_candidates_removed(),
+                                            statistics.get_num_already_tested_actions_skipped(),
+                                            statistics.get_num_non_root_states_with_zero_returned_actions() };
+}
+
+struct AbstractedProjectiveIncrementalParityRun
+{
+    SearchStatus status;
+    bool has_plan;
+    bool has_goal_state;
+    size_t generated;
+    size_t novel_generated;
+    std::vector<std::string> action_signatures;
+    IncrementalStatisticsSignature incremental_statistics;
+};
+
+std::vector<std::string> plan_action_signatures(const Plan& plan)
+{
+    auto signatures = std::vector<std::string> {};
+    for (const auto& action : plan.get_actions())
+    {
+        auto signature = action->get_action()->get_name();
+        signature += "(";
+        const auto& objects = action->get_objects();
+        for (size_t i = 0; i < objects.size(); ++i)
+        {
+            if (i > 0)
+            {
+                signature += ",";
+            }
+            signature += objects[i]->get_name();
+        }
+        signature += ")";
+        signatures.push_back(signature);
+    }
+    return signatures;
+}
+
+AbstractedProjectiveParityRun run_projective_or_abstracted_iw1(const fs::path& domain_file,
+                                                                const fs::path& problem_file,
+                                                                bool typed,
+                                                                bool abstracted,
+                                                                bool precheck_add_effect_novelty,
+                                                                bool atom_first_mode)
+{
+    const auto search_context = SearchContextImpl::create(domain_file, problem_file, SearchContextImpl::Options(SearchContextImpl::GroundedOptions()));
+    const auto problem = search_context->get_problem();
+    auto event_handler = brfs::DefaultEventHandlerImpl::create(problem, true);
+
+    auto options = brfs::Options();
+    options.event_handler = event_handler;
+    options.pruning_strategy = abstracted
+        ? iw::AbstractedNoveltyPruningStrategyImpl::create(problem, 1, !typed, false, false)
+        : iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem, typed, false, false);
+    options.iw1_precheck_add_effect_novelty = precheck_add_effect_novelty;
+    options.iw1_atom_first_mode = atom_first_mode;
+
+    const auto result = brfs::find_solution(search_context, options);
+    const auto& statistics = event_handler->get_statistics();
+    return AbstractedProjectiveParityRun { result.status,
+                                           result.plan.has_value(),
+                                           result.goal_state.has_value(),
+                                           statistics.get_num_generated(),
+                                           statistics.get_num_generated_in_search_tree(),
+                                           result.plan.has_value() ? plan_action_signatures(result.plan.value()) : std::vector<std::string> {} };
+}
+
+void expect_projective_abstracted_iw1_search_parity(const fs::path& domain_file, const fs::path& problem_file, bool typed)
+{
+    for (const auto& mode : std::array<std::pair<bool, bool>, 3> { std::pair { false, false }, std::pair { true, false }, std::pair { true, true } })
+    {
+        const auto precheck_add_effect_novelty = mode.first;
+        const auto atom_first_mode = mode.second;
+        const auto projective = run_projective_or_abstracted_iw1(
+            domain_file,
+            problem_file,
+            typed,
+            false,
+            precheck_add_effect_novelty,
+            atom_first_mode);
+        const auto abstracted = run_projective_or_abstracted_iw1(
+            domain_file,
+            problem_file,
+            typed,
+            true,
+            precheck_add_effect_novelty,
+            atom_first_mode);
+
+        EXPECT_EQ(abstracted.status, projective.status);
+        EXPECT_EQ(abstracted.has_plan, projective.has_plan);
+        EXPECT_EQ(abstracted.has_goal_state, projective.has_goal_state);
+        EXPECT_EQ(abstracted.generated, projective.generated);
+        EXPECT_EQ(abstracted.novel_generated, projective.novel_generated);
+        EXPECT_EQ(abstracted.action_signatures, projective.action_signatures);
+    }
+}
+
+AbstractedProjectiveIncrementalParityRun run_projective_or_abstracted_iw1_incremental(bool typed, bool abstracted, bool beam_all_tested)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "iw1_incremental/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "iw1_incremental/positive_problem.pddl");
+    const auto search_context = SearchContextImpl::create(domain_file, problem_file, SearchContextImpl::Options(SearchContextImpl::LiftedOptions()));
+    const auto problem = search_context->get_problem();
+    auto event_handler = brfs::DefaultEventHandlerImpl::create(problem, true);
+
+    auto options = brfs::Options();
+    options.event_handler = event_handler;
+    options.pruning_strategy = abstracted
+        ? iw::AbstractedNoveltyPruningStrategyImpl::create(problem, 1, !typed, false, false)
+        : iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem, typed, false, false);
+    options.iw1_precheck_add_effect_novelty = true;
+    options.iw1_incremental_first_applicability = true;
+    options.iw1_incremental_first_applicability_debug_crosscheck = true;
+    if (beam_all_tested)
+    {
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(problem);
+        options.beam_width = 4;
+        options.beam_novelty_mode = BeamNoveltyMode::ALL_TESTED;
+    }
+
+    const auto result = brfs::find_solution(search_context, options);
+    const auto& statistics = event_handler->get_statistics();
+    return AbstractedProjectiveIncrementalParityRun { result.status,
+                                                      result.plan.has_value(),
+                                                      result.goal_state.has_value(),
+                                                      statistics.get_num_generated(),
+                                                      statistics.get_num_generated_in_search_tree(),
+                                                      result.plan.has_value() ? plan_action_signatures(result.plan.value()) : std::vector<std::string> {},
+                                                      make_incremental_statistics_signature(
+                                                          statistics.get_iw1_incremental_first_applicability_statistics()) };
+}
+
+void expect_projective_abstracted_iw1_incremental_parity(bool typed, bool beam_all_tested)
+{
+    const auto projective = run_projective_or_abstracted_iw1_incremental(typed, false, beam_all_tested);
+    const auto abstracted = run_projective_or_abstracted_iw1_incremental(typed, true, beam_all_tested);
+
+    EXPECT_EQ(abstracted.status, projective.status);
+    EXPECT_EQ(abstracted.has_plan, projective.has_plan);
+    EXPECT_EQ(abstracted.has_goal_state, projective.has_goal_state);
+    EXPECT_EQ(abstracted.generated, projective.generated);
+    EXPECT_EQ(abstracted.novel_generated, projective.novel_generated);
+    EXPECT_EQ(abstracted.action_signatures, projective.action_signatures);
+    EXPECT_EQ(abstracted.incremental_statistics, projective.incremental_statistics);
+    EXPECT_GE(abstracted.incremental_statistics.non_root_states_using_incremental_path, 1);
+    if (beam_all_tested)
+    {
+        EXPECT_GE(abstracted.incremental_statistics.root_actions_fully_enumerated, 1);
+    }
+}
+}  // namespace
+
+TEST(MimirTests, SearchAlgorithmsIWAbstractedArityOneUntypedProjectiveFullSearchParityTest)
+{
+    expect_projective_abstracted_iw1_search_parity(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"),
+                                                   fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"),
+                                                   false);
+}
+
+TEST(MimirTests, SearchAlgorithmsIWAbstractedArityOneTypedProjectiveFullSearchParityTest)
+{
+    expect_projective_abstracted_iw1_search_parity(fs::path(std::string(DATA_DIR) + "driverlog/domain.pddl"),
+                                                   fs::path(std::string(DATA_DIR) + "driverlog/test_problem.pddl"),
+                                                   true);
+}
+
+TEST(MimirTests, SearchAlgorithmsIWAbstractedArityOneUntypedProjectiveIncrementalPlainParityTest)
+{
+    expect_projective_abstracted_iw1_incremental_parity(false, false);
+}
+
+TEST(MimirTests, SearchAlgorithmsIWAbstractedArityOneTypedProjectiveIncrementalPlainParityTest)
+{
+    expect_projective_abstracted_iw1_incremental_parity(true, false);
+}
+
+TEST(MimirTests, SearchAlgorithmsIWAbstractedArityOneUntypedProjectiveIncrementalBeamAllTestedParityTest)
+{
+    expect_projective_abstracted_iw1_incremental_parity(false, true);
+}
+
+TEST(MimirTests, SearchAlgorithmsIWAbstractedArityOneTypedProjectiveIncrementalBeamAllTestedParityTest)
+{
+    expect_projective_abstracted_iw1_incremental_parity(true, true);
+}
+
+TEST(MimirTests, SearchAlgorithmsIWAbstractedGoalAtomsAreNotAbstractedTest)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "driverlog/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "driverlog/test_problem.pddl");
+    const auto problem = ProblemImpl::create(domain_file, problem_file);
+
+    const auto search_context = SearchContextImpl::create(problem, SearchContextImpl::Options(SearchContextImpl::LiftedOptions()));
+    auto& state_repository = *search_context->get_state_repository();
+
+    const auto at_predicate = problem->get_domain()->get_predicate<FluentTag>("at");
+    const auto package1 = problem->get_problem_or_domain_object("package1");
+    const auto truck1 = problem->get_problem_or_domain_object("truck1");
+    const auto s0 = problem->get_problem_or_domain_object("s0");
+    const auto s1 = problem->get_problem_or_domain_object("s1");
+    auto covering_atoms = GroundAtomList<FluentTag> {
+        problem->get_or_create_ground_atom<FluentTag>(at_predicate, ObjectList { package1, s1 }),
+        problem->get_or_create_ground_atom<FluentTag>(at_predicate, ObjectList { truck1, s0 }),
+    };
+    const auto target_atom = problem->get_or_create_ground_atom<FluentTag>(at_predicate, ObjectList { package1, s0 });
+    const auto numeric_values = problem->get_initial_function_to_value<FluentTag>();
+
+    const auto [state, state_metric_value] = state_repository.get_or_create_state(covering_atoms, numeric_values);
+    [[maybe_unused]] const auto ignored_state_metric_value = state_metric_value;
+    covering_atoms.push_back(target_atom);
+    std::ranges::sort(covering_atoms, [](const auto lhs, const auto rhs) { return lhs->get_index() < rhs->get_index(); });
+    covering_atoms.erase(std::unique(covering_atoms.begin(), covering_atoms.end()), covering_atoms.end());
+    const auto [succ_state, succ_state_metric_value] = state_repository.get_or_create_state(covering_atoms, numeric_values);
+    [[maybe_unused]] const auto ignored_succ_state_metric_value = succ_state_metric_value;
+
+    const auto abstracted_iw1 = iw::AbstractedNoveltyPruningStrategyImpl::create(problem, 1, true, false, false);
+    const auto goal_preserving_aiw1 = iw::AbstractedNoveltyPruningStrategyImpl::create(problem, 1, true, true, false);
+
+    EXPECT_FALSE(abstracted_iw1->test_prune_initial_state(state));
+    EXPECT_FALSE(goal_preserving_aiw1->test_prune_initial_state(state));
+    [[maybe_unused]] const auto ignored_abstracted_prune = abstracted_iw1->test_prune_successor_state(state, succ_state, true);
+    EXPECT_FALSE(goal_preserving_aiw1->test_prune_successor_state(state, succ_state, true));
+}
+
+TEST(MimirTests, SearchAlgorithmsIWAbstractedWidthTwoAndThreeSmokeTest)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "driverlog/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "driverlog/test_problem.pddl");
+    const auto problem = ProblemImpl::create(domain_file, problem_file);
+    const auto search_context = SearchContextImpl::create(problem, SearchContextImpl::Options(SearchContextImpl::LiftedOptions()));
+    auto& state_repository = *search_context->get_state_repository();
+    const auto [state, state_metric_value] = state_repository.get_or_create_initial_state();
+    [[maybe_unused]] const auto ignored_state_metric_value = state_metric_value;
+
+    for (const auto width : std::array<size_t, 2> { 2, 3 })
+    {
+        auto options = brfs::Options();
+        options.start_state = state;
+        options.pruning_strategy = iw::AbstractedNoveltyPruningStrategyImpl::create(problem, width, false, true, true);
+        options.max_depth = 1;
+        EXPECT_NO_THROW(brfs::find_solution(search_context, options));
+    }
 }
 
 TEST(MimirTests, SearchAlgorithmsIWProjectiveArityOneNoveltyPruningStrategyKeepGoalNonUnaryAtomsTest)

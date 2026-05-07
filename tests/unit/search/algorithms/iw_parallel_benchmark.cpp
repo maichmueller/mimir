@@ -80,6 +80,8 @@ enum class IW1NoveltyBasis
     CLASSICAL,
     PROJECTIVE,
     PROJECTIVE_TYPED,
+    ABSTRACTED_BASE,
+    ABSTRACTED_TYPED,
     BOTH
 };
 
@@ -164,12 +166,21 @@ IW1NoveltyBasis parse_iw1_novelty_basis(const std::string& basis)
     {
         return IW1NoveltyBasis::PROJECTIVE_TYPED;
     }
+    if (basis == "abstracted_base")
+    {
+        return IW1NoveltyBasis::ABSTRACTED_BASE;
+    }
+    if (basis == "abstracted" || basis == "abstracted_typed")
+    {
+        return IW1NoveltyBasis::ABSTRACTED_TYPED;
+    }
     if (basis == "both")
     {
         return IW1NoveltyBasis::BOTH;
     }
 
-    throw std::invalid_argument("Expected IW1 novelty basis to be 'classical', 'projective', 'projective_typed', or 'both'.");
+    throw std::invalid_argument(
+        "Expected IW1 novelty basis to be 'classical', 'projective', 'projective_typed', 'abstracted_base', 'abstracted_typed', 'abstracted', or 'both'.");
 }
 
 const char* to_string(IW1NoveltyBasis basis)
@@ -182,6 +193,10 @@ const char* to_string(IW1NoveltyBasis basis)
             return "projective";
         case IW1NoveltyBasis::PROJECTIVE_TYPED:
             return "projective_typed";
+        case IW1NoveltyBasis::ABSTRACTED_BASE:
+            return "abstracted_base";
+        case IW1NoveltyBasis::ABSTRACTED_TYPED:
+            return "abstracted_typed";
         case IW1NoveltyBasis::BOTH:
             return "both";
     }
@@ -369,16 +384,33 @@ BenchmarkResult run_once(const std::filesystem::path& domain_file,
     }
     else
     {
-        if (max_arity != 1)
+        if (max_arity != 1 && (iw1_novelty_basis == IW1NoveltyBasis::PROJECTIVE || iw1_novelty_basis == IW1NoveltyBasis::PROJECTIVE_TYPED))
         {
             throw std::invalid_argument("Projective IW1 benchmark requires max_arity=1.");
         }
+        if (max_arity < 1 || max_arity > 3)
+        {
+            throw std::invalid_argument("Abstracted IW benchmark requires max_arity in {1, 2, 3}.");
+        }
 
-        const auto typed_projection = (iw1_novelty_basis == IW1NoveltyBasis::PROJECTIVE_TYPED);
         auto options = brfs::Options();
         options.event_handler = brfs_event_handler;
-        options.pruning_strategy =
-            iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem, typed_projection, projective_keep_depth_one_novel, false);
+        if (iw1_novelty_basis == IW1NoveltyBasis::PROJECTIVE || iw1_novelty_basis == IW1NoveltyBasis::PROJECTIVE_TYPED)
+        {
+            const auto typed_projection = (iw1_novelty_basis == IW1NoveltyBasis::PROJECTIVE_TYPED);
+            options.pruning_strategy =
+                iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem, typed_projection, projective_keep_depth_one_novel, false);
+        }
+        else
+        {
+            const auto base_abstracted = (iw1_novelty_basis == IW1NoveltyBasis::ABSTRACTED_BASE);
+            options.pruning_strategy = iw::AbstractedNoveltyPruningStrategyImpl::create(
+                problem,
+                max_arity,
+                base_abstracted,
+                false,
+                projective_keep_depth_one_novel);
+        }
         options.max_next_layer_states = std::numeric_limits<uint32_t>::max();
         options.beam_width = static_cast<uint32_t>(beam_width);
         options.beam_novelty_mode = beam_novelty_mode;
@@ -550,7 +582,7 @@ int main(int argc, char** argv)
     if (argc < 7)
     {
         std::cerr << "Usage: " << argv[0]
-                  << " <domain.pddl> <problem.pddl> <max_arity> <reps> <all_tested|survivors_only> <threads...> [--beam-width <n>] [--mode <grounded|lifted|lifted_symmetry_pruning|lifted_exhaustive>] [--chunk-sizes <sizes...>] [--relaxed-survivors-only-beam] [--plain-brfs] [--iw1-action-selection <off|action_first|atom_first|both|all>] [--iw1-basis <classical|projective|projective_typed|both>] [--iw1-atom-first-ratio <positive_float>] [--iw1-incremental-first-applicability] [--iw1-incremental-first-applicability-debug-crosscheck] [--projective-keep-depth-one-novel <true|false>]\n"
+                  << " <domain.pddl> <problem.pddl> <max_arity> <reps> <all_tested|survivors_only> <threads...> [--beam-width <n>] [--mode <grounded|lifted|lifted_symmetry_pruning|lifted_exhaustive>] [--chunk-sizes <sizes...>] [--relaxed-survivors-only-beam] [--plain-brfs] [--iw1-action-selection <off|action_first|atom_first|both|all>] [--iw1-basis <classical|projective|projective_typed|abstracted_base|abstracted_typed|abstracted|both>] [--iw1-atom-first-ratio <positive_float>] [--iw1-incremental-first-applicability] [--iw1-incremental-first-applicability-debug-crosscheck] [--projective-keep-depth-one-novel <true|false>]\n"
                   << "Legacy usage is still accepted: <...> <max_arity> <beam_width> <reps> <all_tested|survivors_only> <threads...>\n";
         return 1;
     }
@@ -762,6 +794,12 @@ int main(int argc, char** argv)
             break;
         case IW1NoveltyBasis::PROJECTIVE_TYPED:
             iw1_bases.push_back(IW1NoveltyBasis::PROJECTIVE_TYPED);
+            break;
+        case IW1NoveltyBasis::ABSTRACTED_BASE:
+            iw1_bases.push_back(IW1NoveltyBasis::ABSTRACTED_BASE);
+            break;
+        case IW1NoveltyBasis::ABSTRACTED_TYPED:
+            iw1_bases.push_back(IW1NoveltyBasis::ABSTRACTED_TYPED);
             break;
         case IW1NoveltyBasis::BOTH:
             iw1_bases.push_back(IW1NoveltyBasis::CLASSICAL);
