@@ -71,7 +71,6 @@ from pymimir.pymimir.advanced.search import (
     DuplicatePruningStrategy,
     ArityZeroNoveltyPruningStrategy,
     ArityKNoveltyPruningStrategy,
-    ProjectiveArityOneNoveltyPruningStrategy,
     AbstractedNoveltyPruningStrategy,
     IExplorationStrategy,
 )

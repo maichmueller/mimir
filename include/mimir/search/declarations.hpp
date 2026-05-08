@@ -207,8 +207,6 @@ class ArityZeroNoveltyPruningStrategyImpl;
 using ArityZeroNoveltyPruningStrategy = std::shared_ptr<ArityZeroNoveltyPruningStrategyImpl>;
 class ArityKNoveltyPruningStrategyImpl;
 using ArityKNoveltyPruningStrategy = std::shared_ptr<ArityKNoveltyPruningStrategyImpl>;
-class ProjectiveArityOneNoveltyPruningStrategyImpl;
-using ProjectiveArityOneNoveltyPruningStrategy = std::shared_ptr<ProjectiveArityOneNoveltyPruningStrategyImpl>;
 class AbstractedNoveltyPruningStrategyImpl;
 using AbstractedNoveltyPruningStrategy = std::shared_ptr<AbstractedNoveltyPruningStrategyImpl>;
 }

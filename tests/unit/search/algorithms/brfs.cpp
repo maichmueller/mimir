@@ -458,7 +458,7 @@ static brfs::Options make_projective_iw1_brfs_options(const Problem& problem,
 {
     auto options = brfs::Options {};
     options.event_handler = std::move(event_handler);
-    options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem);
+    options.pruning_strategy = iw::AbstractedNoveltyPruningStrategyImpl::create(problem, 1, true, false, false);
     options.iw1_incremental_first_applicability = incremental;
     options.iw1_incremental_first_applicability_debug_crosscheck = debug_crosscheck;
     return options;
@@ -1263,7 +1263,7 @@ TEST(MimirTests, SearchAlgorithmsBrFSParallelAllTestedBeamMatchesSerialTest)
     auto serial_options = brfs::Options();
     serial_options.event_handler = serial_event_handler;
     serial_options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(serial_brfs.get_problem());
-    serial_options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(serial_brfs.get_problem(), false, true, false);
+    serial_options.pruning_strategy = iw::AbstractedNoveltyPruningStrategyImpl::create(serial_brfs.get_problem(), 1, true, false, true);
     serial_options.beam_width = 4;
     serial_options.beam_novelty_mode = BeamNoveltyMode::ALL_TESTED;
     serial_options.stop_if_goal = false;
@@ -1274,7 +1274,7 @@ TEST(MimirTests, SearchAlgorithmsBrFSParallelAllTestedBeamMatchesSerialTest)
     auto parallel_options = serial_options;
     parallel_options.event_handler = parallel_event_handler;
     parallel_options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(parallel_brfs.get_problem());
-    parallel_options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(parallel_brfs.get_problem(), false, true, false);
+    parallel_options.pruning_strategy = iw::AbstractedNoveltyPruningStrategyImpl::create(parallel_brfs.get_problem(), 1, true, false, true);
     parallel_options.parallel_beam_num_threads = 2;
     const auto parallel_result = brfs::find_solution(parallel_brfs.get_search_context(), parallel_options);
 
@@ -1452,7 +1452,7 @@ TEST(MimirTests, SearchAlgorithmsBrFSParallelProjectiveBeamMatchesSerialLiftedKP
         auto options = brfs::Options();
         options.event_handler = event_handler;
         options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
-        options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(brfs.get_problem(), false, true, false);
+        options.pruning_strategy = iw::AbstractedNoveltyPruningStrategyImpl::create(brfs.get_problem(), 1, true, false, true);
         options.beam_width = 64;
         options.beam_novelty_mode = beam_novelty_mode;
         options.parallel_beam_num_threads = parallel_threads;
@@ -1644,7 +1644,7 @@ TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamThreadsOneUsesSerialPath)
     auto serial_options = brfs::Options();
     serial_options.event_handler = serial_event_handler;
     serial_options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(serial_brfs.get_problem());
-    serial_options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(serial_brfs.get_problem(), false, true, false);
+    serial_options.pruning_strategy = iw::AbstractedNoveltyPruningStrategyImpl::create(serial_brfs.get_problem(), 1, true, false, true);
     serial_options.beam_width = 4;
     serial_options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
     serial_options.stop_if_goal = false;
@@ -1655,7 +1655,7 @@ TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamThreadsOneUsesSerialPath)
     auto one_thread_options = serial_options;
     one_thread_options.event_handler = one_thread_event_handler;
     one_thread_options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(one_thread_brfs.get_problem());
-    one_thread_options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(one_thread_brfs.get_problem(), false, true, false);
+    one_thread_options.pruning_strategy = iw::AbstractedNoveltyPruningStrategyImpl::create(one_thread_brfs.get_problem(), 1, true, false, true);
     one_thread_options.parallel_beam_num_threads = 1;
     const auto one_thread_result = brfs::find_solution(one_thread_brfs.get_search_context(), one_thread_options);
 
@@ -1671,7 +1671,7 @@ TEST(MimirTests, SearchAlgorithmsBrFSParallelProjectiveBeamMatchesSerialTest)
     auto serial_options = brfs::Options();
     serial_options.event_handler = serial_event_handler;
     serial_options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(serial_brfs.get_problem());
-    serial_options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(serial_brfs.get_problem(), false, true, true);
+    serial_options.pruning_strategy = iw::AbstractedNoveltyPruningStrategyImpl::create(serial_brfs.get_problem(), 1, true, true, true);
     serial_options.beam_width = 4;
     serial_options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
     serial_options.stop_if_goal = false;
@@ -1682,7 +1682,7 @@ TEST(MimirTests, SearchAlgorithmsBrFSParallelProjectiveBeamMatchesSerialTest)
     auto parallel_options = serial_options;
     parallel_options.event_handler = parallel_event_handler;
     parallel_options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(parallel_brfs.get_problem());
-    parallel_options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(parallel_brfs.get_problem(), false, true, true);
+    parallel_options.pruning_strategy = iw::AbstractedNoveltyPruningStrategyImpl::create(parallel_brfs.get_problem(), 1, true, true, true);
     parallel_options.parallel_beam_num_threads = 2;
     const auto parallel_result = brfs::find_solution(parallel_brfs.get_search_context(), parallel_options);
 
@@ -1701,7 +1701,7 @@ TEST(MimirTests, SearchAlgorithmsBrFSParallelBeamTieBreakingMatchesSerialTest)
         auto options = brfs::Options();
         options.event_handler = event_handler;
         options.layer_ordering_strategy = std::make_shared<ConstantScoringLayerOrderingStrategy>();
-        options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(brfs.get_problem(), false, true, false);
+        options.pruning_strategy = iw::AbstractedNoveltyPruningStrategyImpl::create(brfs.get_problem(), 1, true, false, true);
         options.beam_width = 4;
         options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
         options.randomize_equal_score_ties = randomize_equal_score_ties;
@@ -1936,7 +1936,7 @@ TEST(MimirTests, SearchAlgorithmsBrFSRelaxedSurvivorsOnlyBeamRepeatedLiftedKPKCT
         auto options = brfs::Options();
         options.event_handler = event_handler;
         options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
-        options.pruning_strategy = projective ? iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(brfs.get_problem(), false, true, false) :
+        options.pruning_strategy = projective ? iw::AbstractedNoveltyPruningStrategyImpl::create(brfs.get_problem(), 1, true, false, true) :
                                                DuplicatePruningStrategyImpl::create();
         options.beam_width = 64;
         options.beam_novelty_mode = BeamNoveltyMode::SURVIVORS_ONLY;
@@ -1984,10 +1984,11 @@ TEST(MimirTests, SearchAlgorithmsBrFSParallelProjectiveBeamOptionMatrixMatchesSe
         auto options = brfs::Options();
         options.event_handler = event_handler;
         options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
-        options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(brfs.get_problem(),
-                                                                                            typed_projection,
-                                                                                            keep_depth_one_novel,
-                                                                                            keep_goal_nonunary_atoms);
+        options.pruning_strategy = iw::AbstractedNoveltyPruningStrategyImpl::create(brfs.get_problem(),
+                                                                                         1,
+                                                                                         !typed_projection,
+                                                                                         keep_goal_nonunary_atoms,
+                                                                                         keep_depth_one_novel);
         options.beam_width = 64;
         options.beam_novelty_mode = beam_novelty_mode;
         options.parallel_beam_num_threads = parallel_threads;
@@ -2045,7 +2046,7 @@ TEST(MimirTests, SearchAlgorithmsBrFSProjectiveIW1PrecheckAndAtomFirstMatchBasel
         auto options = brfs::Options();
         options.event_handler = event_handler;
         options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
-        options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(brfs.get_problem(), false, true, false);
+        options.pruning_strategy = iw::AbstractedNoveltyPruningStrategyImpl::create(brfs.get_problem(), 1, true, false, true);
         options.beam_width = 64;
         options.beam_novelty_mode = beam_novelty_mode;
         options.parallel_beam_num_threads = parallel_threads;
@@ -2071,7 +2072,7 @@ TEST(MimirTests, SearchAlgorithmsBrFSProjectiveIW1PrecheckAndAtomFirstMatchBasel
         auto options = brfs::Options();
         options.event_handler = event_handler;
         options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(brfs.get_problem());
-        options.pruning_strategy = iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(brfs.get_problem(), false, true, false);
+        options.pruning_strategy = iw::AbstractedNoveltyPruningStrategyImpl::create(brfs.get_problem(), 1, true, false, true);
         options.beam_width = 64;
         options.beam_novelty_mode = beam_novelty_mode;
         options.parallel_beam_num_threads = 1;

@@ -87,8 +87,7 @@ bool supports_iw1_incremental_first_applicability(const ProblemImpl& problem)
 
 bool supports_iw1_incremental_first_applicability(const PruningStrategy& pruning_strategy)
 {
-    return std::dynamic_pointer_cast<iw::ProjectiveArityOneNoveltyPruningStrategyImpl>(pruning_strategy) != nullptr
-           || pruning_strategy->supports_atom_novelty_query();
+    return pruning_strategy->supports_atom_novelty_query();
 }
 }
 

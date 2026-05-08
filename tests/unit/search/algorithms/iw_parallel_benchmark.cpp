@@ -399,7 +399,7 @@ BenchmarkResult run_once(const std::filesystem::path& domain_file,
         {
             const auto typed_projection = (iw1_novelty_basis == IW1NoveltyBasis::PROJECTIVE_TYPED);
             options.pruning_strategy =
-                iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create(problem, typed_projection, projective_keep_depth_one_novel, false);
+                iw::AbstractedNoveltyPruningStrategyImpl::create(problem, 1, !typed_projection, false, projective_keep_depth_one_novel);
         }
         else
         {

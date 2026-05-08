@@ -137,7 +137,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--basis",
-        choices=["classical", "projective", "projective_typed"],
+        choices=["classical", "projective", "projective_typed", "abstracted_base", "abstracted_typed"],
         default="projective_typed",
         help="Novelty basis to use.",
     )
@@ -184,10 +184,13 @@ def main():
         brfs_options = search.BrFSOptions()
         brfs_options.start_state = start_state
         brfs_options.goal_strategy = goal_strategy
+        typed = args.basis in {"projective_typed", "abstracted_typed"}
         brfs_options.pruning_strategy = (
-            search.ProjectiveArityOneNoveltyPruningStrategy.create(
+            search.AbstractedNoveltyPruningStrategy.create(
                 problem,
-                typed_projection=(args.basis == "projective_typed"),
+                width=1,
+                base_abstracted=not typed,
+                preserve_goal_atoms=False,
                 keep_depth_one_novel=args.keep_depth_one_novel,
             )
         )

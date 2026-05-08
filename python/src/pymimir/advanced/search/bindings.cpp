@@ -822,19 +822,6 @@ void bind_module_definitions(nb::module_& m)
         .def(nb::init<size_t, size_t>(), "arity"_a, "num_atoms"_a)
         .def_static("create", &iw::ArityKNoveltyPruningStrategyImpl::create, "arity"_a, "num_atoms"_a, "optimize_root_depth_one_continuation"_a = false);
 
-    nb::class_<iw::ProjectiveArityOneNoveltyPruningStrategyImpl, IPruningStrategy>(m, "ProjectiveArityOneNoveltyPruningStrategy")  //
-        .def(nb::init<Problem, bool, bool, bool>(),
-             "problem"_a,
-             "typed_projection"_a = false,
-             "keep_depth_one_novel"_a = false,
-             "keep_goal_nonunary_atoms"_a = false)
-        .def_static("create",
-                    &iw::ProjectiveArityOneNoveltyPruningStrategyImpl::create,
-                    "problem"_a,
-                    "typed_projection"_a = false,
-                    "keep_depth_one_novel"_a = false,
-                    "keep_goal_nonunary_atoms"_a = false);
-
     nb::class_<iw::AbstractedNoveltyPruningStrategyImpl, IPruningStrategy>(m, "AbstractedNoveltyPruningStrategy")  //
         .def(nb::init<Problem, size_t, bool, bool, bool>(),
              "problem"_a,
