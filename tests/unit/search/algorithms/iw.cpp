@@ -913,6 +913,47 @@ TEST(MimirTests, SearchAlgorithmsIWAbstractedGoalAtomsAreNotAbstractedTest)
     EXPECT_FALSE(goal_preserving_aiw1->test_prune_successor_state(state, succ_state, true));
 }
 
+TEST(MimirTests, SearchAlgorithmsIWAbstractedLazyAtomsWidthTwoAndThreeRegressionTest)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "driverlog/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "driverlog/test_problem.pddl");
+
+    const auto run_regression = [&](size_t width)
+    {
+        const auto problem = ProblemImpl::create(domain_file, problem_file);
+        const auto search_context = SearchContextImpl::create(problem, SearchContextImpl::Options(SearchContextImpl::LiftedOptions()));
+        auto& state_repository = *search_context->get_state_repository();
+        const auto [state, state_metric_value] = state_repository.get_or_create_initial_state();
+        [[maybe_unused]] const auto ignored_state_metric_value = state_metric_value;
+
+        const auto abstracted_iw = iw::AbstractedNoveltyPruningStrategyImpl::create(problem, width, true, false, false);
+
+        const auto at_predicate = problem->get_domain()->get_predicate<FluentTag>("at");
+        const auto driver1 = problem->get_problem_or_domain_object("driver1");
+        const auto truck1 = problem->get_problem_or_domain_object("truck1");
+        const auto s1 = problem->get_problem_or_domain_object("s1");
+        const auto p0_1 = problem->get_problem_or_domain_object("p0-1");
+
+        auto successor_atoms = problem->get_fluent_initial_atoms();
+        successor_atoms.push_back(problem->get_or_create_ground_atom<FluentTag>(at_predicate, ObjectList { driver1, s1 }));
+        successor_atoms.push_back(problem->get_or_create_ground_atom<FluentTag>(at_predicate, ObjectList { truck1, p0_1 }));
+        std::ranges::sort(successor_atoms, [](const auto lhs, const auto rhs) { return lhs->get_index() < rhs->get_index(); });
+        successor_atoms.erase(std::unique(successor_atoms.begin(), successor_atoms.end()), successor_atoms.end());
+
+        const auto [succ_state, succ_state_metric_value] =
+            state_repository.get_or_create_state(successor_atoms, problem->get_initial_function_to_value<FluentTag>());
+        [[maybe_unused]] const auto ignored_succ_state_metric_value = succ_state_metric_value;
+
+        EXPECT_FALSE(abstracted_iw->test_prune_initial_state(state));
+        EXPECT_NO_THROW((void) abstracted_iw->test_prune_successor_state(state, succ_state, true));
+    };
+
+    for (const auto width : std::array<size_t, 2> { 2, 3 })
+    {
+        run_regression(width);
+    }
+}
+
 TEST(MimirTests, SearchAlgorithmsIWAbstractedWidthTwoAndThreeSmokeTest)
 {
     const auto domain_file = fs::path(std::string(DATA_DIR) + "driverlog/domain.pddl");

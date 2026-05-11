@@ -935,18 +935,20 @@ std::vector<AbstractedNoveltyPruningStrategyImpl::AtomFeatureGroup> AbstractedNo
     auto groups = std::vector<AtomFeatureGroup> {};
     const auto& atoms = state.get_atoms<FluentTag>();
     auto has_atoms = false;
+    auto atom_count = size_t(0);
     auto max_atom_index = AtomIndex(0);
     for (const auto atom_index : atoms)
     {
         const auto fluent_atom_index = static_cast<AtomIndex>(atom_index);
         max_atom_index = std::max(max_atom_index, fluent_atom_index);
         has_atoms = true;
+        ++atom_count;
     }
     if (has_atoms)
     {
         ensure_atom_feature_capacity(max_atom_index);
     }
-    groups.reserve(atoms.size());
+    groups.reserve(atom_count);
     for (const auto atom_index : atoms)
     {
         const auto fluent_atom_index = static_cast<AtomIndex>(atom_index);
@@ -1258,12 +1260,15 @@ AbstractedNoveltyPruningStrategyImpl::generate_tuples(const std::vector<AtomFeat
     auto local_singletons = absl::flat_hash_set<FeatureId> {};
     auto local_pairs = absl::flat_hash_set<PairKey, PairKeyHash> {};
     auto local_triples = absl::flat_hash_set<TripleKey, TripleKeyHash> {};
+    auto added_group_indices = std::vector<size_t> {};
+    added_group_indices.reserve(groups.size());
 
     for (size_t i = 0; i < groups.size(); ++i)
     {
         const auto& gi = groups[i];
         if (gi.m_added)
         {
+            added_group_indices.push_back(i);
             for (const auto fi : *gi.m_features)
             {
                 if (is_single_novel(fi, use_delta) && local_singletons.emplace(fi).second)
@@ -1272,38 +1277,50 @@ AbstractedNoveltyPruningStrategyImpl::generate_tuples(const std::vector<AtomFeat
                 }
             }
         }
-        if (m_width < 2)
+    }
+
+    if (m_width < 2 || added_group_indices.empty())
+    {
+        return tuples;
+    }
+
+    auto emit_pair = [&](size_t lhs_group_index, size_t rhs_group_index)
+    {
+        const auto& lhs_group = groups[lhs_group_index];
+        const auto& rhs_group = groups[rhs_group_index];
+        for (const auto lhs_feature : *lhs_group.m_features)
         {
-            continue;
+            for (const auto rhs_feature : *rhs_group.m_features)
+            {
+                if (lhs_feature == rhs_feature)
+                {
+                    continue;
+                }
+                auto pair_lhs = lhs_feature;
+                auto pair_rhs = rhs_feature;
+                if (pair_rhs < pair_lhs)
+                {
+                    std::swap(pair_lhs, pair_rhs);
+                }
+                const auto pair = PairKey { pair_lhs, pair_rhs };
+                if (is_pair_novel(pair, use_delta) && local_pairs.emplace(pair).second)
+                {
+                    tuples.m_pairs.push_back(pair);
+                }
+            }
         }
-        for (size_t j = i + 1; j < groups.size(); ++j)
+    };
+
+    // Assign each pair to its smallest added group index to skip all-old combinations.
+    for (const auto added_group_index : added_group_indices)
+    {
+        for (size_t other_group_index = 0; other_group_index < groups.size(); ++other_group_index)
         {
-            const auto& gj = groups[j];
-            if (!gi.m_added && !gj.m_added)
+            if (other_group_index == added_group_index || (other_group_index < added_group_index && groups[other_group_index].m_added))
             {
                 continue;
             }
-            for (const auto fi : *gi.m_features)
-            {
-                for (const auto fj : *gj.m_features)
-                {
-                    if (fi == fj)
-                    {
-                        continue;
-                    }
-                    auto pair_lhs = fi;
-                    auto pair_rhs = fj;
-                    if (pair_rhs < pair_lhs)
-                    {
-                        std::swap(pair_lhs, pair_rhs);
-                    }
-                    const auto pair = PairKey { pair_lhs, pair_rhs };
-                    if (is_pair_novel(pair, use_delta) && local_pairs.emplace(pair).second)
-                    {
-                        tuples.m_pairs.push_back(pair);
-                    }
-                }
-            }
+            emit_pair(added_group_index, other_group_index);
         }
     }
 
@@ -1312,39 +1329,51 @@ AbstractedNoveltyPruningStrategyImpl::generate_tuples(const std::vector<AtomFeat
         return tuples;
     }
 
-    for (size_t i = 0; i < groups.size(); ++i)
+    auto emit_triple = [&](size_t first_group_index, size_t second_group_index, size_t third_group_index)
     {
-        const auto& gi = groups[i];
-        for (size_t j = i + 1; j < groups.size(); ++j)
+        const auto& first_group = groups[first_group_index];
+        const auto& second_group = groups[second_group_index];
+        const auto& third_group = groups[third_group_index];
+        for (const auto first_feature : *first_group.m_features)
         {
-            const auto& gj = groups[j];
-            for (size_t k = j + 1; k < groups.size(); ++k)
+            for (const auto second_feature : *second_group.m_features)
             {
-                const auto& gk = groups[k];
-                if (!gi.m_added && !gj.m_added && !gk.m_added)
+                for (const auto third_feature : *third_group.m_features)
+                {
+                    auto triple_values = std::array<FeatureId, 3> { first_feature, second_feature, third_feature };
+                    std::ranges::sort(triple_values);
+                    if (triple_values[0] == triple_values[1] || triple_values[1] == triple_values[2])
+                    {
+                        continue;
+                    }
+                    const auto triple = TripleKey { triple_values[0], triple_values[1], triple_values[2] };
+                    if (is_triple_novel(triple, use_delta) && local_triples.emplace(triple).second)
+                    {
+                        tuples.m_triples.push_back(triple);
+                    }
+                }
+            }
+        }
+    };
+
+    // Assign each triple to its smallest added group index to avoid scanning all-old triples.
+    for (const auto added_group_index : added_group_indices)
+    {
+        for (size_t second_group_index = 0; second_group_index < groups.size(); ++second_group_index)
+        {
+            if (second_group_index == added_group_index
+                || (second_group_index < added_group_index && groups[second_group_index].m_added))
+            {
+                continue;
+            }
+            for (size_t third_group_index = second_group_index + 1; third_group_index < groups.size(); ++third_group_index)
+            {
+                if (third_group_index == added_group_index
+                    || (third_group_index < added_group_index && groups[third_group_index].m_added))
                 {
                     continue;
                 }
-                for (const auto fi : *gi.m_features)
-                {
-                    for (const auto fj : *gj.m_features)
-                    {
-                        for (const auto fk : *gk.m_features)
-                        {
-                            auto triple_values = std::array<FeatureId, 3> { fi, fj, fk };
-                            std::ranges::sort(triple_values);
-                            if (triple_values[0] == triple_values[1] || triple_values[1] == triple_values[2])
-                            {
-                                continue;
-                            }
-                            const auto triple = TripleKey { triple_values[0], triple_values[1], triple_values[2] };
-                            if (is_triple_novel(triple, use_delta) && local_triples.emplace(triple).second)
-                            {
-                                tuples.m_triples.push_back(triple);
-                            }
-                        }
-                    }
-                }
+                emit_triple(added_group_index, second_group_index, third_group_index);
             }
         }
     }
