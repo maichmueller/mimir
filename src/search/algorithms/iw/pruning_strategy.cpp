@@ -934,6 +934,19 @@ std::vector<AbstractedNoveltyPruningStrategyImpl::AtomFeatureGroup> AbstractedNo
 {
     auto groups = std::vector<AtomFeatureGroup> {};
     const auto& atoms = state.get_atoms<FluentTag>();
+    auto has_atoms = false;
+    auto max_atom_index = AtomIndex(0);
+    for (const auto atom_index : atoms)
+    {
+        const auto fluent_atom_index = static_cast<AtomIndex>(atom_index);
+        max_atom_index = std::max(max_atom_index, fluent_atom_index);
+        has_atoms = true;
+    }
+    if (has_atoms)
+    {
+        ensure_atom_feature_capacity(max_atom_index);
+    }
+    groups.reserve(atoms.size());
     for (const auto atom_index : atoms)
     {
         const auto fluent_atom_index = static_cast<AtomIndex>(atom_index);
@@ -947,6 +960,17 @@ AbstractedNoveltyPruningStrategyImpl::successor_groups(const State& state, const
 {
     const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
     auto groups = std::vector<AtomFeatureGroup> {};
+    auto has_atoms = false;
+    auto max_atom_index = AtomIndex(0);
+    for (const auto atom_index : succ_fluent_atom_indices)
+    {
+        max_atom_index = std::max(max_atom_index, atom_index);
+        has_atoms = true;
+    }
+    if (has_atoms)
+    {
+        ensure_atom_feature_capacity(max_atom_index);
+    }
     groups.reserve(succ_fluent_atom_indices.size());
     for (const auto atom_index : succ_fluent_atom_indices)
     {
