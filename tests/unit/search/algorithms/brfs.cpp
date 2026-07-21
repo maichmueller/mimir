@@ -23,7 +23,13 @@
 #include "mimir/search/algorithms/strategies/layer_ordering_strategy.hpp"
 #include "mimir/search/algorithms/strategies/goal_strategy.hpp"
 #include "mimir/search/algorithms/strategies/pruning_strategy.hpp"
+#include "mimir/search/algorithms/strategies/transition_ordering_strategy.hpp"
 #include "mimir/search/algorithms/iw/pruning_strategy.hpp"
+#include "mimir/search/landmarks/fact_landmark_generator.hpp"
+#include "mimir/search/landmarks/fact_landmark_graph.hpp"
+#include "mimir/formalism/action.hpp"
+#include "mimir/formalism/ground_atom.hpp"
+#include "mimir/formalism/predicate.hpp"
 #include "mimir/formalism/repositories.hpp"
 #include "mimir/search/algorithms.hpp"
 #include "mimir/search/applicable_action_generators.hpp"
@@ -35,8 +41,10 @@
 
 #include <algorithm>
 #include <optional>
+#include <set>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <vector>
 #include <gtest/gtest.h>
 
@@ -146,12 +154,22 @@ public:
     const SearchContext& get_search_context() const { return m_search_context; }
 };
 
+/// @brief A single (parent, action, successor) transition as reported by the BrFS event handler.
+struct RecordedTransition
+{
+    Index parent_state_index;
+    formalism::GroundAction action;
+    Index successor_state_index;
+};
+
 class RecordingBrFSEventHandler : public brfs::EventHandlerBase<RecordingBrFSEventHandler>
 {
 private:
     std::optional<State> m_start_state;
     StateList m_root_generated_states;
     StateList m_expanded_states;
+    std::vector<RecordedTransition> m_in_search_tree_transitions;
+    std::vector<RecordedTransition> m_not_in_search_tree_transitions;
 
     friend class brfs::EventHandlerBase<RecordingBrFSEventHandler>;
 
@@ -175,8 +193,9 @@ private:
                                                ContinuousCost action_cost,
                                                const State& successor_state)
     {
-        [[maybe_unused]] const auto& ignored_action = action;
         [[maybe_unused]] const auto ignored_action_cost = action_cost;
+
+        m_in_search_tree_transitions.push_back(RecordedTransition { state.get_index(), action, successor_state.get_index() });
 
         if (m_start_state.has_value() && (state.get_index() == m_start_state->get_index()))
         {
@@ -189,10 +208,9 @@ private:
                                                    ContinuousCost action_cost,
                                                    const State& successor_state)
     {
-        [[maybe_unused]] const auto& ignored_state = state;
-        [[maybe_unused]] const auto& ignored_action = action;
         [[maybe_unused]] const auto ignored_action_cost = action_cost;
-        [[maybe_unused]] const auto& ignored_successor_state = successor_state;
+
+        m_not_in_search_tree_transitions.push_back(RecordedTransition { state.get_index(), action, successor_state.get_index() });
     }
 
     void on_finish_g_layer_impl(uint32_t g_value, uint64_t num_expanded_states, uint64_t num_generated_states)
@@ -233,6 +251,8 @@ public:
 
     const StateList& get_root_generated_states() const { return m_root_generated_states; }
     const StateList& get_expanded_states() const { return m_expanded_states; }
+    const std::vector<RecordedTransition>& get_in_search_tree_transitions() const { return m_in_search_tree_transitions; }
+    const std::vector<RecordedTransition>& get_not_in_search_tree_transitions() const { return m_not_in_search_tree_transitions; }
 };
 
 class RecordingScoringLayerOrderingStrategy : public ILayerOrderingStrategy
@@ -2920,6 +2940,584 @@ TEST(MimirTests, SearchAlgorithmsBrFSLiftedZenotravelNumericTest)
 
     EXPECT_EQ(brfs_statistics.get_num_generated_until_g_value().back(), 5775);
     EXPECT_EQ(brfs_statistics.get_num_expanded_until_g_value().back(), 1084);
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// Landmark-informed transition ordering
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static SearchContext make_grounded_context(const Problem& problem)
+{
+    return SearchContextImpl::create(problem, SearchContextImpl::Options(SearchContextImpl::GroundedOptions()));
+}
+
+static landmarks::FactLandmarkGraph make_landmarks(const Problem& problem,
+                                                   landmarks::FactLandmarkGeneratorOptions options = landmarks::FactLandmarkGeneratorOptions())
+{
+    const auto grounder = LiftedGrounder(problem);
+    return landmarks::ApproximateFactLandmarkGenerator::create(grounder, options);
+}
+
+static std::set<std::string> get_landmark_predicate_names(const landmarks::FactLandmarkGraph& landmark_graph)
+{
+    auto names = std::set<std::string> {};
+
+    for (const auto atom : landmark_graph->get_landmark_atoms())
+    {
+        names.insert(atom->get_predicate()->get_name());
+    }
+
+    return names;
+}
+
+static std::vector<formalism::GroundAction> get_applicable_actions(const SearchContext& context, const State& state)
+{
+    auto actions = std::vector<formalism::GroundAction> {};
+
+    for (const auto& action : context->get_applicable_action_generator()->create_applicable_action_generator(state))
+    {
+        actions.push_back(action);
+    }
+
+    return actions;
+}
+
+static formalism::GroundAction find_action_by_name(const std::vector<formalism::GroundAction>& actions, const std::string& name)
+{
+    const auto it = std::find_if(actions.begin(), actions.end(), [&](formalism::GroundAction action) { return action->get_action()->get_name() == name; });
+    return (it == actions.end()) ? nullptr : *it;
+}
+
+static std::vector<std::string> get_transition_action_names(const std::vector<RecordedTransition>& transitions)
+{
+    auto names = std::vector<std::string> {};
+    names.reserve(transitions.size());
+
+    for (const auto& transition : transitions)
+    {
+        names.push_back(transition.action->get_action()->get_name());
+    }
+
+    return names;
+}
+
+static LandmarkTransitionScore
+make_landmark_score(uint32_t num_new_landmarks, uint32_t num_new_unique_landmarks, bool unique_achiever_action, uint32_t num_deleted_achieved_landmarks)
+{
+    return LandmarkTransitionScore { num_new_landmarks,
+                                     num_new_unique_landmarks,
+                                     unique_achiever_action,
+                                     (num_deleted_achieved_landmarks > 0),
+                                     num_deleted_achieved_landmarks };
+}
+
+/// Acceptance criterion #8: the 2-argument `find_solution(context, options)` overload -- which every
+/// pre-existing caller uses and which now routes through `find_solution_impl<QueuedTransitionOrderingStrategy>`
+/// -- must produce exactly the pre-change status/plan/statistics. The expected numbers below are the
+/// ones asserted by the pre-existing gripper/delivery tests in this file.
+TEST(MimirTests, SearchAlgorithmsBrFSDefaultOverloadBehaviorParityTest)
+{
+    for (const auto& [domain_name, expected_plan_length, expected_generated, expected_expanded] :
+         std::vector<std::tuple<std::string, size_t, uint64_t, uint64_t>> { { "gripper", 3u, 44u, 12u }, { "delivery", 4u, 18u, 7u } })
+    {
+        auto grounded_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + domain_name + "/domain.pddl"),
+                                                 fs::path(std::string(DATA_DIR) + domain_name + "/test_problem.pddl"));
+        const auto grounded_result = grounded_brfs.find_solution();
+
+        EXPECT_EQ(grounded_result.status, SearchStatus::SOLVED) << domain_name;
+        ASSERT_TRUE(grounded_result.plan.has_value()) << domain_name;
+        EXPECT_EQ(grounded_result.plan->get_actions().size(), expected_plan_length) << domain_name;
+        EXPECT_EQ(grounded_brfs.get_algorithm_statistics().get_num_generated_until_g_value().back(), expected_generated) << domain_name;
+        EXPECT_EQ(grounded_brfs.get_algorithm_statistics().get_num_expanded_until_g_value().back(), expected_expanded) << domain_name;
+        expect_plan_reaches_goal(grounded_brfs.get_search_context(), grounded_result);
+
+        auto lifted_brfs = LiftedBrFSPlanner(fs::path(std::string(DATA_DIR) + domain_name + "/domain.pddl"),
+                                             fs::path(std::string(DATA_DIR) + domain_name + "/test_problem.pddl"));
+        const auto lifted_result = lifted_brfs.find_solution();
+
+        EXPECT_EQ(lifted_result.status, SearchStatus::SOLVED) << domain_name;
+        ASSERT_TRUE(lifted_result.plan.has_value()) << domain_name;
+        EXPECT_EQ(lifted_result.plan->get_actions().size(), expected_plan_length) << domain_name;
+        EXPECT_EQ(lifted_brfs.get_algorithm_statistics().get_num_generated_until_g_value().back(), expected_generated) << domain_name;
+        EXPECT_EQ(lifted_brfs.get_algorithm_statistics().get_num_expanded_until_g_value().back(), expected_expanded) << domain_name;
+        expect_plan_reaches_goal(lifted_brfs.get_search_context(), lifted_result);
+
+        // Deliberately NOT asserting that the grounded and lifted plans use the identical action
+        // sequence. That is not an invariant of the library: the two applicable-action generators
+        // enumerate in different orders, so among equal-cost alternatives either may be selected
+        // first. gripper is exactly such a case -- ball2 can be carried by `left` or `right`, giving
+        // two equally optimal 3-step plans. Each plan is instead validated on its own terms above
+        // (status, length, generated/expanded counts, and that executing it actually reaches the
+        // goal), which is what "default overload behavior is unchanged" genuinely requires.
+    }
+}
+
+/// The default queued path must also stay bit-identical at the level of the full expansion/generation
+/// trace, not just the summary statistics.
+TEST(MimirTests, SearchAlgorithmsBrFSDefaultOverloadExhaustiveTraceParityTest)
+{
+    auto first_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+    auto first_event_handler = std::make_shared<RecordingBrFSEventHandler>(first_brfs.get_problem());
+
+    auto first_options = brfs::Options();
+    first_options.event_handler = first_event_handler;
+    first_options.stop_if_goal = false;
+
+    const auto first_result = brfs::find_solution(first_brfs.get_search_context(), first_options);
+    ASSERT_EQ(first_result.status, SearchStatus::EXHAUSTED);
+
+    auto second_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"), fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+    auto second_event_handler = std::make_shared<RecordingBrFSEventHandler>(second_brfs.get_problem());
+
+    auto second_options = brfs::Options();
+    second_options.event_handler = second_event_handler;
+    second_options.stop_if_goal = false;
+
+    const auto second_result = brfs::find_solution(second_brfs.get_search_context(), second_options);
+
+    expect_brfs_run_traces_match(make_brfs_run_trace(first_result, *first_event_handler), make_brfs_run_trace(second_result, *second_event_handler));
+
+    // The same context, run with the default stop_if_goal, must still hit the documented pre-change
+    // gripper baseline of 44 generated / 12 expanded.
+    auto stopping_brfs = GroundedBrFSPlanner(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"),
+                                             fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+    const auto stopping_result = stopping_brfs.find_solution();
+    ASSERT_EQ(stopping_result.status, SearchStatus::SOLVED);
+    EXPECT_EQ(stopping_brfs.get_algorithm_statistics().get_num_generated_until_g_value().back(), 44u);
+    EXPECT_EQ(stopping_brfs.get_algorithm_statistics().get_num_expanded_until_g_value().back(), 12u);
+}
+
+TEST(MimirTests, SearchAlgorithmsBrFSLandmarkTransitionScoreFieldsMatchTransitionSemanticsTest)
+{
+    const auto problem = ProblemImpl::create(fs::path(std::string(DATA_DIR) + "landmark_transition_ordering/domain.pddl"),
+                                             fs::path(std::string(DATA_DIR) + "landmark_transition_ordering/test_problem.pddl"));
+    const auto landmark_graph = make_landmarks(problem);
+
+    // The landmark set is exactly {(g), (w), (p)}: (g) is the goal, and (w)/(p) are the positive
+    // fluent preconditions of its unique achiever `finish`. (q) is deliberately NOT a landmark, and
+    // (r)/(enabled) are static predicates (they occur in no effect) so they cannot be fluent landmarks.
+    EXPECT_EQ(get_landmark_predicate_names(landmark_graph), (std::set<std::string> { "g", "p", "w" }));
+
+    const auto context = make_grounded_context(problem);
+    auto& state_repository = *context->get_state_repository();
+    const auto [initial_state, initial_metric_value] = state_repository.get_or_create_initial_state();
+
+    const auto actions = get_applicable_actions(context, initial_state);
+    ASSERT_EQ(actions.size(), 2u);
+
+    const auto del_landmark = find_action_by_name(actions, "del-landmark");
+    const auto del_nonlandmark = find_action_by_name(actions, "del-nonlandmark");
+    ASSERT_NE(del_landmark, nullptr);
+    ASSERT_NE(del_nonlandmark, nullptr);
+
+    // `del-landmark` is enumerated first, which is what makes the default queued order pick it.
+    EXPECT_EQ(actions.front(), del_landmark);
+
+    const auto del_landmark_successor = state_repository.get_or_create_successor_state(initial_state, del_landmark, initial_metric_value).first;
+    const auto del_nonlandmark_successor = state_repository.get_or_create_successor_state(initial_state, del_nonlandmark, initial_metric_value).first;
+    EXPECT_NE(del_landmark_successor.get_index(), del_nonlandmark_successor.get_index());
+
+    const auto ordering = LandmarkTransitionOrderingStrategy(landmark_graph);
+
+    const auto del_landmark_score = ordering.score(initial_state, del_landmark, del_landmark_successor, DiscreteCost(1));
+    EXPECT_EQ(del_landmark_score.num_new_landmarks, 1u);  // adds the landmark (w)
+    EXPECT_EQ(del_landmark_score.num_new_unique_landmarks, 0u);  // (w) has two achievers
+    EXPECT_FALSE(del_landmark_score.unique_achiever_action);
+    EXPECT_TRUE(del_landmark_score.deletes_achieved_landmark);
+    EXPECT_EQ(del_landmark_score.num_deleted_achieved_landmarks, 1u);  // deletes the landmark (p)
+
+    const auto del_nonlandmark_score = ordering.score(initial_state, del_nonlandmark, del_nonlandmark_successor, DiscreteCost(1));
+    EXPECT_EQ(del_nonlandmark_score.num_new_landmarks, 1u);
+    EXPECT_EQ(del_nonlandmark_score.num_new_unique_landmarks, 0u);
+    EXPECT_FALSE(del_nonlandmark_score.unique_achiever_action);
+    EXPECT_FALSE(del_nonlandmark_score.deletes_achieved_landmark);
+    EXPECT_EQ(del_nonlandmark_score.num_deleted_achieved_landmarks, 0u);  // deletes the non-landmark (q)
+
+    // Only key 4 separates them, and fewer deletions must win.
+    EXPECT_TRUE(ordering.prefer(del_nonlandmark_score, del_landmark_score));
+    EXPECT_FALSE(ordering.prefer(del_landmark_score, del_nonlandmark_score));
+
+    // `finish` is the unique achiever of the goal landmark (g), so it is a unique landmark achiever.
+    const auto goal_landmarks = landmark_graph->get_landmark_atoms();
+    const auto goal_atom_it =
+        std::find_if(goal_landmarks.begin(), goal_landmarks.end(), [](GroundAtom<FluentTag> atom) { return atom->get_predicate()->get_name() == "g"; });
+    ASSERT_NE(goal_atom_it, goal_landmarks.end());
+
+    const auto finish_action = landmark_graph->get_unique_achiever((*goal_atom_it)->get_index());
+    ASSERT_TRUE(finish_action.has_value());
+    EXPECT_EQ((*finish_action)->get_action()->get_name(), "finish");
+    EXPECT_TRUE(landmark_graph->is_unique_landmark_achiever(*finish_action));
+}
+
+/// Direct, search-independent assertions on the 4 gated comparison keys of `prefer_impl`, including
+/// the fact that key 4 sorts SMALLER-is-better while keys 1-3 sort LARGER-is-better.
+TEST(MimirTests, SearchAlgorithmsBrFSLandmarkTransitionPreferenceKeyOrderTest)
+{
+    const auto problem = ProblemImpl::create(fs::path(std::string(DATA_DIR) + "blocks_4/domain.pddl"),
+                                             fs::path(std::string(DATA_DIR) + "blocks_4/test_problem.pddl"));
+    const auto ordering = LandmarkTransitionOrderingStrategy(make_landmarks(problem));
+
+    // Key 1: more newly achieved landmarks wins, and dominates every later key.
+    EXPECT_TRUE(ordering.prefer(make_landmark_score(2, 0, false, 0), make_landmark_score(1, 0, false, 0)));
+    EXPECT_FALSE(ordering.prefer(make_landmark_score(1, 0, false, 0), make_landmark_score(2, 0, false, 0)));
+    EXPECT_TRUE(ordering.prefer(make_landmark_score(2, 0, false, 9), make_landmark_score(1, 7, true, 0)));
+
+    // Key 2: more uniquely achieved landmarks wins once key 1 ties, and dominates keys 3-4.
+    EXPECT_TRUE(ordering.prefer(make_landmark_score(1, 1, false, 9), make_landmark_score(1, 0, true, 0)));
+    EXPECT_FALSE(ordering.prefer(make_landmark_score(1, 0, true, 0), make_landmark_score(1, 1, false, 9)));
+
+    // Key 3: a unique-landmark-achiever action wins once keys 1-2 tie ...
+    EXPECT_TRUE(ordering.prefer(make_landmark_score(1, 0, true, 0), make_landmark_score(1, 0, false, 0)));
+    EXPECT_FALSE(ordering.prefer(make_landmark_score(1, 0, false, 0), make_landmark_score(1, 0, true, 0)));
+
+    // ... and criterion 3 overrides criterion 4: the unique achiever is preferred even though it
+    // deletes strictly more already-achieved landmarks than the alternative.
+    EXPECT_TRUE(ordering.prefer(make_landmark_score(1, 0, true, 3), make_landmark_score(1, 0, false, 0)));
+    EXPECT_FALSE(ordering.prefer(make_landmark_score(1, 0, false, 0), make_landmark_score(1, 0, true, 3)));
+
+    // Key 4: FEWER deleted achieved landmarks wins -- the opposite direction from keys 1-3. A sign
+    // flip here flips both of the following assertions.
+    EXPECT_TRUE(ordering.prefer(make_landmark_score(1, 0, false, 0), make_landmark_score(1, 0, false, 1)));
+    EXPECT_FALSE(ordering.prefer(make_landmark_score(1, 0, false, 1), make_landmark_score(1, 0, false, 0)));
+    EXPECT_TRUE(ordering.prefer(make_landmark_score(1, 0, false, 1), make_landmark_score(1, 0, false, 7)));
+    EXPECT_FALSE(ordering.prefer(make_landmark_score(1, 0, false, 7), make_landmark_score(1, 0, false, 1)));
+
+    // Fully equal scores must be incomparable in both directions, so that std::stable_sort keeps
+    // generation order (the implicit 5th key).
+    EXPECT_FALSE(ordering.prefer(make_landmark_score(1, 1, true, 2), make_landmark_score(1, 1, true, 2)));
+    EXPECT_FALSE(ordering.prefer(make_landmark_score(0, 0, false, 0), make_landmark_score(0, 0, false, 0)));
+}
+
+/// Each `LandmarkTransitionOrderingOptions` flag must SKIP its key (falling through to the next one),
+/// never invert it.
+TEST(MimirTests, SearchAlgorithmsBrFSLandmarkTransitionPreferenceOptionFlagsTest)
+{
+    const auto problem = ProblemImpl::create(fs::path(std::string(DATA_DIR) + "blocks_4/domain.pddl"),
+                                             fs::path(std::string(DATA_DIR) + "blocks_4/test_problem.pddl"));
+    const auto landmark_graph = make_landmarks(problem);
+
+    const auto make_ordering = [&](bool new_landmarks, bool unique_achievers, bool landmark_actions, bool fewer_deletions)
+    {
+        auto options = LandmarkTransitionOrderingOptions();
+        options.prefer_new_landmarks = new_landmarks;
+        options.prefer_unique_achievers = unique_achievers;
+        options.prefer_landmark_actions_when_deleting = landmark_actions;
+        options.prefer_fewer_deleted_landmarks = fewer_deletions;
+        return LandmarkTransitionOrderingStrategy(landmark_graph, options);
+    };
+
+    const auto default_ordering = make_ordering(true, true, true, true);
+
+    // prefer_new_landmarks off: key 1 no longer decides, so key 4 does.
+    const auto no_new_landmarks = make_ordering(false, true, true, true);
+    EXPECT_FALSE(default_ordering.prefer(make_landmark_score(1, 0, false, 0), make_landmark_score(5, 0, false, 1)));
+    EXPECT_TRUE(no_new_landmarks.prefer(make_landmark_score(1, 0, false, 0), make_landmark_score(5, 0, false, 1)));
+
+    // prefer_unique_achievers off: key 2 no longer decides, so key 3 does.
+    const auto no_unique_achievers = make_ordering(true, false, true, true);
+    EXPECT_FALSE(default_ordering.prefer(make_landmark_score(1, 0, true, 0), make_landmark_score(1, 4, false, 0)));
+    EXPECT_TRUE(no_unique_achievers.prefer(make_landmark_score(1, 0, true, 0), make_landmark_score(1, 4, false, 0)));
+
+    // prefer_landmark_actions_when_deleting off: key 3 no longer decides, so key 4 does and the
+    // criterion-3-overrides-criterion-4 behavior disappears.
+    const auto no_landmark_actions = make_ordering(true, true, false, true);
+    EXPECT_TRUE(default_ordering.prefer(make_landmark_score(1, 0, true, 3), make_landmark_score(1, 0, false, 0)));
+    EXPECT_FALSE(no_landmark_actions.prefer(make_landmark_score(1, 0, true, 3), make_landmark_score(1, 0, false, 0)));
+    EXPECT_TRUE(no_landmark_actions.prefer(make_landmark_score(1, 0, false, 0), make_landmark_score(1, 0, true, 3)));
+
+    // prefer_fewer_deleted_landmarks off: deletions stop mattering entirely (skipped, not inverted).
+    const auto no_fewer_deletions = make_ordering(true, true, true, false);
+    EXPECT_TRUE(default_ordering.prefer(make_landmark_score(1, 0, false, 0), make_landmark_score(1, 0, false, 4)));
+    EXPECT_FALSE(no_fewer_deletions.prefer(make_landmark_score(1, 0, false, 0), make_landmark_score(1, 0, false, 4)));
+    EXPECT_FALSE(no_fewer_deletions.prefer(make_landmark_score(1, 0, false, 4), make_landmark_score(1, 0, false, 0)));
+
+    // All flags off: every pair is incomparable, i.e. pure generation order.
+    const auto all_off = make_ordering(false, false, false, false);
+    EXPECT_FALSE(all_off.prefer(make_landmark_score(9, 9, true, 0), make_landmark_score(0, 0, false, 9)));
+    EXPECT_FALSE(all_off.prefer(make_landmark_score(0, 0, false, 9), make_landmark_score(9, 9, true, 0)));
+}
+
+/// Two depth-1 transitions add the same single fluent atom (w) and therefore compete for the same
+/// IW(1) novelty witness: only the first-admitted one is novel. The default queued order admits the
+/// first-enumerated action `del-landmark`, which destroys the landmark (p) and makes the goal
+/// unreachable; the landmark ordering admits `del-nonlandmark` instead and solves the problem.
+TEST(MimirTests, SearchAlgorithmsBrFSLandmarkOrderingWinsSameDepthNoveltyCompetitionTest)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "landmark_transition_ordering/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "landmark_transition_ordering/test_problem.pddl");
+
+    const auto make_iw1_options = [](const Problem& problem, brfs::EventHandler event_handler)
+    {
+        const auto& ground_fluent_atom_repository =
+            boost::hana::at_key(problem->get_repositories().get_hana_repositories(), boost::hana::type<GroundAtomImpl<FluentTag>> {});
+
+        auto options = brfs::Options();
+        options.event_handler = std::move(event_handler);
+        options.pruning_strategy = iw::ArityKNoveltyPruningStrategyImpl::create(1, ground_fluent_atom_repository.size());
+        return options;
+    };
+
+    const auto baseline_problem = ProblemImpl::create(domain_file, problem_file);
+    const auto baseline_landmarks = make_landmarks(baseline_problem);
+    const auto baseline_context = make_grounded_context(baseline_problem);
+    auto baseline_event_handler = std::make_shared<RecordingBrFSEventHandler>(baseline_problem);
+
+    const auto baseline_result = brfs::find_solution(baseline_context, make_iw1_options(baseline_problem, baseline_event_handler));
+
+    EXPECT_EQ(baseline_result.status, SearchStatus::EXHAUSTED);
+    EXPECT_FALSE(baseline_result.plan.has_value());
+    // `del-landmark` claimed the shared novelty witness (w); `del-nonlandmark` was pruned as non-novel.
+    EXPECT_EQ(get_transition_action_names(baseline_event_handler->get_in_search_tree_transitions()), (std::vector<std::string> { "del-landmark" }));
+    EXPECT_EQ(baseline_event_handler->get_root_generated_states().size(), 1u);
+
+    const auto landmark_problem = ProblemImpl::create(domain_file, problem_file);
+    const auto landmark_graph = make_landmarks(landmark_problem);
+    const auto landmark_context = make_grounded_context(landmark_problem);
+    auto landmark_event_handler = std::make_shared<RecordingBrFSEventHandler>(landmark_problem);
+    const auto ordering = LandmarkTransitionOrderingStrategy(landmark_graph);
+
+    const auto landmark_result = brfs::find_solution(landmark_context, make_iw1_options(landmark_problem, landmark_event_handler), ordering);
+
+    EXPECT_EQ(landmark_result.status, SearchStatus::SOLVED);
+    ASSERT_TRUE(landmark_result.plan.has_value());
+    EXPECT_EQ(get_plan_action_signatures(*landmark_result.plan), (std::vector<std::string> { "del-nonlandmark()", "finish()" }));
+    EXPECT_EQ(get_transition_action_names(landmark_event_handler->get_in_search_tree_transitions()),
+              (std::vector<std::string> { "del-nonlandmark", "finish" }));
+    expect_plan_reaches_goal(landmark_context, landmark_result);
+
+    // Sanity: both runs saw the same landmark set.
+    EXPECT_EQ(get_landmark_predicate_names(baseline_landmarks), get_landmark_predicate_names(landmark_graph));
+}
+
+/// Two distinct depth-1 parents reach the SAME depth-2 successor via two different actions with
+/// different landmark scores. Only the first-admitted transition is recorded on the successor's
+/// search node (the other one loses the duplicate-pruning race), so the recorded parent/action
+/// differs between the queued order and the landmark ordering. This is only possible because
+/// `is_new_successor` is resolved lazily, in sorted order, at admission time.
+TEST(MimirTests, SearchAlgorithmsBrFSLandmarkOrderingWinsCrossParentAdmissionTest)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "landmark_cross_parent/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "landmark_cross_parent/test_problem.pddl");
+
+    const auto find_admitting_transition = [](const RecordingBrFSEventHandler& event_handler, const std::string& action_name)
+    {
+        const auto& transitions = event_handler.get_in_search_tree_transitions();
+        const auto it = std::find_if(transitions.begin(),
+                                     transitions.end(),
+                                     [&](const RecordedTransition& transition) { return transition.action->get_action()->get_name() == action_name; });
+        return (it == transitions.end()) ? std::nullopt : std::make_optional(*it);
+    };
+
+    const auto baseline_problem = ProblemImpl::create(domain_file, problem_file);
+    const auto baseline_context = make_grounded_context(baseline_problem);
+    auto baseline_event_handler = std::make_shared<RecordingBrFSEventHandler>(baseline_problem);
+
+    auto baseline_options = brfs::Options();
+    baseline_options.event_handler = baseline_event_handler;
+
+    const auto baseline_result = brfs::find_solution(baseline_context, baseline_options);
+    EXPECT_EQ(baseline_result.status, SearchStatus::EXHAUSTED);
+
+    // Queued order expands P1 before P2, so `join-from-p1` (which deletes the landmark (p)) wins.
+    EXPECT_EQ(get_transition_action_names(baseline_event_handler->get_in_search_tree_transitions()),
+              (std::vector<std::string> { "to-p1", "to-p2", "join-from-p1" }));
+    EXPECT_EQ(get_transition_action_names(baseline_event_handler->get_not_in_search_tree_transitions()),
+              (std::vector<std::string> { "join-from-p2" }));
+
+    const auto baseline_to_p1 = find_admitting_transition(*baseline_event_handler, "to-p1");
+    const auto baseline_join = find_admitting_transition(*baseline_event_handler, "join-from-p1");
+    ASSERT_TRUE(baseline_to_p1.has_value());
+    ASSERT_TRUE(baseline_join.has_value());
+    EXPECT_EQ(baseline_join->parent_state_index, baseline_to_p1->successor_state_index);
+
+    const auto landmark_problem = ProblemImpl::create(domain_file, problem_file);
+    const auto landmark_graph = make_landmarks(landmark_problem);
+    const auto landmark_context = make_grounded_context(landmark_problem);
+    auto landmark_event_handler = std::make_shared<RecordingBrFSEventHandler>(landmark_problem);
+
+    // (g) is the goal landmark, (t) and (p) are the preconditions of its unique achiever `finish`.
+    EXPECT_EQ(get_landmark_predicate_names(landmark_graph), (std::set<std::string> { "g", "p", "t" }));
+
+    auto landmark_options = brfs::Options();
+    landmark_options.event_handler = landmark_event_handler;
+
+    const auto landmark_result = brfs::find_solution(landmark_context, landmark_options, LandmarkTransitionOrderingStrategy(landmark_graph));
+    EXPECT_EQ(landmark_result.status, SearchStatus::EXHAUSTED);
+
+    // `join-from-p2` deletes no landmark and is therefore admitted first, claiming the shared
+    // successor from the OTHER parent than the queued order would have.
+    EXPECT_EQ(get_transition_action_names(landmark_event_handler->get_in_search_tree_transitions()),
+              (std::vector<std::string> { "to-p1", "to-p2", "join-from-p2" }));
+    EXPECT_EQ(get_transition_action_names(landmark_event_handler->get_not_in_search_tree_transitions()),
+              (std::vector<std::string> { "join-from-p1" }));
+
+    const auto landmark_to_p2 = find_admitting_transition(*landmark_event_handler, "to-p2");
+    const auto landmark_join = find_admitting_transition(*landmark_event_handler, "join-from-p2");
+    ASSERT_TRUE(landmark_to_p2.has_value());
+    ASSERT_TRUE(landmark_join.has_value());
+    // The recorded parent of the shared successor is P2, not P1.
+    EXPECT_EQ(landmark_join->parent_state_index, landmark_to_p2->successor_state_index);
+    EXPECT_EQ(landmark_join->successor_state_index, baseline_join->successor_state_index);
+    EXPECT_NE(landmark_join->parent_state_index, baseline_join->parent_state_index);
+}
+
+/// With `include_positive_goal_facts = false` the landmark set is empty, so every transition receives
+/// the identical all-zero score and `prefer` is false for every pair. `std::stable_sort` must then
+/// preserve raw generation order, which makes the deferred admission pass produce byte-identical
+/// behavior to the default queued path.
+TEST(MimirTests, SearchAlgorithmsBrFSLandmarkOrderingWithEqualScoresPreservesGenerationOrderTest)
+{
+    for (const auto& domain_name : std::vector<std::string> { "gripper", "delivery" })
+    {
+        const auto domain_file = fs::path(std::string(DATA_DIR) + domain_name + "/domain.pddl");
+        const auto problem_file = fs::path(std::string(DATA_DIR) + domain_name + "/test_problem.pddl");
+
+        const auto baseline_problem = ProblemImpl::create(domain_file, problem_file);
+        const auto baseline_context = make_grounded_context(baseline_problem);
+        auto baseline_event_handler = std::make_shared<RecordingBrFSEventHandler>(baseline_problem);
+
+        auto baseline_options = brfs::Options();
+        baseline_options.event_handler = baseline_event_handler;
+        baseline_options.stop_if_goal = false;
+
+        const auto baseline_result = brfs::find_solution(baseline_context, baseline_options);
+        ASSERT_EQ(baseline_result.status, SearchStatus::EXHAUSTED) << domain_name;
+
+        const auto ordered_problem = ProblemImpl::create(domain_file, problem_file);
+        auto generator_options = landmarks::FactLandmarkGeneratorOptions();
+        generator_options.include_positive_goal_facts = false;
+        const auto empty_landmark_graph = make_landmarks(ordered_problem, generator_options);
+        ASSERT_TRUE(empty_landmark_graph->get_landmark_atom_indices().empty()) << domain_name;
+
+        const auto ordered_context = make_grounded_context(ordered_problem);
+        auto ordered_event_handler = std::make_shared<RecordingBrFSEventHandler>(ordered_problem);
+
+        auto ordered_options = brfs::Options();
+        ordered_options.event_handler = ordered_event_handler;
+        ordered_options.stop_if_goal = false;
+
+        const auto ordered_result =
+            brfs::find_solution(ordered_context, ordered_options, LandmarkTransitionOrderingStrategy(empty_landmark_graph));
+
+        expect_brfs_run_traces_match(make_brfs_run_trace(baseline_result, *baseline_event_handler),
+                                     make_brfs_run_trace(ordered_result, *ordered_event_handler));
+        EXPECT_EQ(get_transition_action_names(baseline_event_handler->get_in_search_tree_transitions()),
+                  get_transition_action_names(ordered_event_handler->get_in_search_tree_transitions()))
+            << domain_name;
+    }
+}
+
+/// Every `brfs::Options` field that the deferred admission loop cannot honor must be rejected with a
+/// descriptive `std::invalid_argument` rather than silently ignored.
+TEST(MimirTests, SearchAlgorithmsBrFSLandmarkOrderingRejectsUnsupportedOptionsTest)
+{
+    const auto problem = ProblemImpl::create(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"),
+                                             fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+    const auto landmark_graph = make_landmarks(problem);
+    const auto context = make_grounded_context(problem);
+    const auto ordering = LandmarkTransitionOrderingStrategy(landmark_graph);
+
+    const auto& ground_fluent_atom_repository =
+        boost::hana::at_key(problem->get_repositories().get_hana_repositories(), boost::hana::type<GroundAtomImpl<FluentTag>> {});
+
+    const auto expect_rejected = [&](const brfs::Options& options, const std::string& expected_fragment)
+    {
+        try
+        {
+            brfs::find_solution(context, options, ordering);
+            ADD_FAILURE() << "Expected std::invalid_argument mentioning: " << expected_fragment;
+        }
+        catch (const std::invalid_argument& e)
+        {
+            EXPECT_NE(std::string(e.what()).find(expected_fragment), std::string::npos) << e.what();
+        }
+    };
+
+    {
+        auto options = brfs::Options();
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(problem);
+        options.beam_width = 4;
+        expect_rejected(options, "BrFS::Options.beam_width is not supported together with a deferred-novelty transition ordering strategy.");
+    }
+
+    {
+        auto options = brfs::Options();
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(problem);
+        options.max_next_layer_states = 4;
+        expect_rejected(options, "BrFS::Options.max_next_layer_states is not supported together with a deferred-novelty transition ordering strategy.");
+    }
+
+    {
+        // NOTE: the shared validation block rejects parallel_beam_num_threads > 1 without a
+        // beam_width, and with a beam_width the deferred beam_width check fires first. The deferred
+        // parallel_beam_num_threads check is therefore currently unreachable; either way the
+        // combination is rejected with std::invalid_argument, which is what matters here.
+        auto options = brfs::Options();
+        options.parallel_beam_num_threads = 2;
+        EXPECT_THROW(brfs::find_solution(context, options, ordering), std::invalid_argument);
+
+        auto beam_options = brfs::Options();
+        beam_options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(problem);
+        beam_options.beam_width = 4;
+        beam_options.parallel_beam_num_threads = 2;
+        EXPECT_THROW(brfs::find_solution(context, beam_options, ordering), std::invalid_argument);
+    }
+
+    {
+        // iw1_incremental_first_applicability additionally requires an applicable-action generator
+        // with partial-binding completion support, which the grounded context above does not provide,
+        // so this one case needs a lifted KPKC context to reach the deferred-arm rejection.
+        const auto lifted_problem = ProblemImpl::create(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"),
+                                                        fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+        const auto lifted_context = SearchContextImpl::create(lifted_problem, SearchContextImpl::Options(SearchContextImpl::LiftedOptions()));
+        const auto lifted_ordering = LandmarkTransitionOrderingStrategy(make_landmarks(lifted_problem));
+
+        const auto& lifted_ground_fluent_atom_repository =
+            boost::hana::at_key(lifted_problem->get_repositories().get_hana_repositories(), boost::hana::type<GroundAtomImpl<FluentTag>> {});
+
+        auto options = brfs::Options();
+        options.pruning_strategy = iw::ArityKNoveltyPruningStrategyImpl::create(1, lifted_ground_fluent_atom_repository.size());
+        options.iw1_incremental_first_applicability = true;
+
+        try
+        {
+            brfs::find_solution(lifted_context, options, lifted_ordering);
+            ADD_FAILURE() << "Expected std::invalid_argument for iw1_incremental_first_applicability.";
+        }
+        catch (const std::invalid_argument& e)
+        {
+            EXPECT_NE(std::string(e.what()).find(
+                          "BrFS::Options.iw1_incremental_first_applicability is not supported together with a deferred-novelty transition ordering strategy."),
+                      std::string::npos)
+                << e.what();
+        }
+    }
+
+    {
+        auto options = brfs::Options();
+        options.pruning_strategy = iw::ArityKNoveltyPruningStrategyImpl::create(1, ground_fluent_atom_repository.size());
+        options.iw1_atom_first_mode = true;
+        expect_rejected(options, "BrFS::Options.iw1_atom_first_mode is not supported together with a deferred-novelty transition ordering strategy.");
+    }
+
+    {
+        auto options = brfs::Options();
+        options.pruning_strategy = iw::ArityKNoveltyPruningStrategyImpl::create(1, ground_fluent_atom_repository.size());
+        options.iw1_precheck_add_effect_novelty = true;
+        expect_rejected(options,
+                        "BrFS::Options.iw1_precheck_add_effect_novelty is not supported together with a deferred-novelty transition ordering strategy.");
+    }
+
+    {
+        auto options = brfs::Options();
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(problem);
+        expect_rejected(options, "BrFS::Options.layer_ordering_strategy is not supported together with a deferred-novelty transition ordering strategy.");
+    }
+
+    // A plain landmark-ordered run with none of the rejected options must still work.
+    auto valid_options = brfs::Options();
+    EXPECT_NO_THROW(brfs::find_solution(context, valid_options, ordering));
 }
 
 }

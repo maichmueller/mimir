@@ -27,6 +27,11 @@
 #include "mimir/search/algorithms/iw/tuple_index_generators.hpp"
 #include "mimir/search/algorithms/iw/tuple_index_mapper.hpp"
 #include "mimir/search/algorithms/strategies/layer_ordering_strategy.hpp"
+#include "mimir/search/algorithms/strategies/transition_ordering_strategy.hpp"
+#include "mimir/search/landmarks/fact_landmark_generator.hpp"
+#include "mimir/search/landmarks/fact_landmark_graph.hpp"
+#include "mimir/formalism/action.hpp"
+#include "mimir/formalism/ground_action.hpp"
 #include "mimir/search/applicable_action_generators.hpp"
 #include "mimir/search/axiom_evaluators.hpp"
 #include "mimir/search/grounders.hpp"
@@ -1772,6 +1777,208 @@ TEST(MimirTests, SearchAlgorithmsIWLiftedMiconicFullAdlTest)
     EXPECT_EQ(iw_statistics.get_brfs_statistics_by_arity().back().get_num_generated_until_g_value().back(), 69);
     EXPECT_EQ(iw_statistics.get_brfs_statistics_by_arity().back().get_num_expanded_until_g_value().back(), 27);
     EXPECT_EQ(iw_statistics.get_effective_width(), 2);
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// Landmark-informed transition ordering
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static landmarks::FactLandmarkGraph make_iw_landmarks(const Problem& problem,
+                                                       landmarks::FactLandmarkGeneratorOptions options = landmarks::FactLandmarkGeneratorOptions())
+{
+    const auto grounder = LiftedGrounder(problem);
+    return landmarks::ApproximateFactLandmarkGenerator::create(grounder, options);
+}
+
+static std::vector<std::string> get_iw_plan_action_names(const Plan& plan)
+{
+    auto names = std::vector<std::string> {};
+    names.reserve(plan.get_actions().size());
+
+    for (const auto action : plan.get_actions())
+    {
+        names.push_back(action->get_action()->get_name());
+    }
+
+    return names;
+}
+
+/// Acceptance criterion #8 for iw.cpp: the 2-argument `iw::find_solution(context, options)` overload
+/// -- now routed through `find_solution_impl<QueuedTransitionOrderingStrategy>` -- must reproduce the
+/// pre-change status/plan/statistics. Numbers are those asserted by the pre-existing delivery and
+/// miconic-fulladl IW tests in this file.
+TEST(MimirTests, SearchAlgorithmsIWDefaultOverloadBehaviorParityTest)
+{
+    {
+        auto grounded_iw = GroundedIWPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"),
+                                             fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"),
+                                             3);
+        const auto grounded_result = grounded_iw.find_solution();
+        EXPECT_EQ(grounded_result.status, SearchStatus::SOLVED);
+        ASSERT_TRUE(grounded_result.plan.has_value());
+        EXPECT_EQ(grounded_result.plan->get_actions().size(), 4u);
+
+        const auto& statistics = grounded_iw.get_iw_statistics();
+        EXPECT_EQ(statistics.get_brfs_statistics_by_arity().back().get_num_generated_until_g_value().back(), 18u);
+        EXPECT_EQ(statistics.get_brfs_statistics_by_arity().back().get_num_expanded_until_g_value().back(), 7u);
+        EXPECT_EQ(statistics.get_effective_width(), 2u);
+
+        auto lifted_iw = LiftedIWPlanner(fs::path(std::string(DATA_DIR) + "delivery/domain.pddl"),
+                                         fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl"),
+                                         3);
+        const auto lifted_result = lifted_iw.find_solution();
+        EXPECT_EQ(lifted_result.status, SearchStatus::SOLVED);
+        ASSERT_TRUE(lifted_result.plan.has_value());
+        EXPECT_EQ(lifted_result.plan->get_actions().size(), 4u);
+        EXPECT_EQ(lifted_iw.get_iw_statistics().get_effective_width(), 2u);
+        EXPECT_EQ(get_iw_plan_action_names(*grounded_result.plan), get_iw_plan_action_names(*lifted_result.plan));
+    }
+
+    {
+        auto grounded_iw = GroundedIWPlanner(fs::path(std::string(DATA_DIR) + "miconic-fulladl/domain.pddl"),
+                                             fs::path(std::string(DATA_DIR) + "miconic-fulladl/test_problem.pddl"),
+                                             3);
+        const auto grounded_result = grounded_iw.find_solution();
+        EXPECT_EQ(grounded_result.status, SearchStatus::SOLVED);
+        ASSERT_TRUE(grounded_result.plan.has_value());
+        EXPECT_EQ(grounded_result.plan->get_actions().size(), 7u);
+
+        const auto& statistics = grounded_iw.get_iw_statistics();
+        EXPECT_EQ(statistics.get_brfs_statistics_by_arity().back().get_num_generated_until_g_value().back(), 69u);
+        EXPECT_EQ(statistics.get_brfs_statistics_by_arity().back().get_num_expanded_until_g_value().back(), 27u);
+        EXPECT_EQ(statistics.get_effective_width(), 2u);
+    }
+}
+
+/// Composition with `ArityKNoveltyPruningStrategyImpl`'s `optimize_root_depth_one_continuation`
+/// (always active for `iw::Options::max_arity == 1`): depth-1 successors are never pruned, but
+/// non-novel ones are flagged for skip-expansion via `consume_skip_state_expansion`. Since the
+/// deferred admission pass calls `test_prune_successor_state` in SORTED order, the landmark-preferred
+/// depth-1 transition claims the shared novelty witness first and keeps its expansion rights, while
+/// the lower-scored duplicate is the one that gets skip-flagged.
+///
+/// Both depth-1 transitions of this fixture add exactly the same single fluent atom (w), so exactly
+/// one of them can be novel. Default IW(1) admits the first-enumerated `del-landmark` (which destroys
+/// the landmark (p)) and skip-flags the other, so `finish` is never expanded and IW(1) fails. The
+/// landmark ordering reverses which one is skip-flagged and solves at width 1.
+TEST(MimirTests, SearchAlgorithmsIWLandmarkOrderingKeepsRootDepthOneExpansionRightsTest)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "landmark_transition_ordering/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "landmark_transition_ordering/test_problem.pddl");
+
+    const auto baseline_problem = ProblemImpl::create(domain_file, problem_file);
+    const auto baseline_context = SearchContextImpl::create(baseline_problem, SearchContextImpl::Options(SearchContextImpl::GroundedOptions()));
+
+    auto baseline_options = iw::Options();
+    baseline_options.max_arity = 1;
+
+    const auto baseline_result = iw::find_solution(baseline_context, baseline_options);
+    EXPECT_EQ(baseline_result.status, SearchStatus::FAILED);
+    EXPECT_FALSE(baseline_result.plan.has_value());
+
+    const auto landmark_problem = ProblemImpl::create(domain_file, problem_file);
+    const auto landmark_graph = make_iw_landmarks(landmark_problem);
+    const auto landmark_context = SearchContextImpl::create(landmark_problem, SearchContextImpl::Options(SearchContextImpl::GroundedOptions()));
+
+    auto landmark_options = iw::Options();
+    landmark_options.max_arity = 1;
+
+    const auto landmark_result = iw::find_solution(landmark_context, landmark_options, LandmarkTransitionOrderingStrategy(landmark_graph));
+    ASSERT_EQ(landmark_result.status, SearchStatus::SOLVED);
+    ASSERT_TRUE(landmark_result.plan.has_value());
+    EXPECT_EQ(get_iw_plan_action_names(*landmark_result.plan), (std::vector<std::string> { "del-nonlandmark", "finish" }));
+}
+
+/// With an empty landmark set every transition scores identically, so `std::stable_sort` must keep raw
+/// generation order and the deferred width-1 pass must behave exactly like the default queued one.
+TEST(MimirTests, SearchAlgorithmsIWLandmarkOrderingWithEqualScoresMatchesDefaultTest)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "delivery/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "delivery/test_problem.pddl");
+
+    const auto baseline_problem = ProblemImpl::create(domain_file, problem_file);
+    const auto baseline_context = SearchContextImpl::create(baseline_problem, SearchContextImpl::Options(SearchContextImpl::GroundedOptions()));
+    const auto baseline_iw_event_handler = iw::DefaultEventHandlerImpl::create(baseline_problem);
+
+    auto baseline_options = iw::Options();
+    baseline_options.max_arity = 3;
+    baseline_options.iw_event_handler = baseline_iw_event_handler;
+
+    const auto baseline_result = iw::find_solution(baseline_context, baseline_options);
+    ASSERT_EQ(baseline_result.status, SearchStatus::SOLVED);
+
+    const auto ordered_problem = ProblemImpl::create(domain_file, problem_file);
+    auto generator_options = landmarks::FactLandmarkGeneratorOptions();
+    generator_options.include_positive_goal_facts = false;
+    const auto empty_landmark_graph = make_iw_landmarks(ordered_problem, generator_options);
+    ASSERT_TRUE(empty_landmark_graph->get_landmark_atom_indices().empty());
+
+    const auto ordered_context = SearchContextImpl::create(ordered_problem, SearchContextImpl::Options(SearchContextImpl::GroundedOptions()));
+    const auto ordered_iw_event_handler = iw::DefaultEventHandlerImpl::create(ordered_problem);
+
+    auto ordered_options = iw::Options();
+    ordered_options.max_arity = 3;
+    ordered_options.iw_event_handler = ordered_iw_event_handler;
+
+    const auto ordered_result = iw::find_solution(ordered_context, ordered_options, LandmarkTransitionOrderingStrategy(empty_landmark_graph));
+
+    ASSERT_EQ(ordered_result.status, baseline_result.status);
+    ASSERT_TRUE(ordered_result.plan.has_value());
+    EXPECT_EQ(get_iw_plan_action_names(*ordered_result.plan), get_iw_plan_action_names(*baseline_result.plan));
+    EXPECT_EQ(ordered_iw_event_handler->get_statistics().get_effective_width(), baseline_iw_event_handler->get_statistics().get_effective_width());
+    EXPECT_EQ(ordered_iw_event_handler->get_statistics().get_brfs_statistics_by_arity().back().get_num_generated_until_g_value(),
+              baseline_iw_event_handler->get_statistics().get_brfs_statistics_by_arity().back().get_num_generated_until_g_value());
+    EXPECT_EQ(ordered_iw_event_handler->get_statistics().get_brfs_statistics_by_arity().back().get_num_expanded_until_g_value(),
+              baseline_iw_event_handler->get_statistics().get_brfs_statistics_by_arity().back().get_num_expanded_until_g_value());
+}
+
+/// `iw::Options` fields unsupported by the deferred admission loop must propagate the descriptive
+/// `std::invalid_argument` raised by brfs.cpp rather than being silently ignored.
+TEST(MimirTests, SearchAlgorithmsIWLandmarkOrderingRejectsUnsupportedOptionsTest)
+{
+    const auto problem = ProblemImpl::create(fs::path(std::string(DATA_DIR) + "gripper/domain.pddl"),
+                                             fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl"));
+    const auto landmark_graph = make_iw_landmarks(problem);
+    const auto context = SearchContextImpl::create(problem, SearchContextImpl::Options(SearchContextImpl::GroundedOptions()));
+    const auto ordering = LandmarkTransitionOrderingStrategy(landmark_graph);
+
+    {
+        auto options = iw::Options();
+        options.max_arity = 1;
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(problem);
+        options.beam_width = 4;
+        EXPECT_THROW(iw::find_solution(context, options, ordering), std::invalid_argument);
+    }
+
+    {
+        auto options = iw::Options();
+        options.max_arity = 1;
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(problem);
+        options.max_next_layer_states = 4;
+        EXPECT_THROW(iw::find_solution(context, options, ordering), std::invalid_argument);
+    }
+
+    {
+        auto options = iw::Options();
+        options.max_arity = 1;
+        options.layer_ordering_strategy = GoalCountLayerOrderingStrategyImpl::create(problem);
+        EXPECT_THROW(iw::find_solution(context, options, ordering), std::invalid_argument);
+    }
+
+    {
+        auto options = iw::Options();
+        options.max_arity = 1;
+        options.iw1_atom_first_mode = true;
+        EXPECT_THROW(iw::find_solution(context, options, ordering), std::invalid_argument);
+    }
+
+    {
+        auto options = iw::Options();
+        options.max_arity = 1;
+        options.iw1_precheck_add_effect_novelty = true;
+        EXPECT_THROW(iw::find_solution(context, options, ordering), std::invalid_argument);
+    }
 }
 
 }

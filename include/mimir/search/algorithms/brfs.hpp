@@ -59,6 +59,11 @@ struct Options
 
 extern SearchResult find_solution(const SearchContext& context, const Options& options = Options());
 
+/// @brief Overload that reorders each search layer's candidate transitions by landmark score before
+/// novelty pruning decides admission (see `LandmarkTransitionOrderingStrategy`). Only a small subset of
+/// `Options` is supported alongside a landmark ordering; see brfs.cpp for the rejected combinations.
+extern SearchResult find_solution(const SearchContext& context, const Options& options, const LandmarkTransitionOrderingStrategy& ordering);
+
 }
 
 #endif

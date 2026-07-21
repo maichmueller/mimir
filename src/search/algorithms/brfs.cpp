@@ -19,6 +19,7 @@
 
 #include "brfs/internal.hpp"
 #include "brfs/incremental_iw1.hpp"
+#include "brfs/transition_ordered_layer.hpp"
 
 #include "mimir/common/timers.hpp"
 #include "mimir/formalism/domain.hpp"
@@ -29,6 +30,7 @@
 #include "mimir/search/algorithms/strategies/goal_strategy.hpp"
 #include "mimir/search/algorithms/strategies/layer_ordering_strategy.hpp"
 #include "mimir/search/algorithms/strategies/pruning_strategy.hpp"
+#include "mimir/search/algorithms/strategies/transition_ordering_strategy.hpp"
 #include "mimir/search/applicable_action_generators/interface.hpp"
 #include "mimir/search/axiom_evaluators/interface.hpp"
 #include "mimir/search/axiom_evaluators/lifted/exhaustive.hpp"
@@ -91,7 +93,8 @@ bool supports_iw1_incremental_first_applicability(const PruningStrategy& pruning
 }
 }
 
-SearchResult find_solution(const SearchContext& context, const Options& options)
+template<TransitionOrderingStrategy Ordering = QueuedTransitionOrderingStrategy>
+SearchResult find_solution_impl(const SearchContext& context, const Options& options, const Ordering& ordering = {})
 {
     const auto& problem = *context->get_problem();
     auto& applicable_action_generator = *context->get_applicable_action_generator();
@@ -298,6 +301,8 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
     auto stopwatch = StopWatch(options.max_time_in_ms);
     stopwatch.start();
 
+    if constexpr (!Ordering::requires_deferred_novelty)
+    {
     if (!layer_ordering_strategy)
     {
         auto iw1_incremental_action_discovery = IW1IncrementalActionDiscoveryController(context, options);
@@ -550,5 +555,71 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
 
     result.status = SearchStatus::EXHAUSTED;
     return result;
+    }
+    else
+    {
+        // The deferred transition-ordering admission loop (find_solution_with_transition_ordering)
+        // always enumerates full applicable-action lists and does not integrate the IW1 action
+        // precheck/incremental-first-applicability controllers, beam search, max_next_layer_states
+        // ordered-layer generation, or an ILayerOrderingStrategy. Reject rather than silently ignore.
+        if (use_beam)
+        {
+            throw std::invalid_argument("BrFS::Options.beam_width is not supported together with a deferred-novelty transition ordering strategy.");
+        }
+
+        if (use_next_layer_limit)
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.max_next_layer_states is not supported together with a deferred-novelty transition ordering strategy.");
+        }
+
+        if (parallel_beam_num_threads > 1)
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.parallel_beam_num_threads > 1 is not supported together with a deferred-novelty transition ordering strategy.");
+        }
+
+        if (iw1_incremental_first_applicability)
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.iw1_incremental_first_applicability is not supported together with a deferred-novelty transition ordering strategy.");
+        }
+
+        if (iw1_atom_first_mode)
+        {
+            throw std::invalid_argument("BrFS::Options.iw1_atom_first_mode is not supported together with a deferred-novelty transition ordering strategy.");
+        }
+
+        if (iw1_precheck_add_effect_novelty)
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.iw1_precheck_add_effect_novelty is not supported together with a deferred-novelty transition ordering strategy.");
+        }
+
+        if (layer_ordering_strategy)
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.layer_ordering_strategy is not supported together with a deferred-novelty transition ordering strategy.");
+        }
+
+        return find_solution_with_transition_ordering(context,
+                                                       options,
+                                                       ordering,
+                                                       start_state,
+                                                       start_g_value,
+                                                       event_handler,
+                                                       goal_strategy,
+                                                       pruning_strategy,
+                                                       search_nodes,
+                                                       g_value,
+                                                       stopwatch);
+    }
+}
+
+SearchResult find_solution(const SearchContext& context, const Options& options) { return find_solution_impl(context, options); }
+
+SearchResult find_solution(const SearchContext& context, const Options& options, const LandmarkTransitionOrderingStrategy& ordering)
+{
+    return find_solution_impl(context, options, ordering);
 }
 }

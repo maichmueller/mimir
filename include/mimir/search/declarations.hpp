@@ -179,6 +179,15 @@ using SetAddHeuristic = std::shared_ptr<SetAddHeuristicImpl>;
 class FFHeuristicImpl;
 using FFHeuristic = std::shared_ptr<FFHeuristicImpl>;
 
+/* Landmarks */
+namespace landmarks
+{
+class FactLandmarkGraphImpl;
+using FactLandmarkGraph = std::shared_ptr<const FactLandmarkGraphImpl>;
+class ApproximateFactLandmarkGenerator;
+struct FactLandmarkGeneratorOptions;
+}
+
 /* Algorithms */
 class IPruningStrategy;
 using PruningStrategy = std::shared_ptr<IPruningStrategy>;
@@ -219,6 +228,13 @@ class ProblemMultiGoalStrategyImpl;
 using ProblemMultiGoalStrategy = std::shared_ptr<ProblemMultiGoalStrategyImpl>;
 class IExplorationStrategy;
 using ExplorationStategy = std::shared_ptr<IExplorationStrategy>;
+
+template<class Derived>
+class TransitionOrderingStrategyBase;
+class QueuedTransitionOrderingStrategy;
+struct LandmarkTransitionOrderingOptions;
+struct LandmarkTransitionScore;
+class LandmarkTransitionOrderingStrategy;
 
 // AStar_EAGER
 namespace astar_eager

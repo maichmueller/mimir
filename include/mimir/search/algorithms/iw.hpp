@@ -50,6 +50,11 @@ struct Options
 };
 
 extern SearchResult find_solution(const SearchContext& context, const Options& options = Options());
+
+/// @brief Overload that applies a deferred-novelty transition ordering strategy (see
+/// `LandmarkTransitionOrderingStrategy`) to the width-1 BrFS pass only; arity 0 and arity > 1 passes
+/// stay on the default queued path (see iw.cpp).
+extern SearchResult find_solution(const SearchContext& context, const Options& options, const LandmarkTransitionOrderingStrategy& ordering);
 }
 
 #endif

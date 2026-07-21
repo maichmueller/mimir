@@ -24,6 +24,7 @@
 #include "mimir/search/algorithms/iw/event_handlers/interface.hpp"
 #include "mimir/search/algorithms/iw/pruning_strategy.hpp"
 #include "mimir/search/algorithms/strategies/goal_strategy.hpp"
+#include "mimir/search/algorithms/strategies/transition_ordering_strategy.hpp"
 #include "mimir/search/algorithms/utils.hpp"
 #include "mimir/search/applicable_action_generators/interface.hpp"
 #include "mimir/search/axiom_evaluators/interface.hpp"
@@ -34,7 +35,8 @@ using namespace mimir::formalism;
 
 namespace mimir::search::iw
 {
-SearchResult find_solution(const SearchContext& context, const Options& options)
+template<TransitionOrderingStrategy Ordering = QueuedTransitionOrderingStrategy>
+SearchResult find_solution_impl(const SearchContext& context, const Options& options, const Ordering& ordering = {})
 {
     auto& applicable_action_generator = *context->get_applicable_action_generator();
     auto& state_repository = *context->get_state_repository();
@@ -104,7 +106,16 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
                                                                                                   optimize_iw1_root_actions && (cur_arity == 1)) :
                                                        ArityZeroNoveltyPruningStrategyImpl::create(start_state);
 
-        const auto result = brfs::find_solution(context, options_i);
+        auto result = SearchResult();
+        if constexpr (Ordering::requires_deferred_novelty)
+        {
+            // Landmark ordering only applies to the width-1 pass; arity 0 and arity > 1 stay queued.
+            result = (cur_arity == 1) ? brfs::find_solution(context, options_i, ordering) : brfs::find_solution(context, options_i);
+        }
+        else
+        {
+            result = brfs::find_solution(context, options_i);
+        }
 
         iw_event_handler->on_end_arity_search(brfs_event_handler->get_statistics());
 
@@ -133,5 +144,12 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
     auto result = SearchResult();
     result.status = SearchStatus::FAILED;
     return result;
+}
+
+SearchResult find_solution(const SearchContext& context, const Options& options) { return find_solution_impl(context, options); }
+
+SearchResult find_solution(const SearchContext& context, const Options& options, const LandmarkTransitionOrderingStrategy& ordering)
+{
+    return find_solution_impl(context, options, ordering);
 }
 }
