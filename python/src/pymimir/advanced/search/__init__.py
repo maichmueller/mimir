@@ -47,6 +47,13 @@ from pymimir.pymimir.advanced.search import (
     SetAddHeuristic,
 )
 
+# Landmarks
+from pymimir.pymimir.advanced.search import (
+    FactLandmarkGeneratorOptions,
+    FactLandmarkGraph,
+    ApproximateFactLandmarkGenerator,
+)
+
 # SatisficingBindingGenerator
 from pymimir.pymimir.advanced.search import (
     ISatisficingBindingGeneratorEventHandler,
@@ -72,6 +79,8 @@ from pymimir.pymimir.advanced.search import (
     ArityZeroNoveltyPruningStrategy,
     ArityKNoveltyPruningStrategy,
     AbstractedNoveltyPruningStrategy,
+    LandmarkTransitionOrderingOptions,
+    LandmarkTransitionOrderingStrategy,
     IExplorationStrategy,
 )
 

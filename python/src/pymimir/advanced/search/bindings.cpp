@@ -743,6 +743,51 @@ void bind_module_definitions(nb::module_& m)
     nb::class_<H2HeuristicImpl, IHeuristic>(m, "H2Heuristic")  //
         .def_static("create", &H2HeuristicImpl::create, "delete_relaxed_problem_explorator"_a);
 
+    /* Landmarks */
+
+    nb::class_<landmarks::FactLandmarkGeneratorOptions>(m, "FactLandmarkGeneratorOptions")  //
+        .def(nb::init<>())
+        .def_rw("include_positive_goal_facts", &landmarks::FactLandmarkGeneratorOptions::include_positive_goal_facts)
+        .def_rw("compute_greedy_necessary_orderings", &landmarks::FactLandmarkGeneratorOptions::compute_greedy_necessary_orderings);
+
+    nb::class_<landmarks::FactLandmarkGraphImpl>(m, "FactLandmarkGraph")  //
+        .def("get_problem", &landmarks::FactLandmarkGraphImpl::get_problem)
+        .def("get_landmark_atom_indices", &landmarks::FactLandmarkGraphImpl::get_landmark_atom_indices)
+        .def("get_landmark_atoms", &landmarks::FactLandmarkGraphImpl::get_landmark_atoms)
+        .def("is_landmark",
+             static_cast<bool (landmarks::FactLandmarkGraphImpl::*)(Index) const>(&landmarks::FactLandmarkGraphImpl::is_landmark),
+             "atom_index"_a)
+        .def("is_landmark",
+             static_cast<bool (landmarks::FactLandmarkGraphImpl::*)(GroundAtom<FluentTag>) const>(&landmarks::FactLandmarkGraphImpl::is_landmark),
+             "atom"_a)
+        .def("get_achieved_landmark_atom_indices", &landmarks::FactLandmarkGraphImpl::get_achieved_landmark_atom_indices, "state"_a)
+        .def("get_unachieved_landmark_atom_indices", &landmarks::FactLandmarkGraphImpl::get_unachieved_landmark_atom_indices, "state"_a)
+        .def("get_achiever_action_indices", &landmarks::FactLandmarkGraphImpl::get_achiever_action_indices, "landmark_atom_index"_a)
+        .def("get_achievers", &landmarks::FactLandmarkGraphImpl::get_achievers, "landmark_atom_index"_a)
+        .def("get_first_achiever_action_indices", &landmarks::FactLandmarkGraphImpl::get_first_achiever_action_indices, "landmark_atom_index"_a)
+        .def("get_first_achievers", &landmarks::FactLandmarkGraphImpl::get_first_achievers, "landmark_atom_index"_a)
+        .def("get_unique_achiever_action_index", &landmarks::FactLandmarkGraphImpl::get_unique_achiever_action_index, "landmark_atom_index"_a)
+        // `get_unique_achiever` returns `std::optional<GroundAction>` where `GroundAction` is an interned
+        // `const GroundActionImpl*` owned by the problem's repository. Without an explicit policy nanobind's
+        // default `automatic` treats the returned pointer as `take_ownership` and `delete`s it when the Python
+        // wrapper is collected -- a double-free of repository-owned memory. `reference` (the same policy the
+        // datasets bindings use for single `GroundAction` returns) wraps it without taking ownership; the
+        // `std::optional` caster forwards this policy to the inner pointer.
+        .def("get_unique_achiever", &landmarks::FactLandmarkGraphImpl::get_unique_achiever, nb::rv_policy::reference, "landmark_atom_index"_a)
+        .def("is_landmark_achiever", &landmarks::FactLandmarkGraphImpl::is_landmark_achiever, "action"_a)
+        .def("is_first_landmark_achiever", &landmarks::FactLandmarkGraphImpl::is_first_landmark_achiever, "action"_a)
+        .def("is_unique_landmark_achiever", &landmarks::FactLandmarkGraphImpl::is_unique_landmark_achiever, "action"_a)
+        .def("get_landmarks_achieved_by_action", &landmarks::FactLandmarkGraphImpl::get_landmarks_achieved_by_action, "action"_a)
+        .def("get_landmarks_uniquely_achieved_by_action", &landmarks::FactLandmarkGraphImpl::get_landmarks_uniquely_achieved_by_action, "action"_a)
+        .def("get_predecessors", &landmarks::FactLandmarkGraphImpl::get_predecessors, "landmark_atom_index"_a)
+        .def("get_successors", &landmarks::FactLandmarkGraphImpl::get_successors, "landmark_atom_index"_a);
+
+    nb::class_<landmarks::ApproximateFactLandmarkGenerator>(m, "ApproximateFactLandmarkGenerator")  //
+        .def_static("create",
+                    &landmarks::ApproximateFactLandmarkGenerator::create,
+                    "grounder"_a,
+                    "options"_a = landmarks::FactLandmarkGeneratorOptions());
+
     /* Algorithms */
 
     // SearchResult
@@ -836,6 +881,26 @@ void bind_module_definitions(nb::module_& m)
                     "base_abstracted"_a = false,
                     "preserve_goal_atoms"_a = true,
                     "keep_depth_one_novel"_a = false);
+
+    // TransitionOrderingStrategy
+    //
+    // Only the compiled concrete `LandmarkTransitionOrderingStrategy` is exposed. The CRTP base and the
+    // `TransitionOrderingStrategy` concept are compile-time constructs, and a per-transition Python
+    // callback would defeat the purpose of the feature, so there is deliberately no subclassable
+    // interface / trampoline here.
+    nb::class_<LandmarkTransitionOrderingOptions>(m, "LandmarkTransitionOrderingOptions")  //
+        .def(nb::init<>())
+        .def_rw("prefer_new_landmarks", &LandmarkTransitionOrderingOptions::prefer_new_landmarks)
+        .def_rw("prefer_unique_achievers", &LandmarkTransitionOrderingOptions::prefer_unique_achievers)
+        .def_rw("prefer_landmark_actions_when_deleting", &LandmarkTransitionOrderingOptions::prefer_landmark_actions_when_deleting)
+        .def_rw("prefer_fewer_deleted_landmarks", &LandmarkTransitionOrderingOptions::prefer_fewer_deleted_landmarks);
+
+    nb::class_<LandmarkTransitionOrderingStrategy>(m, "LandmarkTransitionOrderingStrategy")  //
+        .def(nb::init<landmarks::FactLandmarkGraph, LandmarkTransitionOrderingOptions>(),
+             "landmarks"_a,
+             "options"_a = LandmarkTransitionOrderingOptions())
+        .def("get_landmarks", &LandmarkTransitionOrderingStrategy::get_landmarks)
+        .def("get_options", &LandmarkTransitionOrderingStrategy::get_options, nb::rv_policy::reference_internal);
 
     // ExplorationStrategy
     nb::class_<IExplorationStrategy, IPyExplorationStrategy>(m, "IExplorationStrategy")
@@ -1025,7 +1090,16 @@ void bind_module_definitions(nb::module_& m)
         .def_rw("max_num_states", &brfs::Options::max_num_states)
         .def_rw("max_time_in_ms", &brfs::Options::max_time_in_ms);
 
-    m.def("find_solution_brfs", &brfs::find_solution, "search_context"_a, "options"_a);
+    // `brfs::find_solution` is overloaded, so the function address must be disambiguated explicitly.
+    m.def("find_solution_brfs",
+          static_cast<SearchResult (*)(const SearchContext&, const brfs::Options&)>(&brfs::find_solution),
+          "search_context"_a,
+          "options"_a);
+    m.def("find_solution_brfs",
+          static_cast<SearchResult (*)(const SearchContext&, const brfs::Options&, const LandmarkTransitionOrderingStrategy&)>(&brfs::find_solution),
+          "search_context"_a,
+          "options"_a,
+          "transition_ordering_strategy"_a);
 
     // GBFS_EAGER
     nb::class_<gbfs_eager::Statistics>(m, "GBFSEagerStatistics")  //
@@ -1217,7 +1291,16 @@ void bind_module_definitions(nb::module_& m)
         .def_rw("max_depth", &iw::Options::max_depth)
         .def_rw("max_arity", &iw::Options::max_arity);
 
-    m.def("find_solution_iw", &iw::find_solution, "search_context"_a, "options"_a);
+    // `iw::find_solution` is overloaded, so the function address must be disambiguated explicitly.
+    m.def("find_solution_iw",
+          static_cast<SearchResult (*)(const SearchContext&, const iw::Options&)>(&iw::find_solution),
+          "search_context"_a,
+          "options"_a);
+    m.def("find_solution_iw",
+          static_cast<SearchResult (*)(const SearchContext&, const iw::Options&, const LandmarkTransitionOrderingStrategy&)>(&iw::find_solution),
+          "search_context"_a,
+          "options"_a,
+          "transition_ordering_strategy"_a);
 
     // SIW
     nb::class_<siw::Statistics>(m, "SIWStatistics")  //
