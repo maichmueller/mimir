@@ -27,10 +27,17 @@ if (NOT gtl_FOUND)
     foreach(CMAKE_ARG ${CMAKE_ARGS})
         message(STATUS "-- ${CMAKE_ARG}")
     endforeach()
+    # Clamp gtl's destructive-interference padding to <= 128 bytes so that the alignment it induces on
+    # valla::IndexedHashSet -> formalism::ProblemImpl stays under nanobind's `alignof(T) < (1 << 8)`
+    # limit. See patch_interference_size.cmake for the full rationale; the patch is idempotent and is a
+    # no-op on platforms already reporting <= 128.
     ExternalProject_Add(
         gtl
         GIT_REPOSITORY https://github.com/greg7mdp/gtl.git
         GIT_TAG dc7a24fe4b7f2f94480d954da6562c7381ace41f
+        PATCH_COMMAND ${CMAKE_COMMAND}
+                      -DGTL_CONFIG_HPP=<SOURCE_DIR>/include/gtl/gtl_config.hpp
+                      -P ${CMAKE_CURRENT_SOURCE_DIR}/patch_interference_size.cmake
         PREFIX ${CMAKE_BINARY_DIR}/gtl
         CMAKE_ARGS ${CMAKE_ARGS}
     )
