@@ -164,3 +164,32 @@ TEST(MimirTests, MimirFormalismProblemStringTest)
     EXPECT_EQ(problem->get_name(), "test-problem");
     EXPECT_EQ(problem->get_domain()->get_name(), "test-domain");
 }
+
+TEST(MimirTests, MimirFormalismProblemGoalAtomListsRespectPolarityTest)
+{
+    const auto domain_content = std::string(
+        "(define (domain test-domain) "
+        "    (:requirements :strips :negative-preconditions) "
+        "    (:predicates (p ?x)) "
+        "    (:action set-p :parameters (?x) :precondition (and) :effect (p ?x)) "
+        ")");
+
+    const auto problem_content = std::string(
+        "(define (problem test-problem) "
+        "    (:domain test-domain) "
+        "    (:objects a b) "
+        "    (:init) "
+        "    (:goal (and (p a) (not (p b)))) "
+        ")");
+
+    const auto problem = ProblemImpl::create(domain_content, "", problem_content, "");
+    const auto& positive_goals = problem->get_goal_atoms<PositiveTag, FluentTag>();
+    const auto& negative_goals = problem->get_goal_atoms<NegativeTag, FluentTag>();
+
+    ASSERT_EQ(positive_goals.size(), 1);
+    ASSERT_EQ(negative_goals.size(), 1);
+    EXPECT_EQ(positive_goals.front()->get_objects().front()->get_name(), "a");
+    EXPECT_EQ(negative_goals.front()->get_objects().front()->get_name(), "b");
+    EXPECT_TRUE((problem->get_goal_atoms_bitset<PositiveTag, FluentTag>().get(positive_goals.front()->get_index())));
+    EXPECT_TRUE((problem->get_goal_atoms_bitset<NegativeTag, FluentTag>().get(negative_goals.front()->get_index())));
+}
