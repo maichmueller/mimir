@@ -857,19 +857,24 @@ AbstractedNoveltyPruningStrategyImpl::FeatureId AbstractedNoveltyPruningStrategy
 std::vector<AbstractedNoveltyPruningStrategyImpl::FeatureId>
 AbstractedNoveltyPruningStrategyImpl::compute_features_for_atom(formalism::GroundAtom<FluentTag> atom) const
 {
+    const auto& objects = atom->get_objects();
+
+    auto features = std::vector<FeatureId> {};
     if (m_preserve_goal_atoms && m_goal_fluent_atom_indices.contains(atom->get_index()))
     {
-        return { intern_feature(make_full_atom_key(atom)) };
+        features.push_back(intern_feature(make_full_atom_key(atom)));
+        if (objects.size() <= 1)
+        {
+            return features;
+        }
     }
 
-    const auto& objects = atom->get_objects();
     if (objects.empty())
     {
         return { intern_feature(make_full_atom_key(atom)) };
     }
 
-    auto features = std::vector<FeatureId> {};
-    features.reserve(objects.size());
+    features.reserve(features.size() + objects.size());
     for (auto position = Index(0); position < objects.size(); ++position)
     {
         features.push_back(intern_feature(make_abstracted_key(atom, position)));

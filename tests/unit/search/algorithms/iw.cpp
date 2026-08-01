@@ -918,6 +918,41 @@ TEST(MimirTests, SearchAlgorithmsIWAbstractedGoalAtomsAreNotAbstractedTest)
     EXPECT_FALSE(goal_preserving_aiw1->test_prune_successor_state(state, succ_state, true));
 }
 
+TEST(MimirTests, SearchAlgorithmsIWPreservedGoalAtomsRetainAbstractedFeaturesTest)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "driverlog/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "driverlog/test_problem.pddl");
+    const auto problem = ProblemImpl::create(domain_file, problem_file);
+
+    const auto search_context = SearchContextImpl::create(problem, SearchContextImpl::Options(SearchContextImpl::LiftedOptions()));
+    auto& state_repository = *search_context->get_state_repository();
+
+    const auto at_predicate = problem->get_domain()->get_predicate<FluentTag>("at");
+    const auto package1 = problem->get_problem_or_domain_object("package1");
+    const auto truck1 = problem->get_problem_or_domain_object("truck1");
+    const auto s0 = problem->get_problem_or_domain_object("s0");
+    const auto s1 = problem->get_problem_or_domain_object("s1");
+    const auto covering_atom = problem->get_or_create_ground_atom<FluentTag>(at_predicate, ObjectList { truck1, s1 });
+    const auto target_goal_atom = problem->get_or_create_ground_atom<FluentTag>(at_predicate, ObjectList { package1, s0 });
+    const auto projected_follower_atom = problem->get_or_create_ground_atom<FluentTag>(at_predicate, ObjectList { package1, s1 });
+    const auto numeric_values = problem->get_initial_function_to_value<FluentTag>();
+
+    const auto [state, state_metric_value] = state_repository.get_or_create_state(GroundAtomList<FluentTag> { covering_atom }, numeric_values);
+    [[maybe_unused]] const auto ignored_state_metric_value = state_metric_value;
+    const auto [goal_state, goal_state_metric_value] =
+        state_repository.get_or_create_state(GroundAtomList<FluentTag> { covering_atom, target_goal_atom }, numeric_values);
+    [[maybe_unused]] const auto ignored_goal_state_metric_value = goal_state_metric_value;
+    const auto [following_state, following_state_metric_value] = state_repository.get_or_create_state(
+        GroundAtomList<FluentTag> { covering_atom, target_goal_atom, projected_follower_atom },
+        numeric_values);
+    [[maybe_unused]] const auto ignored_following_state_metric_value = following_state_metric_value;
+
+    const auto goal_preserving_aiw1 = iw::AbstractedNoveltyPruningStrategyImpl::create(problem, 1, true, true, false);
+    EXPECT_FALSE(goal_preserving_aiw1->test_prune_initial_state(state));
+    EXPECT_FALSE(goal_preserving_aiw1->test_prune_successor_state(state, goal_state, true));
+    EXPECT_TRUE(goal_preserving_aiw1->test_prune_successor_state(goal_state, following_state, true));
+}
+
 TEST(MimirTests, SearchAlgorithmsIWAbstractedLazyAtomsWidthTwoAndThreeRegressionTest)
 {
     const auto domain_file = fs::path(std::string(DATA_DIR) + "driverlog/domain.pddl");
