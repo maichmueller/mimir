@@ -384,7 +384,9 @@ void bind_module_definitions(nb::module_& m)
         .def("get_parameters", &ConjunctiveEffectImpl::get_parameters, nb::rv_policy::copy)
         .def("get_literals", &ConjunctiveEffectImpl::get_literals, nb::rv_policy::copy)
         .def("get_fluent_numeric_effects", &ConjunctiveEffectImpl::get_fluent_numeric_effects, nb::rv_policy::reference_internal)
-        .def("get_auxiliary_numeric_effect", &ConjunctiveEffectImpl::get_auxiliary_numeric_effect, nb::rv_policy::copy);
+        // Optional over an interned NumericEffect pointer; see the note on
+        // DomainImpl::get_auxiliary_function_skeleton below.
+        .def("get_auxiliary_numeric_effect", &ConjunctiveEffectImpl::get_auxiliary_numeric_effect, nb::rv_policy::reference_internal);
 
     /* ConditionalEffect */
     nb::class_<ConditionalEffectImpl>(m, "ConditionalEffect")  //
@@ -624,7 +626,11 @@ void bind_module_definitions(nb::module_& m)
             },
             nb::keep_alive<0, 1>())
         .def("get_fluent_numeric_effects", nb::overload_cast<>(&GroundConjunctiveEffectImpl::get_fluent_numeric_effects, nb::const_), nb::rv_policy::reference_internal)
-        .def("get_auxiliary_numeric_effect", nb::overload_cast<>(&GroundConjunctiveEffectImpl::get_auxiliary_numeric_effect, nb::const_), nb::rv_policy::copy);
+        // Optional over an interned GroundNumericEffect pointer; see the note on
+        // DomainImpl::get_auxiliary_function_skeleton below.
+        .def("get_auxiliary_numeric_effect",
+             nb::overload_cast<>(&GroundConjunctiveEffectImpl::get_auxiliary_numeric_effect, nb::const_),
+             nb::rv_policy::reference_internal);
 
     /* GroundConditionalEffect */
     nb::class_<GroundConditionalEffectImpl>(m, "GroundConditionalEffect")
@@ -730,7 +736,10 @@ void bind_module_definitions(nb::module_& m)
         .def("get_derived_predicates", &DomainImpl::get_predicates<DerivedTag>, nb::rv_policy::copy)
         .def("get_static_functions", &DomainImpl::get_function_skeletons<StaticTag>, nb::rv_policy::copy)
         .def("get_fluent_functions", &DomainImpl::get_function_skeletons<FluentTag>, nb::rv_policy::copy)
-        .def("get_auxiliary_function", &DomainImpl::get_auxiliary_function_skeleton, nb::rv_policy::copy)
+        // Returns std::optional<FunctionSkeleton<AuxiliaryTag>>, i.e. an optional over a
+        // repository-interned pointer. `copy` would make nanobind take ownership and free an
+        // object the domain owns.
+        .def("get_auxiliary_function", &DomainImpl::get_auxiliary_function_skeleton, nb::rv_policy::reference_internal)
         .def("get_actions", &DomainImpl::get_actions, nb::rv_policy::copy)
         .def("get_requirements", &DomainImpl::get_requirements, nb::rv_policy::reference_internal)
         .def("get_types", &DomainImpl::get_types, nb::rv_policy::copy)
