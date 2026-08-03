@@ -666,7 +666,9 @@ void bind_module_definitions(nb::module_& m)
     m.def("compute_state_metric_value", &compute_state_metric_value, "state"_a);
 
     nb::class_<StateRepositoryImpl>(m, "StateRepository")
-        .def_static("create", &StateRepositoryImpl::create, "axiom_evaluator"_a)
+        // `create` is overloaded (the other overload requests private interning tables, which
+        // is an internal detail of the batched parallel rollout path), so disambiguate.
+        .def_static("create", static_cast<StateRepository (*)(AxiomEvaluator)>(&StateRepositoryImpl::create), "axiom_evaluator"_a)
         .def("get_or_create_initial_state", &StateRepositoryImpl::get_or_create_initial_state, nb::rv_policy::copy)
         .def(
             "get_or_create_state",
@@ -1301,6 +1303,51 @@ void bind_module_definitions(nb::module_& m)
           "search_context"_a,
           "options"_a,
           "transition_ordering_strategy"_a);
+
+    /* Batched parallel IW rollouts. See docs/PARALLEL_IW_ROLLOUTS.md. */
+
+    nb::class_<iw::ParallelRolloutOptions>(m, "IWParallelRolloutOptions")  //
+        .def(nb::init<>())
+        .def_rw("seeds", &iw::ParallelRolloutOptions::seeds)
+        .def_rw("num_threads", &iw::ParallelRolloutOptions::num_threads)
+        .def_rw("options", &iw::ParallelRolloutOptions::options);
+
+    nb::class_<iw::RolloutResult>(m, "IWRolloutResult")  //
+        .def_ro("status", &iw::RolloutResult::status)
+        .def_ro("num_states", &iw::RolloutResult::num_states)
+        .def_prop_ro("reached_fluent_atoms",
+                     [](const iw::RolloutResult& self)
+                     {
+                         auto indices = std::vector<Index> {};
+                         for (const auto index : self.reached_fluent_atoms)
+                         {
+                             indices.push_back(index);
+                         }
+                         return indices;
+                     })
+        .def_prop_ro("reached_derived_atoms",
+                     [](const iw::RolloutResult& self)
+                     {
+                         auto indices = std::vector<Index> {};
+                         for (const auto index : self.reached_derived_atoms)
+                         {
+                             indices.push_back(index);
+                         }
+                         return indices;
+                     });
+
+    // The GIL is released for the whole batch. This is only sound because the batch takes no
+    // Python callbacks -- unlike `find_solution_iw`, whose event handlers may be Python
+    // objects and which therefore has to keep holding the GIL.
+    m.def(
+        "find_rollouts_iw_parallel",
+        [](const SearchContext& search_context, const iw::ParallelRolloutOptions& options)
+        {
+            nb::gil_scoped_release release;
+            return iw::find_rollouts_parallel(search_context, options);
+        },
+        "search_context"_a,
+        "options"_a);
 
     // SIW
     nb::class_<siw::Statistics>(m, "SIWStatistics")  //

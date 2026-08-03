@@ -18,6 +18,10 @@ from pymimir.advanced.search import (
 # from pymimir.advanced.search import find_solution_siw as advanced_siw
 from pymimir.advanced.search import IBrFSEventHandler as AdvancedBrFSEventHandler
 from pymimir.advanced.search import IWOptions as AdvancedIWOptions
+from pymimir.advanced.search import (
+    IWParallelRolloutOptions as AdvancedIWParallelRolloutOptions,
+)
+from pymimir.advanced.search import find_rollouts_iw_parallel as advanced_iw_parallel
 
 # from pymimir.advanced.search import IWStatistics as AdvancedIWStatistics
 # from pymimir.advanced.search import SIWOptions as AdvancedSIWOptions
@@ -486,3 +490,92 @@ def projective_iw(
         chunk_size=chunk_size,
         relaxed_survivors_only_beam=relaxed_survivors_only_beam,
     )
+
+
+# ----------------------------------------
+# Batched parallel width-based rollouts
+# ----------------------------------------
+
+
+class IWRolloutResult:
+    """The outcome of one rollout in a :func:`iw_parallel` batch."""
+
+    def __init__(self, status: str, num_states: int, reached_fluent_atoms: "list[int]", reached_derived_atoms: "list[int]") -> None:
+        self.status = status
+        self.num_states = num_states
+        #: Fluent ground-atom indices reached by this rollout. Indices are stable across
+        #: rollouts, so these may be intersected across the batch.
+        self.reached_fluent_atoms = reached_fluent_atoms
+        self.reached_derived_atoms = reached_derived_atoms
+
+    def __repr__(self) -> str:
+        return (
+            f"IWRolloutResult(status={self.status!r}, num_states={self.num_states}, "
+            f"|reached_fluent_atoms|={len(self.reached_fluent_atoms)})"
+        )
+
+
+def iw_parallel(
+    problem: "Problem",
+    start_state: "State",
+    max_arity: int,
+    seeds: "list[int]",
+    *,
+    num_threads: int = 0,
+    max_depth: int = -1,
+    max_next_layer_states: int = -1,
+    beam_width: int = -1,
+    iw1_precheck_add_effect_novelty: bool = False,
+    iw1_atom_first_mode: bool = False,
+    iw1_atom_first_ratio: float = 1.0,
+    iw1_incremental_first_applicability: bool = False,
+) -> "list[IWRolloutResult]":
+    """Run one stochastic IW rollout per seed, in parallel, over one shared problem.
+
+    Every rollout starts from ``start_state`` and uses a randomized layer ordering seeded
+    from its own entry in ``seeds``, so distinct seeds give distinct rollouts. Results are
+    returned in seed order and are identical to running the same seeds one at a time.
+
+    Unlike :func:`iw`, this releases the GIL for the whole batch and therefore accepts no
+    Python callbacks. It requires a grounded search context; a lifted one raises.
+
+    :param seeds: One rollout is run per seed.
+    :param num_threads: Worker threads; 0 means use all cores (capped at ``len(seeds)``).
+    """
+    assert isinstance(problem, Problem), "Problem must be an instance of Problem."
+    assert isinstance(start_state, State), "Start state must be an instance of State."
+    assert isinstance(max_arity, int) and max_arity > 0, "Max arity must be a positive integer."
+    assert isinstance(seeds, (list, tuple)) and all(
+        isinstance(s, int) for s in seeds
+    ), "seeds must be a list of ints."
+    assert isinstance(num_threads, int) and num_threads >= 0, "num_threads must be a non-negative int."
+
+    advanced_options = AdvancedIWOptions()
+    advanced_options.start_state = start_state._advanced_state
+    advanced_options.max_arity = max_arity
+    if max_depth >= 0:
+        advanced_options.max_depth = max_depth
+    if max_next_layer_states > 0:
+        advanced_options.max_next_layer_states = max_next_layer_states
+    if beam_width > 0:
+        advanced_options.beam_width = beam_width
+    advanced_options.iw1_precheck_add_effect_novelty = iw1_precheck_add_effect_novelty
+    advanced_options.iw1_atom_first_mode = iw1_atom_first_mode
+    advanced_options.iw1_atom_first_ratio = float(iw1_atom_first_ratio)
+    advanced_options.iw1_incremental_first_applicability = iw1_incremental_first_applicability
+
+    batch_options = AdvancedIWParallelRolloutOptions()
+    batch_options.seeds = list(seeds)
+    batch_options.num_threads = num_threads
+    batch_options.options = advanced_options
+
+    results = advanced_iw_parallel(problem._search_context, batch_options)
+    return [
+        IWRolloutResult(
+            r.status.name.lower(),
+            r.num_states,
+            list(r.reached_fluent_atoms),
+            list(r.reached_derived_atoms),
+        )
+        for r in results
+    ]

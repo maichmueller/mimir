@@ -55,6 +55,8 @@ from .wrapper_search_gbfs import (
 
 from .wrapper_search_width import (
     iw,
+    iw_parallel,
+    IWRolloutResult,
     projective_iw,
     abstracted_iw,
 )

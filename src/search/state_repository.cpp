@@ -55,6 +55,26 @@ ContinuousCost compute_state_metric_value(const State& state)
 
 StateRepositoryImpl::StateRepositoryImpl(AxiomEvaluator axiom_evaluator) :
     m_axiom_evaluator(std::move(axiom_evaluator)),
+    m_owned_interning_tables(nullptr),
+    m_index_tree_table(m_axiom_evaluator->get_problem()->get_index_tree_table()),
+    m_double_leaf_table(m_axiom_evaluator->get_problem()->get_double_leaf_table()),
+    m_states(),
+    m_packed_states_by_index(),
+    m_fluent_atom_slots(),
+    m_reached_fluent_atoms(),
+    m_reached_derived_atoms(),
+    m_applied_positive_effect_atoms(),
+    m_applied_negative_effect_atoms(),
+    m_index_list(),
+    m_unpacked_state_pool()
+{
+}
+
+StateRepositoryImpl::StateRepositoryImpl(AxiomEvaluator axiom_evaluator, PrivateInterningTables) :
+    m_axiom_evaluator(std::move(axiom_evaluator)),
+    m_owned_interning_tables(std::make_unique<OwnedInterningTables>()),
+    m_index_tree_table(m_owned_interning_tables->index_tree),
+    m_double_leaf_table(m_owned_interning_tables->double_leaf),
     m_states(),
     m_packed_states_by_index(),
     m_fluent_atom_slots(),
@@ -68,6 +88,11 @@ StateRepositoryImpl::StateRepositoryImpl(AxiomEvaluator axiom_evaluator) :
 }
 
 StateRepository StateRepositoryImpl::create(AxiomEvaluator axiom_evaluator) { return std::make_shared<StateRepositoryImpl>(axiom_evaluator); }
+
+StateRepository StateRepositoryImpl::create(AxiomEvaluator axiom_evaluator, PrivateInterningTables tag)
+{
+    return std::make_shared<StateRepositoryImpl>(std::move(axiom_evaluator), tag);
+}
 
 std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_initial_state()
 {
@@ -89,8 +114,8 @@ std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_state(const 
                                                                           const FlatDoubleList& fluent_numeric_variables)
 {
     auto& problem = *m_axiom_evaluator->get_problem();
-    auto& index_tree_table = problem.get_index_tree_table();
-    auto& double_leaf_table = problem.get_double_leaf_table();
+    auto& index_tree_table = m_index_tree_table;
+    auto& double_leaf_table = m_double_leaf_table;
 
     /* Dense state */
     auto unpacked_state = m_unpacked_state_pool.get_or_allocate(problem);
@@ -282,8 +307,8 @@ static void apply_action_effects(GroundAction action,
 std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_successor_state(const State& state, GroundAction action, ContinuousCost state_metric_value)
 {
     auto& problem = *m_axiom_evaluator->get_problem();
-    auto& index_tree_table = problem.get_index_tree_table();
-    auto& double_leaf_table = problem.get_double_leaf_table();
+    auto& index_tree_table = m_index_tree_table;
+    auto& double_leaf_table = m_double_leaf_table;
 
     /* Dense state*/
     auto unpacked_state = m_unpacked_state_pool.get_or_allocate(problem);
@@ -476,9 +501,8 @@ StateRepositoryImpl::compute_staged_successor_state(const State& state,
 StateRepositoryImpl::StagedSuccessorHandle
 StateRepositoryImpl::get_or_create_staged_successor_handle(const StagedSuccessorState& successor_state, StagedSuccessorInternTimings* timings)
 {
-    auto& problem = *m_axiom_evaluator->get_problem();
-    auto& index_tree_table = problem.get_index_tree_table();
-    auto& double_leaf_table = problem.get_double_leaf_table();
+    auto& index_tree_table = m_index_tree_table;
+    auto& double_leaf_table = m_double_leaf_table;
 
     // The main thread materializes worker-computed successors in generation order so
     // state indices, duplicate pruning, and beam admission follow the serial semantics.
@@ -579,7 +603,7 @@ State StateRepositoryImpl::get_state(const PackedStateImpl& state)
 
     dense_fluent_atoms.unset_all();
     m_index_list.clear();
-    valla::read_sequence(state.get_atoms<FluentTag>(), problem.get_index_tree_table(), std::back_inserter(m_index_list));
+    valla::read_sequence(state.get_atoms<FluentTag>(), m_index_tree_table, std::back_inserter(m_index_list));
     for (const auto index : m_index_list)
     {
         dense_fluent_atoms.set(index);
@@ -587,16 +611,16 @@ State StateRepositoryImpl::get_state(const PackedStateImpl& state)
 
     dense_derived_atoms.unset_all();
     m_index_list.clear();
-    valla::read_sequence(state.get_atoms<DerivedTag>(), problem.get_index_tree_table(), std::back_inserter(m_index_list));
+    valla::read_sequence(state.get_atoms<DerivedTag>(), m_index_tree_table, std::back_inserter(m_index_list));
     for (const auto index : m_index_list)
     {
         dense_derived_atoms.set(index);
     }
 
     m_index_list.clear();
-    valla::read_sequence(state.get_numeric_variables(), problem.get_index_tree_table(), std::back_inserter(m_index_list));
+    valla::read_sequence(state.get_numeric_variables(), m_index_tree_table, std::back_inserter(m_index_list));
     dense_fluent_numeric_variables.clear();
-    valla::decode_from_unsigned_integrals(m_index_list, problem.get_double_leaf_table(), std::back_inserter(dense_fluent_numeric_variables));
+    valla::decode_from_unsigned_integrals(m_index_list, m_double_leaf_table, std::back_inserter(dense_fluent_numeric_variables));
 
     return State(m_states.at(state), &state, std::move(unpacked_state), shared_from_this());
 }

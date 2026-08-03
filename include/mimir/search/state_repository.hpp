@@ -27,6 +27,8 @@
 
 #include <absl/container/flat_hash_map.h>
 #include <chrono>
+#include <valla/indexed_hash_set.hpp>
+#include <valla/slot.hpp>
 
 namespace mimir::search
 {
@@ -74,6 +76,24 @@ public:
         ~StagedSuccessorScratch();
     };
 
+    /// @brief Tag requesting that the repository own its `valla` interning tables instead
+    /// of sharing the `Problem`'s. A `valla::Slot` is meaningful only relative to the table
+    /// that produced it, and every decode path already lives inside this class, so private
+    /// tables change no existing invariant -- they only stop independent searches from
+    /// sharing a namespace they never needed to share.
+    ///
+    /// This is what lets K independent rollouts run over one shared `Problem` with real
+    /// parallelism: the shared tables are the only contended structure during a grounded
+    /// search, and they are lock-striped, so sharing them makes threading strictly harmful.
+    /// See docs/PARALLEL_IW_ROLLOUTS.md.
+    ///
+    /// ATTENTION: a `State` created by a repository with private tables is not a valid
+    /// lookup key in any other repository. Callers must re-create the start state through
+    /// this repository (see `get_or_create_state`).
+    struct PrivateInterningTables
+    {
+    };
+
     struct StagedSuccessorInternTimings
     {
         std::chrono::nanoseconds fluent_slot_time = std::chrono::nanoseconds::zero();
@@ -84,7 +104,20 @@ public:
     };
 
 private:
+    using IndexTreeTable = valla::IndexedHashSet<valla::Slot<Index>, Index>;
+    using DoubleLeafTable = valla::IndexedHashSet<double, Index>;
+
+    struct OwnedInterningTables
+    {
+        IndexTreeTable index_tree;
+        DoubleLeafTable double_leaf;
+    };
+
     AxiomEvaluator m_axiom_evaluator;  ///< The axiom evaluator.
+
+    std::unique_ptr<OwnedInterningTables> m_owned_interning_tables;  ///< Null when sharing the `Problem`'s tables.
+    IndexTreeTable& m_index_tree_table;    ///< Bound once at construction, never rebound.
+    DoubleLeafTable& m_double_leaf_table;  ///< Bound once at construction, never rebound.
 
     PackedStateImplMap m_states;  ///< Stores all created extended states.
     std::vector<PackedState> m_packed_states_by_index;
@@ -103,9 +136,16 @@ private:
     SharedObjectPool<UnpackedStateImpl> m_unpacked_state_pool;
 
 public:
+    /// @brief Construct a repository that interns states into the `Problem`'s shared tables.
     explicit StateRepositoryImpl(AxiomEvaluator axiom_evaluator);
 
+    /// @brief Construct a repository that owns its interning tables, so it shares no mutable
+    /// state with any other repository over the same `Problem`. See `PrivateInterningTables`.
+    StateRepositoryImpl(AxiomEvaluator axiom_evaluator, PrivateInterningTables);
+
     static StateRepository create(AxiomEvaluator axiom_evaluator);
+
+    static StateRepository create(AxiomEvaluator axiom_evaluator, PrivateInterningTables);
 
     StateRepositoryImpl(const StateRepositoryImpl& other) = delete;
     StateRepositoryImpl& operator=(const StateRepositoryImpl& other) = delete;

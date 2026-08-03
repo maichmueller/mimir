@@ -34,6 +34,7 @@
 #include "mimir/search/algorithms/gbfs_lazy/event_handlers.hpp"
 #include "mimir/search/algorithms/iw.hpp"
 #include "mimir/search/algorithms/iw/event_handlers.hpp"
+#include "mimir/search/algorithms/iw/parallel_rollouts.hpp"
 #include "mimir/search/algorithms/siw.hpp"
 #include "mimir/search/algorithms/siw/event_handlers.hpp"
 

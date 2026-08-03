@@ -19,3 +19,8 @@ target_link_libraries(kb mimir::core)
 
 add_executable(planner_astar_symmetries "planner_astar_symmetries.cpp")
 target_link_libraries(planner_astar_symmetries mimir::core)
+add_executable(probe_parallel_rollouts "probe_parallel_rollouts.cpp")
+target_link_libraries(probe_parallel_rollouts mimir::core)
+
+add_executable(bench_serial_iw "bench_serial_iw.cpp")
+target_link_libraries(bench_serial_iw mimir::core)
