@@ -90,6 +90,19 @@ public:
     /// ATTENTION: a `State` created by a repository with private tables is not a valid
     /// lookup key in any other repository. Callers must re-create the start state through
     /// this repository (see `get_or_create_state`).
+    ///
+    /// ATTENTION: private tables do NOT make a repository independent of every other one
+    /// over the same `Problem`. Two things stay shared and mutable:
+    ///   * `m_axiom_evaluator` -- `find_rollouts_parallel` hands the SAME evaluator to all
+    ///     K repositories and to the caller's. It is safe today only because
+    ///     `generate_and_apply_axioms` keeps its scratch function-local and writes solely
+    ///     into the caller-supplied `UnpackedStateImpl`; that is a property to preserve,
+    ///     not an accident to rely on silently.
+    ///   * the `m_event_handler` inside the shared applicable-action generator and axiom
+    ///     evaluator, which every rollout writes to (statistics only, but genuinely raced).
+    /// Separately, `m_unpacked_state_pool` and the `SharedObjectPoolPtr` refcount it hands
+    /// out are unsynchronized, so a `State` belonging to THIS repository must never be
+    /// copied or destroyed on another thread.
     struct PrivateInterningTables
     {
     };

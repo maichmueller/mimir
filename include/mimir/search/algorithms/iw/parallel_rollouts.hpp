@@ -35,6 +35,26 @@ namespace mimir::search::iw
 /// search mutates nothing at the `Problem` level except the `valla` interning tables, and
 /// each rollout is given its own (see `StateRepositoryImpl::PrivateInterningTables`).
 /// See docs/PARALLEL_IW_ROLLOUTS.md for the measurements behind this design.
+///
+/// The conditions that make it sound, all enforced or maintained internally:
+///
+///   1. The context must be grounded. Lifted grows the `Problem`'s `Repositories` during
+///      search through `ProblemImpl::ground(...)`, and `loki::IndexedHashSet` has no
+///      synchronization. Rejected at the top of `find_rollouts_parallel`.
+///   2. `beam_width` must be unset -- the randomized layer ordering cannot score eagerly.
+///      Also rejected there.
+///   3. **No caller-owned `State` may reach a worker thread.** `State` holds a
+///      `SharedObjectPoolPtr<UnpackedStateImpl>` with a NON-ATOMIC refcount pointing into
+///      the caller's unsynchronized `SharedObjectPool`, so copying one into N tasks races
+///      that refcount; a lost increment frees a live object back to the caller's pool and
+///      it is reissued to a different state. `find_rollouts_parallel` therefore clears
+///      `options.start_state` before anything is copied per worker, and each rollout
+///      re-creates its start state in its own repository from a dense description taken on
+///      the calling thread. Callers may pass any `State` they like -- it never crosses.
+///
+/// Points 1 and 2 reject; point 3 is handled for the caller. Preserve all three when
+/// changing this file: violating (3) does not crash, it silently corrupts the CALLER's
+/// states, which then enumerate actions whose own preconditions do not hold.
 struct ParallelRolloutOptions
 {
     /// @brief One rollout is run per seed. The seed drives both the randomized layer

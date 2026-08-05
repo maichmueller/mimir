@@ -106,6 +106,19 @@ std::vector<RolloutResult> find_rollouts_parallel(const SearchContext& context, 
                                        describe_start_state(options.options.start_state.value()) :
                                        DenseStartState { problem->get_fluent_initial_atoms(), problem->get_initial_function_to_value<FluentTag>() };
 
+    /* Strip the caller's `State` out of the options BEFORE anything is copied per worker.
+       `State` holds a `SharedObjectPoolPtr<UnpackedStateImpl>` whose refcount is bumped
+       non-atomically and whose pool -- the CALLER's -- has no synchronization. Copying the
+       options into N tasks therefore races that refcount N ways: a lost increment drops it
+       to zero early, the pool reclaims a live `UnpackedStateImpl`, and it is handed out
+       again to a different state, which then reads someone else's dense atoms. The visible
+       damage is in the caller's repository, not ours -- states start enumerating actions
+       whose own preconditions do not hold.
+       Nothing downstream needs it: `dense_start_state` above already captured the content
+       on this thread, and every rollout re-creates its own start state below. */
+    auto base_options = options.options;
+    base_options.start_state = std::nullopt;
+
     /* One private state repository per rollout, each with its own interning tables but
        sharing the (read-only, thread-safe) match-tree-backed generators. */
     auto contexts = std::vector<SearchContext> {};
@@ -128,7 +141,7 @@ std::vector<RolloutResult> find_rollouts_parallel(const SearchContext& context, 
         const auto& rollout_context = contexts[k];
         const auto seed = options.seeds[k];
 
-        auto rollout_options = options.options;
+        auto rollout_options = base_options;  ///< never `options.options`: see the note above
         rollout_options.layer_ordering_strategy = RandomizedLayerOrderingStrategyImpl::create(seed);
         rollout_options.randomize_equal_score_ties = true;
         rollout_options.equal_score_tie_seed = seed;
