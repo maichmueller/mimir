@@ -139,14 +139,24 @@ private:
     FlatBitset m_reached_fluent_atoms;   ///< Stores all encountered fluent atoms.
     FlatBitset m_reached_derived_atoms;  ///< Stores all encountered derived atoms.
 
+    bool m_track_first_achievers;                 ///< Opt-in; see `enable_first_achiever_tracking`.
+    std::vector<Index> m_first_achiever_by_atom;  ///< Fluent atom index -> state index, or `MAX_INDEX`.
+
     /* Memory for reuse */
 
     FlatBitset m_applied_positive_effect_atoms;
     FlatBitset m_applied_negative_effect_atoms;
+    FlatBitset m_dense_fluent_atoms_scratch;  ///< Only for the `GroundAtomList` -> dense translation.
 
     IndexList m_index_list;
 
     SharedObjectPool<UnpackedStateImpl> m_unpacked_state_pool;
+
+private:
+    /// @brief Record the first achiever of every atom `state_fluent_atoms` newly reaches.
+    /// No-op unless `enable_first_achiever_tracking` was called. Must be invoked at each
+    /// `update_reached_fluent_atoms` site, BEFORE the union and before the emplace.
+    void record_first_achievers(const FlatBitset& state_fluent_atoms);
 
 public:
     /// @brief Construct a repository that interns states into the `Problem`'s shared tables.
@@ -175,6 +185,22 @@ public:
     /// @return the state and its associated metric value, which is 0 in the case of :action-costs.
     std::pair<State, ContinuousCost> get_or_create_state(const formalism::GroundAtomList<formalism::FluentTag>& atoms,
                                                          const FlatDoubleList& fluent_numeric_variables);
+
+    /// @brief Get or create the state described by a dense set of fluent ground atom INDICES.
+    ///
+    /// Identical in effect to the `GroundAtomList` overload -- that one only ever uses its
+    /// argument to set these same bits -- but skips materializing the atom list. This is the
+    /// overload to use when moving a state BETWEEN repositories over the same `Problem`: a
+    /// `PackedState`/`valla::Slot` is meaningful only relative to the interning table that
+    /// produced it (see `PrivateInterningTables`), whereas ground-atom indices are stable
+    /// across every repository over one grounded `Problem`, whose `Repositories` is frozen.
+    /// The dense bitset is therefore the portable description of a state, and this is the
+    /// entry point that re-interns it here.
+    ///
+    /// ATTENTION: this INSERTS. Against a repository that already holds the state -- e.g. one
+    /// backing a complete `StateSpace` -- it is a pure lookup and the state count does not
+    /// grow; against any other it grows the repository permanently.
+    std::pair<State, ContinuousCost> get_or_create_state(const FlatBitset& fluent_atoms, const FlatDoubleList& fluent_numeric_variables);
 
     /// @brief Get or create the successor state when applying the given ground `action` in the given `state`.
     /// @param state is the state.
@@ -216,6 +242,22 @@ public:
     State make_temporary_staged_successor_state(const StagedSuccessorState& successor_state,
                                                 const StagedSuccessorHandle& successor_handle,
                                                 StagedSuccessorScratch& scratch);
+
+    /// @brief Start recording, per fluent ground atom, the index of the FIRST state created
+    /// here in which that atom holds.
+    ///
+    /// Off by default because it costs a membership test per set bit of every created state,
+    /// on top of the union that `m_reached_fluent_atoms` already performs. Enable it only on
+    /// repositories whose achievers you actually intend to read -- e.g. an IW rollout's own
+    /// repository, where the recorded state is the one a worker searching for that atom as a
+    /// subgoal would land in.
+    ///
+    /// Must be called before any state is created; it is not retroactive.
+    void enable_first_achiever_tracking();
+
+    /// @brief Fluent atom index -> index of the first state here achieving it, or
+    /// `MAX_INDEX`. Empty unless `enable_first_achiever_tracking` was called.
+    const std::vector<Index>& get_first_achiever_state_by_atom() const;
 
     /// @brief Get the state with the given packed state.
     /// This operation unpacks the state.

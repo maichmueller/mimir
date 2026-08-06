@@ -63,8 +63,11 @@ StateRepositoryImpl::StateRepositoryImpl(AxiomEvaluator axiom_evaluator) :
     m_fluent_atom_slots(),
     m_reached_fluent_atoms(),
     m_reached_derived_atoms(),
+    m_track_first_achievers(false),
+    m_first_achiever_by_atom(),
     m_applied_positive_effect_atoms(),
     m_applied_negative_effect_atoms(),
+    m_dense_fluent_atoms_scratch(),
     m_index_list(),
     m_unpacked_state_pool()
 {
@@ -80,8 +83,11 @@ StateRepositoryImpl::StateRepositoryImpl(AxiomEvaluator axiom_evaluator, Private
     m_fluent_atom_slots(),
     m_reached_fluent_atoms(),
     m_reached_derived_atoms(),
+    m_track_first_achievers(false),
+    m_first_achiever_by_atom(),
     m_applied_positive_effect_atoms(),
     m_applied_negative_effect_atoms(),
+    m_dense_fluent_atoms_scratch(),
     m_index_list(),
     m_unpacked_state_pool()
 {
@@ -105,6 +111,41 @@ static void update_reached_fluent_atoms(const FlatBitset& state_fluent_atoms, Fl
     ref_reached_fluent_atoms |= state_fluent_atoms;
 }
 
+void StateRepositoryImpl::record_first_achievers(const FlatBitset& state_fluent_atoms)
+{
+    if (!m_track_first_achievers)
+    {
+        return;
+    }
+
+    /* Called at every `update_reached_fluent_atoms` site, i.e. immediately BEFORE the state
+       is emplaced, so the index it is about to receive is the current map size. Two of the
+       three sites run only for states already known to be new; the third
+       (`get_or_create_state`) runs before its own lookup, but that is harmless: if the state
+       already exists then every atom it holds was unioned into `m_reached_fluent_atoms` when
+       it was first created, so the loop below records nothing. */
+    const auto state_index = static_cast<Index>(m_states.size());
+    for (const auto atom_index : state_fluent_atoms)
+    {
+        if (m_reached_fluent_atoms.get(atom_index))
+        {
+            continue;  ///< some earlier state already achieved it
+        }
+        if (atom_index >= m_first_achiever_by_atom.size())
+        {
+            m_first_achiever_by_atom.resize(atom_index + 1, MAX_INDEX);
+        }
+        m_first_achiever_by_atom[atom_index] = state_index;
+    }
+}
+
+void StateRepositoryImpl::enable_first_achiever_tracking()
+{
+    m_track_first_achievers = true;
+}
+
+const std::vector<Index>& StateRepositoryImpl::get_first_achiever_state_by_atom() const { return m_first_achiever_by_atom; }
+
 static void update_reached_derived_atoms(const FlatBitset& state_derived_atoms, FlatBitset& ref_reached_derived_atoms)
 {
     ref_reached_derived_atoms |= state_derived_atoms;
@@ -112,6 +153,19 @@ static void update_reached_derived_atoms(const FlatBitset& state_derived_atoms, 
 
 std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_state(const GroundAtomList<FluentTag>& atoms,
                                                                           const FlatDoubleList& fluent_numeric_variables)
+{
+    /* The dense overload below is the implementation. This one only translates its argument
+       into the same bits that overload would set anyway. The scratch bitset is dedicated
+       rather than reusing an effect-application buffer, which axiom evaluation may touch. */
+    m_dense_fluent_atoms_scratch.unset_all();
+    for (const auto& atom : atoms)
+    {
+        m_dense_fluent_atoms_scratch.set(atom->get_index());
+    }
+    return get_or_create_state(m_dense_fluent_atoms_scratch, fluent_numeric_variables);
+}
+
+std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_state(const FlatBitset& fluent_atoms, const FlatDoubleList& fluent_numeric_variables)
 {
     auto& problem = *m_axiom_evaluator->get_problem();
     auto& index_tree_table = m_index_tree_table;
@@ -139,12 +193,11 @@ std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_state(const 
     state_numeric_variables = valla::insert_sequence(m_index_list, index_tree_table);
 
     /* 2.2. Propositional state */
-    for (const auto& atom : atoms)
-    {
-        dense_fluent_atoms.set(atom->get_index());
-    }
+    dense_fluent_atoms |= fluent_atoms;
 
     state_fluent_atoms_slot = valla::insert_sequence(dense_fluent_atoms, index_tree_table);
+
+    record_first_achievers(dense_fluent_atoms);
 
     update_reached_fluent_atoms(dense_fluent_atoms, m_reached_fluent_atoms);
 
@@ -341,6 +394,8 @@ std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_successor_st
                          successor_state_metric_value);
 
     state_fluent_atoms_slot = valla::insert_sequence(dense_fluent_atoms, index_tree_table);
+
+    record_first_achievers(dense_fluent_atoms);
 
     update_reached_fluent_atoms(dense_fluent_atoms, m_reached_fluent_atoms);
 
@@ -552,6 +607,7 @@ StateRepositoryImpl::get_or_create_staged_successor_handle(const StagedSuccessor
     }
 
     const auto reached_atom_update_start = std::chrono::steady_clock::now();
+    record_first_achievers(successor_state.fluent_atoms);
     update_reached_fluent_atoms(successor_state.fluent_atoms, m_reached_fluent_atoms);
     update_reached_derived_atoms(successor_state.derived_atoms, m_reached_derived_atoms);
     if (timings)
