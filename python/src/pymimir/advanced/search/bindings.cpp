@@ -1310,11 +1310,27 @@ void bind_module_definitions(nb::module_& m)
         .def(nb::init<>())
         .def_rw("seeds", &iw::ParallelRolloutOptions::seeds)
         .def_rw("num_threads", &iw::ParallelRolloutOptions::num_threads)
-        .def_rw("options", &iw::ParallelRolloutOptions::options);
+        .def_rw("options", &iw::ParallelRolloutOptions::options)
+        .def_rw("report_landing_states", &iw::ParallelRolloutOptions::report_landing_states);
+
+    nb::class_<iw::LandingState>(m, "IWLandingState")  //
+        .def_ro("is_direct_dead_end", &iw::LandingState::is_direct_dead_end)
+        .def_prop_ro("fluent_atoms",
+                     [](const iw::LandingState& self)
+                     {
+                         auto indices = std::vector<Index> {};
+                         for (const auto index : self.fluent_atoms)
+                         {
+                             indices.push_back(index);
+                         }
+                         return indices;
+                     });
 
     nb::class_<iw::RolloutResult>(m, "IWRolloutResult")  //
         .def_ro("status", &iw::RolloutResult::status)
         .def_ro("num_states", &iw::RolloutResult::num_states)
+        .def_ro("landing_states", &iw::RolloutResult::landing_states)
+        .def_ro("landing_state_by_atom", &iw::RolloutResult::landing_state_by_atom)
         .def_prop_ro("reached_fluent_atoms",
                      [](const iw::RolloutResult& self)
                      {
@@ -1348,6 +1364,14 @@ void bind_module_definitions(nb::module_& m)
         },
         "search_context"_a,
         "options"_a);
+
+    // Must run on this thread, after the batch has joined: it mutates `target` and the states
+    // it creates there carry pooled handles with non-atomic refcounts.
+    m.def(
+        "migrate_iw_rollout_landing_states",
+        [](const std::vector<iw::RolloutResult>& results, StateRepository& target) { return iw::migrate_landing_states(results, target); },
+        "results"_a,
+        "target"_a);
 
     // SIW
     nb::class_<siw::Statistics>(m, "SIWStatistics")  //

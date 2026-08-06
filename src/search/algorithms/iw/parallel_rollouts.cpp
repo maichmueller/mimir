@@ -30,6 +30,7 @@
 #include "mimir/search/search_context.hpp"
 #include "mimir/search/state_repository.hpp"
 
+#include <unordered_map>
 #include <exception>
 #include <limits>
 #include <stdexcept>
@@ -61,6 +62,90 @@ DenseStartState describe_start_state(const State& state)
     result.fluent_atoms = state.get_problem().get_repositories().get_ground_atoms_from_indices<FluentTag>(state.get_atoms<FluentTag>());
     result.numeric_variables = state.get_numeric_variables();
     return result;
+}
+
+/// @brief Whether any action is applicable in `state`, without enumerating the rest.
+bool has_applicable_action(const ApplicableActionGenerator& generator, const State& state)
+{
+    auto applicable_actions = generator->create_applicable_action_generator(state);
+    return applicable_actions.begin() != applicable_actions.end();
+}
+
+/// @brief Dedup key for a landing state: its content, not its (rollout-local) identity.
+struct LandingKey
+{
+    IndexList fluent_atom_indices;
+    FlatDoubleList numeric_variables;
+
+    bool operator==(const LandingKey& other) const
+    {
+        return fluent_atom_indices == other.fluent_atom_indices
+               && std::equal(numeric_variables.begin(), numeric_variables.end(), other.numeric_variables.begin(), other.numeric_variables.end());
+    }
+};
+
+struct LandingKeyHash
+{
+    size_t operator()(const LandingKey& key) const
+    {
+        auto seed = key.fluent_atom_indices.size();
+        for (const auto index : key.fluent_atom_indices)
+        {
+            loki::hash_combine(seed, index);
+        }
+        for (const auto value : key.numeric_variables)
+        {
+            loki::hash_combine(seed, value);
+        }
+        return seed;
+    }
+};
+
+LandingKey describe_landing_state(const LandingState& landing_state)
+{
+    auto key = LandingKey {};
+    for (const auto atom_index : landing_state.fluent_atoms)
+    {
+        key.fluent_atom_indices.push_back(atom_index);
+    }
+    key.numeric_variables = landing_state.numeric_variables;
+    return key;
+}
+
+/// @brief Turn this rollout's per-atom first achievers into distinct landing states.
+///
+/// Runs on the worker, which is the only thread allowed to touch this rollout's repository
+/// or hold its `State`s. Every `State` materialized here is destroyed before returning; only
+/// dense descriptions cross the join. See `LandingState`.
+void collect_landing_states(StateRepositoryImpl& repository, const ApplicableActionGenerator& generator, RolloutResult& ref_result)
+{
+    const auto& achiever_by_atom = repository.get_first_achiever_state_by_atom();
+    ref_result.landing_state_by_atom.assign(achiever_by_atom.size(), MAX_INDEX);
+
+    /* Many atoms share a landing state -- one state achieves every atom its action added --
+       so deduplicate here rather than making the caller do it after the join. */
+    auto position_by_state_index = std::unordered_map<Index, Index> {};
+
+    for (size_t atom_index = 0; atom_index < achiever_by_atom.size(); ++atom_index)
+    {
+        const auto state_index = achiever_by_atom[atom_index];
+        if (state_index == MAX_INDEX)
+        {
+            continue;  ///< never reached by this rollout
+        }
+
+        auto [it, inserted] = position_by_state_index.emplace(state_index, static_cast<Index>(ref_result.landing_states.size()));
+        if (inserted)
+        {
+            const auto state = repository.get_state(*repository.get_packed_state(state_index));
+            auto landing_state = LandingState {};
+            landing_state.fluent_atoms = state.get_atoms<FluentTag>();
+            landing_state.numeric_variables = state.get_numeric_variables();
+            landing_state.is_direct_dead_end = !has_applicable_action(generator, state);
+            ref_result.landing_states.push_back(std::move(landing_state));
+        }
+        ref_result.landing_state_by_atom[atom_index] = it->second;
+    }
 }
 
 }
@@ -126,6 +211,11 @@ std::vector<RolloutResult> find_rollouts_parallel(const SearchContext& context, 
     for (size_t k = 0; k < num_rollouts; ++k)
     {
         auto state_repository = StateRepositoryImpl::create(axiom_evaluator, StateRepositoryImpl::PrivateInterningTables {});
+        if (options.report_landing_states)
+        {
+            // Before any state exists in it -- the tracking is not retroactive.
+            state_repository->enable_first_achiever_tracking();
+        }
         contexts.push_back(SearchContextImpl::create(problem, applicable_action_generator, std::move(state_repository)));
     }
 
@@ -157,12 +247,17 @@ std::vector<RolloutResult> find_rollouts_parallel(const SearchContext& context, 
 
         const auto search_result = find_solution(rollout_context, rollout_options);
 
-        const auto& repository = *rollout_context->get_state_repository();
+        auto& repository = *rollout_context->get_state_repository();
         auto& result = results[k];
         result.status = search_result.status;
         result.reached_fluent_atoms = repository.get_reached_fluent_ground_atoms_bitset();
         result.reached_derived_atoms = repository.get_reached_derived_ground_atoms_bitset();
         result.num_states = repository.get_state_count();
+
+        if (options.report_landing_states)
+        {
+            collect_landing_states(repository, applicable_action_generator, result);
+        }
     };
 
     const auto run_rollout = [&](size_t k)
@@ -204,6 +299,43 @@ std::vector<RolloutResult> find_rollouts_parallel(const SearchContext& context, 
     }
 
     return results;
+}
+
+
+std::vector<std::vector<Index>> migrate_landing_states(const std::vector<RolloutResult>& results, StateRepository& target)
+{
+    auto migrated = std::vector<std::vector<Index>>(results.size());
+
+    /* One entry per DISTINCT landing state across the whole batch. K differently-seeded
+       rollouts overwhelmingly land in the same states, and each miss costs a re-intern
+       (`valla::insert_sequence` over the dense atoms), so this is worth the map. */
+    auto target_index_by_landing_state = std::unordered_map<LandingKey, Index, LandingKeyHash> {};
+
+    for (size_t k = 0; k < results.size(); ++k)
+    {
+        const auto& landing_states = results[k].landing_states;
+        migrated[k].reserve(landing_states.size());
+
+        for (const auto& landing_state : landing_states)
+        {
+            auto key = describe_landing_state(landing_state);
+            const auto it = target_index_by_landing_state.find(key);
+            if (it != target_index_by_landing_state.end())
+            {
+                migrated[k].push_back(it->second);
+                continue;
+            }
+
+            /* The only step that needs `target`'s own thread: this inserts into `target` and
+               hands back a `State` whose pooled handle has a non-atomic refcount. */
+            const auto state = target->get_or_create_state(landing_state.fluent_atoms, landing_state.numeric_variables).first;
+            const auto target_index = state.get_index();
+            target_index_by_landing_state.emplace(std::move(key), target_index);
+            migrated[k].push_back(target_index);
+        }
+    }
+
+    return migrated;
 }
 
 }
