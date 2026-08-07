@@ -146,6 +146,7 @@ from pymimir.pymimir.advanced.search import (
     IWLandingState,
     find_rollouts_iw_parallel,
     migrate_iw_rollout_landing_states,
+    intersect_iw_rollout_co_occurrence,
     RolloutIWActionOrderingKind,
     RolloutIWActionOrderingConfiguration,
     RolloutIWPlanStep,

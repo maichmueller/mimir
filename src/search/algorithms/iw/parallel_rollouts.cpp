@@ -211,10 +211,14 @@ std::vector<RolloutResult> find_rollouts_parallel(const SearchContext& context, 
     for (size_t k = 0; k < num_rollouts; ++k)
     {
         auto state_repository = StateRepositoryImpl::create(axiom_evaluator, StateRepositoryImpl::PrivateInterningTables {});
+        // Before any state exists in it -- neither tracker is retroactive.
         if (options.report_landing_states)
         {
-            // Before any state exists in it -- the tracking is not retroactive.
             state_repository->enable_first_achiever_tracking();
+        }
+        if (options.report_co_occurrence)
+        {
+            state_repository->enable_co_occurrence_tracking();
         }
         contexts.push_back(SearchContextImpl::create(problem, applicable_action_generator, std::move(state_repository)));
     }
@@ -257,6 +261,10 @@ std::vector<RolloutResult> find_rollouts_parallel(const SearchContext& context, 
         if (options.report_landing_states)
         {
             collect_landing_states(repository, applicable_action_generator, result);
+        }
+        if (options.report_co_occurrence)
+        {
+            result.co_occurrence_by_atom = repository.get_co_occurrence_by_atom();
         }
     };
 
@@ -301,6 +309,33 @@ std::vector<RolloutResult> find_rollouts_parallel(const SearchContext& context, 
     return results;
 }
 
+
+std::vector<FlatBitset> intersect_co_occurrence(const std::vector<RolloutResult>& results)
+{
+    if (results.empty())
+    {
+        return {};
+    }
+
+    auto intersected = results.front().co_occurrence_by_atom;
+    for (size_t k = 1; k < results.size(); ++k)
+    {
+        const auto& rows = results[k].co_occurrence_by_atom;
+        for (size_t atom_index = 0; atom_index < intersected.size(); ++atom_index)
+        {
+            if (atom_index >= rows.size())
+            {
+                /* Beyond this rollout's largest reached atom, so it saw the atom co-occur with
+                   nothing. Clearing rather than leaving the row is the whole point: an atom one
+                   rollout never reached must not contribute pairs to a unanimous fold. */
+                intersected[atom_index].unset_all();
+                continue;
+            }
+            intersected[atom_index] &= rows[atom_index];
+        }
+    }
+    return intersected;
+}
 
 std::vector<std::vector<Index>> migrate_landing_states(const std::vector<RolloutResult>& results, StateRepository& target)
 {

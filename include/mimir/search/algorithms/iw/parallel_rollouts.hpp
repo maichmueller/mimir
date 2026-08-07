@@ -83,6 +83,19 @@ struct ParallelRolloutOptions
     /// during a goal-free rollout; deciding that needs a state space or a heuristic. That is
     /// why the landing state itself is reported and not merely a flag.
     bool report_landing_states = false;
+
+    /// @brief Also report, per reached fluent atom, every atom ever true alongside it.
+    ///
+    /// `reached_fluent_atoms` says which atoms a rollout can reach; this says which PAIRS it can
+    /// reach jointly, which is the question a caller emitting conjunctive subgoals has to answer
+    /// and which the reached-atom set cannot: two separately reachable atoms need not be
+    /// reachable together. Off by default -- it costs a bitset union per set bit of every created
+    /// state, and |reached atoms| bitsets of memory per rollout.
+    ///
+    /// The rows are directly intersectable across the batch: ground-atom indices are stable over
+    /// the shared grounded `Problem`, exactly as for `reached_fluent_atoms`. See
+    /// `intersect_co_occurrence`, which does that fold without materializing the pairs.
+    bool report_co_occurrence = false;
 };
 
 /// @brief Where a rollout first achieved some atom, in a form that is safe to hand back.
@@ -124,6 +137,11 @@ struct RolloutResult
     /// this rollout never reached. Sized to the largest reached atom index plus one, so
     /// callers must bounds-check before indexing.
     std::vector<Index> landing_state_by_atom = {};
+
+    /// @brief Fluent atom index -> the atoms ever true alongside it in this rollout, itself
+    /// included. Empty unless `report_co_occurrence`. Sized to the largest reached atom index
+    /// plus one, so callers must bounds-check before indexing.
+    std::vector<FlatBitset> co_occurrence_by_atom = {};
 };
 
 /// @brief Run one IW rollout per seed in parallel over the shared `Problem` of `context`.
@@ -156,6 +174,21 @@ extern std::vector<RolloutResult> find_rollouts_parallel(const SearchContext& co
 /// as a repository backing a complete `StateSpace` does, where this is a pure lookup and the
 /// natural way to reach that state space's vertex for a landing state.
 extern std::vector<std::vector<Index>> migrate_landing_states(const std::vector<RolloutResult>& results, StateRepository& target);
+
+/// @brief Intersect the co-occurrence rows of a batch: the pairs EVERY rollout saw together.
+///
+/// A single goal-free rollout over-approximates joint reachability -- it exhausts novelty in one
+/// arbitrary layer order, and two atoms can share a state there without being jointly achievable
+/// by any plan. Rollouts under different orders over-approximate differently, so the intersection
+/// is the tighter estimate, and how much tighter is a property of the domain rather than of this
+/// function: in some domains every seed agrees and the fold is free of information.
+///
+/// An atom missing from a rollout's rows co-occurs with nothing in that rollout and so empties
+/// the intersection for that atom, rather than being skipped -- otherwise a pair a single rollout
+/// happened to see would survive a fold that is supposed to require unanimity.
+///
+/// Returns empty if `results` is empty or the batch did not set `report_co_occurrence`.
+extern std::vector<FlatBitset> intersect_co_occurrence(const std::vector<RolloutResult>& results);
 
 }
 

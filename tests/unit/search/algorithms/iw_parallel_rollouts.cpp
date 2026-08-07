@@ -242,6 +242,188 @@ TEST(MimirTests, SearchAlgorithmsIWParallelRolloutsEmptyBatchTest)
     EXPECT_TRUE(iw::find_rollouts_parallel(context, make_batch_options(0, 4)).empty());
 }
 
+/// Co-occurrence capture is opt-in, like landing states: a default batch must not pay for it.
+TEST(MimirTests, SearchAlgorithmsIWParallelRolloutsCoOccurrenceIsOptInTest)
+{
+    const auto context = create_grounded_context("gripper/domain.pddl", "gripper/test_problem.pddl");
+
+    for (const auto& rollout : iw::find_rollouts_parallel(context, make_batch_options(4, 4)))
+    {
+        EXPECT_TRUE(rollout.co_occurrence_by_atom.empty());
+    }
+    EXPECT_TRUE(iw::intersect_co_occurrence(iw::find_rollouts_parallel(context, make_batch_options(4, 4))).empty());
+}
+
+/// Accumulating during search must give exactly what unpacking every created state afterwards
+/// would give. That equivalence is the whole justification for the tracker: the rows are
+/// reconstructible, just not affordably, because reconstruction unpacks the entire repository.
+///
+/// Deliberately checked against the repository the search actually ran in, not against a replay
+/// in a fresh one. A replay compares two searches, and under a randomized layer ordering those
+/// need not explore the same states at all -- in blocksworld they reliably do not.
+TEST(MimirTests, StateRepositoryCoOccurrenceMatchesUnpackedStatesTest)
+{
+    for (const auto& [domain, problem] : std::vector<std::pair<std::string, std::string>> { { "gripper/domain.pddl", "gripper/test_problem.pddl" },
+                                                                                           { "blocks_4/domain.pddl", "blocks_4/p09-easy.pddl" } })
+    {
+        const auto context = create_grounded_context(domain, problem);
+        auto& repository = *context->get_state_repository();
+        repository.enable_co_occurrence_tracking();  ///< before any state exists
+
+        auto options = iw::Options();
+        options.max_arity = 2;
+        iw::find_solution(context, options);
+
+        const auto& rows = repository.get_co_occurrence_by_atom();
+
+        auto expected = std::vector<FlatBitset>(rows.size());
+        for (size_t index = 0; index < repository.get_state_count(); ++index)
+        {
+            const auto atoms = repository.get_state(*repository.get_packed_state(static_cast<Index>(index))).get_atoms<FluentTag>();
+            for (const auto atom_index : atoms)
+            {
+                ASSERT_LT(atom_index, expected.size()) << domain << " atom " << atom_index;
+                expected[atom_index] |= atoms;
+            }
+        }
+
+        EXPECT_EQ(rows, expected) << domain;
+
+        // Vacuity guards: all-empty rows, or a single state, would pass the above for free.
+        EXPECT_GT(rows.size(), 0u) << domain;
+        EXPECT_GT(repository.get_state_count(), 1u) << domain;
+    }
+}
+
+/// Tracking must not perturb the search it observes.
+///
+/// Both contexts are built over ONE parsed `Problem` and one generator, differing only in their
+/// repository. Two separately parsed problems would not be a control: measured on the instance
+/// below, IW(2) over a freshly parsed problem reaches a different state count on every run even
+/// with the default, non-randomized options -- 7188/7660/7430 across three runs -- so a
+/// re-parsing comparison would attribute that spread to the tracker.
+TEST(MimirTests, StateRepositoryCoOccurrenceDoesNotChangeSearchTest)
+{
+    const auto plain_context = create_grounded_context("blocks_4/domain.pddl", "blocks_4/p09-easy.pddl");
+
+    const auto tracked_repository =
+        StateRepositoryImpl::create(plain_context->get_state_repository()->get_axiom_evaluator(), StateRepositoryImpl::PrivateInterningTables {});
+    tracked_repository->enable_co_occurrence_tracking();  ///< before any state exists
+    const auto tracked_context =
+        SearchContextImpl::create(plain_context->get_problem(), plain_context->get_applicable_action_generator(), tracked_repository);
+
+    auto options = iw::Options();
+    options.max_arity = 2;
+
+    const auto plain = iw::find_solution(plain_context, options);
+    const auto tracked = iw::find_solution(tracked_context, options);
+
+    EXPECT_EQ(tracked.status, plain.status);
+    EXPECT_EQ(tracked_repository->get_state_count(), plain_context->get_state_repository()->get_state_count());
+    EXPECT_EQ(tracked_repository->get_reached_fluent_ground_atoms_bitset(),
+              plain_context->get_state_repository()->get_reached_fluent_ground_atoms_bitset());
+    EXPECT_FALSE(tracked_repository->get_co_occurrence_by_atom().empty());
+}
+
+/// Every atom the batch reached must have a row, and no row may claim an atom the rollout never
+/// reached. This is what makes the rows safe to intersect against `reached_fluent_atoms`.
+TEST(MimirTests, SearchAlgorithmsIWParallelRolloutsCoOccurrenceAgreesWithReachedAtomsTest)
+{
+    const auto context = create_grounded_context("blocks_4/domain.pddl", "blocks_4/p09-easy.pddl");
+    auto options = make_batch_options(4, 4);
+    options.options.max_arity = 2;
+    options.report_co_occurrence = true;
+
+    for (const auto& rollout : iw::find_rollouts_parallel(context, options))
+    {
+        auto covered = FlatBitset {};
+        for (size_t atom_index = 0; atom_index < rollout.co_occurrence_by_atom.size(); ++atom_index)
+        {
+            const auto& row = rollout.co_occurrence_by_atom[atom_index];
+            if (row.count() == 0)
+            {
+                continue;
+            }
+            covered.set(atom_index);
+            // An atom co-occurs with itself, and only with atoms this rollout also reached.
+            EXPECT_TRUE(row.get(atom_index)) << "atom " << atom_index << " missing from its own row";
+            auto outside = row;
+            outside -= rollout.reached_fluent_atoms;
+            EXPECT_EQ(outside.count(), 0u) << "atom " << atom_index << " co-occurs with unreached atoms";
+        }
+        EXPECT_EQ(covered, rollout.reached_fluent_atoms) << "rows and reached atoms disagree";
+    }
+}
+
+/// Parallel and serial batches must agree on the rows, exactly as they do on reached atoms.
+TEST(MimirTests, SearchAlgorithmsIWParallelRolloutsCoOccurrenceMatchesSerialTest)
+{
+    const auto context = create_grounded_context("blocks_4/domain.pddl", "blocks_4/p09-easy.pddl");
+
+    auto options = make_batch_options(8, 8);
+    options.options.max_next_layer_states = 2;  ///< as in the divergence test above
+    options.report_co_occurrence = true;
+
+    auto serial_options = options;
+    serial_options.num_threads = 1;
+
+    const auto serial = iw::find_rollouts_parallel(context, serial_options);
+    const auto parallel = iw::find_rollouts_parallel(context, options);
+
+    for (size_t k = 0; k < serial.size(); ++k)
+    {
+        EXPECT_EQ(parallel[k].co_occurrence_by_atom, serial[k].co_occurrence_by_atom) << "seed " << k;
+    }
+}
+
+/// The fold must require unanimity: every pair it keeps is a pair every rollout saw, and an
+/// atom one rollout never reached contributes nothing rather than being skipped over.
+TEST(MimirTests, SearchAlgorithmsIWParallelRolloutsIntersectCoOccurrenceTest)
+{
+    const auto context = create_grounded_context("blocks_4/domain.pddl", "blocks_4/p09-easy.pddl");
+
+    auto options = make_batch_options(8, 8);
+    options.options.max_next_layer_states = 2;  ///< forces the seeds apart; see above
+    options.report_co_occurrence = true;
+
+    const auto batch = iw::find_rollouts_parallel(context, options);
+    const auto intersected = iw::intersect_co_occurrence(batch);
+
+    ASSERT_EQ(intersected.size(), batch.front().co_occurrence_by_atom.size());
+
+    auto intersected_bits = size_t(0);
+    auto union_bits = size_t(0);
+    for (size_t atom_index = 0; atom_index < intersected.size(); ++atom_index)
+    {
+        auto expected = batch.front().co_occurrence_by_atom[atom_index];
+        for (const auto& rollout : batch)
+        {
+            if (atom_index >= rollout.co_occurrence_by_atom.size())
+            {
+                expected.unset_all();
+                break;
+            }
+            expected &= rollout.co_occurrence_by_atom[atom_index];
+        }
+        EXPECT_EQ(intersected[atom_index], expected) << "atom " << atom_index;
+
+        intersected_bits += intersected[atom_index].count();
+        for (const auto& rollout : batch)
+        {
+            if (atom_index < rollout.co_occurrence_by_atom.size())
+            {
+                auto merged = rollout.co_occurrence_by_atom[atom_index];
+                merged |= intersected[atom_index];
+                union_bits += merged.count() - intersected[atom_index].count();
+            }
+        }
+    }
+
+    // Guard the guard: with all seeds agreeing the fold would be a no-op and prove nothing.
+    EXPECT_GT(union_bits, 0u) << "seeds did not diverge, so this test is vacuous";
+    EXPECT_GT(intersected_bits, 0u) << "the fold emptied everything, so it is not measuring a fold";
+}
+
 /// A repository with private interning tables must behave exactly like the default one when
 /// used on its own -- same states, same reached atoms.
 TEST(MimirTests, StateRepositoryPrivateInterningTablesMatchSharedTest)

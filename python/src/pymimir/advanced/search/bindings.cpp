@@ -316,6 +316,26 @@ public:
     const gbfs_lazy::Statistics& get_statistics() const override { NB_OVERRIDE_PURE(get_statistics); }
 };
 
+/// @brief Co-occurrence rows as one index list per atom, in atom-index order.
+///
+/// Empty rows are kept so the result stays indexable by atom, the same convention as
+/// `landing_state_by_atom`.
+std::vector<IndexList> co_occurrence_as_index_lists(const std::vector<FlatBitset>& rows)
+{
+    auto result = std::vector<IndexList> {};
+    result.reserve(rows.size());
+    for (const auto& row : rows)
+    {
+        auto indices = IndexList {};
+        for (const auto index : row)
+        {
+            indices.push_back(index);
+        }
+        result.push_back(std::move(indices));
+    }
+    return result;
+}
+
 void bind_module_definitions(nb::module_& m)
 {
     /* Enums */
@@ -1335,7 +1355,8 @@ void bind_module_definitions(nb::module_& m)
         .def_rw("seeds", &iw::ParallelRolloutOptions::seeds)
         .def_rw("num_threads", &iw::ParallelRolloutOptions::num_threads)
         .def_rw("options", &iw::ParallelRolloutOptions::options)
-        .def_rw("report_landing_states", &iw::ParallelRolloutOptions::report_landing_states);
+        .def_rw("report_landing_states", &iw::ParallelRolloutOptions::report_landing_states)
+        .def_rw("report_co_occurrence", &iw::ParallelRolloutOptions::report_co_occurrence);
 
     nb::class_<iw::LandingState>(m, "IWLandingState")  //
         .def_ro("is_direct_dead_end", &iw::LandingState::is_direct_dead_end)
@@ -1374,7 +1395,17 @@ void bind_module_definitions(nb::module_& m)
                              indices.push_back(index);
                          }
                          return indices;
-                     });
+                     })
+        .def_prop_ro("co_occurrence_by_atom", [](const iw::RolloutResult& self) { return co_occurrence_as_index_lists(self.co_occurrence_by_atom); });
+
+    /* Folds the batch without materializing pairs; see `iw::intersect_co_occurrence`. Callers
+       that then want the pairs themselves should work from the rows rather than from this list
+       of lists -- the row form is quadratically smaller, and building the Python list here is
+       already the expensive part of the fold. */
+    m.def(
+        "intersect_iw_rollout_co_occurrence",
+        [](const std::vector<iw::RolloutResult>& results) { return co_occurrence_as_index_lists(iw::intersect_co_occurrence(results)); },
+        "results"_a);
 
     // The GIL is released for the whole batch. This is only sound because the batch takes no
     // Python callbacks -- unlike `find_solution_iw`, whose event handlers may be Python
