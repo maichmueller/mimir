@@ -90,13 +90,23 @@ TEST(MimirTests, SearchAlgorithmsIWParallelRolloutsMatchSerialTest)
     }
 }
 
-/// IW(1)'s reached-atom set is order-dependent in general (heavily so on blocksworld), but
-/// the small instances above happen to be insensitive, so every seed agrees there and a
-/// seed-plumbing or cross-rollout-interference bug would slip through. Capping the layer
-/// width forces divergence even on those; parallel and serial must still agree seed for seed.
+/// IW(1)'s reached-atom set is order-dependent in general, but the instances above are small
+/// enough to be insensitive, so every seed agrees there and a seed-plumbing or
+/// cross-rollout-interference bug would slip through. This runs the same seed-for-seed
+/// equivalence claim on rollouts that genuinely disagree.
+///
+/// The instance is load-bearing. This used to run on gripper, which is order-*insensitive*
+/// (all 16 seeds reach the same atoms -- docs/PARALLEL_IW_ROLLOUTS_HANDOFF.md section 3.1),
+/// so the only divergence was whatever the truncation manufactured: 1-2 distinct atom sets,
+/// and the vacuity guard below failed outright whenever it collapsed to 1, which was ~20% of
+/// runs. Blocksworld is order-sensitive for real. Measured over 40 freshly parsed `Problem`s
+/// of the 11-block instance below, all 8 seeds reach 8 distinct atom sets every time.
+///
+/// The cap stays: it is the only coverage of `max_next_layer_states` under the randomized
+/// layer ordering, and it keeps each rollout at ~60 states.
 TEST(MimirTests, SearchAlgorithmsIWParallelRolloutsMatchSerialWhenRolloutsDivergeTest)
 {
-    const auto context = create_grounded_context("gripper/domain.pddl", "gripper/test_problem.pddl");
+    const auto context = create_grounded_context("blocks_4/domain.pddl", "blocks_4/p09-easy.pddl");
 
     auto options = make_batch_options(8, 8);
     options.options.max_next_layer_states = 2;
@@ -114,7 +124,9 @@ TEST(MimirTests, SearchAlgorithmsIWParallelRolloutsMatchSerialWhenRolloutsDiverg
         EXPECT_EQ(parallel[k].reached_fluent_atoms, serial[k].reached_fluent_atoms) << "seed " << k;
     }
 
-    // Guard the guard: if every seed still agreed, this test would prove nothing.
+    // Guard the guard: if every seed still agreed, this test would prove nothing. Left at
+    // "more than one" rather than the measured 8 so that a future change in traversal order
+    // cannot turn a still-meaningful test red.
     auto distinct = std::set<std::vector<Index>> {};
     for (const auto& rollout : parallel)
     {
