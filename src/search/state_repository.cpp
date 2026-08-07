@@ -65,6 +65,8 @@ StateRepositoryImpl::StateRepositoryImpl(AxiomEvaluator axiom_evaluator) :
     m_reached_derived_atoms(),
     m_track_first_achievers(false),
     m_first_achiever_by_atom(),
+    m_track_co_occurrence(false),
+    m_co_occurrence_by_atom(),
     m_applied_positive_effect_atoms(),
     m_applied_negative_effect_atoms(),
     m_dense_fluent_atoms_scratch(),
@@ -85,6 +87,8 @@ StateRepositoryImpl::StateRepositoryImpl(AxiomEvaluator axiom_evaluator, Private
     m_reached_derived_atoms(),
     m_track_first_achievers(false),
     m_first_achiever_by_atom(),
+    m_track_co_occurrence(false),
+    m_co_occurrence_by_atom(),
     m_applied_positive_effect_atoms(),
     m_applied_negative_effect_atoms(),
     m_dense_fluent_atoms_scratch(),
@@ -146,6 +150,34 @@ void StateRepositoryImpl::enable_first_achiever_tracking()
 
 const std::vector<Index>& StateRepositoryImpl::get_first_achiever_state_by_atom() const { return m_first_achiever_by_atom; }
 
+void StateRepositoryImpl::record_co_occurrence(const FlatBitset& state_fluent_atoms)
+{
+    if (!m_track_co_occurrence)
+    {
+        return;
+    }
+
+    /* Every atom in this state co-occurs with every other atom in it, so one union per set bit
+       records the whole clique. Storing the clique as a row per atom rather than materializing
+       the pairs keeps this linear in the state's size instead of quadratic, and leaves the
+       result in the form callers intersect across rollouts anyway. */
+    for (const auto atom_index : state_fluent_atoms)
+    {
+        if (atom_index >= m_co_occurrence_by_atom.size())
+        {
+            m_co_occurrence_by_atom.resize(atom_index + 1);
+        }
+        m_co_occurrence_by_atom[atom_index] |= state_fluent_atoms;
+    }
+}
+
+void StateRepositoryImpl::enable_co_occurrence_tracking()
+{
+    m_track_co_occurrence = true;
+}
+
+const std::vector<FlatBitset>& StateRepositoryImpl::get_co_occurrence_by_atom() const { return m_co_occurrence_by_atom; }
+
 static void update_reached_derived_atoms(const FlatBitset& state_derived_atoms, FlatBitset& ref_reached_derived_atoms)
 {
     ref_reached_derived_atoms |= state_derived_atoms;
@@ -198,6 +230,7 @@ std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_state(const 
     state_fluent_atoms_slot = valla::insert_sequence(dense_fluent_atoms, index_tree_table);
 
     record_first_achievers(dense_fluent_atoms);
+    record_co_occurrence(dense_fluent_atoms);
 
     update_reached_fluent_atoms(dense_fluent_atoms, m_reached_fluent_atoms);
 
@@ -396,6 +429,7 @@ std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_successor_st
     state_fluent_atoms_slot = valla::insert_sequence(dense_fluent_atoms, index_tree_table);
 
     record_first_achievers(dense_fluent_atoms);
+    record_co_occurrence(dense_fluent_atoms);
 
     update_reached_fluent_atoms(dense_fluent_atoms, m_reached_fluent_atoms);
 
@@ -608,6 +642,7 @@ StateRepositoryImpl::get_or_create_staged_successor_handle(const StagedSuccessor
 
     const auto reached_atom_update_start = std::chrono::steady_clock::now();
     record_first_achievers(successor_state.fluent_atoms);
+    record_co_occurrence(successor_state.fluent_atoms);
     update_reached_fluent_atoms(successor_state.fluent_atoms, m_reached_fluent_atoms);
     update_reached_derived_atoms(successor_state.derived_atoms, m_reached_derived_atoms);
     if (timings)

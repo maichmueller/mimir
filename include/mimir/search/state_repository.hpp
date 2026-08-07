@@ -142,6 +142,9 @@ private:
     bool m_track_first_achievers;                 ///< Opt-in; see `enable_first_achiever_tracking`.
     std::vector<Index> m_first_achiever_by_atom;  ///< Fluent atom index -> state index, or `MAX_INDEX`.
 
+    bool m_track_co_occurrence;                       ///< Opt-in; see `enable_co_occurrence_tracking`.
+    std::vector<FlatBitset> m_co_occurrence_by_atom;  ///< Fluent atom index -> atoms ever true alongside it.
+
     /* Memory for reuse */
 
     FlatBitset m_applied_positive_effect_atoms;
@@ -157,6 +160,12 @@ private:
     /// No-op unless `enable_first_achiever_tracking` was called. Must be invoked at each
     /// `update_reached_fluent_atoms` site, BEFORE the union and before the emplace.
     void record_first_achievers(const FlatBitset& state_fluent_atoms);
+
+    /// @brief Union `state_fluent_atoms` into the co-occurrence row of each atom it holds.
+    /// No-op unless `enable_co_occurrence_tracking` was called. Invoked at the same sites as
+    /// `record_first_achievers`; unlike that one it is idempotent, so a site that may re-offer
+    /// an already-created state costs a repeated union and nothing else.
+    void record_co_occurrence(const FlatBitset& state_fluent_atoms);
 
 public:
     /// @brief Construct a repository that interns states into the `Problem`'s shared tables.
@@ -258,6 +267,31 @@ public:
     /// @brief Fluent atom index -> index of the first state here achieving it, or
     /// `MAX_INDEX`. Empty unless `enable_first_achiever_tracking` was called.
     const std::vector<Index>& get_first_achiever_state_by_atom() const;
+
+    /// @brief Start recording, per fluent ground atom, every atom that ever holds in the same
+    /// created state as it -- the width-2 counterpart of `m_reached_fluent_atoms`.
+    ///
+    /// `get_reached_fluent_ground_atoms_bitset` answers "which atoms are reachable from here";
+    /// this answers "which PAIRS of atoms are jointly reachable from here", which is what a
+    /// planner emitting conjunctive subgoals has to know before it emits one. Reconstructing it
+    /// afterwards means unpacking every state again, so it is accumulated during search.
+    ///
+    /// Off by default: it costs one bitset union per set bit of every created state, i.e. a
+    /// factor of |atoms per state| more work than the plain reached-atom union, and
+    /// |reached atoms| bitsets of memory.
+    ///
+    /// Like the reached-atom union, this observes EVERY created state, including successors
+    /// that a novelty test then prunes. Those states are genuinely reachable, so their pairs
+    /// genuinely co-occur; a caller wanting only the states that entered a search tree has to
+    /// reconstruct that from the search's own event handler.
+    ///
+    /// Must be called before any state is created; it is not retroactive.
+    void enable_co_occurrence_tracking();
+
+    /// @brief Fluent atom index -> the atoms ever true alongside it, itself included. Sized to
+    /// the largest reached atom index plus one, so callers must bounds-check before indexing.
+    /// Empty unless `enable_co_occurrence_tracking` was called.
+    const std::vector<FlatBitset>& get_co_occurrence_by_atom() const;
 
     /// @brief Get the state with the given packed state.
     /// This operation unpacks the state.
