@@ -725,6 +725,22 @@ void bind_module_definitions(nb::module_& m)
              nb::rv_policy::copy)
         .def("get_state", &StateRepositoryImpl::get_state, nb::rv_policy::copy, "packed_state"_a)
         .def("get_state_index", &StateRepositoryImpl::get_state_index, nb::rv_policy::copy, "packed_state"_a)
+        // The inverse of `get_state_index`, so a caller holding an index -- from a search's own
+        // event handler, say -- can get back to the state without having retained it. Returned
+        // by reference and kept alive by the repository: `PackedState` points into the
+        // repository's own (node-stable) map, and copying it would detach it from that owner.
+        .def(
+            "get_packed_state",
+            [](const StateRepositoryImpl& self, Index state_index)
+            {
+                if (state_index >= self.get_state_count())
+                {
+                    throw nb::index_error("state index out of range");
+                }
+                return self.get_packed_state(state_index);
+            },
+            nb::rv_policy::reference_internal,
+            "state_index"_a)
         .def("get_state_count", &StateRepositoryImpl::get_state_count, nb::rv_policy::copy)
         .def("get_reached_fluent_ground_atoms_bitset", &StateRepositoryImpl::get_reached_fluent_ground_atoms_bitset, nb::rv_policy::copy)
         .def("get_reached_derived_ground_atoms_bitset", &StateRepositoryImpl::get_reached_derived_ground_atoms_bitset, nb::rv_policy::copy);
