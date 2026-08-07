@@ -33,6 +33,10 @@ class ProblemImpl
 {
 private:
     Index m_index;
+    /// @brief Non-null iff this problem is a grounding overlay; see `create_grounding_overlay`.
+    /// Holds the parent alive, because everything this problem inherits -- interned entities, flat
+    /// index lists, static assignment sets -- is borrowed from it by pointer.
+    Problem m_overlay_parent;
     Repositories m_repositories;
     std::optional<fs::path> m_filepath;
     Domain m_domain;
@@ -55,7 +59,10 @@ private:
 
     problem::Details m_details;  ///< We hide the details in a struct.
 
-    StaticAssignmentSets m_static_assignment_sets;
+    /// @brief Shared, never mutated after construction. It is quadratic in the object count per
+    /// static predicate, so grounding overlays alias the parent's copy rather than rebuilding it
+    /// -- which matters most on exactly the huge-object-universe instances overlays exist for.
+    std::shared_ptr<const StaticAssignmentSets> m_static_assignment_sets;
 
     FlatIndexListMap m_flat_index_list_map;  ///< Stores all created atom lists.
     std::vector<const FlatIndexList*> m_flat_index_lists;
@@ -89,6 +96,13 @@ private:
                 AxiomList axioms,
                 AxiomList problem_and_domain_axioms);
 
+    /// @brief Tag selecting the grounding-overlay constructor; see `create_grounding_overlay`.
+    struct OverlayTag
+    {
+    };
+
+    ProblemImpl(OverlayTag, const Problem& parent);
+
     // Give access to the constructor.
     friend class ProblemBuilder;
 
@@ -102,6 +116,38 @@ public:
     static Problem create(const fs::path& domain_filepath, const fs::path& problem_filepath, const loki::ParserOptions& options = loki::ParserOptions());
 
     static Problem create(const std::string& domain_content, const fs::path& domain_filepath, const std::string& problem_content, const fs::path& problem_filepath, const loki::ParserOptions& options = loki::ParserOptions());
+
+    /// @brief Create a private grounding workspace over `parent`: an ordinary `Problem` that shares
+    /// the parent's whole immutable description but grounds into repositories of its own.
+    ///
+    /// This is what lets K lifted searches run over one parsed model. `ProblemImpl::ground(...)` --
+    /// which lifted KPKC action generation and axiom evaluation call on every state -- writes to the
+    /// repositories, the flat index/double-list maps and the grounding tables, none of which is
+    /// synchronized. An overlay gives a worker its own copies of all three while the parent supplies
+    /// everything already interned, so nothing is reparsed and nothing is pre-grounded. The cost is
+    /// O(size of the problem description), not O(size of the grounding).
+    ///
+    /// Identity rules that follow from that, and that callers must respect:
+    ///   * indices the overlay inherits (objects, predicates, initial and goal atoms) mean the same
+    ///     thing in parent and overlay, so ground-atom index sets are the portable way to move a
+    ///     state into or out of an overlay;
+    ///   * indices the overlay *creates* are local to it. Sibling overlays hand the same index to
+    ///     different entities, so no `State`, `PackedState`, `GroundAction` or newly grounded atom
+    ///     index may be compared or moved across overlays;
+    ///   * the parent must not grow while any overlay resolves an index, because an overlay's local
+    ///     indices are stamped as `parent->size() + local_offset`. Ground the winning plan into the
+    ///     parent only after every overlay search has finished.
+    ///
+    /// Requires the local loki patch for multi-level chaining (a problem's repositories are already
+    /// a child of the domain's), and rejects overlays of overlays: an overlay is by construction a
+    /// parent that grows during search.
+    static Problem create_grounding_overlay(const Problem& parent);
+
+    /// @brief Whether this problem was created by `create_grounding_overlay`.
+    bool is_grounding_overlay() const;
+
+    /// @brief The problem this overlay grounds on top of, or null for an ordinary problem.
+    const Problem& get_overlay_parent() const;
 
     Index get_index() const;
     const Repositories& get_repositories() const;
@@ -234,6 +280,11 @@ public:
 
     template<IsStaticOrFluentOrDerivedTag P>
     Literal<P> get_or_create_literal(bool polarity, Atom<P> atom);
+
+    /// @brief Intern a ground literal over an already-interned ground atom.
+    /// Needed to build a custom goal condition from atoms without reaching into the repositories.
+    template<IsStaticOrFluentOrDerivedTag P>
+    GroundLiteral<P> get_or_create_ground_literal(bool polarity, GroundAtom<P> atom);
 
     template<IsStaticOrFluentOrAuxiliaryTag F>
     Function<F> get_or_create_function(FunctionSkeleton<F> function_skeleton, TermList terms);

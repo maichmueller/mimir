@@ -65,6 +65,7 @@ ProblemImpl::ProblemImpl(Index index,
                          AxiomList axioms,
                          AxiomList problem_and_domain_axioms) :
     m_index(index),
+    m_overlay_parent(nullptr),
     m_repositories(std::move(repositories)),
     m_filepath(std::move(filepath)),
     m_domain(std::move(domain)),
@@ -169,13 +170,82 @@ ProblemImpl::ProblemImpl(Index index,
 
     m_details = problem::Details(*this);
 
-    m_static_assignment_sets = StaticAssignmentSets(*this);
+    m_static_assignment_sets = std::make_shared<const StaticAssignmentSets>(*this);
+}
+
+ProblemImpl::ProblemImpl(OverlayTag, const Problem& parent) :
+    m_index(parent->m_index),
+    m_overlay_parent(parent),
+    /* The only structurally new member: a child of the parent's repositories, so that everything
+       already interned resolves through the parent while anything this overlay grounds stays here. */
+    m_repositories(&parent->m_repositories),
+    /* Everything below is a pointer-copy of the parent's immutable description. The vectors hold raw
+       pointers into the parent's and the domain's repositories, which `m_overlay_parent` keeps alive. */
+    m_filepath(parent->m_filepath),
+    m_domain(parent->m_domain),
+    m_name(parent->m_name),
+    m_requirements(parent->m_requirements),
+    m_objects(parent->m_objects),
+    m_problem_and_domain_objects(parent->m_problem_and_domain_objects),
+    m_derived_predicates(parent->m_derived_predicates),
+    m_problem_and_domain_derived_predicates(parent->m_problem_and_domain_derived_predicates),
+    m_initial_literals(parent->m_initial_literals),
+    m_initial_function_values(parent->m_initial_function_values),
+    m_initial_auxiliary_function_value(parent->m_initial_auxiliary_function_value),
+    m_goal_literals(parent->m_goal_literals),
+    m_goal_numeric_constraints(parent->m_goal_numeric_constraints),
+    m_optimization_metric(parent->m_optimization_metric),
+    m_axioms(parent->m_axioms),
+    m_problem_and_domain_axioms(parent->m_problem_and_domain_axioms),
+    m_details(),
+    m_static_assignment_sets(parent->m_static_assignment_sets),  ///< aliased, never rebuilt
+    /* Fresh and empty: these are precisely the members `ground(...)` writes to. */
+    m_flat_index_list_map(),
+    m_flat_index_lists(),
+    m_flat_double_list_map(),
+    m_flat_double_lists(),
+    m_index_tree_table(),
+    m_double_leaf_table(),
+    m_bitset_pool(),
+    m_index_list_pool(),
+    m_double_list_pool()
+{
+    /* Rebuilt against *this* so that every back-pointer in the details refers to the overlay --
+       cheap, being hash maps over the description plus axiom stratification. The goal condition and
+       the action grounding infos are taken over from the parent rather than recomputed; see the
+       overload's declaration. The result is an overlay that has interned nothing at all yet. */
+    m_details = problem::Details(*this, parent->m_details);
 }
 
 Problem ProblemImpl::create(const fs::path& domain_filepath, const fs::path& problem_filepath, const loki::ParserOptions& options)
 {
     return Parser(domain_filepath, options).parse_problem(problem_filepath, options);
 }
+
+Problem ProblemImpl::create_grounding_overlay(const Problem& parent)
+{
+    if (!parent)
+    {
+        throw std::runtime_error("ProblemImpl::create_grounding_overlay: parent must not be null.");
+    }
+
+    if (parent->is_grounding_overlay())
+    {
+        throw std::runtime_error("ProblemImpl::create_grounding_overlay: cannot overlay a grounding overlay. An overlay's local indices "
+                                 "are stamped relative to its parent's size, so a parent that grows during search cannot be layered on.");
+    }
+
+    /* Force the parent's lazy action infos here, on the calling thread, rather than letting the
+       first overlay trigger it from inside the constructor. It mutates the parent (through a
+       `mutable` member), which must not happen once overlays are running in parallel. */
+    (void) parent->m_details.grounding.get_action_infos();
+
+    return std::shared_ptr<ProblemImpl>(new ProblemImpl(OverlayTag {}, parent));
+}
+
+bool ProblemImpl::is_grounding_overlay() const { return m_overlay_parent != nullptr; }
+
+const Problem& ProblemImpl::get_overlay_parent() const { return m_overlay_parent; }
 
 Problem ProblemImpl::create(const std::string& domain_content, const fs::path& domain_filepath, const std::string& problem_content, const fs::path& problem_filepath, const loki::ParserOptions& options)
 {
@@ -408,7 +478,7 @@ const std::vector<AxiomPartition>& ProblemImpl::get_problem_and_domain_axiom_par
 
 /* ConsistencyGraph */
 
-const StaticAssignmentSets& ProblemImpl::get_static_assignment_sets() const { return m_static_assignment_sets; }
+const StaticAssignmentSets& ProblemImpl::get_static_assignment_sets() const { return *m_static_assignment_sets; }
 
 /**
  * Modifiers
@@ -774,6 +844,16 @@ template Literal<StaticTag> ProblemImpl::get_or_create_literal(bool polarity, At
 template Literal<FluentTag> ProblemImpl::get_or_create_literal(bool polarity, Atom<FluentTag> atom);
 template Literal<DerivedTag> ProblemImpl::get_or_create_literal(bool polarity, Atom<DerivedTag> atom);
 
+template<IsStaticOrFluentOrDerivedTag P>
+GroundLiteral<P> ProblemImpl::get_or_create_ground_literal(bool polarity, GroundAtom<P> atom)
+{
+    return m_repositories.get_or_create_ground_literal(polarity, atom);
+}
+
+template GroundLiteral<StaticTag> ProblemImpl::get_or_create_ground_literal(bool polarity, GroundAtom<StaticTag> atom);
+template GroundLiteral<FluentTag> ProblemImpl::get_or_create_ground_literal(bool polarity, GroundAtom<FluentTag> atom);
+template GroundLiteral<DerivedTag> ProblemImpl::get_or_create_ground_literal(bool polarity, GroundAtom<DerivedTag> atom);
+
 template<IsStaticOrFluentOrAuxiliaryTag F>
 Function<F> ProblemImpl::get_or_create_function(FunctionSkeleton<F> function_skeleton, TermList terms)
 {
@@ -1100,5 +1180,22 @@ problem::Details::Details(ProblemImpl& problem) :
     axiom(problem),
     grounding(problem)
 {
+}
+
+problem::Details::Details(ProblemImpl& problem, const Details& parent_details) :
+    parent(&problem),
+    objects(problem),
+    predicates(problem),
+    initial(problem),
+    goal(parent_details.goal),
+    axiom(problem),
+    grounding(problem)
+{
+    goal.parent = &problem;
+    /* A copy, not a shared handle: `action_infos` is an owning `optional<...>` and giving each
+       overlay its own is what keeps the lazy initializer from ever running on a worker thread. The
+       list is per action schema, not per ground action, so it stays small -- but if overlays are
+       ever created in bulk this is the allocation to reach for first. */
+    grounding.action_infos = parent_details.grounding.get_action_infos();
 }
 }

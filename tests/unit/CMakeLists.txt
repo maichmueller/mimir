@@ -26,6 +26,7 @@ add_gtest(datasets_knowledge_base_test                     "datasets/knowledge_b
 add_gtest(datasets_object_graph_test                       "datasets/object_graph.cpp")
 add_gtest(formalism_indexed_hash_set_chaining_test         "formalism/indexed_hash_set_chaining.cpp")
 add_gtest(formalism_parser_test                            "formalism/parser.cpp")
+add_gtest(formalism_problem_grounding_overlay_test         "formalism/problem_grounding_overlay.cpp")
 add_gtest(graphs_algorithms_color_refinement_test          "graphs/algorithms/color_refinement.cpp")
 add_gtest(graphs_algorithms_folklore_weisfeiler_leman_test "graphs/algorithms/folklore_weisfeiler_leman.cpp")
 add_gtest(graphs_bgl_dynamic_graph_algorithms_test         "graphs/bgl/dynamic_graph_algorithms.cpp")

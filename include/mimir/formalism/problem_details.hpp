@@ -167,6 +167,16 @@ struct Details
 
     Details();
     Details(ProblemImpl& problem);
+
+    /// @brief Variant for a grounding overlay of a problem whose details are `parent_details`.
+    ///
+    /// Everything is rebuilt against `problem` so the back-pointers refer to the overlay, with two
+    /// exceptions taken over from the parent instead. The goal, because `GoalDetails` interns its
+    /// condition and re-interning it in the overlay would both dirty a brand-new workspace and give
+    /// the overlay a different-but-equivalent goal object than the parent's. And the action
+    /// grounding infos, because they are the dominant per-problem setup cost while depending only
+    /// on data the overlay shares verbatim.
+    Details(ProblemImpl& problem, const Details& parent_details);
 };
 }
 
