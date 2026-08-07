@@ -220,6 +220,20 @@ class AbstractedNoveltyPruningStrategyImpl;
 using AbstractedNoveltyPruningStrategy = std::shared_ptr<AbstractedNoveltyPruningStrategyImpl>;
 }
 
+struct SearchControl;
+
+namespace rollout_iw
+{
+class IActionOrderingStrategy;
+using ActionOrderingStrategy = std::shared_ptr<IActionOrderingStrategy>;
+enum class ActionOrderingKind;
+struct ActionOrderingConfiguration;
+struct PlanStep;
+struct Options;
+struct Statistics;
+struct Result;
+}
+
 class IGoalStrategy;
 using GoalStrategy = std::shared_ptr<IGoalStrategy>;
 class ProblemGoalStrategyImpl;

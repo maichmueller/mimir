@@ -2016,4 +2016,156 @@ TEST(MimirTests, SearchAlgorithmsIWLandmarkOrderingRejectsUnsupportedOptionsTest
     }
 }
 
+
+/// `iw::Options` used to accept `max_time_in_ms` and `max_num_states` nowhere and silently drop
+/// them: the per-arity `brfs::Options` were built without either, so an IW search could not be
+/// budgeted at all. These are the regression tests for forwarding them.
+TEST(MimirTests, SearchAlgorithmsIWForwardsBudgetsTest)
+{
+    const auto make_context = [](const std::string& domain, const std::string& problem)
+    {
+        return SearchContextImpl::create(fs::path(std::string(DATA_DIR) + domain),
+                                         fs::path(std::string(DATA_DIR) + problem),
+                                         SearchContextImpl::Options(SearchContextImpl::GroundedOptions()));
+    };
+
+    {
+        /* A zero-millisecond budget must stop the very first pass rather than run to completion. */
+        auto options = iw::Options();
+        options.max_arity = 1;
+        options.max_time_in_ms = 0;
+
+        const auto result = iw::find_solution(make_context("gripper/domain.pddl", "gripper/test_problem.pddl"), options);
+
+        EXPECT_EQ(result.status, SearchStatus::OUT_OF_TIME);
+        EXPECT_FALSE(result.plan.has_value());
+    }
+
+    {
+        /* Likewise for the node budget -- and it must not be retried at a wider arity, which would
+           spend the budget again for every remaining width. */
+        auto options = iw::Options();
+        options.max_arity = 3;
+        options.max_num_states = 2;
+
+        const auto result = iw::find_solution(make_context("gripper/domain.pddl", "gripper/test_problem.pddl"), options);
+
+        EXPECT_EQ(result.status, SearchStatus::OUT_OF_STATES);
+        EXPECT_FALSE(result.plan.has_value());
+    }
+
+    {
+        /* The budget covers the whole search, not each arity pass afresh. With none of it left, no
+           pass may be started at all -- not even to build its novelty table, which is O(|atoms|^k)
+           and would otherwise run to completion with no clock anywhere in sight.
+           `max_arity = 3` here so that "no pass ran" is a statement about three of them.
+
+           Note what is deliberately not asserted: a wall-clock bound. How closely BrFS tracks its
+           own deadline is BrFS's business and predates this forwarding -- it checks the clock once
+           per node pop, so an instance with very expensive single expansions overshoots by however
+           long one expansion takes, whether the budget arrives through `brfs::Options` directly or
+           through `iw::Options`. What is new here is that the budget arrives at all. */
+        auto options = iw::Options();
+        options.max_arity = 3;
+        options.max_time_in_ms = 0;
+
+        const auto result = iw::find_solution(make_context("gripper/domain.pddl", "gripper/test_problem.pddl"), options);
+
+        EXPECT_EQ(result.status, SearchStatus::OUT_OF_TIME);
+        EXPECT_FALSE(result.plan.has_value());
+    }
+
+    {
+        /* A budget large enough to finish must not change the answer. */
+        auto options = iw::Options();
+        options.max_arity = 1;
+        options.max_time_in_ms = 60000;
+        options.max_num_states = 1000000;
+
+        const auto result = iw::find_solution(make_context("blocks_4/domain.pddl", "blocks_4/test_problem.pddl"), options);
+
+        auto plain = iw::Options();
+        plain.max_arity = 1;
+        const auto reference = iw::find_solution(make_context("blocks_4/domain.pddl", "blocks_4/test_problem.pddl"), plain);
+
+        EXPECT_EQ(result.status, reference.status);
+    }
+
+    {
+        /* Left at their defaults, both must be exactly as invisible as before. */
+        auto budgeted = iw::Options();
+        budgeted.max_arity = 1;
+        budgeted.max_time_in_ms = std::numeric_limits<uint32_t>::max();
+        budgeted.max_num_states = std::numeric_limits<uint32_t>::max();
+        const auto with_defaults = iw::find_solution(make_context("gripper/domain.pddl", "gripper/test_problem.pddl"), budgeted);
+
+        auto plain = iw::Options();
+        plain.max_arity = 1;
+        const auto reference = iw::find_solution(make_context("gripper/domain.pddl", "gripper/test_problem.pddl"), plain);
+
+        EXPECT_EQ(with_defaults.status, reference.status);
+        EXPECT_EQ(with_defaults.plan.has_value(), reference.plan.has_value());
+        if (reference.plan.has_value())
+        {
+            EXPECT_EQ(with_defaults.plan->get_actions().size(), reference.plan->get_actions().size());
+        }
+    }
+}
+
+/// A shared `SearchControl` lets a caller stop an IW search from another thread, and reports how far
+/// it got. `brfs` refuses it on the paths whose layer bookkeeping cannot carry that meaning.
+TEST(MimirTests, SearchAlgorithmsIWSearchControlTest)
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + "gripper/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + "gripper/test_problem.pddl");
+
+    const auto make_context = [&]
+    { return SearchContextImpl::create(domain_file, problem_file, SearchContextImpl::Options(SearchContextImpl::GroundedOptions())); };
+
+    {
+        auto control = SearchControl();
+        control.request_cancel();
+
+        auto options = iw::Options();
+        options.max_arity = 1;
+        options.control = &control;
+
+        const auto result = iw::find_solution(make_context(), options);
+
+        EXPECT_EQ(result.status, SearchStatus::CANCELED);
+    }
+
+    {
+        /* Every completed g-layer is published, and exhausting the width-1 space without a plan
+           retracts the bound instead of raising it -- otherwise "my space is empty" would read as
+           "the optimum is enormous" and certify whatever anyone else found. */
+        auto control = SearchControl();
+
+        auto options = iw::Options();
+        options.max_arity = 1;
+        options.control = &control;
+
+        const auto result = iw::find_solution(make_context(), options);
+
+        EXPECT_NE(result.status, SearchStatus::SOLVED) << "gripper's conjunctive goal has width 2";
+        EXPECT_TRUE(control.is_lower_bound_invalidated());
+        EXPECT_FALSE(control.is_incumbent_certified(1));
+        EXPECT_GT(control.get_total_expansions(), 0u);
+    }
+
+    {
+        /* Paths that do not expand each layer exhaustively must reject a control rather than publish
+           a completed depth they cannot justify. */
+        auto control = SearchControl();
+
+        auto options = iw::Options();
+        options.max_arity = 1;
+        options.control = &control;
+        options.beam_width = 2;
+        options.layer_ordering_strategy = InOrderLayerOrderingStrategyImpl::create();
+
+        EXPECT_THROW(iw::find_solution(make_context(), options), std::invalid_argument);
+    }
+}
+
 }

@@ -19,6 +19,7 @@
 #define MIMIR_SEARCH_ALGORITHMS_BRFS_HPP_
 
 #include "mimir/formalism/declarations.hpp"
+#include "mimir/search/algorithms/search_control.hpp"
 #include "mimir/search/algorithms/utils.hpp"
 #include "mimir/search/declarations.hpp"
 #include "mimir/search/state.hpp"
@@ -53,6 +54,21 @@ struct Options
     uint32_t max_depth = std::numeric_limits<uint32_t>::max();
     uint32_t max_num_states = std::numeric_limits<uint32_t>::max();
     uint32_t max_time_in_ms = std::numeric_limits<uint32_t>::max();
+
+    /// @brief Optional coordination with searches running alongside this one. Null means "run
+    /// alone", and costs one predictable branch per node pop.
+    ///
+    /// When set, this search stops promptly on `cancel`, counts its expansions into
+    /// `total_expansions`, and -- because the goal is tested when a node is *popped* -- publishes
+    /// each fully expanded g-layer into `completed_depth`. Finishing layer d proves no plan of
+    /// length <= d exists in the space this search explores, which is what turns a plan somebody
+    /// else found into a *certified* shortest one. It also stops itself once its own progress has
+    /// certified the current incumbent, since there is nothing left to prove.
+    ///
+    /// Only honored on the plain queued path. The beam, ordered-layer and deferred-novelty paths
+    /// reject it rather than ignoring it: their layer bookkeeping does not carry the meaning the
+    /// certificate needs.
+    SearchControl* control = nullptr;
 
     Options() = default;
 };

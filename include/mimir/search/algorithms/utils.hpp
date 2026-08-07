@@ -35,7 +35,11 @@ enum class SearchStatus
     FAILED,
     EXHAUSTED,
     SOLVED,
-    UNSOLVABLE
+    UNSOLVABLE,
+    /// @brief Stopped on request through a shared `SearchControl`, e.g. because a sibling search in
+    /// a portfolio already answered the question. Distinct from `OUT_OF_TIME`, which says the search
+    /// ran out its own budget: a canceled search proves nothing about the problem.
+    CANCELED
 };
 
 struct SearchResult

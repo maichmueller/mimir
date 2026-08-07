@@ -31,6 +31,9 @@
 #include "mimir/search/search_context.hpp"
 #include "mimir/search/state_repository.hpp"
 
+#include <chrono>
+#include <limits>
+
 using namespace mimir::formalism;
 
 namespace mimir::search::iw
@@ -57,6 +60,20 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
 
     iw_event_handler->on_start_search(start_state);
 
+    /* The time budget spans the whole search, not each arity pass, so every pass is handed what is
+       left of it. Passing `options.max_time_in_ms` to each pass instead would let a `max_arity` of
+       k take k times as long as asked for. */
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(options.max_time_in_ms);
+    const auto remaining_time_in_ms = [&]() -> uint32_t
+    {
+        if (options.max_time_in_ms == std::numeric_limits<uint32_t>::max())
+        {
+            return std::numeric_limits<uint32_t>::max();
+        }
+        const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - std::chrono::steady_clock::now()).count();
+        return (remaining <= 0) ? 0u : static_cast<uint32_t>(remaining);
+    };
+
     const auto& ground_fluent_atom_repository =
         boost::hana::at_key(context->get_problem()->get_repositories().get_hana_repositories(), boost::hana::type<GroundAtomImpl<FluentTag>> {});
 
@@ -74,6 +91,28 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
     size_t cur_arity = optimize_iw1_root_actions ? 1 : 0;
     while (cur_arity <= max_arity)
     {
+        /* Check before starting the pass, not just inside it. Building a width-k novelty table is
+           O(|atoms|^k) and happens before the search loop ever looks at a clock, so entering a pass
+           with no budget left can cost seconds of uninterruptible setup for a search that is going
+           to stop on its first node. */
+        if (remaining_time_in_ms() == 0)
+        {
+            iw_event_handler->on_end_search();
+
+            auto result = SearchResult();
+            result.status = SearchStatus::OUT_OF_TIME;
+            return result;
+        }
+
+        if (options.control && options.control->is_canceled())
+        {
+            iw_event_handler->on_end_search();
+
+            auto result = SearchResult();
+            result.status = SearchStatus::CANCELED;
+            return result;
+        }
+
         iw_event_handler->on_start_arity_search(start_state, cur_arity);
 
         const auto use_iw1_specific_options = (cur_arity == 1);
@@ -101,6 +140,9 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
         options_i.iw1_incremental_first_applicability_debug_crosscheck =
             use_iw1_specific_options && options.iw1_incremental_first_applicability_debug_crosscheck;
         options_i.max_depth = options.max_depth;
+        options_i.max_time_in_ms = remaining_time_in_ms();
+        options_i.max_num_states = options.max_num_states;
+        options_i.control = options.control;
         options_i.pruning_strategy = (cur_arity > 0) ? ArityKNoveltyPruningStrategyImpl::create(cur_arity,
                                                                                                   ground_fluent_atom_repository.size(),
                                                                                                   optimize_iw1_root_actions && (cur_arity == 1)) :
@@ -134,6 +176,14 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
         else if (result.status == SearchStatus::UNSOLVABLE)
         {
             iw_event_handler->on_unsolvable();
+
+            return result;
+        }
+        else if (result.status == SearchStatus::OUT_OF_TIME || result.status == SearchStatus::OUT_OF_STATES || result.status == SearchStatus::CANCELED)
+        {
+            /* The pass did not fail to find a plan at this width, it stopped before it could tell.
+               Escalating to the next arity would spend the budget we just ran out of. */
+            iw_event_handler->on_end_search();
 
             return result;
         }

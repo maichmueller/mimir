@@ -46,6 +46,19 @@ struct Options
     uint32_t max_depth = std::numeric_limits<uint32_t>::max();
     size_t max_arity = MAX_ARITY - 1;
 
+    /// @brief Wall-clock budget for the whole search, spanning every arity pass. Each pass is given
+    /// what is left of it, so raising `max_arity` cannot silently multiply the time spent.
+    uint32_t max_time_in_ms = std::numeric_limits<uint32_t>::max();
+
+    /// @brief Cap on the search nodes of a *single* arity pass, mirroring `max_depth`. Passes do not
+    /// share a node budget: each one restarts from the start state with its own search tree.
+    uint32_t max_num_states = std::numeric_limits<uint32_t>::max();
+
+    /// @brief Optional coordination with searches running alongside this one; see
+    /// `brfs::Options::control`. Forwarded to every arity pass, so an IW(1) run used as a
+    /// portfolio's certifier publishes its completed depths through it.
+    SearchControl* control = nullptr;
+
     Options() = default;
 };
 

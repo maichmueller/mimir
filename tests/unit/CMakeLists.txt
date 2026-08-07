@@ -45,6 +45,8 @@ add_gtest(search_brfs_test                                 "search/algorithms/br
 add_gtest(search_iw_test                                   "search/algorithms/iw.cpp")
 add_gtest(search_landmarks_fact_landmarks_test              "search/landmarks/fact_landmarks.cpp")
 add_gtest(search_iw_parallel_rollouts_test                 "search/algorithms/iw_parallel_rollouts.cpp")
+add_gtest(search_rollout_iw_test                           "search/algorithms/rollout_iw.cpp")
+add_gtest(search_atomic_goal_iw_portfolio_test             "search/algorithms/atomic_goal_iw_portfolio.cpp")
 add_gtest(search_siw_test                                  "search/algorithms/siw.cpp")
 add_executable(search_iw_parallel_benchmark                "search/algorithms/iw_parallel_benchmark.cpp")
 target_link_libraries(search_iw_parallel_benchmark PRIVATE mimir::core)

@@ -23,6 +23,25 @@ std::vector<size_t> compute_transition_novel_fluent_atom_indices_read_only(const
     pruning_strategy.compute_transition_novel_fluent_atom_indices_read_only(state, successor_state, novel_atom_indices);
     return std::vector<size_t>(novel_atom_indices.begin(), novel_atom_indices.end());
 }
+
+/// @brief Throw unless `strategy` is one of the native goal strategies, or absent.
+///
+/// The entry points below release the GIL for the whole search, and the parallel one runs the search
+/// on several threads. Calling back into a Python-subclassed strategy from there would be a crash
+/// rather than an exception, so a trampoline has to be refused here, on the calling thread, while
+/// the GIL is still held. Recognizing the native implementations by type is the check: anything else
+/// -- including a pure-C++ strategy an embedder added -- is refused rather than assumed safe.
+void reject_python_strategy(const GoalStrategy& strategy, const char* option_name)
+{
+    if (!strategy || std::dynamic_pointer_cast<ProblemGoalStrategyImpl>(strategy) || std::dynamic_pointer_cast<ProblemMultiGoalStrategyImpl>(strategy))
+    {
+        return;
+    }
+
+    throw std::invalid_argument(std::string(option_name)
+                                + " must be a native goal strategy (ProblemGoalStrategy or ProblemMultiGoalStrategy). This entry point releases the GIL "
+                                  "for the whole search and runs it on worker threads, so it cannot call back into Python.");
+}
 }  // namespace
 
 class IPyGoalStrategy : public IGoalStrategy
@@ -323,6 +342,7 @@ void bind_module_definitions(nb::module_& m)
         .value("EXHAUSTED", SearchStatus::EXHAUSTED)
         .value("SOLVED", SearchStatus::SOLVED)
         .value("UNSOLVABLE", SearchStatus::UNSOLVABLE)
+        .value("CANCELED", SearchStatus::CANCELED)
         .export_values();
 
     nb::enum_<BeamNoveltyMode>(m, "BeamNoveltyMode")
@@ -1291,7 +1311,11 @@ void bind_module_definitions(nb::module_& m)
         .def_rw("iw1_incremental_first_applicability_debug_crosscheck",
                 &iw::Options::iw1_incremental_first_applicability_debug_crosscheck)
         .def_rw("max_depth", &iw::Options::max_depth)
-        .def_rw("max_arity", &iw::Options::max_arity);
+        .def_rw("max_arity", &iw::Options::max_arity)
+        // `control` is deliberately not exposed: it is a raw pointer to state shared with other
+        // native searches, which has no meaning from Python.
+        .def_rw("max_time_in_ms", &iw::Options::max_time_in_ms)
+        .def_rw("max_num_states", &iw::Options::max_num_states);
 
     // `iw::find_solution` is overloaded, so the function address must be disambiguated explicitly.
     m.def("find_solution_iw",
@@ -1372,6 +1396,129 @@ void bind_module_definitions(nb::module_& m)
         [](const std::vector<iw::RolloutResult>& results, StateRepository& target) { return iw::migrate_landing_states(results, target); },
         "results"_a,
         "target"_a);
+
+    /* True Rollout IW(1) (Bandres, Bonet, Geffner) and the atomic-goal portfolio built on it.
+       See docs/ROLLOUT_IW_IMPLEMENTATION_PLAN.md. Distinct from `find_rollouts_iw_parallel` above,
+       which runs K ordinary IW searches with randomized layer orderings. */
+
+    nb::enum_<rollout_iw::ActionOrderingKind>(m, "RolloutIWActionOrderingKind")
+        .value("IN_ORDER", rollout_iw::ActionOrderingKind::IN_ORDER)
+        .value("RANDOMIZED", rollout_iw::ActionOrderingKind::RANDOMIZED)
+        .value("DIRECT_GOAL_ACHIEVER_FIRST", rollout_iw::ActionOrderingKind::DIRECT_GOAL_ACHIEVER_FIRST)
+        .value("GOAL_REGRESSION_RELEVANCE", rollout_iw::ActionOrderingKind::GOAL_REGRESSION_RELEVANCE)
+        .value("MIXED_REGRESSION_RANDOM", rollout_iw::ActionOrderingKind::MIXED_REGRESSION_RANDOM);
+
+    nb::class_<rollout_iw::ActionOrderingConfiguration>(m, "RolloutIWActionOrderingConfiguration")  //
+        .def(nb::init<>())
+        .def(nb::init<rollout_iw::ActionOrderingKind, uint64_t>(), "kind"_a, "seed"_a = 0)
+        .def_rw("kind", &rollout_iw::ActionOrderingConfiguration::kind)
+        .def_rw("seed", &rollout_iw::ActionOrderingConfiguration::seed);
+
+    nb::class_<rollout_iw::PlanStep>(m, "RolloutIWPlanStep")  //
+        .def_ro("schema", &rollout_iw::PlanStep::schema)
+        .def_ro("binding", &rollout_iw::PlanStep::binding);
+
+    nb::class_<rollout_iw::Options>(m, "RolloutIWOptions")  //
+        .def(nb::init<>())
+        .def_rw("start_state", &rollout_iw::Options::start_state)
+        .def_rw("goal_condition", &rollout_iw::Options::goal_condition)
+        .def_rw("goal_strategy", &rollout_iw::Options::goal_strategy)
+        .def_rw("action_ordering_configuration", &rollout_iw::Options::action_ordering_configuration)
+        .def_rw("seed", &rollout_iw::Options::seed)
+        .def_rw("max_depth", &rollout_iw::Options::max_depth)
+        .def_rw("max_rollouts", &rollout_iw::Options::max_rollouts)
+        .def_rw("max_num_states", &rollout_iw::Options::max_num_states)
+        .def_rw("max_time_in_ms", &rollout_iw::Options::max_time_in_ms)
+        .def_rw("incumbent_bound", &rollout_iw::Options::incumbent_bound);
+
+    nb::class_<rollout_iw::Statistics>(m, "RolloutIWStatistics")  //
+        .def(nb::init<>())
+        .def_ro("num_rollouts", &rollout_iw::Statistics::num_rollouts)
+        .def_ro("num_generated_states", &rollout_iw::Statistics::num_generated_states)
+        .def_ro("num_expanded_nodes", &rollout_iw::Statistics::num_expanded_nodes)
+        .def_ro("num_feature_depth_improvements", &rollout_iw::Statistics::num_feature_depth_improvements)
+        .def_ro("num_case_1", &rollout_iw::Statistics::num_case_1)
+        .def_ro("num_case_2", &rollout_iw::Statistics::num_case_2)
+        .def_ro("num_case_3", &rollout_iw::Statistics::num_case_3)
+        .def_ro("num_case_4", &rollout_iw::Statistics::num_case_4)
+        .def_ro("num_solved_propagations", &rollout_iw::Statistics::num_solved_propagations)
+        .def_ro("num_dead_ends", &rollout_iw::Statistics::num_dead_ends)
+        .def_ro("num_depth_bound_prunings", &rollout_iw::Statistics::num_depth_bound_prunings)
+        .def_ro("num_incumbent_bound_prunings", &rollout_iw::Statistics::num_incumbent_bound_prunings)
+        .def_ro("max_rollout_depth", &rollout_iw::Statistics::max_rollout_depth)
+        .def_ro("num_tree_nodes", &rollout_iw::Statistics::num_tree_nodes);
+
+    nb::class_<rollout_iw::Result>(m, "RolloutIWResult")  //
+        .def_ro("search_result", &rollout_iw::Result::search_result)
+        .def_ro("statistics", &rollout_iw::Result::statistics)
+        .def_ro("root_solved", &rollout_iw::Result::root_solved)
+        .def_ro("plan_steps", &rollout_iw::Result::plan_steps)
+        .def_ro("plan_length", &rollout_iw::Result::plan_length)
+        .def_ro("stop_reason", &rollout_iw::Result::stop_reason);
+
+    // The GIL is released for the whole search, which is only sound because nothing in it can call
+    // back into Python: `reject_python_strategy` above turns a Python-subclassed goal strategy into
+    // an error here, on this thread, rather than a deadlock or a crash inside the search.
+    m.def(
+        "find_solution_rollout_iw",
+        [](const SearchContext& search_context, const rollout_iw::Options& options)
+        {
+            reject_python_strategy(options.goal_strategy, "RolloutIWOptions.goal_strategy");
+
+            nb::gil_scoped_release release;
+            return rollout_iw::find_solution(search_context, options);
+        },
+        "search_context"_a,
+        "options"_a = rollout_iw::Options());
+
+    nb::enum_<AtomicGoalPortfolioSearchMode>(m, "AtomicGoalPortfolioSearchMode")
+        .value("GROUNDED", AtomicGoalPortfolioSearchMode::GROUNDED)
+        .value("LIFTED_KPKC", AtomicGoalPortfolioSearchMode::LIFTED_KPKC)
+        .value("INHERIT_CONTEXT", AtomicGoalPortfolioSearchMode::INHERIT_CONTEXT);
+
+    nb::class_<iw::AtomicGoalPortfolioOptions>(m, "AtomicGoalIWPortfolioOptions")  //
+        .def(nb::init<>())
+        .def_rw("start_state", &iw::AtomicGoalPortfolioOptions::start_state)
+        .def_rw("atomic_goal", &iw::AtomicGoalPortfolioOptions::atomic_goal)
+        .def_rw("atomic_goal_atoms", &iw::AtomicGoalPortfolioOptions::atomic_goal_atoms)
+        .def_rw("search_mode", &iw::AtomicGoalPortfolioOptions::search_mode)
+        .def_rw("num_rollout_workers", &iw::AtomicGoalPortfolioOptions::num_rollout_workers)
+        .def_rw("num_threads", &iw::AtomicGoalPortfolioOptions::num_threads)
+        .def_rw("base_seed", &iw::AtomicGoalPortfolioOptions::base_seed)
+        .def_rw("max_time_in_ms", &iw::AtomicGoalPortfolioOptions::max_time_in_ms)
+        .def_rw("max_total_expansions", &iw::AtomicGoalPortfolioOptions::max_total_expansions)
+        .def_rw("max_depth", &iw::AtomicGoalPortfolioOptions::max_depth)
+        .def_rw("rollout_orderings", &iw::AtomicGoalPortfolioOptions::rollout_orderings);
+
+    nb::class_<iw::AtomicGoalPortfolioResult>(m, "AtomicGoalIWPortfolioResult")  //
+        .def_ro("status", &iw::AtomicGoalPortfolioResult::status)
+        .def_ro("plan", &iw::AtomicGoalPortfolioResult::plan)
+        .def_ro("plan_steps", &iw::AtomicGoalPortfolioResult::plan_steps)
+        .def_ro("plan_length", &iw::AtomicGoalPortfolioResult::plan_length)
+        .def_ro("certified_optimal", &iw::AtomicGoalPortfolioResult::certified_optimal)
+        .def_ro("iw_lower_bound", &iw::AtomicGoalPortfolioResult::iw_lower_bound)
+        .def_ro("iw_completed_depth", &iw::AtomicGoalPortfolioResult::iw_completed_depth)
+        .def_ro("winning_worker", &iw::AtomicGoalPortfolioResult::winning_worker)
+        .def_ro("executed_mode", &iw::AtomicGoalPortfolioResult::executed_mode)
+        .def_ro("stop_reason", &iw::AtomicGoalPortfolioResult::stop_reason)
+        .def_ro("certifier_status", &iw::AtomicGoalPortfolioResult::certifier_status)
+        .def_ro("iw_statistics", &iw::AtomicGoalPortfolioResult::iw_statistics)
+        .def_ro("rollout_statistics", &iw::AtomicGoalPortfolioResult::rollout_statistics)
+        .def_ro("rollout_statuses", &iw::AtomicGoalPortfolioResult::rollout_statuses)
+        .def_ro("total_expansions", &iw::AtomicGoalPortfolioResult::total_expansions);
+
+    // Releases the GIL for the whole run, across all K+1 worker threads. Nothing in the native path
+    // touches Python, and it must stay that way: a Python object reached from a worker thread while
+    // the GIL is released is a crash, not an exception.
+    m.def(
+        "find_solution_atomic_goal_iw_portfolio",
+        [](const SearchContext& search_context, const iw::AtomicGoalPortfolioOptions& options)
+        {
+            nb::gil_scoped_release release;
+            return iw::find_solution_atomic_goal_portfolio(search_context, options);
+        },
+        "search_context"_a,
+        "options"_a = iw::AtomicGoalPortfolioOptions());
 
     // SIW
     nb::class_<siw::Statistics>(m, "SIWStatistics")  //

@@ -187,6 +187,21 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
         throw std::invalid_argument("BrFS::Options.parallel_beam_chunk_size must be positive.");
     }
 
+    /* Reject rather than silently ignore. `SearchControl::completed_depth` is a claim about proof:
+       "every node at this depth was popped and tested against the goal". Only the plain queued loop
+       below expands a layer exhaustively -- a beam or a capped next layer drops candidates, and the
+       deferred-novelty path admits transitions on a different schedule -- so publishing a completed
+       depth from those would certify a plan that was never actually ruled out. */
+    if (options.control)
+    {
+        if (use_beam || use_next_layer_limit || layer_ordering_strategy || Ordering::requires_deferred_novelty)
+        {
+            throw std::invalid_argument("BrFS::Options.control is only supported on the plain queued search path. A beam, a next-layer cap, a layer "
+                                        "ordering strategy or a deferred-novelty ordering does not expand each g-layer exhaustively, so it cannot "
+                                        "publish a sound completed depth.");
+        }
+    }
+
     if ((iw1_precheck_add_effect_novelty || iw1_atom_first_mode) && (iw1_atom_first_ratio <= 0.0))
     {
         throw std::invalid_argument("BrFS::Options.iw1_atom_first_ratio must be positive.");
@@ -397,6 +412,12 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
                 return result;
             }
 
+            if (options.control && options.control->is_canceled())
+            {
+                result.status = SearchStatus::CANCELED;
+                return result;
+            }
+
             const auto state = state_repository.get_state(*queue.front());
             queue.pop_front();
 
@@ -412,6 +433,23 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
                 applicable_action_generator.on_finish_search_layer();
                 state_repository.get_axiom_evaluator()->on_finish_search_layer();
                 event_handler->on_finish_g_layer(g_value);
+
+                /* Popping a node of the next layer means every node of layer `g_value` has been
+                   popped, and the goal is tested on pop -- so no plan of length <= g_value exists
+                   in this search space. */
+                if (options.control)
+                {
+                    options.control->publish_completed_depth(g_value);
+
+                    /* Once that lower bound reaches a plan somebody else already has, this search
+                       has nothing left to prove: any plan it could still find is at least as long. */
+                    if (options.control->is_incumbent_certified(options.control->get_incumbent_length()))
+                    {
+                        result.status = SearchStatus::CANCELED;
+                        return result;
+                    }
+                }
+
                 g_value = search_node.g_value;
             }
 
@@ -443,6 +481,11 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
 
             event_handler->on_expand_state(state);
             search_node.status = SearchNodeStatus::CLOSED;
+
+            if (options.control)
+            {
+                options.control->add_expansions(1);
+            }
 
             if (pruning_strategy->consume_skip_state_expansion(state))
             {
@@ -543,6 +586,17 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
                                                 search_nodes,
                                                 g_value,
                                                 stopwatch);
+    }
+
+    /* The queue ran dry with no plan, so this search's space contains none at all. That must retract
+       the lower bound rather than raise it: `completed_depth` only ever meant "no plan of length <=
+       d *in the space I searched*", and a space that turns out to contain no plan whatsoever says
+       nothing about a plan somebody else found in a differently pruned space. Publishing the final
+       layer here instead would hand out a huge bound that certifies -- and cancels -- exactly the
+       workers that are finding what this search could not. */
+    if (options.control)
+    {
+        options.control->invalidate_lower_bound();
     }
 
     event_handler->on_end_search(state_repository.get_reached_fluent_ground_atoms_bitset().count(),
