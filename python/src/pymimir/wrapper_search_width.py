@@ -17,6 +17,15 @@ from pymimir.advanced.search import (
 
 # from pymimir.advanced.search import find_solution_siw as advanced_siw
 from pymimir.advanced.search import IBrFSEventHandler as AdvancedBrFSEventHandler
+from pymimir.advanced.search import (
+    DefaultBrFSEventHandler as AdvancedDefaultBrFSEventHandler,
+)
+from pymimir.advanced.search import (
+    SearchTreeBrFSEventHandler as AdvancedSearchTreeBrFSEventHandler,
+)
+from pymimir.advanced.search import (
+    DefaultIWEventHandler as AdvancedDefaultIWEventHandler,
+)
 from pymimir.advanced.search import IWOptions as AdvancedIWOptions
 from pymimir.advanced.search import (
     IWParallelRolloutOptions as AdvancedIWParallelRolloutOptions,
@@ -28,12 +37,33 @@ from pymimir.advanced.search import find_rollouts_iw_parallel as advanced_iw_par
 # from pymimir.advanced.search import SIWStatistics as AdvancedSIWStatistics
 
 from .wrapper_formalism import GroundAction, Problem, State
-from .wrapper_search import SearchResult
+from .wrapper_search import (
+    SearchResult,
+    _reject_native_observation_with_callbacks,
+    _uses_python_callbacks,
+)
 
 
 # ----------------------
 # Width-based algorithms
 # ----------------------
+
+
+def _make_native_brfs_event_handler(
+    problem: "Problem", capture_search_tree: bool
+) -> "AdvancedBrFSEventHandler":
+    """The native, quiet BrFS handler for a run with no Python callbacks.
+
+    Installing one instead of a Python subclass is what keeps the search inside C++: a Python
+    handler is called once per expansion and once per generated transition, which dominates the
+    runtime of a width search even when every callback is `None`.
+
+    The search-tree handler derives from the same statistics base, so capturing the tree collects
+    the statistics too.
+    """
+    if capture_search_tree:
+        return AdvancedSearchTreeBrFSEventHandler(problem._advanced_problem)
+    return AdvancedDefaultBrFSEventHandler(problem._advanced_problem, quiet=True)
 
 
 def _run_brfs_width_pruning(
@@ -61,7 +91,19 @@ def _run_brfs_width_pruning(
     num_threads: int = -1,
     chunk_size: int = -1,
     relaxed_survivors_only_beam: bool = False,
+    collect_statistics: bool = False,
+    capture_search_tree: bool = False,
 ) -> "SearchResult":
+    use_callbacks = _uses_python_callbacks(
+        on_expand_state,
+        on_expand_goal_state,
+        on_generate_state,
+        on_generate_new_state,
+        on_prune_state,
+    )
+    if use_callbacks:
+        _reject_native_observation_with_callbacks(collect_statistics, capture_search_tree)
+
     class EventHandler(AdvancedBrFSEventHandler):
         def __init__(self) -> None:
             super().__init__()
@@ -106,9 +148,15 @@ def _run_brfs_width_pruning(
         def get_statistics(self) -> "AdvancedBrFSStatistics":
             return AdvancedBrFSStatistics()
 
+    event_handler = (
+        EventHandler()
+        if use_callbacks
+        else _make_native_brfs_event_handler(problem, capture_search_tree)
+    )
+
     advanced_options = AdvancedBrFSOptions()
     advanced_options.start_state = start_state._advanced_state
-    advanced_options.event_handler = EventHandler()
+    advanced_options.event_handler = event_handler
     if layer_ordering_strategy is not None:
         advanced_options.layer_ordering_strategy = layer_ordering_strategy
     if max_next_layer_states > 0:
@@ -140,7 +188,14 @@ def _run_brfs_width_pruning(
     solution = [GroundAction(x, problem) for x in result.plan.get_actions()] if result.plan else None
     solution_cost = result.plan.get_cost() if result.plan else None
     goal_state = State(result.goal_state, problem) if result.goal_state else None
-    return SearchResult(status, solution, solution_cost, goal_state)
+    # Both getters return snapshots that own their data, so they outlive `event_handler`.
+    statistics = (
+        event_handler.get_statistics()
+        if (collect_statistics or capture_search_tree)
+        else None
+    )
+    search_tree = event_handler.get_search_tree() if capture_search_tree else None
+    return SearchResult(status, solution, solution_cost, goal_state, statistics, search_tree)
 
 
 def iw(
@@ -168,7 +223,20 @@ def iw(
     num_threads: int = -1,
     chunk_size: int = -1,
     relaxed_survivors_only_beam: bool = False,
+    collect_statistics: bool = False,
+    capture_search_tree: bool = False,
 ) -> "SearchResult":
+    """Run IW(k) for increasing k up to ``max_arity``.
+
+    Without any ``on_*`` callback the search runs entirely in C++: no Python event handler is
+    installed and no event crosses the language boundary. Pass ``collect_statistics=True`` to read
+    the native ``IWStatistics`` back from ``result.statistics``, or ``capture_search_tree=True`` to
+    also get the admitted search tree in ``result.search_tree`` (which implies statistics). Neither
+    can be combined with callbacks; see :func:`_reject_native_observation_with_callbacks`.
+
+    Tree capture requires ``max_arity == 1``. A wider run makes one BrFS pass per arity, and each
+    pass restarts the tree, so anything else would quietly hand back only the last arity's tree.
+    """
     assert isinstance(problem, Problem), "Problem must be an instance of Problem."
     assert isinstance(start_state, State), "Start state must be an instance of State."
     assert isinstance(max_arity, int), "Max arity must be an integer."
@@ -212,6 +280,22 @@ def iw(
     assert layer_ordering_strategy is None or isinstance(
         layer_ordering_strategy, AdvancedILayerOrderingStrategy
     ), "layer_ordering_strategy must be an advanced ILayerOrderingStrategy or None."
+
+    use_callbacks = _uses_python_callbacks(
+        on_expand_state,
+        on_expand_goal_state,
+        on_generate_state,
+        on_generate_new_state,
+        on_prune_state,
+    )
+    if use_callbacks:
+        _reject_native_observation_with_callbacks(collect_statistics, capture_search_tree)
+    if capture_search_tree and max_arity != 1:
+        raise ValueError(
+            f"capture_search_tree requires max_arity=1, got max_arity={max_arity}. IW(k>1) runs one "
+            "BrFS pass per arity and each pass restarts the tree, so only the last arity's tree would "
+            "survive. Run the arities separately if you need a tree per arity."
+        )
 
     # Define the event handler with the provided callback functions.
     class EventHandler(AdvancedBrFSEventHandler):
@@ -296,9 +380,20 @@ def iw(
         def get_statistics(self) -> "AdvancedBrFSStatistics":
             return AdvancedBrFSStatistics()
 
+    iw_event_handler = (
+        None if use_callbacks else AdvancedDefaultIWEventHandler(problem._advanced_problem, quiet=True)
+    )
+    brfs_event_handler = (
+        EventHandler()
+        if use_callbacks
+        else _make_native_brfs_event_handler(problem, capture_search_tree)
+    )
+
     advanced_options = AdvancedIWOptions()
     advanced_options.start_state = start_state._advanced_state
-    advanced_options.brfs_event_handler = EventHandler()
+    advanced_options.brfs_event_handler = brfs_event_handler
+    if iw_event_handler is not None:
+        advanced_options.iw_event_handler = iw_event_handler
     if layer_ordering_strategy is not None:
         advanced_options.layer_ordering_strategy = layer_ordering_strategy
     if max_next_layer_states > 0:
@@ -343,7 +438,14 @@ def iw(
     )
     solution_cost = result.plan.get_cost() if result.plan else None
     goal_state = State(result.goal_state, problem) if result.goal_state else None
-    return SearchResult(status, solution, solution_cost, goal_state)
+    # Both getters return snapshots that own their data, so they outlive the handlers.
+    statistics = (
+        iw_event_handler.get_statistics()
+        if (iw_event_handler is not None and (collect_statistics or capture_search_tree))
+        else None
+    )
+    search_tree = brfs_event_handler.get_search_tree() if capture_search_tree else None
+    return SearchResult(status, solution, solution_cost, goal_state, statistics, search_tree)
 
 
 def abstracted_iw(
@@ -374,6 +476,8 @@ def abstracted_iw(
     num_threads: int = -1,
     chunk_size: int = -1,
     relaxed_survivors_only_beam: bool = False,
+    collect_statistics: bool = False,
+    capture_search_tree: bool = False,
 ) -> "SearchResult":
     """Run BrFS with Abstracted IW(k) pruning.
 
@@ -382,6 +486,11 @@ def abstracted_iw(
     forces those slots to a universal type, yielding BAIW. With
     `preserve_goal_atoms=True`, positive goal atoms are represented only as full
     object-identity atoms.
+
+    Without any ``on_*`` callback this runs entirely in C++, with no Python event handler
+    installed. ``collect_statistics=True`` exposes the native ``BrFSStatistics`` of the single BrFS
+    pass as ``result.statistics``; ``capture_search_tree=True`` also exposes the admitted tree as
+    ``result.search_tree`` and implies statistics. Neither can be combined with callbacks.
     """
     assert isinstance(problem, Problem), "Problem must be an instance of Problem."
     assert isinstance(start_state, State), "Start state must be an instance of State."
@@ -421,6 +530,8 @@ def abstracted_iw(
         num_threads=num_threads,
         chunk_size=chunk_size,
         relaxed_survivors_only_beam=relaxed_survivors_only_beam,
+        collect_statistics=collect_statistics,
+        capture_search_tree=capture_search_tree,
     )
 
 
@@ -451,6 +562,8 @@ def projective_iw(
     num_threads: int = -1,
     chunk_size: int = -1,
     relaxed_survivors_only_beam: bool = False,
+    collect_statistics: bool = False,
+    capture_search_tree: bool = False,
 ) -> "SearchResult":
     """Compatibility alias for Abstracted IW(1).
 
@@ -489,6 +602,8 @@ def projective_iw(
         num_threads=num_threads,
         chunk_size=chunk_size,
         relaxed_survivors_only_beam=relaxed_survivors_only_beam,
+        collect_statistics=collect_statistics,
+        capture_search_tree=capture_search_tree,
     )
 
 

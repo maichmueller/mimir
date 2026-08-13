@@ -1148,13 +1148,42 @@ void bind_module_definitions(nb::module_& m)
     m.def("find_solution_astar_lazy", &astar_lazy::find_solution, "search_context"_a, "heuristic"_a, "options"_a);
 
     // BrFS
+    nb::class_<brfs::IW1IncrementalFirstApplicabilityStatistics>(m, "IW1IncrementalFirstApplicabilityStatistics")  //
+        .def(nb::init<>())
+        .def("get_num_root_actions_fully_enumerated", &brfs::IW1IncrementalFirstApplicabilityStatistics::get_num_root_actions_fully_enumerated)
+        .def("get_num_non_root_states_using_incremental_path",
+             &brfs::IW1IncrementalFirstApplicabilityStatistics::get_num_non_root_states_using_incremental_path)
+        .def("get_num_changed_atoms_processed", &brfs::IW1IncrementalFirstApplicabilityStatistics::get_num_changed_atoms_processed)
+        .def("get_num_trigger_records_visited", &brfs::IW1IncrementalFirstApplicabilityStatistics::get_num_trigger_records_visited)
+        .def("get_num_partial_seeds_created", &brfs::IW1IncrementalFirstApplicabilityStatistics::get_num_partial_seeds_created)
+        .def("get_num_ground_actions_returned_by_partial_completion",
+             &brfs::IW1IncrementalFirstApplicabilityStatistics::get_num_ground_actions_returned_by_partial_completion)
+        .def("get_num_local_duplicate_candidates_removed",
+             &brfs::IW1IncrementalFirstApplicabilityStatistics::get_num_local_duplicate_candidates_removed)
+        .def("get_num_already_tested_actions_skipped", &brfs::IW1IncrementalFirstApplicabilityStatistics::get_num_already_tested_actions_skipped)
+        .def("get_num_non_root_states_with_zero_returned_actions",
+             &brfs::IW1IncrementalFirstApplicabilityStatistics::get_num_non_root_states_with_zero_returned_actions)
+        .def("get_trigger_lookup_time_ms", &brfs::IW1IncrementalFirstApplicabilityStatistics::get_trigger_lookup_time_ms)
+        .def("get_partial_completion_time_ms", &brfs::IW1IncrementalFirstApplicabilityStatistics::get_partial_completion_time_ms)
+        .def("get_debug_crosscheck_time_ms", &brfs::IW1IncrementalFirstApplicabilityStatistics::get_debug_crosscheck_time_ms);
+
     nb::class_<brfs::Statistics>(m, "BrFSStatistics")  //
         .def(nb::init<>())
         .def("__str__", [](const brfs::Statistics& self) { return to_string(self); })
         .def("get_num_generated", &brfs::Statistics::get_num_generated)
+        .def("get_num_generated_in_search_tree", &brfs::Statistics::get_num_generated_in_search_tree)
+        .def("get_num_generated_not_in_search_tree", &brfs::Statistics::get_num_generated_not_in_search_tree)
         .def("get_num_expanded", &brfs::Statistics::get_num_expanded)
+        .def("get_num_expanded_goal_states", &brfs::Statistics::get_num_expanded_goal_states)
         .def("get_num_deadends", &brfs::Statistics::get_num_deadends)
         .def("get_num_pruned", &brfs::Statistics::get_num_pruned)
+        .def("get_num_reached_fluent_atoms", &brfs::Statistics::get_num_reached_fluent_atoms)
+        .def("get_num_reached_derived_atoms", &brfs::Statistics::get_num_reached_derived_atoms)
+        .def("get_num_states", &brfs::Statistics::get_num_states)
+        .def("get_num_nodes", &brfs::Statistics::get_num_nodes)
+        .def("get_num_actions", &brfs::Statistics::get_num_actions)
+        .def("get_num_axioms", &brfs::Statistics::get_num_axioms)
+        .def("get_iw1_incremental_first_applicability_statistics", &brfs::Statistics::get_iw1_incremental_first_applicability_statistics)
         .def("get_num_parallel_beam_chunk_flushes", &brfs::Statistics::get_num_parallel_beam_chunk_flushes)
         .def("get_num_parallel_beam_chunk_tasks_total", &brfs::Statistics::get_num_parallel_beam_chunk_tasks_total)
         .def("get_average_parallel_beam_chunk_size", &brfs::Statistics::get_average_parallel_beam_chunk_size)
@@ -1172,9 +1201,13 @@ void bind_module_definitions(nb::module_& m)
         .def("get_parallel_beam_consumer_stall_time_ms", &brfs::Statistics::get_parallel_beam_consumer_stall_time_ms)
         .def("get_parallel_beam_producer_stall_time_ms", &brfs::Statistics::get_parallel_beam_producer_stall_time_ms)
         .def("get_num_generated_until_g_value", &brfs::Statistics::get_num_generated_until_g_value)
+        .def("get_num_generated_in_search_tree_until_g_value", &brfs::Statistics::get_num_generated_in_search_tree_until_g_value)
+        .def("get_num_generated_not_in_search_tree_until_g_value", &brfs::Statistics::get_num_generated_not_in_search_tree_until_g_value)
         .def("get_num_expanded_until_g_value", &brfs::Statistics::get_num_expanded_until_g_value)
+        .def("get_num_expanded_goal_states_until_g_value", &brfs::Statistics::get_num_expanded_goal_states_until_g_value)
         .def("get_num_deadends_until_g_value", &brfs::Statistics::get_num_deadends_until_g_value)
         .def("get_num_pruned_until_g_value", &brfs::Statistics::get_num_pruned_until_g_value)
+        .def("get_finished_g_values", &brfs::Statistics::get_finished_g_values)
         .def("get_search_time_ms", &brfs::Statistics::get_search_time_ms);
 
     nb::class_<brfs::IEventHandler, IPyBrFSEventHandler>(m, "IBrFSEventHandler")  //
@@ -1202,6 +1235,41 @@ void bind_module_definitions(nb::module_& m)
     nb::class_<brfs::DebugEventHandlerImpl, brfs::IEventHandler>(m,
                                                                  "DebugBrFSEventHandler")  //
         .def(nb::init<Problem, bool>(), "problem"_a, "quiet"_a = true);
+
+    nb::class_<brfs::SearchTreeNode>(m, "BrFSSearchTreeNode")  //
+        .def_ro("state_index", &brfs::SearchTreeNode::state)
+        .def_prop_ro("parent_index", [](const brfs::SearchTreeNode& self) { return self.parent_node; })
+        .def_prop_ro("incoming_action_index",
+                     [](const brfs::SearchTreeNode& self) -> std::optional<Index>
+                     {
+                         // The root has no incoming action; report that as None rather than as a
+                         // sentinel index a caller could mistake for a real action.
+                         return self.parent_node.has_value() ? std::optional<Index>(self.incoming_action) : std::nullopt;
+                     })
+        .def_ro("depth", &brfs::SearchTreeNode::depth)
+        .def("__repr__",
+             [](const brfs::SearchTreeNode& self)
+             {
+                 return "BrFSSearchTreeNode(state_index=" + std::to_string(self.state) + ", parent_index="
+                        + (self.parent_node.has_value() ? std::to_string(*self.parent_node) : std::string("None")) + ", incoming_action_index="
+                        + (self.parent_node.has_value() ? std::to_string(self.incoming_action) : std::string("None"))
+                        + ", depth=" + std::to_string(self.depth) + ")";
+             });
+
+    nb::class_<brfs::SearchTree>(m, "BrFSSearchTree")  //
+        .def_prop_ro("nodes", &brfs::SearchTree::get_nodes, nb::rv_policy::copy)
+        .def("__len__", &brfs::SearchTree::get_num_nodes)
+        .def("get_nodes", &brfs::SearchTree::get_nodes, nb::rv_policy::copy)
+        .def("get_num_nodes", &brfs::SearchTree::get_num_nodes)
+        .def("find_node_by_state", &brfs::SearchTree::find_node_by_state, "state_index"_a)
+        .def("extract_action_path", &brfs::SearchTree::extract_action_path, "node_index"_a)
+        .def("extract_state_path", &brfs::SearchTree::extract_state_path, "node_index"_a);
+
+    nb::class_<brfs::SearchTreeEventHandlerImpl, brfs::IEventHandler>(m, "SearchTreeBrFSEventHandler")  //
+        .def(nb::init<Problem>(), "problem"_a)
+        .def_static("create", &brfs::SearchTreeEventHandlerImpl::create, "problem"_a)
+        // Returned by value: the tree must outlive the handler the caller drops after the search.
+        .def("get_search_tree", &brfs::SearchTreeEventHandlerImpl::get_search_tree, nb::rv_policy::copy);
 
     nb::class_<brfs::Options>(m, "BrFSOptions")  //
         .def(nb::init<>())
@@ -1402,9 +1470,12 @@ void bind_module_definitions(nb::module_& m)
         .def("get_search_time_ms", &iw::Statistics::get_search_time_ms);
 
     nb::class_<iw::IEventHandler>(m, "IIWEventHandler")  //
-        .def("get_statistics", &iw::IEventHandler::get_statistics);
+        .def("get_statistics", &iw::IEventHandler::get_statistics)
+        .def("is_quiet", &iw::IEventHandler::is_quiet);
 
-    nb::class_<iw::DefaultEventHandlerImpl, iw::IEventHandler>(m, "DefaultIWEventHandler").def(nb::init<Problem, bool>(), "problem"_a, "quiet"_a = true);
+    nb::class_<iw::DefaultEventHandlerImpl, iw::IEventHandler>(m, "DefaultIWEventHandler")
+        .def(nb::init<Problem, bool>(), "problem"_a, "quiet"_a = true)
+        .def_static("create", &iw::DefaultEventHandlerImpl::create, "problem"_a, "quiet"_a = true);
 
     nb::class_<iw::Options>(m, "IWOptions")  //
         .def(nb::init<>())

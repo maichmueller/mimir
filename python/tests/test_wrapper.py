@@ -1086,11 +1086,13 @@ class TestSearchAlgorithms(unittest.TestCase):
                 (state, action, cost, successor_state)
             ),
         )
-        assert len(expanded_states) == 7
+        assert len(expanded_states) == 4
         assert len(expanded_goal_states) == 0
-        assert len(generated_states) == 20
-        assert len(generated_new_states) == 5
-        assert len(pruned_states) == 15
+        assert len(generated_states) == 11
+        assert len(generated_new_states) == 3
+        assert len(pruned_states) == 8
+        # Every generated transition is classified exactly once.
+        assert len(generated_states) == len(generated_new_states) + len(pruned_states)
 
     def test_str_repr_hash(self):
         domain_path = DATA_DIR / "blocks_4" / "domain.pddl"

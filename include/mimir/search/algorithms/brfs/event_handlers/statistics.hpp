@@ -88,12 +88,27 @@ public:
     double get_debug_crosscheck_time_ms() const { return static_cast<double>(m_debug_crosscheck_time_ns) / 1'000'000.0; }
 };
 
+/// @brief Counters collected by `EventHandlerBase` over one BrFS run.
+///
+/// The three transition counters partition one another by construction:
+/// `num_generated` counts every transition reported through `on_generate_state`,
+/// `num_generated_in_search_tree` those admitted through `on_generate_state_in_search_tree`, and
+/// `num_generated_not_in_search_tree` those rejected through `on_generate_state_not_in_search_tree`.
+/// For a search whose classification sequence ran to completion,
+/// `num_generated == num_generated_in_search_tree + num_generated_not_in_search_tree`. A search that
+/// stopped mid-layer (out of time, out of states, canceled) can leave transitions generated but not
+/// yet classified, so the identity holds only for terminal statuses that finished their layer.
+///
+/// `num_pruned` is a separate, currently unused counter and is *not* a synonym for
+/// `num_generated_not_in_search_tree`.
 class Statistics
 {
 private:
     uint64_t m_num_generated;
     uint64_t m_num_generated_in_search_tree;
+    uint64_t m_num_generated_not_in_search_tree;
     uint64_t m_num_expanded;
+    uint64_t m_num_expanded_goal_states;
     uint64_t m_num_deadends;
     uint64_t m_num_pruned;
     uint64_t m_num_parallel_beam_chunk_flushes;
@@ -115,9 +130,15 @@ private:
     std::chrono::time_point<std::chrono::high_resolution_clock> m_search_end_time_point;
 
     std::vector<uint64_t> m_num_generated_until_g_value;
+    std::vector<uint64_t> m_num_generated_in_search_tree_until_g_value;
+    std::vector<uint64_t> m_num_generated_not_in_search_tree_until_g_value;
     std::vector<uint64_t> m_num_expanded_until_g_value;
+    std::vector<uint64_t> m_num_expanded_goal_states_until_g_value;
     std::vector<uint64_t> m_num_deadends_until_g_value;
     std::vector<uint64_t> m_num_pruned_until_g_value;
+    /// The g-value each finished layer actually reported. A layer that generates no successor is
+    /// never finished, so position `i` is not in general the g-value `i`.
+    std::vector<int64_t> m_finished_g_values;
 
     uint64_t m_num_reached_fluent_atoms;
     uint64_t m_num_reached_derived_atoms;
@@ -132,7 +153,9 @@ public:
     Statistics() :
         m_num_generated(0),
         m_num_generated_in_search_tree(0),
+        m_num_generated_not_in_search_tree(0),
         m_num_expanded(0),
+        m_num_expanded_goal_states(0),
         m_num_deadends(0),
         m_num_pruned(0),
         m_num_parallel_beam_chunk_flushes(0),
@@ -151,9 +174,13 @@ public:
         m_parallel_beam_consumer_stall_time_ns(0),
         m_parallel_beam_producer_stall_time_ns(0),
         m_num_generated_until_g_value(),
+        m_num_generated_in_search_tree_until_g_value(),
+        m_num_generated_not_in_search_tree_until_g_value(),
         m_num_expanded_until_g_value(),
+        m_num_expanded_goal_states_until_g_value(),
         m_num_deadends_until_g_value(),
         m_num_pruned_until_g_value(),
+        m_finished_g_values(),
         m_num_reached_fluent_atoms(0),
         m_num_reached_derived_atoms(0),
         m_num_states(0),
@@ -168,18 +195,26 @@ public:
      * Setters
      */
 
-    /// @brief Store information for the layer
-    void on_finish_g_layer()
+    /// @brief Store the running totals for the layer that just finished, together with the g-value
+    /// that layer reported. The totals are cumulative, so a single layer's own counts are the
+    /// difference between consecutive entries.
+    void on_finish_g_layer(int64_t g_value)
     {
         m_num_generated_until_g_value.push_back(m_num_generated);
+        m_num_generated_in_search_tree_until_g_value.push_back(m_num_generated_in_search_tree);
+        m_num_generated_not_in_search_tree_until_g_value.push_back(m_num_generated_not_in_search_tree);
         m_num_expanded_until_g_value.push_back(m_num_expanded);
+        m_num_expanded_goal_states_until_g_value.push_back(m_num_expanded_goal_states);
         m_num_deadends_until_g_value.push_back(m_num_deadends);
         m_num_pruned_until_g_value.push_back(m_num_pruned);
+        m_finished_g_values.push_back(g_value);
     }
 
     void increment_num_generated() { ++m_num_generated; }
     void increment_num_generated_in_search_tree() { ++m_num_generated_in_search_tree; }
+    void increment_num_generated_not_in_search_tree() { ++m_num_generated_not_in_search_tree; }
     void increment_num_expanded() { ++m_num_expanded; }
+    void increment_num_expanded_goal_states() { ++m_num_expanded_goal_states; }
     void increment_num_deadends() { ++m_num_deadends; }
     void increment_num_pruned() { ++m_num_pruned; }
     void record_parallel_beam_chunk(size_t chunk_size,
@@ -235,7 +270,9 @@ public:
 
     uint64_t get_num_generated() const { return m_num_generated; }
     uint64_t get_num_generated_in_search_tree() const { return m_num_generated_in_search_tree; }
+    uint64_t get_num_generated_not_in_search_tree() const { return m_num_generated_not_in_search_tree; }
     uint64_t get_num_expanded() const { return m_num_expanded; }
+    uint64_t get_num_expanded_goal_states() const { return m_num_expanded_goal_states; }
     uint64_t get_num_deadends() const { return m_num_deadends; }
     uint64_t get_num_pruned() const { return m_num_pruned; }
     uint64_t get_num_parallel_beam_chunk_flushes() const { return m_num_parallel_beam_chunk_flushes; }
@@ -297,9 +334,17 @@ public:
     }
 
     const std::vector<uint64_t>& get_num_generated_until_g_value() const { return m_num_generated_until_g_value; }
+    const std::vector<uint64_t>& get_num_generated_in_search_tree_until_g_value() const { return m_num_generated_in_search_tree_until_g_value; }
+    const std::vector<uint64_t>& get_num_generated_not_in_search_tree_until_g_value() const
+    {
+        return m_num_generated_not_in_search_tree_until_g_value;
+    }
     const std::vector<uint64_t>& get_num_expanded_until_g_value() const { return m_num_expanded_until_g_value; }
+    const std::vector<uint64_t>& get_num_expanded_goal_states_until_g_value() const { return m_num_expanded_goal_states_until_g_value; }
     const std::vector<uint64_t>& get_num_deadends_until_g_value() const { return m_num_deadends_until_g_value; }
     const std::vector<uint64_t>& get_num_pruned_until_g_value() const { return m_num_pruned_until_g_value; }
+    /// @brief The g-value reported by each finished layer, parallel to the `_until_g_value` vectors.
+    const std::vector<int64_t>& get_finished_g_values() const { return m_finished_g_values; }
 };
 
 /**

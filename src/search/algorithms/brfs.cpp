@@ -40,6 +40,7 @@
 
 #include <algorithm>
 #include <deque>
+#include <exception>
 #include <stdexcept>
 
 using namespace mimir::formalism;
@@ -91,6 +92,54 @@ bool supports_iw1_incremental_first_applicability(const PruningStrategy& pruning
 {
     return pruning_strategy->supports_atom_novelty_query();
 }
+}
+
+SearchEndGuard::SearchEndGuard(EventHandler event_handler, SearchContext context, const SearchNodeVector& search_nodes) :
+    m_event_handler(std::move(event_handler)),
+    m_context(std::move(context)),
+    m_search_nodes(&search_nodes),
+    m_finished(false)
+{
+}
+
+SearchEndGuard::~SearchEndGuard() noexcept(false)
+{
+    if (std::uncaught_exceptions() > 0)
+    {
+        /* Already unwinding. A second exception thrown from here would terminate the process, and
+           the failure that started the unwinding is the one worth surfacing. */
+        try
+        {
+            finish();
+        }
+        catch (...)
+        {
+        }
+        return;
+    }
+
+    finish();
+}
+
+void SearchEndGuard::finish()
+{
+    if (m_finished)
+    {
+        return;
+    }
+    m_finished = true;
+
+    const auto& problem = *m_context->get_problem();
+    auto& state_repository = *m_context->get_state_repository();
+    const auto& ground_action_repository = boost::hana::at_key(problem.get_repositories().get_hana_repositories(), boost::hana::type<GroundActionImpl> {});
+    const auto& ground_axiom_repository = boost::hana::at_key(problem.get_repositories().get_hana_repositories(), boost::hana::type<GroundAxiomImpl> {});
+
+    m_event_handler->on_end_search(state_repository.get_reached_fluent_ground_atoms_bitset().count(),
+                                   state_repository.get_reached_derived_ground_atoms_bitset().count(),
+                                   state_repository.get_state_count(),
+                                   m_search_nodes->size(),
+                                   ground_action_repository.size(),
+                                   ground_axiom_repository.size());
 }
 
 template<TransitionOrderingStrategy Ordering = QueuedTransitionOrderingStrategy>
@@ -288,16 +337,18 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
 
     event_handler->on_start_search(start_state);
 
+    /* Every path out of here from now on owes the handler its end-of-search report, including the
+       ones that give up before a single node is expanded. */
+    auto end_guard = SearchEndGuard(event_handler, context, search_nodes);
+
     if (!goal_strategy->test_static_goal())
     {
+        end_guard.finish();
         event_handler->on_unsolvable();
 
         result.status = SearchStatus::UNSOLVABLE;
         return result;
     }
-
-    const auto& ground_action_repository = boost::hana::at_key(problem.get_repositories().get_hana_repositories(), boost::hana::type<GroundActionImpl> {});
-    const auto& ground_axiom_repository = boost::hana::at_key(problem.get_repositories().get_hana_repositories(), boost::hana::type<GroundAxiomImpl> {});
 
     if (pruning_strategy->test_prune_initial_state(start_state))
     {
@@ -459,12 +510,7 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
 
                 if (options.stop_if_goal)
                 {
-                    event_handler->on_end_search(state_repository.get_reached_fluent_ground_atoms_bitset().count(),
-                                                 state_repository.get_reached_derived_ground_atoms_bitset().count(),
-                                                 state_repository.get_state_count(),
-                                                 search_nodes.size(),
-                                                 ground_action_repository.size(),
-                                                 ground_axiom_repository.size());
+                    end_guard.finish();
 
                     applicable_action_generator.on_end_search();
                     state_repository.get_axiom_evaluator()->on_end_search();
@@ -571,7 +617,8 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
                                        layer_ordering_strategy,
                                        search_nodes,
                                        g_value,
-                                       stopwatch);
+                                       stopwatch,
+                                       end_guard);
     }
     else
     {
@@ -585,7 +632,8 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
                                                 layer_ordering_strategy,
                                                 search_nodes,
                                                 g_value,
-                                                stopwatch);
+                                                stopwatch,
+                                                end_guard);
     }
 
     /* The queue ran dry with no plan, so this search's space contains none at all. That must retract
@@ -599,12 +647,7 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
         options.control->invalidate_lower_bound();
     }
 
-    event_handler->on_end_search(state_repository.get_reached_fluent_ground_atoms_bitset().count(),
-                                 state_repository.get_reached_derived_ground_atoms_bitset().count(),
-                                 state_repository.get_state_count(),
-                                 search_nodes.size(),
-                                 ground_action_repository.size(),
-                                 ground_axiom_repository.size());
+    end_guard.finish();
     event_handler->on_exhausted();
 
     result.status = SearchStatus::EXHAUSTED;
@@ -666,7 +709,8 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
                                                        pruning_strategy,
                                                        search_nodes,
                                                        g_value,
-                                                       stopwatch);
+                                                       stopwatch,
+                                                       end_guard);
     }
 }
 

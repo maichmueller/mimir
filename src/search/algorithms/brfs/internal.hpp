@@ -59,6 +59,34 @@ inline SearchNode& get_or_create_search_node(size_t state_index, SearchNodeVecto
     return search_nodes[state_index];
 }
 
+/// @brief Emits `IEventHandler::on_end_search` exactly once for a search that has started, whichever
+/// of BrFS's many terminal paths returns.
+///
+/// BrFS leaves through a dozen `return result;` statements -- solved, exhausted, out of time, out of
+/// states, canceled, unsolvable, initial-state pruning -- and every one of them owes the handler the
+/// end-of-search repository counts and the stop time that finalize its statistics. Keeping that
+/// obligation in a destructor puts it on the search's scope instead of on whoever writes the next
+/// early return.
+class SearchEndGuard
+{
+public:
+    SearchEndGuard(EventHandler event_handler, SearchContext context, const SearchNodeVector& search_nodes);
+    SearchEndGuard(const SearchEndGuard&) = delete;
+    SearchEndGuard& operator=(const SearchEndGuard&) = delete;
+    ~SearchEndGuard() noexcept(false);
+
+    /// @brief Emit the event now instead of at scope exit. Paths that report more afterwards --
+    /// extracting a plan and emitting `on_solved`, say -- call this so the handler still sees
+    /// end-of-search first. Any call after the first is a no-op.
+    void finish();
+
+private:
+    EventHandler m_event_handler;
+    SearchContext m_context;
+    const SearchNodeVector* m_search_nodes;
+    bool m_finished;
+};
+
 class IW1ActionPrecheckController
 {
 private:
@@ -117,7 +145,8 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                                      const LayerOrderingStrategy& layer_ordering_strategy,
                                      SearchNodeVector& search_nodes,
                                      DiscreteCost g_value,
-                                     StopWatch& stopwatch);
+                                     StopWatch& stopwatch,
+                                     SearchEndGuard& end_guard);
 
 /// Ordered-layer BrFS keeps breadth-first expansion by depth, but it may score and reorder
 /// states inside the next layer. With `max_next_layer_states`, generation can stop early once
@@ -132,7 +161,8 @@ SearchResult find_solution_with_ordered_layer(const SearchContext& context,
                                               const LayerOrderingStrategy& layer_ordering_strategy,
                                               SearchNodeVector& search_nodes,
                                               DiscreteCost g_value,
-                                              StopWatch& stopwatch);
+                                              StopWatch& stopwatch,
+                                              SearchEndGuard& end_guard);
 }
 
 #endif

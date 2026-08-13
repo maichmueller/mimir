@@ -486,17 +486,15 @@ SearchResult find_solution_with_beam(const SearchContext& context,
                                      const LayerOrderingStrategy& layer_ordering_strategy,
                                      SearchNodeVector& search_nodes,
                                      DiscreteCost g_value,
-                                     StopWatch& stopwatch)
+                                     StopWatch& stopwatch,
+                                     SearchEndGuard& end_guard)
 {
     // True beam mode still respects BFS layers. We generate the full candidate set for
     // depth d+1, novelty-check each successor first, score the novel ones eagerly, and
     // keep only the best `beam_width` states for the next layer.
     const auto problem_handle = context->get_problem();
-    const auto& problem = *problem_handle;
     auto& applicable_action_generator = *context->get_applicable_action_generator();
     auto& state_repository = *context->get_state_repository();
-    const auto& ground_action_repository = boost::hana::at_key(problem.get_repositories().get_hana_repositories(), boost::hana::type<GroundActionImpl> {});
-    const auto& ground_axiom_repository = boost::hana::at_key(problem.get_repositories().get_hana_repositories(), boost::hana::type<GroundAxiomImpl> {});
 
     auto result = SearchResult();
 
@@ -1150,12 +1148,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
 
                 if (options.stop_if_goal)
                 {
-                    event_handler->on_end_search(state_repository.get_reached_fluent_ground_atoms_bitset().count(),
-                                                 state_repository.get_reached_derived_ground_atoms_bitset().count(),
-                                                 state_repository.get_state_count(),
-                                                 search_nodes.size(),
-                                                 ground_action_repository.size(),
-                                                 ground_axiom_repository.size());
+                    end_guard.finish();
 
                     applicable_action_generator.on_end_search();
                     state_repository.get_axiom_evaluator()->on_end_search();
@@ -1508,12 +1501,7 @@ SearchResult find_solution_with_beam(const SearchContext& context,
         next_layer.clear();
     }
 
-    event_handler->on_end_search(state_repository.get_reached_fluent_ground_atoms_bitset().count(),
-                                 state_repository.get_reached_derived_ground_atoms_bitset().count(),
-                                 state_repository.get_state_count(),
-                                 search_nodes.size(),
-                                 ground_action_repository.size(),
-                                 ground_axiom_repository.size());
+    end_guard.finish();
     event_handler->on_exhausted();
 
     result.status = SearchStatus::EXHAUSTED;

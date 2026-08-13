@@ -172,7 +172,10 @@ std::ostream& print(std::ostream& out, const mimir::search::brfs::Statistics& el
     fmt::print(out,
                "[BrFS] Search time: {}ms\n"
                "[BrFS] Number of generated states: {}\n"
+               "[BrFS] Number of generated states in search tree: {}\n"
+               "[BrFS] Number of generated states not in search tree: {}\n"
                "[BrFS] Number of expanded states: {}\n"
+               "[BrFS] Number of expanded goal states: {}\n"
                "[BrFS] Number of pruned states: {}\n"
                "[BrFS] Number of generated states until last f-layer: {}\n"
                "[BrFS] Number of expanded states until last f-layer: {}\n"
@@ -198,7 +201,10 @@ std::ostream& print(std::ostream& out, const mimir::search::brfs::Statistics& el
                "[BrFS] Parallel beam producer stall time: {:.3f}ms",
                element.get_search_time_ms().count(),
                element.get_num_generated(),
+               element.get_num_generated_in_search_tree(),
+               element.get_num_generated_not_in_search_tree(),
                element.get_num_expanded(),
+               element.get_num_expanded_goal_states(),
                element.get_num_pruned(),
                element.get_num_generated_until_g_value().empty() ? 0 : element.get_num_generated_until_g_value().back(),
                element.get_num_expanded_until_g_value().empty() ? 0 : element.get_num_expanded_until_g_value().back(),

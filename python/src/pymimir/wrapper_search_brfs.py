@@ -10,11 +10,21 @@ from pymimir.advanced.search import BeamNoveltyMode as AdvancedBeamNoveltyMode
 from pymimir.advanced.search import find_solution_brfs as advanced_brfs
 from pymimir.advanced.search import IBrFSEventHandler as AdvancedBrFSEventHandler
 from pymimir.advanced.search import (
+    DefaultBrFSEventHandler as AdvancedDefaultBrFSEventHandler,
+)
+from pymimir.advanced.search import (
+    SearchTreeBrFSEventHandler as AdvancedSearchTreeBrFSEventHandler,
+)
+from pymimir.advanced.search import (
     ILayerOrderingStrategy as AdvancedILayerOrderingStrategy,
 )
 
 from .wrapper_formalism import GroundAction, Problem, State
-from .wrapper_search import SearchResult
+from .wrapper_search import (
+    SearchResult,
+    _reject_native_observation_with_callbacks,
+    _uses_python_callbacks,
+)
 
 
 # -----------------
@@ -50,6 +60,8 @@ def brfs(
     chunk_size: int = -1,
     relaxed_survivors_only_beam: bool = False,
     stop_if_goal: bool = True,
+    collect_statistics: bool = False,
+    capture_search_tree: bool = False,
 ) -> "SearchResult":
     """
     Breadth-First Search (BrFS) search algorithm.
@@ -109,8 +121,18 @@ def brfs(
     :type on_finish_g_layer: Callable[[float], None]
     :param stop_if_goal: Whether to stop as soon as a goal is expanded. Set to False to exhaust the reachable state space.
     :type stop_if_goal: bool
+    :param collect_statistics: Expose the native BrFSStatistics of the run as `result.statistics`.
+        Requires that no callback is given: a search installs one event handler, and native
+        collection and Python callbacks each want to be it.
+    :type collect_statistics: bool
+    :param capture_search_tree: Also expose the admitted search tree as `result.search_tree`. Implies
+        `collect_statistics`, since the tree handler collects statistics as well.
+    :type capture_search_tree: bool
     :return: A SearchResult object containing the status, solution, solution cost, and goal state.
     :rtype: SearchResult
+
+    With no callback given, the search runs entirely in C++: no Python event handler is installed and
+    no event crosses the language boundary.
     """
     assert isinstance(problem, Problem), "Problem must be an instance of Problem."
     assert isinstance(start_state, State), "Start state must be an instance of State."
@@ -158,6 +180,17 @@ def brfs(
     assert layer_ordering_strategy is None or isinstance(
         layer_ordering_strategy, AdvancedILayerOrderingStrategy
     ), "layer_ordering_strategy must be an advanced ILayerOrderingStrategy or None."
+
+    use_callbacks = _uses_python_callbacks(
+        on_expand_state,
+        on_expand_goal_state,
+        on_generate_state,
+        on_generate_new_state,
+        on_prune_state,
+        on_finish_g_layer,
+    )
+    if use_callbacks:
+        _reject_native_observation_with_callbacks(collect_statistics, capture_search_tree)
 
     # Define the event handler with the provided callback functions.
     class EventHandler(AdvancedBrFSEventHandler):
@@ -289,7 +322,15 @@ def brfs(
     if chunk_size > 0:
         advanced_options.parallel_beam_chunk_size = chunk_size
     advanced_options.start_state = start_state._advanced_state
-    advanced_options.event_handler = EventHandler()
+    # A native, quiet handler keeps a callback-free search inside C++; a Python subclass would be
+    # entered once per expansion and once per generated transition even with every callback unset.
+    if use_callbacks:
+        event_handler = EventHandler()
+    elif capture_search_tree:
+        event_handler = AdvancedSearchTreeBrFSEventHandler(problem._advanced_problem)
+    else:
+        event_handler = AdvancedDefaultBrFSEventHandler(problem._advanced_problem, quiet=True)
+    advanced_options.event_handler = event_handler
     if layer_ordering_strategy is not None:
         advanced_options.layer_ordering_strategy = layer_ordering_strategy
     advanced_options.stop_if_goal = stop_if_goal
@@ -303,4 +344,11 @@ def brfs(
     )
     solution_cost = result.plan.get_cost() if result.plan else None
     goal_state = State(result.goal_state, problem) if result.goal_state else None
-    return SearchResult(status, solution, solution_cost, goal_state)
+    # Both getters return snapshots that own their data, so they outlive `event_handler`.
+    statistics = (
+        event_handler.get_statistics()
+        if (collect_statistics or capture_search_tree)
+        else None
+    )
+    search_tree = event_handler.get_search_tree() if capture_search_tree else None
+    return SearchResult(status, solution, solution_cost, goal_state, statistics, search_tree)

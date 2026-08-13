@@ -50,7 +50,8 @@ SearchResult find_solution_with_transition_ordering(const SearchContext& context
                                                      const PruningStrategy& pruning_strategy,
                                                      SearchNodeVector& search_nodes,
                                                      DiscreteCost g_value,
-                                                     StopWatch& stopwatch);
+                                                     StopWatch& stopwatch,
+                                                     SearchEndGuard& end_guard);
 
 // Explicit instantiation is provided by transition_ordered_layer.cpp. Declaring it `extern` here lets
 // translation units (namely brfs.cpp) call this function while only including this thin declaration
@@ -65,7 +66,8 @@ extern template SearchResult find_solution_with_transition_ordering<LandmarkTran
                                                                                                          const PruningStrategy& pruning_strategy,
                                                                                                          SearchNodeVector& search_nodes,
                                                                                                          DiscreteCost g_value,
-                                                                                                         StopWatch& stopwatch);
+                                                                                                         StopWatch& stopwatch,
+                                                                                                         SearchEndGuard& end_guard);
 
 }
 

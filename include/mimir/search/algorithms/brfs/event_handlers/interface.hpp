@@ -157,6 +157,8 @@ public:
 
     void on_expand_goal_state(const State& state) override
     {
+        m_statistics.increment_num_expanded_goal_states();
+
         if (!m_quiet)
         {
             self().on_expand_goal_state_impl(state);
@@ -173,7 +175,13 @@ public:
         }
     }
 
-    bool supports_novel_witness_events() const override { return !m_quiet; }
+    /* Computing a novelty witness costs a scan of the transition's novel atoms, so a search only
+       pays for it when a handler says it consumes the witness. That is a capability of the concrete
+       handler, not of its verbosity: a non-quiet handler that never reads witnesses (this base's own
+       `on_generate_state_with_novel_witness` ignores them) would otherwise make every search compute
+       them for nothing, and a handler that does want them while staying quiet could not ask. Derived
+       handlers that implement `on_generate_state_with_novel_witness` override this to return true. */
+    bool supports_novel_witness_events() const override { return false; }
 
     void on_generate_state_with_novel_witness(const State& state,
                                               formalism::GroundAction action,
@@ -190,11 +198,14 @@ public:
 
     bool supports_payloadless_generated_state_events() const override { return m_quiet; }
 
+    /* The payloadless hooks feed exactly the same counters as their payloadful counterparts, so a
+       search that reports a transition without payload is indistinguishable in the statistics from
+       one that reports it with payload. */
     void on_generate_state_without_payload() override { m_statistics.increment_num_generated(); }
 
     void on_generate_state_in_search_tree_without_payload() override { m_statistics.increment_num_generated_in_search_tree(); }
 
-    void on_generate_state_not_in_search_tree_without_payload() override {}
+    void on_generate_state_not_in_search_tree_without_payload() override { m_statistics.increment_num_generated_not_in_search_tree(); }
 
     void on_generate_state_in_search_tree(const State& state, formalism::GroundAction action, ContinuousCost action_cost, const State& successor_state) override
     {
@@ -209,6 +220,8 @@ public:
     void
     on_generate_state_not_in_search_tree(const State& state, formalism::GroundAction action, ContinuousCost action_cost, const State& successor_state) override
     {
+        m_statistics.increment_num_generated_not_in_search_tree();
+
         if (!m_quiet)
         {
             self().on_generate_state_not_in_search_tree_impl(state, action, action_cost, successor_state);
@@ -217,7 +230,7 @@ public:
 
     void on_finish_g_layer(DiscreteCost g_value) override
     {
-        m_statistics.on_finish_g_layer();
+        m_statistics.on_finish_g_layer(static_cast<int64_t>(g_value));
 
         if (!m_quiet)
         {

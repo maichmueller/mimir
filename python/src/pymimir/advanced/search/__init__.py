@@ -117,9 +117,13 @@ from pymimir.pymimir.advanced.search import (
 # BrFs
 from pymimir.pymimir.advanced.search import (
     BrFSStatistics,
+    IW1IncrementalFirstApplicabilityStatistics,
     IBrFSEventHandler,
     DebugBrFSEventHandler,
     DefaultBrFSEventHandler,
+    SearchTreeBrFSEventHandler,
+    BrFSSearchTree,
+    BrFSSearchTreeNode,
     BrFSOptions,
     find_solution_brfs,
 )

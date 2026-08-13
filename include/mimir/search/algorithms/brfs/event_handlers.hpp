@@ -23,5 +23,6 @@
  */
 #include "mimir/search/algorithms/brfs/event_handlers/debug.hpp"
 #include "mimir/search/algorithms/brfs/event_handlers/default.hpp"
+#include "mimir/search/algorithms/brfs/event_handlers/search_tree.hpp"
 
 #endif

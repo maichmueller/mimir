@@ -32,12 +32,62 @@
 #include "mimir/search/state_repository.hpp"
 
 #include <chrono>
+#include <exception>
 #include <limits>
+#include <utility>
 
 using namespace mimir::formalism;
 
 namespace mimir::search::iw
 {
+namespace
+{
+/// @brief Emits `IEventHandler::on_end_search` exactly once for an IW search that has started,
+/// whichever arity pass it stops in and for whatever reason. See `brfs::SearchEndGuard` for the
+/// same obligation on the BrFS side.
+class SearchEndGuard
+{
+public:
+    explicit SearchEndGuard(EventHandler event_handler) : m_event_handler(std::move(event_handler)), m_finished(false) {}
+    SearchEndGuard(const SearchEndGuard&) = delete;
+    SearchEndGuard& operator=(const SearchEndGuard&) = delete;
+
+    ~SearchEndGuard() noexcept(false)
+    {
+        if (std::uncaught_exceptions() > 0)
+        {
+            /* Already unwinding: a second exception from here would terminate the process. */
+            try
+            {
+                finish();
+            }
+            catch (...)
+            {
+            }
+            return;
+        }
+
+        finish();
+    }
+
+    /// @brief Emit the event now instead of at scope exit, so a path that reports more afterwards
+    /// keeps its ordering. Any call after the first is a no-op.
+    void finish()
+    {
+        if (m_finished)
+        {
+            return;
+        }
+        m_finished = true;
+        m_event_handler->on_end_search();
+    }
+
+private:
+    EventHandler m_event_handler;
+    bool m_finished;
+};
+}
+
 template<TransitionOrderingStrategy Ordering = QueuedTransitionOrderingStrategy>
 SearchResult find_solution_impl(const SearchContext& context, const Options& options, const Ordering& ordering = {})
 {
@@ -59,6 +109,9 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
     }
 
     iw_event_handler->on_start_search(start_state);
+
+    /* Every path out of here from now on owes the handler its end-of-search report. */
+    auto end_guard = SearchEndGuard(iw_event_handler);
 
     /* The time budget spans the whole search, not each arity pass, so every pass is handed what is
        left of it. Passing `options.max_time_in_ms` to each pass instead would let a `max_arity` of
@@ -97,8 +150,6 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
            to stop on its first node. */
         if (remaining_time_in_ms() == 0)
         {
-            iw_event_handler->on_end_search();
-
             auto result = SearchResult();
             result.status = SearchStatus::OUT_OF_TIME;
             return result;
@@ -106,8 +157,6 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
 
         if (options.control && options.control->is_canceled())
         {
-            iw_event_handler->on_end_search();
-
             auto result = SearchResult();
             result.status = SearchStatus::CANCELED;
             return result;
@@ -163,7 +212,7 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
 
         if (result.status == SearchStatus::SOLVED)
         {
-            iw_event_handler->on_end_search();
+            end_guard.finish();
             if (!iw_event_handler->is_quiet())
             {
                 applicable_action_generator.on_end_search();
@@ -175,6 +224,7 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
         }
         else if (result.status == SearchStatus::UNSOLVABLE)
         {
+            end_guard.finish();
             iw_event_handler->on_unsolvable();
 
             return result;
@@ -183,8 +233,6 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
         {
             /* The pass did not fail to find a plan at this width, it stopped before it could tell.
                Escalating to the next arity would spend the budget we just ran out of. */
-            iw_event_handler->on_end_search();
-
             return result;
         }
 

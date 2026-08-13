@@ -77,15 +77,11 @@ SearchResult find_solution_with_transition_ordering(const SearchContext& context
                                                      const PruningStrategy& pruning_strategy,
                                                      SearchNodeVector& search_nodes,
                                                      DiscreteCost g_value,
-                                                     StopWatch& stopwatch)
+                                                     StopWatch& stopwatch,
+                                                     SearchEndGuard& end_guard)
 {
-    const auto& problem = *context->get_problem();
     auto& applicable_action_generator = *context->get_applicable_action_generator();
     auto& state_repository = *context->get_state_repository();
-    const auto& ground_action_repository =
-        boost::hana::at_key(problem.get_repositories().get_hana_repositories(), boost::hana::type<formalism::GroundActionImpl> {});
-    const auto& ground_axiom_repository =
-        boost::hana::at_key(problem.get_repositories().get_hana_repositories(), boost::hana::type<formalism::GroundAxiomImpl> {});
 
     auto result = SearchResult();
     const auto max_depth = options.max_depth;
@@ -146,12 +142,7 @@ SearchResult find_solution_with_transition_ordering(const SearchContext& context
 
                 if (options.stop_if_goal)
                 {
-                    event_handler->on_end_search(state_repository.get_reached_fluent_ground_atoms_bitset().count(),
-                                                 state_repository.get_reached_derived_ground_atoms_bitset().count(),
-                                                 state_repository.get_state_count(),
-                                                 search_nodes.size(),
-                                                 ground_action_repository.size(),
-                                                 ground_axiom_repository.size());
+                    end_guard.finish();
 
                     applicable_action_generator.on_end_search();
                     state_repository.get_axiom_evaluator()->on_end_search();
@@ -260,12 +251,7 @@ SearchResult find_solution_with_transition_ordering(const SearchContext& context
         next_layer.clear();
     }
 
-    event_handler->on_end_search(state_repository.get_reached_fluent_ground_atoms_bitset().count(),
-                                 state_repository.get_reached_derived_ground_atoms_bitset().count(),
-                                 state_repository.get_state_count(),
-                                 search_nodes.size(),
-                                 ground_action_repository.size(),
-                                 ground_axiom_repository.size());
+    end_guard.finish();
     event_handler->on_exhausted();
 
     result.status = SearchStatus::EXHAUSTED;

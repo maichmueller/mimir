@@ -109,6 +109,12 @@ void bind_module_definitions(nb::module_& m)
         .def("__hash__", [](const ParameterImpl& self) { return std::hash<Parameter> {}(&self); })
         .def("get_index", &ParameterImpl::get_index, nb::rv_policy::copy)
         .def("get_variable", &ParameterImpl::get_variable, nb::rv_policy::reference_internal)
+        // A parameter's name is its variable's name. Exposed here too so a caller can read the name
+        // off a typed and an untyped parameter list the same way.
+        .def(
+            "get_name",
+            [](const ParameterImpl& self) -> const std::string& { return self.get_variable()->get_name(); },
+            nb::rv_policy::copy)
         .def("get_bases", &ParameterImpl::get_bases, nb::rv_policy::copy);
     nb::bind_vector<ParameterList>(m, "ParameterList");
 
@@ -769,6 +775,32 @@ void bind_module_definitions(nb::module_& m)
         .def("__str__", [](const ProblemImpl& self) { return mimir::to_string(self); })
         .def("get_index", &ProblemImpl::get_index, nb::rv_policy::copy)
         .def("get_repositories", &ProblemImpl::get_repositories, nb::rv_policy::reference_internal)
+        // The inverse of `GroundAction.get_index()`, so a caller holding an action index -- from a
+        // captured search tree, say -- can get back to the action without having retained it.
+        // Returned by reference: the action is interned and owned by the problem's repository, so
+        // nanobind's default policy would hand ownership of a borrowed pointer to Python.
+        .def(
+            "get_ground_action",
+            [](const ProblemImpl& self, Index action_index)
+            {
+                const auto& ground_action_repository =
+                    boost::hana::at_key(self.get_repositories().get_hana_repositories(), boost::hana::type<GroundActionImpl> {});
+                if (action_index >= ground_action_repository.size())
+                {
+                    throw nb::index_error("ground action index out of range");
+                }
+                return ground_action_repository.at(action_index);
+            },
+            "action_index"_a,
+            nb::rv_policy::reference)
+        .def(
+            "get_num_ground_actions",
+            [](const ProblemImpl& self)
+            {
+                const auto& ground_action_repository =
+                    boost::hana::at_key(self.get_repositories().get_hana_repositories(), boost::hana::type<GroundActionImpl> {});
+                return ground_action_repository.size();
+            })
         .def("get_filepath", &ProblemImpl::get_filepath, nb::rv_policy::copy)
         .def("get_name", &ProblemImpl::get_name, nb::rv_policy::copy)
         .def("get_domain", &ProblemImpl::get_domain, nb::rv_policy::copy)

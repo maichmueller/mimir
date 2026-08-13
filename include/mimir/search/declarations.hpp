@@ -293,6 +293,10 @@ class DebugEventHandlerImpl;
 using DebugEventHandler = std::shared_ptr<DebugEventHandlerImpl>;
 class DefaultEventHandlerImpl;
 using DefaultEventHandler = std::shared_ptr<DefaultEventHandlerImpl>;
+class SearchTreeEventHandlerImpl;
+using SearchTreeEventHandler = std::shared_ptr<SearchTreeEventHandlerImpl>;
+class SearchTree;
+struct SearchTreeNode;
 class Statistics;
 }
 

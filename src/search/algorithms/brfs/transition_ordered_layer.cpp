@@ -33,6 +33,7 @@ template SearchResult find_solution_with_transition_ordering<LandmarkTransitionO
                                                                                                   const PruningStrategy& pruning_strategy,
                                                                                                   SearchNodeVector& search_nodes,
                                                                                                   DiscreteCost g_value,
-                                                                                                  StopWatch& stopwatch);
+                                                                                                  StopWatch& stopwatch,
+                                                                                                  SearchEndGuard& end_guard);
 
 }
