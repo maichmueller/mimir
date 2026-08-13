@@ -262,6 +262,16 @@ using DefaultEventHandler = std::shared_ptr<DefaultEventHandlerImpl>;
 class Statistics;
 }
 
+// AStarIW
+namespace astar_iw
+{
+class IEventHandler;
+using EventHandler = std::shared_ptr<IEventHandler>;
+class DefaultEventHandlerImpl;
+using DefaultEventHandler = std::shared_ptr<DefaultEventHandlerImpl>;
+class Statistics;
+}
+
 // AStar_LAZY
 namespace astar_lazy
 {

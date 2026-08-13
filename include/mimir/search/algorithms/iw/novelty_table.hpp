@@ -71,6 +71,44 @@ public:
     const TupleIndexMapper& get_tuple_index_mapper() const;
 };
 
+/// @brief Stores the smallest path cost at which each fluent tuple was generated.
+///
+/// This table has the same tuple semantics and dynamic atom-capacity behavior as
+/// `DynamicNoveltyTable`, but supports decreasing tuple labels. It is used by
+/// best-first width searches whose generation order is not monotone in depth.
+class MinimumGNoveltyTable
+{
+private:
+    TupleIndexMapper m_tuple_index_mapper;
+    std::vector<ContinuousCost> m_minimum_g_values;
+    StateTupleIndexGenerator m_state_tuple_index_generator;
+    StatePairTupleIndexGenerator m_state_pair_tuple_index_generator;
+
+    void resize_to_fit(AtomIndex atom_index);
+    void resize_to_fit(const State& state);
+
+public:
+    explicit MinimumGNoveltyTable(size_t arity);
+    MinimumGNoveltyTable(size_t arity, size_t num_atoms);
+    MinimumGNoveltyTable(const MinimumGNoveltyTable&) = delete;
+    MinimumGNoveltyTable& operator=(const MinimumGNoveltyTable&) = delete;
+    MinimumGNoveltyTable(MinimumGNoveltyTable&&) = delete;
+    MinimumGNoveltyTable& operator=(MinimumGNoveltyTable&&) = delete;
+
+    /// @brief Lower the labels of all tuples in `state` to `g_value` where possible.
+    /// @return true iff at least one tuple label was lowered.
+    bool test_novelty_and_update_table(const State& state, ContinuousCost g_value);
+
+    /// @brief Lower labels of successor tuples containing at least one added atom.
+    /// @return true iff at least one tuple label was lowered.
+    bool test_novelty_and_update_table(const State& state, const State& succ_state, ContinuousCost g_value);
+
+    /// @brief Test whether `state` contains a tuple whose current minimum label equals `g_value`.
+    bool test_novelty_at_g_read_only(const State& state, ContinuousCost g_value) const;
+
+    const TupleIndexMapper& get_tuple_index_mapper() const;
+};
+
 }
 
 #endif

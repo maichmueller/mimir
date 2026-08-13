@@ -376,4 +376,126 @@ bool DynamicNoveltyTable::test_novelty_and_update_table(const State& state, cons
 
 void DynamicNoveltyTable::reset() { std::fill(m_table.begin(), m_table.end(), false); }
 const TupleIndexMapper& DynamicNoveltyTable::get_tuple_index_mapper() const { return m_tuple_index_mapper; }
+
+MinimumGNoveltyTable::MinimumGNoveltyTable(size_t arity) : MinimumGNoveltyTable(arity, 0) {}
+
+MinimumGNoveltyTable::MinimumGNoveltyTable(size_t arity, size_t num_atoms) :
+    m_tuple_index_mapper(arity, num_atoms),
+    m_minimum_g_values(m_tuple_index_mapper.get_max_tuple_index() + 1, INFINITY_CONTINUOUS_COST),
+    m_state_tuple_index_generator(&m_tuple_index_mapper),
+    m_state_pair_tuple_index_generator(&m_tuple_index_mapper)
+{
+}
+
+void MinimumGNoveltyTable::resize_to_fit(AtomIndex atom_index)
+{
+    if (atom_index < m_tuple_index_mapper.get_num_atoms())
+    {
+        return;
+    }
+
+    const auto arity = m_tuple_index_mapper.get_arity();
+    auto new_size = std::max(size_t(1), m_tuple_index_mapper.get_num_atoms());
+    while (new_size < atom_index + 2)
+    {
+        new_size *= 2;
+    }
+
+    const auto new_placeholder = new_size;
+    const auto old_tuple_index_mapper = m_tuple_index_mapper;
+    m_tuple_index_mapper.initialize(arity, new_size);
+
+    auto new_values = std::vector<ContinuousCost>(m_tuple_index_mapper.get_max_tuple_index() + 1, INFINITY_CONTINUOUS_COST);
+    auto atom_indices = AtomIndexList {};
+    atom_indices.reserve(arity);
+    for (TupleIndex tuple_index = 0; tuple_index < m_minimum_g_values.size(); ++tuple_index)
+    {
+        const auto old_value = m_minimum_g_values[tuple_index];
+        if (old_value == INFINITY_CONTINUOUS_COST)
+        {
+            continue;
+        }
+
+        old_tuple_index_mapper.to_atom_indices(tuple_index, atom_indices);
+        for (size_t i = atom_indices.size(); i < arity; ++i)
+        {
+            atom_indices.push_back(new_placeholder);
+        }
+        const auto new_tuple_index = m_tuple_index_mapper.to_tuple_index(atom_indices);
+        new_values[new_tuple_index] = std::min(new_values[new_tuple_index], old_value);
+    }
+    m_minimum_g_values = std::move(new_values);
+}
+
+void MinimumGNoveltyTable::resize_to_fit(const State& state)
+{
+    const auto& fluent_atoms = state.get_atoms<FluentTag>();
+    const auto it = std::max_element(fluent_atoms.begin(), fluent_atoms.end());
+    if (it != fluent_atoms.end())
+    {
+        resize_to_fit(*it);
+    }
+}
+
+bool MinimumGNoveltyTable::test_novelty_and_update_table(const State& state, ContinuousCost g_value)
+{
+    resize_to_fit(state);
+    if (state.get_atoms<FluentTag>().count() + 1 < m_tuple_index_mapper.get_arity())
+    {
+        return false;
+    }
+    auto improved = false;
+    for (auto it = m_state_tuple_index_generator.begin(state); it != m_state_tuple_index_generator.end(); ++it)
+    {
+        auto& minimum_g = m_minimum_g_values.at(*it);
+        if (g_value < minimum_g)
+        {
+            minimum_g = g_value;
+            improved = true;
+        }
+    }
+    return improved;
+}
+
+bool MinimumGNoveltyTable::test_novelty_and_update_table(const State& state, const State& succ_state, ContinuousCost g_value)
+{
+    resize_to_fit(state);
+    resize_to_fit(succ_state);
+    if (succ_state.get_atoms<FluentTag>().count() + 1 < m_tuple_index_mapper.get_arity())
+    {
+        return false;
+    }
+    auto improved = false;
+    for (auto it = m_state_pair_tuple_index_generator.begin(state, succ_state); it != m_state_pair_tuple_index_generator.end(); ++it)
+    {
+        auto& minimum_g = m_minimum_g_values.at(*it);
+        if (g_value < minimum_g)
+        {
+            minimum_g = g_value;
+            improved = true;
+        }
+    }
+    return improved;
+}
+
+bool MinimumGNoveltyTable::test_novelty_at_g_read_only(const State& state, ContinuousCost g_value) const
+{
+    auto* self = const_cast<MinimumGNoveltyTable*>(this);
+    self->resize_to_fit(state);
+    if (state.get_atoms<FluentTag>().count() + 1 < m_tuple_index_mapper.get_arity())
+    {
+        return false;
+    }
+    auto generator = StateTupleIndexGenerator(&m_tuple_index_mapper);
+    for (auto it = generator.begin(state); it != generator.end(); ++it)
+    {
+        if (m_minimum_g_values.at(*it) == g_value)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+const TupleIndexMapper& MinimumGNoveltyTable::get_tuple_index_mapper() const { return m_tuple_index_mapper; }
 }

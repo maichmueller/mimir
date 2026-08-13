@@ -35,6 +35,11 @@
 
 namespace mimir::search::iw
 {
+namespace astar_iw_friend
+{
+class AbstractedMinimumGNoveltyTable;
+}
+
 class ArityZeroNoveltyPruningStrategyImpl : public IPruningStrategy
 {
 private:
@@ -151,6 +156,8 @@ public:
 
 class AbstractedNoveltyPruningStrategyImpl : public IPruningStrategy
 {
+    friend class astar_iw_friend::AbstractedMinimumGNoveltyTable;
+
 private:
     using FeatureId = uint32_t;
 
