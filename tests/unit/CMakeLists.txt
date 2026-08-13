@@ -41,6 +41,7 @@ add_gtest(languages_dl_cnf_grammar_visitor_sentence_generator_test "languages/de
 add_gtest(languages_general_policies_general_policy_test   "languages/general_policies/general_policy.cpp")
 add_gtest(languages_general_policies_cnf_grammar_visitor_sentence_generator_test "languages/general_policies/cnf_grammar_visitor_sentence_generator.cpp")
 add_gtest(search_astar_eager_test                          "search/algorithms/astar_eager.cpp")
+add_gtest(search_astar_iw_test                             "search/algorithms/astar_iw.cpp")
 add_gtest(search_brfs_test                                 "search/algorithms/brfs.cpp")
 add_gtest(search_iw_test                                   "search/algorithms/iw.cpp")
 add_gtest(search_landmarks_fact_landmarks_test              "search/landmarks/fact_landmarks.cpp")

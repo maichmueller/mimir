@@ -1,0 +1,5 @@
+(define (problem astar-iw-root-negative-goal)
+  (:domain astar-iw-test)
+  (:init (seed))
+  (:goal (not (seed)))
+)
