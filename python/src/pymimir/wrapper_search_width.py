@@ -21,10 +21,16 @@ from pymimir.advanced.search import (
     DefaultBrFSEventHandler as AdvancedDefaultBrFSEventHandler,
 )
 from pymimir.advanced.search import (
-    SearchTreeBrFSEventHandler as AdvancedSearchTreeBrFSEventHandler,
+    ObservationBrFSEventHandler as AdvancedObservationBrFSEventHandler,
+)
+from pymimir.advanced.search import (
+    CompositeBrFSEventHandler as AdvancedCompositeBrFSEventHandler,
 )
 from pymimir.advanced.search import (
     DefaultIWEventHandler as AdvancedDefaultIWEventHandler,
+)
+from pymimir.advanced.search import (
+    ObservationIWEventHandler as AdvancedObservationIWEventHandler,
 )
 from pymimir.advanced.search import IWOptions as AdvancedIWOptions
 from pymimir.advanced.search import (
@@ -38,8 +44,10 @@ from pymimir.advanced.search import find_rollouts_iw_parallel as advanced_iw_par
 
 from .wrapper_formalism import GroundAction, Problem, State
 from .wrapper_search import (
+    IWObservation,
     SearchResult,
-    _reject_native_observation_with_callbacks,
+    SearchTree,
+    _build_brfs_observation_options,
     _uses_python_callbacks,
 )
 
@@ -49,21 +57,61 @@ from .wrapper_search import (
 # ----------------------
 
 
-def _make_native_brfs_event_handler(
-    problem: "Problem", capture_search_tree: bool
-) -> "AdvancedBrFSEventHandler":
-    """The native, quiet BrFS handler for a run with no Python callbacks.
+class _BrFSObservers:
+    """The handlers one search runs with, and which of them observes what.
 
-    Installing one instead of a Python subclass is what keeps the search inside C++: a Python
-    handler is called once per expansion and once per generated transition, which dominates the
-    runtime of a width search even when every callback is `None`.
-
-    The search-tree handler derives from the same statistics base, so capturing the tree collects
-    the statistics too.
+    A search installs exactly one event handler, so native collection and Python callbacks are
+    combined by composing them rather than by making the caller pick one. Each child sees each event
+    once, and each keeps its own counters, so composing cannot double-count.
     """
-    if capture_search_tree:
-        return AdvancedSearchTreeBrFSEventHandler(problem._advanced_problem)
-    return AdvancedDefaultBrFSEventHandler(problem._advanced_problem, quiet=True)
+
+    def __init__(self, event_handler, statistics_handler, observation_handler) -> None:
+        #: What to hand to the search.
+        self.event_handler = event_handler
+        #: The handler to read native statistics off, or None.
+        self.statistics_handler = statistics_handler
+        #: The handler holding the observation, or None.
+        self.observation_handler = observation_handler
+
+    def get_handlers(self) -> list:
+        """Everything worth keeping alive alongside the result."""
+        return [handler for handler in (self.event_handler, self.statistics_handler, self.observation_handler) if handler is not None]
+
+
+def _make_brfs_observers(
+    problem: "Problem",
+    python_event_handler,
+    collect_statistics: bool,
+    observation_options,
+) -> "_BrFSObservers":
+    """Pick the BrFS handler(s) for one search.
+
+    With no Python handler the search stays inside C++ for its whole run: a Python subclass is
+    entered once per expansion and once per generated transition, which dominates a width search even
+    when every callback is `None`. With one, the native observer is composed alongside it so the
+    Python cost is paid only for the callbacks that were actually supplied.
+    """
+    observes_natively = collect_statistics or observation_options is not None
+
+    if observation_options is not None:
+        native_handler = AdvancedObservationBrFSEventHandler(problem._advanced_problem, observation_options)
+        observation_handler = native_handler
+    else:
+        # Statistics alone need no observation machinery, and the default handler keeps no tree.
+        native_handler = AdvancedDefaultBrFSEventHandler(problem._advanced_problem, quiet=True)
+        observation_handler = None
+
+    if python_event_handler is None:
+        # A quiet native handler runs either way; whether its statistics are *reported* is what
+        # `collect_statistics` decides.
+        return _BrFSObservers(native_handler, native_handler if observes_natively else None, observation_handler)
+
+    if not observes_natively:
+        # Nothing native was asked for, so do not pay for a second observer.
+        return _BrFSObservers(python_event_handler, None, None)
+
+    composite = AdvancedCompositeBrFSEventHandler([native_handler, python_event_handler], statistics_source=0)
+    return _BrFSObservers(composite, native_handler, observation_handler)
 
 
 def _run_brfs_width_pruning(
@@ -93,6 +141,11 @@ def _run_brfs_width_pruning(
     relaxed_survivors_only_beam: bool = False,
     collect_statistics: bool = False,
     capture_search_tree: bool = False,
+    capture_transitions: bool = False,
+    capture_rejected_transitions: bool = False,
+    capture_novel_witnesses: bool = False,
+    capture_action_effect_summaries: bool = False,
+    capture_realized_effects: bool = False,
 ) -> "SearchResult":
     use_callbacks = _uses_python_callbacks(
         on_expand_state,
@@ -101,8 +154,14 @@ def _run_brfs_width_pruning(
         on_generate_new_state,
         on_prune_state,
     )
-    if use_callbacks:
-        _reject_native_observation_with_callbacks(collect_statistics, capture_search_tree)
+    observation_options = _build_brfs_observation_options(
+        capture_search_tree,
+        capture_transitions,
+        capture_rejected_transitions,
+        capture_novel_witnesses,
+        capture_action_effect_summaries,
+        capture_realized_effects,
+    )
 
     class EventHandler(AdvancedBrFSEventHandler):
         def __init__(self) -> None:
@@ -148,15 +207,13 @@ def _run_brfs_width_pruning(
         def get_statistics(self) -> "AdvancedBrFSStatistics":
             return AdvancedBrFSStatistics()
 
-    event_handler = (
-        EventHandler()
-        if use_callbacks
-        else _make_native_brfs_event_handler(problem, capture_search_tree)
+    observers = _make_brfs_observers(
+        problem, EventHandler() if use_callbacks else None, collect_statistics, observation_options
     )
 
     advanced_options = AdvancedBrFSOptions()
     advanced_options.start_state = start_state._advanced_state
-    advanced_options.event_handler = event_handler
+    advanced_options.event_handler = observers.event_handler
     if layer_ordering_strategy is not None:
         advanced_options.layer_ordering_strategy = layer_ordering_strategy
     if max_next_layer_states > 0:
@@ -188,14 +245,22 @@ def _run_brfs_width_pruning(
     solution = [GroundAction(x, problem) for x in result.plan.get_actions()] if result.plan else None
     solution_cost = result.plan.get_cost() if result.plan else None
     goal_state = State(result.goal_state, problem) if result.goal_state else None
-    # Both getters return snapshots that own their data, so they outlive `event_handler`.
-    statistics = (
-        event_handler.get_statistics()
-        if (collect_statistics or capture_search_tree)
-        else None
+    statistics = observers.statistics_handler.get_statistics() if observers.statistics_handler is not None else None
+    # Views into the handler, not copies -- the result keeps the handler alive for them.
+    observation = observers.observation_handler.observation if observers.observation_handler is not None else None
+    search_tree = SearchTree(observation.search_tree, problem, observers.observation_handler) if capture_search_tree else None
+    transitions = observation.transitions if (observation is not None and observation_options.capture_admitted_transitions) else None
+    return SearchResult(
+        status,
+        solution,
+        solution_cost,
+        goal_state,
+        statistics,
+        search_tree,
+        transitions,
+        None,
+        observers.get_handlers(),
     )
-    search_tree = event_handler.get_search_tree() if capture_search_tree else None
-    return SearchResult(status, solution, solution_cost, goal_state, statistics, search_tree)
 
 
 def iw(
@@ -223,19 +288,39 @@ def iw(
     num_threads: int = -1,
     chunk_size: int = -1,
     relaxed_survivors_only_beam: bool = False,
+    max_num_states: int = -1,
+    max_time_seconds: float = -1,
     collect_statistics: bool = False,
     capture_search_tree: bool = False,
+    capture_transitions: bool = False,
+    capture_rejected_transitions: bool = False,
+    capture_novel_witnesses: bool = False,
+    capture_action_effect_summaries: bool = False,
+    capture_realized_effects: bool = False,
 ) -> "SearchResult":
     """Run IW(k) for increasing k up to ``max_arity``.
 
     Without any ``on_*`` callback the search runs entirely in C++: no Python event handler is
-    installed and no event crosses the language boundary. Pass ``collect_statistics=True`` to read
-    the native ``IWStatistics`` back from ``result.statistics``, or ``capture_search_tree=True`` to
-    also get the admitted search tree in ``result.search_tree`` (which implies statistics). Neither
-    can be combined with callbacks; see :func:`_reject_native_observation_with_callbacks`.
+    installed and no event crosses the language boundary. With callbacks, the native observer is
+    composed alongside them, so both run and the Python cost is paid only for the callbacks that
+    were actually supplied.
 
-    Tree capture requires ``max_arity == 1``. A wider run makes one BrFS pass per arity, and each
-    pass restarts the tree, so anything else would quietly hand back only the last arity's tree.
+    Every capture is off by default and each turns on only its own work:
+
+    * ``collect_statistics`` -- native ``IWStatistics`` in ``result.statistics``;
+    * ``capture_search_tree`` -- the admitted tree in ``result.search_tree``;
+    * ``capture_transitions`` -- one record per admitted transition in ``result.transitions``;
+    * ``capture_rejected_transitions`` -- rejected transitions in the same log;
+    * ``capture_novel_witnesses`` -- makes the search compute novelty witnesses at all;
+    * ``capture_action_effect_summaries`` -- a syntactic effect count cached per observed action;
+    * ``capture_realized_effects`` -- the fluent atoms each transition actually changed.
+
+    The last three decorate transition records, so any of them turns on admitted-transition capture.
+
+    Each arity pass is observed separately: ``result.observation.by_arity[k]`` carries that pass's
+    statistics, tree and transitions, and trees from different passes are never merged. For
+    convenience ``result.search_tree`` and ``result.transitions`` refer to the last pass that
+    actually ran a search.
     """
     assert isinstance(problem, Problem), "Problem must be an instance of Problem."
     assert isinstance(start_state, State), "Start state must be an instance of State."
@@ -288,14 +373,14 @@ def iw(
         on_generate_new_state,
         on_prune_state,
     )
-    if use_callbacks:
-        _reject_native_observation_with_callbacks(collect_statistics, capture_search_tree)
-    if capture_search_tree and max_arity != 1:
-        raise ValueError(
-            f"capture_search_tree requires max_arity=1, got max_arity={max_arity}. IW(k>1) runs one "
-            "BrFS pass per arity and each pass restarts the tree, so only the last arity's tree would "
-            "survive. Run the arities separately if you need a tree per arity."
-        )
+    observation_options = _build_brfs_observation_options(
+        capture_search_tree,
+        capture_transitions,
+        capture_rejected_transitions,
+        capture_novel_witnesses,
+        capture_action_effect_summaries,
+        capture_realized_effects,
+    )
 
     # Define the event handler with the provided callback functions.
     class EventHandler(AdvancedBrFSEventHandler):
@@ -380,20 +465,21 @@ def iw(
         def get_statistics(self) -> "AdvancedBrFSStatistics":
             return AdvancedBrFSStatistics()
 
-    iw_event_handler = (
-        None if use_callbacks else AdvancedDefaultIWEventHandler(problem._advanced_problem, quiet=True)
+    observers = _make_brfs_observers(
+        problem, EventHandler() if use_callbacks else None, collect_statistics, observation_options
     )
-    brfs_event_handler = (
-        EventHandler()
-        if use_callbacks
-        else _make_native_brfs_event_handler(problem, capture_search_tree)
+    # The IW-level handler holds the BrFS observer so it can take each pass's observation before the
+    # next pass clears it; without an observer there is nothing to rotate, so the default will do.
+    iw_event_handler = (
+        AdvancedObservationIWEventHandler(problem._advanced_problem, observers.observation_handler)
+        if observers.observation_handler is not None
+        else AdvancedDefaultIWEventHandler(problem._advanced_problem, quiet=True)
     )
 
     advanced_options = AdvancedIWOptions()
     advanced_options.start_state = start_state._advanced_state
-    advanced_options.brfs_event_handler = brfs_event_handler
-    if iw_event_handler is not None:
-        advanced_options.iw_event_handler = iw_event_handler
+    advanced_options.brfs_event_handler = observers.event_handler
+    advanced_options.iw_event_handler = iw_event_handler
     if layer_ordering_strategy is not None:
         advanced_options.layer_ordering_strategy = layer_ordering_strategy
     if max_next_layer_states > 0:
@@ -429,6 +515,11 @@ def iw(
     if chunk_size > 0:
         advanced_options.parallel_beam_chunk_size = chunk_size
     advanced_options.max_arity = max_arity
+    if max_num_states > 0:
+        advanced_options.max_num_states = max_num_states
+    if max_time_seconds > 0:
+        # The budget spans the whole search, not each arity pass.
+        advanced_options.max_time_in_ms = int(max_time_seconds * 1000)
     result = advanced_iw(problem._search_context, advanced_options)
     status = result.status.name.lower()
     solution = (
@@ -438,14 +529,31 @@ def iw(
     )
     solution_cost = result.plan.get_cost() if result.plan else None
     goal_state = State(result.goal_state, problem) if result.goal_state else None
-    # Both getters return snapshots that own their data, so they outlive the handlers.
-    statistics = (
-        iw_event_handler.get_statistics()
-        if (iw_event_handler is not None and (collect_statistics or capture_search_tree))
-        else None
+    statistics = iw_event_handler.get_statistics() if (collect_statistics or observation_options is not None) else None
+
+    observation = None
+    search_tree = None
+    transitions = None
+    if observers.observation_handler is not None:
+        observation = IWObservation(iw_event_handler.observation, problem, iw_event_handler)
+        # The width-0 pass of optimized IW(1) runs no search, so the convenience views point at the
+        # last pass that did.
+        searched = [entry for entry in observation.by_arity if len(entry.search_tree) > 0]
+        if searched:
+            search_tree = searched[-1].search_tree if capture_search_tree else None
+            transitions = searched[-1].transitions if observation_options.capture_admitted_transitions else None
+
+    return SearchResult(
+        status,
+        solution,
+        solution_cost,
+        goal_state,
+        statistics,
+        search_tree,
+        transitions,
+        observation,
+        observers.get_handlers() + [iw_event_handler],
     )
-    search_tree = brfs_event_handler.get_search_tree() if capture_search_tree else None
-    return SearchResult(status, solution, solution_cost, goal_state, statistics, search_tree)
 
 
 def abstracted_iw(
@@ -478,6 +586,11 @@ def abstracted_iw(
     relaxed_survivors_only_beam: bool = False,
     collect_statistics: bool = False,
     capture_search_tree: bool = False,
+    capture_transitions: bool = False,
+    capture_rejected_transitions: bool = False,
+    capture_novel_witnesses: bool = False,
+    capture_action_effect_summaries: bool = False,
+    capture_realized_effects: bool = False,
 ) -> "SearchResult":
     """Run BrFS with Abstracted IW(k) pruning.
 
@@ -487,10 +600,10 @@ def abstracted_iw(
     `preserve_goal_atoms=True`, positive goal atoms are represented only as full
     object-identity atoms.
 
-    Without any ``on_*`` callback this runs entirely in C++, with no Python event handler
-    installed. ``collect_statistics=True`` exposes the native ``BrFSStatistics`` of the single BrFS
-    pass as ``result.statistics``; ``capture_search_tree=True`` also exposes the admitted tree as
-    ``result.search_tree`` and implies statistics. Neither can be combined with callbacks.
+    Without any ``on_*`` callback this runs entirely in C++, with no Python event handler installed;
+    with callbacks, the native observer is composed alongside them. The capture flags are the ones
+    documented on :func:`iw`, and since this is a single BrFS pass the results appear directly as
+    ``result.statistics``, ``result.search_tree`` and ``result.transitions``.
     """
     assert isinstance(problem, Problem), "Problem must be an instance of Problem."
     assert isinstance(start_state, State), "Start state must be an instance of State."
@@ -532,6 +645,11 @@ def abstracted_iw(
         relaxed_survivors_only_beam=relaxed_survivors_only_beam,
         collect_statistics=collect_statistics,
         capture_search_tree=capture_search_tree,
+        capture_transitions=capture_transitions,
+        capture_rejected_transitions=capture_rejected_transitions,
+        capture_novel_witnesses=capture_novel_witnesses,
+        capture_action_effect_summaries=capture_action_effect_summaries,
+        capture_realized_effects=capture_realized_effects,
     )
 
 
@@ -564,6 +682,11 @@ def projective_iw(
     relaxed_survivors_only_beam: bool = False,
     collect_statistics: bool = False,
     capture_search_tree: bool = False,
+    capture_transitions: bool = False,
+    capture_rejected_transitions: bool = False,
+    capture_novel_witnesses: bool = False,
+    capture_action_effect_summaries: bool = False,
+    capture_realized_effects: bool = False,
 ) -> "SearchResult":
     """Compatibility alias for Abstracted IW(1).
 
@@ -604,6 +727,11 @@ def projective_iw(
         relaxed_survivors_only_beam=relaxed_survivors_only_beam,
         collect_statistics=collect_statistics,
         capture_search_tree=capture_search_tree,
+        capture_transitions=capture_transitions,
+        capture_rejected_transitions=capture_rejected_transitions,
+        capture_novel_witnesses=capture_novel_witnesses,
+        capture_action_effect_summaries=capture_action_effect_summaries,
+        capture_realized_effects=capture_realized_effects,
     )
 
 

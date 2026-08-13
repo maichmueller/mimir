@@ -221,11 +221,11 @@ def test_search_tree_is_consistent_and_reconstructs_action_paths(search, kwargs)
         assert node.depth == nodes[node.parent_index].depth + 1
         assert node.incoming_action_index is not None
 
-        action_path = tree.extract_action_path(index)
+        action_path = tree.get_action_indices(index)
         assert len(action_path) == node.depth
         assert action_path[-1] == node.incoming_action_index
 
-        state_path = tree.extract_state_path(index)
+        state_path = tree.get_state_indices(index)
         assert state_path[0] == root.state_index
         assert state_path[-1] == node.state_index
 
@@ -250,7 +250,7 @@ def test_search_tree_action_path_matches_the_returned_plan():
     )
     assert goal_node is not None
 
-    action_indices = result.search_tree.extract_action_path(goal_node)
+    action_indices = result.search_tree.get_action_indices(goal_node)
     assert action_indices == [action._advanced_ground_action.get_index() for action in result.solution]
 
 
@@ -317,42 +317,6 @@ def test_survivors_only_beam_counts_partition(num_threads):
         statistics.get_num_generated_in_search_tree()
         + statistics.get_num_generated_not_in_search_tree()
     )
-
-
-def test_native_observation_is_rejected_together_with_callbacks():
-    problem, start_state = _make_problem()
-
-    with pytest.raises(ValueError, match="cannot be combined with per-event Python callbacks"):
-        mm.iw(
-            problem,
-            start_state,
-            max_arity=1,
-            collect_statistics=True,
-            on_expand_state=lambda _state: None,
-        )
-
-    with pytest.raises(ValueError, match="cannot be combined with per-event Python callbacks"):
-        mm.projective_iw(
-            problem,
-            start_state,
-            capture_search_tree=True,
-            on_prune_state=lambda *_args: None,
-        )
-
-    with pytest.raises(ValueError, match="cannot be combined with per-event Python callbacks"):
-        mm.brfs(
-            problem,
-            start_state,
-            collect_statistics=True,
-            on_finish_g_layer=lambda _value: None,
-        )
-
-
-def test_multi_arity_tree_capture_is_rejected_rather_than_truncated():
-    problem, start_state = _make_problem()
-
-    with pytest.raises(ValueError, match="capture_search_tree requires max_arity=1"):
-        mm.iw(problem, start_state, max_arity=2, capture_search_tree=True)
 
 
 def test_multi_arity_statistics_keep_one_snapshot_per_arity():

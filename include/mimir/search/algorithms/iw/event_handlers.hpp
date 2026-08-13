@@ -22,5 +22,6 @@
  * Include all specializations here
  */
 #include "mimir/search/algorithms/iw/event_handlers/default.hpp"
+#include "mimir/search/algorithms/iw/event_handlers/observation.hpp"
 
 #endif

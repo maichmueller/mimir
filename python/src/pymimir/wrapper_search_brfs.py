@@ -13,7 +13,10 @@ from pymimir.advanced.search import (
     DefaultBrFSEventHandler as AdvancedDefaultBrFSEventHandler,
 )
 from pymimir.advanced.search import (
-    SearchTreeBrFSEventHandler as AdvancedSearchTreeBrFSEventHandler,
+    ObservationBrFSEventHandler as AdvancedObservationBrFSEventHandler,
+)
+from pymimir.advanced.search import (
+    CompositeBrFSEventHandler as AdvancedCompositeBrFSEventHandler,
 )
 from pymimir.advanced.search import (
     ILayerOrderingStrategy as AdvancedILayerOrderingStrategy,
@@ -22,7 +25,8 @@ from pymimir.advanced.search import (
 from .wrapper_formalism import GroundAction, Problem, State
 from .wrapper_search import (
     SearchResult,
-    _reject_native_observation_with_callbacks,
+    SearchTree,
+    _build_brfs_observation_options,
     _uses_python_callbacks,
 )
 
@@ -62,6 +66,11 @@ def brfs(
     stop_if_goal: bool = True,
     collect_statistics: bool = False,
     capture_search_tree: bool = False,
+    capture_transitions: bool = False,
+    capture_rejected_transitions: bool = False,
+    capture_novel_witnesses: bool = False,
+    capture_action_effect_summaries: bool = False,
+    capture_realized_effects: bool = False,
 ) -> "SearchResult":
     """
     Breadth-First Search (BrFS) search algorithm.
@@ -122,17 +131,28 @@ def brfs(
     :param stop_if_goal: Whether to stop as soon as a goal is expanded. Set to False to exhaust the reachable state space.
     :type stop_if_goal: bool
     :param collect_statistics: Expose the native BrFSStatistics of the run as `result.statistics`.
-        Requires that no callback is given: a search installs one event handler, and native
-        collection and Python callbacks each want to be it.
     :type collect_statistics: bool
-    :param capture_search_tree: Also expose the admitted search tree as `result.search_tree`. Implies
-        `collect_statistics`, since the tree handler collects statistics as well.
+    :param capture_search_tree: Expose the admitted search tree as `result.search_tree`.
     :type capture_search_tree: bool
+    :param capture_transitions: Keep one record per admitted transition in `result.transitions`.
+    :type capture_transitions: bool
+    :param capture_rejected_transitions: Keep rejected transitions in the same log.
+    :type capture_rejected_transitions: bool
+    :param capture_novel_witnesses: Make the search compute novelty witnesses and attach each to its
+        transition. Turns on admitted-transition capture, which is where witnesses are stored.
+    :type capture_novel_witnesses: bool
+    :param capture_action_effect_summaries: Cache a syntactic effect count per observed action.
+        Turns on admitted-transition capture.
+    :type capture_action_effect_summaries: bool
+    :param capture_realized_effects: Record the fluent atoms each transition actually changed.
+        Turns on admitted-transition capture.
+    :type capture_realized_effects: bool
     :return: A SearchResult object containing the status, solution, solution cost, and goal state.
     :rtype: SearchResult
 
     With no callback given, the search runs entirely in C++: no Python event handler is installed and
-    no event crosses the language boundary.
+    no event crosses the language boundary. With callbacks, the native observer is composed alongside
+    them, so both run and each event reaches each observer exactly once.
     """
     assert isinstance(problem, Problem), "Problem must be an instance of Problem."
     assert isinstance(start_state, State), "Start state must be an instance of State."
@@ -189,8 +209,14 @@ def brfs(
         on_prune_state,
         on_finish_g_layer,
     )
-    if use_callbacks:
-        _reject_native_observation_with_callbacks(collect_statistics, capture_search_tree)
+    observation_options = _build_brfs_observation_options(
+        capture_search_tree,
+        capture_transitions,
+        capture_rejected_transitions,
+        capture_novel_witnesses,
+        capture_action_effect_summaries,
+        capture_realized_effects,
+    )
 
     # Define the event handler with the provided callback functions.
     class EventHandler(AdvancedBrFSEventHandler):
@@ -324,12 +350,28 @@ def brfs(
     advanced_options.start_state = start_state._advanced_state
     # A native, quiet handler keeps a callback-free search inside C++; a Python subclass would be
     # entered once per expansion and once per generated transition even with every callback unset.
-    if use_callbacks:
-        event_handler = EventHandler()
-    elif capture_search_tree:
-        event_handler = AdvancedSearchTreeBrFSEventHandler(problem._advanced_problem)
+    python_event_handler = EventHandler() if use_callbacks else None
+    if observation_options is not None:
+        native_handler = AdvancedObservationBrFSEventHandler(problem._advanced_problem, observation_options)
+        observation_handler = native_handler
     else:
-        event_handler = AdvancedDefaultBrFSEventHandler(problem._advanced_problem, quiet=True)
+        native_handler = AdvancedDefaultBrFSEventHandler(problem._advanced_problem, quiet=True)
+        observation_handler = None
+
+    observes_natively = collect_statistics or observation_options is not None
+    if python_event_handler is None:
+        # A quiet native handler runs either way; whether its statistics are *reported* is what
+        # `collect_statistics` decides.
+        event_handler = native_handler
+        statistics_handler = native_handler if observes_natively else None
+    elif not observes_natively:
+        event_handler = python_event_handler
+        statistics_handler = None
+    else:
+        # One search, one handler slot: compose rather than make the caller choose. Each child sees
+        # each event once and keeps its own counters, so nothing is double-counted.
+        event_handler = AdvancedCompositeBrFSEventHandler([native_handler, python_event_handler], statistics_source=0)
+        statistics_handler = native_handler
     advanced_options.event_handler = event_handler
     if layer_ordering_strategy is not None:
         advanced_options.layer_ordering_strategy = layer_ordering_strategy
@@ -344,11 +386,10 @@ def brfs(
     )
     solution_cost = result.plan.get_cost() if result.plan else None
     goal_state = State(result.goal_state, problem) if result.goal_state else None
-    # Both getters return snapshots that own their data, so they outlive `event_handler`.
-    statistics = (
-        event_handler.get_statistics()
-        if (collect_statistics or capture_search_tree)
-        else None
-    )
-    search_tree = event_handler.get_search_tree() if capture_search_tree else None
-    return SearchResult(status, solution, solution_cost, goal_state, statistics, search_tree)
+    statistics = statistics_handler.get_statistics() if statistics_handler is not None else None
+    # Views into the handler, not copies -- the result keeps the handler alive for them.
+    observation = observation_handler.observation if observation_handler is not None else None
+    search_tree = SearchTree(observation.search_tree, problem, observation_handler) if capture_search_tree else None
+    transitions = observation.transitions if (observation is not None and observation_options.capture_admitted_transitions) else None
+    handlers = [handler for handler in (event_handler, native_handler, observation_handler) if handler is not None]
+    return SearchResult(status, solution, solution_cost, goal_state, statistics, search_tree, transitions, None, handlers)

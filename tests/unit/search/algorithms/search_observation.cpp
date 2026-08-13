@@ -104,6 +104,14 @@ private:
 
 using CountingEventHandler = std::shared_ptr<CountingEventHandlerImpl>;
 
+/// @brief Capture the admitted tree and nothing else.
+brfs::ObservationOptions tree_only_options()
+{
+    auto options = brfs::ObservationOptions {};
+    options.capture_search_tree = true;
+    return options;
+}
+
 brfs::Options make_projective_iw1_options(const Problem& problem, brfs::EventHandler event_handler)
 {
     auto options = brfs::Options {};
@@ -351,12 +359,12 @@ TEST(MimirTests, SearchObservationSearchTreeMatchesAdmittedTransitionsTest)
     auto counting_handler = std::make_shared<CountingEventHandlerImpl>();
     const auto counting_result = brfs::find_solution(context, make_projective_iw1_options(context->get_problem(), counting_handler));
 
-    const auto tree_handler = brfs::SearchTreeEventHandlerImpl::create(context->get_problem());
+    const auto tree_handler = brfs::ObservationEventHandlerImpl::create(context->get_problem(), tree_only_options());
     const auto tree_result = brfs::find_solution(context, make_projective_iw1_options(context->get_problem(), tree_handler));
 
     ASSERT_EQ(counting_result.status, tree_result.status);
 
-    const auto& tree = tree_handler->get_search_tree();
+    const auto& tree = tree_handler->get_observation().get_search_tree();
     const auto& nodes = tree.get_nodes();
 
     // The root, plus one node per admitted transition, in admission order.
@@ -382,7 +390,7 @@ TEST(MimirTests, SearchObservationSearchTreeMatchesAdmittedTransitionsTest)
 TEST(MimirTests, SearchObservationSearchTreeActionPathMatchesPlanTest)
 {
     const auto context = make_grounded_context("gripper/domain.pddl", "gripper/test_problem.pddl");
-    const auto tree_handler = brfs::SearchTreeEventHandlerImpl::create(context->get_problem());
+    const auto tree_handler = brfs::ObservationEventHandlerImpl::create(context->get_problem(), tree_only_options());
 
     auto options = brfs::Options {};
     options.event_handler = tree_handler;
@@ -391,7 +399,7 @@ TEST(MimirTests, SearchObservationSearchTreeActionPathMatchesPlanTest)
     ASSERT_EQ(result.status, SearchStatus::SOLVED);
     ASSERT_TRUE(result.goal_state.has_value());
 
-    const auto& tree = tree_handler->get_search_tree();
+    const auto& tree = tree_handler->get_observation().get_search_tree();
     const auto goal_node = tree.find_node_by_state(result.goal_state.value().get_index());
     ASSERT_TRUE(goal_node.has_value());
 
@@ -401,8 +409,8 @@ TEST(MimirTests, SearchObservationSearchTreeActionPathMatchesPlanTest)
         expected_action_indices.push_back(action->get_index());
     }
 
-    EXPECT_EQ(tree.extract_action_path(*goal_node), expected_action_indices);
-    EXPECT_EQ(tree.extract_state_path(*goal_node).size(), expected_action_indices.size() + 1);
+    EXPECT_EQ(tree.get_action_indices(*goal_node), expected_action_indices);
+    EXPECT_EQ(tree.get_state_indices(*goal_node).size(), expected_action_indices.size() + 1);
     EXPECT_EQ(tree.get_nodes()[*goal_node].depth, expected_action_indices.size());
 }
 
@@ -412,7 +420,7 @@ TEST(MimirTests, SearchObservationSearchTreeDoesNotRequestNoveltyWitnessesTest)
 {
     const auto context = make_grounded_context("gripper/domain.pddl", "gripper/test_problem.pddl");
 
-    const auto tree_handler = brfs::SearchTreeEventHandlerImpl::create(context->get_problem());
+    const auto tree_handler = brfs::ObservationEventHandlerImpl::create(context->get_problem(), tree_only_options());
     EXPECT_FALSE(tree_handler->supports_novel_witness_events());
 
     // Nor does verbosity by itself imply witness support any more.

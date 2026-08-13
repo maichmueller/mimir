@@ -36,7 +36,11 @@ from .wrapper_heuristics import (
 )
 
 from .wrapper_search import (
+    ArityObservation,
+    IWObservation,
     SearchResult,
+    SearchTree,
+    compute_transition_aggregates,
 )
 
 from .wrapper_search_astar import (

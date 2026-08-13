@@ -1262,14 +1262,135 @@ void bind_module_definitions(nb::module_& m)
         .def("get_nodes", &brfs::SearchTree::get_nodes, nb::rv_policy::copy)
         .def("get_num_nodes", &brfs::SearchTree::get_num_nodes)
         .def("find_node_by_state", &brfs::SearchTree::find_node_by_state, "state_index"_a)
-        .def("extract_action_path", &brfs::SearchTree::extract_action_path, "node_index"_a)
-        .def("extract_state_path", &brfs::SearchTree::extract_state_path, "node_index"_a);
+        .def("find_depth_by_state", &brfs::SearchTree::find_depth_by_state, "state_index"_a)
+        // Walked from the parent links on call, so a caller pays for the paths it actually asks for
+        // rather than for a stored path on every node.
+        .def("get_action_indices", &brfs::SearchTree::get_action_indices, "node_index"_a)
+        .def("get_state_indices", &brfs::SearchTree::get_state_indices, "node_index"_a);
 
-    nb::class_<brfs::SearchTreeEventHandlerImpl, brfs::IEventHandler>(m, "SearchTreeBrFSEventHandler")  //
-        .def(nb::init<Problem>(), "problem"_a)
-        .def_static("create", &brfs::SearchTreeEventHandlerImpl::create, "problem"_a)
-        // Returned by value: the tree must outlive the handler the caller drops after the search.
-        .def("get_search_tree", &brfs::SearchTreeEventHandlerImpl::get_search_tree, nb::rv_policy::copy);
+    nb::enum_<brfs::TransitionDisposition>(m, "BrFSTransitionDisposition")  //
+        .value("ADMITTED", brfs::TransitionDisposition::ADMITTED)
+        .value("REJECTED", brfs::TransitionDisposition::REJECTED);
+
+    nb::class_<brfs::GroundActionEffectSummary>(m, "GroundActionEffectSummary")  //
+        .def_ro("num_add_effects", &brfs::GroundActionEffectSummary::num_add_effects)
+        .def_ro("num_delete_effects", &brfs::GroundActionEffectSummary::num_delete_effects)
+        .def_ro("num_fluent_numeric_effects", &brfs::GroundActionEffectSummary::num_fluent_numeric_effects)
+        .def_ro("has_auxiliary_numeric_effect", &brfs::GroundActionEffectSummary::has_auxiliary_numeric_effect)
+        .def("__repr__",
+             [](const brfs::GroundActionEffectSummary& self)
+             {
+                 return "GroundActionEffectSummary(num_add_effects=" + std::to_string(self.num_add_effects)
+                        + ", num_delete_effects=" + std::to_string(self.num_delete_effects)
+                        + ", num_fluent_numeric_effects=" + std::to_string(self.num_fluent_numeric_effects)
+                        + ", has_auxiliary_numeric_effect=" + (self.has_auxiliary_numeric_effect ? "True" : "False") + ")";
+             });
+
+    nb::class_<brfs::TransitionObservation>(m, "BrFSTransitionObservation")  //
+        .def_ro("parent_state_index", &brfs::TransitionObservation::parent_state)
+        .def_ro("action_index", &brfs::TransitionObservation::action)
+        .def_ro("successor_state_index", &brfs::TransitionObservation::successor_state)
+        .def_ro("parent_depth", &brfs::TransitionObservation::parent_depth)
+        .def_ro("successor_depth", &brfs::TransitionObservation::successor_depth)
+        .def_ro("action_cost", &brfs::TransitionObservation::action_cost)
+        .def_ro("disposition", &brfs::TransitionObservation::disposition)
+        .def_prop_ro("is_admitted",
+                     [](const brfs::TransitionObservation& self) { return self.disposition == brfs::TransitionDisposition::ADMITTED; })
+        .def_ro("novel_fluent_atom_indices", &brfs::TransitionObservation::novel_fluent_atom_indices)
+        // None when no witness was available at all, which is a different statement from a witness
+        // that ran and found nothing.
+        .def_prop_ro("novelty_witness_count",
+                     [](const brfs::TransitionObservation& self) -> std::optional<size_t>
+                     {
+                         return self.novel_fluent_atom_indices.has_value() ? std::optional<size_t>(self.novel_fluent_atom_indices->size()) :
+                                                                             std::nullopt;
+                     })
+        .def_ro("realized_added_fluent_atom_indices", &brfs::TransitionObservation::realized_added_fluent_atom_indices)
+        .def_ro("realized_deleted_fluent_atom_indices", &brfs::TransitionObservation::realized_deleted_fluent_atom_indices)
+        // Returned by value: the summary is 16 bytes, and a copy cannot outlive the observation it
+        // was cached in.
+        .def_prop_ro("action_effect_summary",
+                     [](const brfs::TransitionObservation& self) -> std::optional<brfs::GroundActionEffectSummary>
+                     {
+                         return self.action_effect_summary ? std::optional<brfs::GroundActionEffectSummary>(*self.action_effect_summary) : std::nullopt;
+                     })
+        .def("__repr__",
+             [](const brfs::TransitionObservation& self)
+             {
+                 return "BrFSTransitionObservation(parent_state_index=" + std::to_string(self.parent_state) + ", action_index="
+                        + std::to_string(self.action) + ", successor_state_index=" + std::to_string(self.successor_state) + ", successor_depth="
+                        + std::to_string(self.successor_depth)
+                        + ", disposition=" + (self.disposition == brfs::TransitionDisposition::ADMITTED ? "ADMITTED" : "REJECTED") + ")";
+             });
+
+    // Bound as an opaque sequence rather than converted to a Python list: a rejected-transition log
+    // can hold millions of records, and converting would copy every one of them on each access.
+    nb::bind_vector<brfs::TransitionObservationList>(m, "BrFSTransitionObservationList");
+
+    nb::class_<brfs::TransitionAggregates>(m, "BrFSTransitionAggregates")  //
+        .def_ro("num_transitions", &brfs::TransitionAggregates::num_transitions)
+        .def_ro("num_admitted", &brfs::TransitionAggregates::num_admitted)
+        .def_ro("num_rejected", &brfs::TransitionAggregates::num_rejected)
+        .def_ro("num_transitions_with_witness", &brfs::TransitionAggregates::num_transitions_with_witness)
+        .def_ro("total_witness_size", &brfs::TransitionAggregates::total_witness_size)
+        .def_ro("max_witness_size", &brfs::TransitionAggregates::max_witness_size)
+        .def_ro("num_admitted_with_effect_summary", &brfs::TransitionAggregates::num_admitted_with_effect_summary)
+        .def_ro("total_add_effects", &brfs::TransitionAggregates::total_add_effects)
+        .def_ro("max_add_effects", &brfs::TransitionAggregates::max_add_effects)
+        .def_ro("total_delete_effects", &brfs::TransitionAggregates::total_delete_effects)
+        .def_ro("max_delete_effects", &brfs::TransitionAggregates::max_delete_effects)
+        .def_ro("total_realized_added", &brfs::TransitionAggregates::total_realized_added)
+        .def_ro("total_realized_deleted", &brfs::TransitionAggregates::total_realized_deleted)
+        .def_ro("num_admitted_by_depth", &brfs::TransitionAggregates::num_admitted_by_depth)
+        .def_ro("num_rejected_by_depth", &brfs::TransitionAggregates::num_rejected_by_depth)
+        .def_ro("total_witness_size_by_depth", &brfs::TransitionAggregates::total_witness_size_by_depth)
+        .def_ro("num_transitions_with_witness_by_depth", &brfs::TransitionAggregates::num_transitions_with_witness_by_depth)
+        .def_prop_ro("average_witness_size", &brfs::TransitionAggregates::get_average_witness_size)
+        .def_prop_ro("average_add_effects", &brfs::TransitionAggregates::get_average_add_effects)
+        .def_prop_ro("average_delete_effects", &brfs::TransitionAggregates::get_average_delete_effects);
+
+    m.def("compute_brfs_transition_aggregates", &brfs::compute_transition_aggregates, "transitions"_a);
+
+    nb::class_<brfs::ObservationOptions>(m, "BrFSObservationOptions")  //
+        .def(nb::init<>())
+        .def_rw("capture_search_tree", &brfs::ObservationOptions::capture_search_tree)
+        .def_rw("capture_admitted_transitions", &brfs::ObservationOptions::capture_admitted_transitions)
+        .def_rw("capture_rejected_transitions", &brfs::ObservationOptions::capture_rejected_transitions)
+        .def_rw("capture_novel_witnesses", &brfs::ObservationOptions::capture_novel_witnesses)
+        .def_rw("capture_action_effect_summaries", &brfs::ObservationOptions::capture_action_effect_summaries)
+        .def_rw("capture_realized_effects", &brfs::ObservationOptions::capture_realized_effects);
+
+    /* `Observation` is handed out by reference and never copied: its transition records point into
+       its own effect-summary cache, so a copy would leave those pointers aimed at the original. The
+       handler that owns it is kept alive by `reference_internal`. */
+    nb::class_<brfs::Observation>(m, "BrFSObservation")  //
+        .def_prop_ro("search_tree", &brfs::Observation::get_search_tree, nb::rv_policy::reference_internal)
+        .def_prop_ro("transitions", &brfs::Observation::get_transitions, nb::rv_policy::reference_internal)
+        .def("get_search_tree", &brfs::Observation::get_search_tree, nb::rv_policy::reference_internal)
+        .def("get_transitions", &brfs::Observation::get_transitions, nb::rv_policy::reference_internal)
+        .def("get_num_action_effect_summaries", &brfs::Observation::get_num_action_effect_summaries)
+        .def(
+            "get_action_effect_summary",
+            [](const brfs::Observation& self, Index action_index) -> std::optional<brfs::GroundActionEffectSummary>
+            {
+                const auto* summary = self.find_action_effect_summary(action_index);
+                return summary ? std::optional<brfs::GroundActionEffectSummary>(*summary) : std::nullopt;
+            },
+            "action_index"_a)
+        .def("compute_transition_aggregates",
+             [](const brfs::Observation& self) { return brfs::compute_transition_aggregates(self.get_transitions()); });
+
+    nb::class_<brfs::ObservationEventHandlerImpl, brfs::IEventHandler>(m, "ObservationBrFSEventHandler")  //
+        .def(nb::init<Problem, brfs::ObservationOptions>(), "problem"_a, "options"_a)
+        .def_static("create", &brfs::ObservationEventHandlerImpl::create, "problem"_a, "options"_a)
+        .def("get_options", &brfs::ObservationEventHandlerImpl::get_options, nb::rv_policy::copy)
+        .def("get_observation", &brfs::ObservationEventHandlerImpl::get_observation, nb::rv_policy::reference_internal)
+        .def_prop_ro("observation", &brfs::ObservationEventHandlerImpl::get_observation, nb::rv_policy::reference_internal);
+
+    nb::class_<brfs::CompositeEventHandlerImpl, brfs::IEventHandler>(m, "CompositeBrFSEventHandler")  //
+        .def(nb::init<std::vector<brfs::EventHandler>, size_t>(), "handlers"_a, "statistics_source"_a = 0)
+        .def_static("create", &brfs::CompositeEventHandlerImpl::create, "handlers"_a, "statistics_source"_a = 0)
+        .def("get_handlers", &brfs::CompositeEventHandlerImpl::get_handlers, nb::rv_policy::copy);
 
     nb::class_<brfs::Options>(m, "BrFSOptions")  //
         .def(nb::init<>())
@@ -1476,6 +1597,47 @@ void bind_module_definitions(nb::module_& m)
     nb::class_<iw::DefaultEventHandlerImpl, iw::IEventHandler>(m, "DefaultIWEventHandler")
         .def(nb::init<Problem, bool>(), "problem"_a, "quiet"_a = true)
         .def_static("create", &iw::DefaultEventHandlerImpl::create, "problem"_a, "quiet"_a = true);
+
+    /* Per-arity IW observation. Each pass has its own tree, so entries are never merged; a pass that
+       ran no search -- the width-0 placeholder of optimized IW(1) -- appears with empty data so an
+       entry's position keeps matching the width it stands for. */
+    nb::class_<iw::ArityObservation>(m, "IWArityObservation")  //
+        .def_ro("arity", &iw::ArityObservation::arity)
+        .def_prop_ro("statistics", [](const iw::ArityObservation& self) { return self.statistics; })
+        .def_prop_ro(
+            "observation",
+            [](const iw::ArityObservation& self) -> const brfs::Observation& { return self.observation; },
+            nb::rv_policy::reference_internal)
+        .def_prop_ro(
+            "search_tree",
+            [](const iw::ArityObservation& self) -> const brfs::SearchTree& { return self.observation.get_search_tree(); },
+            nb::rv_policy::reference_internal)
+        .def_prop_ro(
+            "transitions",
+            [](const iw::ArityObservation& self) -> const brfs::TransitionObservationList& { return self.observation.get_transitions(); },
+            nb::rv_policy::reference_internal);
+
+    nb::class_<iw::Observation>(m, "IWObservation")  //
+        .def("__len__", &iw::Observation::get_num_arities)
+        .def("get_num_arities", &iw::Observation::get_num_arities)
+        .def(
+            "get_arity_observation",
+            [](const iw::Observation& self, size_t index) -> const iw::ArityObservation&
+            {
+                if (index >= self.get_num_arities())
+                {
+                    throw nb::index_error("arity observation index out of range");
+                }
+                return self.get_by_arity()[index];
+            },
+            "index"_a,
+            nb::rv_policy::reference_internal);
+
+    nb::class_<iw::ObservationEventHandlerImpl, iw::IEventHandler>(m, "ObservationIWEventHandler")  //
+        .def(nb::init<Problem, brfs::ObservationEventHandler>(), "problem"_a, "brfs_observation_handler"_a)
+        .def_static("create", &iw::ObservationEventHandlerImpl::create, "problem"_a, "brfs_observation_handler"_a)
+        .def("get_observation", &iw::ObservationEventHandlerImpl::get_observation, nb::rv_policy::reference_internal)
+        .def_prop_ro("observation", &iw::ObservationEventHandlerImpl::get_observation, nb::rv_policy::reference_internal);
 
     nb::class_<iw::Options>(m, "IWOptions")  //
         .def(nb::init<>())

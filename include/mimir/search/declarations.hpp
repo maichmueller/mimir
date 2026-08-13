@@ -293,10 +293,17 @@ class DebugEventHandlerImpl;
 using DebugEventHandler = std::shared_ptr<DebugEventHandlerImpl>;
 class DefaultEventHandlerImpl;
 using DefaultEventHandler = std::shared_ptr<DefaultEventHandlerImpl>;
-class SearchTreeEventHandlerImpl;
-using SearchTreeEventHandler = std::shared_ptr<SearchTreeEventHandlerImpl>;
+class ObservationEventHandlerImpl;
+using ObservationEventHandler = std::shared_ptr<ObservationEventHandlerImpl>;
+class CompositeEventHandlerImpl;
+using CompositeEventHandler = std::shared_ptr<CompositeEventHandlerImpl>;
+class Observation;
 class SearchTree;
 struct SearchTreeNode;
+struct TransitionObservation;
+struct GroundActionEffectSummary;
+struct ObservationOptions;
+struct TransitionAggregates;
 class Statistics;
 }
 
@@ -329,6 +336,10 @@ namespace iw
 {
 class IEventHandler;
 using EventHandler = std::shared_ptr<IEventHandler>;
+class ObservationEventHandlerImpl;
+using ObservationEventHandler = std::shared_ptr<ObservationEventHandlerImpl>;
+class Observation;
+struct ArityObservation;
 class DefaultEventHandlerImpl;
 using DefaultEventHandler = std::shared_ptr<DefaultEventHandlerImpl>;
 class Statistics;
