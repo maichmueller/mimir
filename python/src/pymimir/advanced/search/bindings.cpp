@@ -153,6 +153,33 @@ public:
     const astar_eager::Statistics& get_statistics() const override { NB_OVERRIDE_PURE(get_statistics); }
 };
 
+class IPyAStarIWEventHandler : public astar_iw::IEventHandler
+{
+public:
+    NB_TRAMPOLINE(astar_iw::IEventHandler, 14);
+
+    void on_start_search(const State& state, ContinuousCost g_value, ContinuousCost f_value) override
+    {
+        NB_OVERRIDE_PURE(on_start_search, state, g_value, f_value);
+    }
+    void on_generate_state(const State& state, GroundAction action, ContinuousCost action_cost, const State& successor_state) override
+    {
+        NB_OVERRIDE_PURE(on_generate_state, state, action, action_cost, successor_state);
+    }
+    void on_expand_state(const State& state) override { NB_OVERRIDE_PURE(on_expand_state, state); }
+    void on_expand_goal_state(const State& state) override { NB_OVERRIDE_PURE(on_expand_goal_state, state); }
+    void on_reopen_state(const State& state) override { NB_OVERRIDE_PURE(on_reopen_state, state); }
+    void on_deadend_state(const State& state) override { NB_OVERRIDE_PURE(on_deadend_state, state); }
+    void on_reject_state_novelty(const State& state) override { NB_OVERRIDE_PURE(on_reject_state_novelty, state); }
+    void on_discard_stale_g(const State& state) override { NB_OVERRIDE_PURE(on_discard_stale_g, state); }
+    void on_discard_stale_novelty(const State& state) override { NB_OVERRIDE_PURE(on_discard_stale_novelty, state); }
+    void on_end_search(uint64_t num_states, uint64_t num_nodes) override { NB_OVERRIDE_PURE(on_end_search, num_states, num_nodes); }
+    void on_solved(const Plan& plan) override { NB_OVERRIDE_PURE(on_solved, plan); }
+    void on_unsolvable() override { NB_OVERRIDE_PURE(on_unsolvable); }
+    void on_exhausted() override { NB_OVERRIDE_PURE(on_exhausted); }
+    const astar_iw::Statistics& get_statistics() const override { NB_OVERRIDE_PURE(get_statistics); }
+};
+
 class IPyAStarLazyEventHandler : public astar_lazy::IEventHandler
 {
 public:
@@ -369,6 +396,11 @@ void bind_module_definitions(nb::module_& m)
         .value("ALL_TESTED", BeamNoveltyMode::ALL_TESTED)
         .value("SURVIVORS_ONLY", BeamNoveltyMode::SURVIVORS_ONLY)
         .export_values();
+
+    nb::enum_<astar_iw::NoveltyFeatureMode>(m, "AStarIWNoveltyFeatureMode")
+        .value("CLASSICAL", astar_iw::NoveltyFeatureMode::CLASSICAL)
+        .value("ABSTRACTED", astar_iw::NoveltyFeatureMode::ABSTRACTED)
+        .value("BASE_ABSTRACTED", astar_iw::NoveltyFeatureMode::BASE_ABSTRACTED);
 
     nb::enum_<match_tree::SplitMetricEnum>(m, "MatchTreeSplitMetric")
         .value("FREQUENCY", match_tree::SplitMetricEnum::FREQUENCY)
@@ -1014,6 +1046,55 @@ void bind_module_definitions(nb::module_& m)
         .def_rw("max_time_in_ms", &astar_eager::Options::max_time_in_ms);
 
     m.def("find_solution_astar_eager", &astar_eager::find_solution, "search_context"_a, "heuristic"_a, "options"_a);
+
+    // AStarIW
+    nb::class_<astar_iw::Statistics>(m, "AStarIWStatistics")
+        .def("get_num_generated", &astar_iw::Statistics::get_num_generated)
+        .def("get_num_expanded", &astar_iw::Statistics::get_num_expanded)
+        .def("get_num_reopened", &astar_iw::Statistics::get_num_reopened)
+        .def("get_num_deadends", &astar_iw::Statistics::get_num_deadends)
+        .def("get_num_novelty_rejected", &astar_iw::Statistics::get_num_novelty_rejected)
+        .def("get_num_stale_g_discarded", &astar_iw::Statistics::get_num_stale_g_discarded)
+        .def("get_num_stale_novelty_discarded", &astar_iw::Statistics::get_num_stale_novelty_discarded)
+        .def("get_num_states", &astar_iw::Statistics::get_num_states)
+        .def("get_num_nodes", &astar_iw::Statistics::get_num_nodes)
+        .def("get_search_time_ms", &astar_iw::Statistics::get_search_time_ms);
+
+    nb::class_<astar_iw::IEventHandler, IPyAStarIWEventHandler>(m, "IAStarIWEventHandler")
+        .def(nb::init<>())
+        .def("on_start_search", &astar_iw::IEventHandler::on_start_search)
+        .def("on_generate_state", &astar_iw::IEventHandler::on_generate_state)
+        .def("on_expand_state", &astar_iw::IEventHandler::on_expand_state)
+        .def("on_expand_goal_state", &astar_iw::IEventHandler::on_expand_goal_state)
+        .def("on_reopen_state", &astar_iw::IEventHandler::on_reopen_state)
+        .def("on_deadend_state", &astar_iw::IEventHandler::on_deadend_state)
+        .def("on_reject_state_novelty", &astar_iw::IEventHandler::on_reject_state_novelty)
+        .def("on_discard_stale_g", &astar_iw::IEventHandler::on_discard_stale_g)
+        .def("on_discard_stale_novelty", &astar_iw::IEventHandler::on_discard_stale_novelty)
+        .def("on_end_search", &astar_iw::IEventHandler::on_end_search)
+        .def("on_solved", &astar_iw::IEventHandler::on_solved)
+        .def("on_unsolvable", &astar_iw::IEventHandler::on_unsolvable)
+        .def("on_exhausted", &astar_iw::IEventHandler::on_exhausted)
+        .def("get_statistics", &astar_iw::IEventHandler::get_statistics, nb::rv_policy::reference_internal);
+
+    nb::class_<astar_iw::DefaultEventHandlerImpl, astar_iw::IEventHandler>(m, "DefaultAStarIWEventHandler")
+        .def(nb::init<Problem, bool>(), "problem"_a, "quiet"_a = true)
+        .def_static("create", &astar_iw::DefaultEventHandlerImpl::create, "problem"_a, "quiet"_a = true);
+
+    nb::class_<astar_iw::Options>(m, "AStarIWOptions")
+        .def(nb::init<>())
+        .def_rw("start_state", &astar_iw::Options::start_state)
+        .def_rw("event_handler", &astar_iw::Options::event_handler)
+        .def_rw("goal_strategy", &astar_iw::Options::goal_strategy)
+        .def_rw("width", &astar_iw::Options::width)
+        .def_rw("novelty_feature_mode", &astar_iw::Options::novelty_feature_mode)
+        .def_rw("preserve_goal_atoms", &astar_iw::Options::preserve_goal_atoms)
+        .def_rw("heuristic_weight", &astar_iw::Options::heuristic_weight)
+        .def_rw("allow_non_novel_root_goal", &astar_iw::Options::allow_non_novel_root_goal)
+        .def_rw("max_num_states", &astar_iw::Options::max_num_states)
+        .def_rw("max_time_in_ms", &astar_iw::Options::max_time_in_ms);
+
+    m.def("find_solution_astar_iw", &astar_iw::find_solution, "search_context"_a, "heuristic"_a, "options"_a = astar_iw::Options {});
 
     // AStar_LAZY
     nb::class_<astar_lazy::Statistics>(m, "AStarLazyStatistics")  //

@@ -94,6 +94,16 @@ from pymimir.pymimir.advanced.search import (
     find_solution_astar_eager,
 )
 
+# AStarIW
+from pymimir.pymimir.advanced.search import (
+    AStarIWNoveltyFeatureMode,
+    AStarIWStatistics,
+    IAStarIWEventHandler,
+    DefaultAStarIWEventHandler,
+    AStarIWOptions,
+    find_solution_astar_iw,
+)
+
 # AStar_LAZY
 from pymimir.pymimir.advanced.search import (
     AStarLazyStatistics,
