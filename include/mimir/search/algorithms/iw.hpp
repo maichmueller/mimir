@@ -19,6 +19,7 @@
 #define MIMIR_SEARCH_ALGORITHMS_IW_HPP_
 
 #include "mimir/search/algorithms/brfs.hpp"
+#include "mimir/search/algorithms/iw/landmark_novelty_table.hpp"
 #include "mimir/search/state.hpp"
 
 namespace mimir::search::iw
@@ -45,6 +46,28 @@ struct Options
     bool iw1_incremental_first_applicability_debug_crosscheck = false;
     uint32_t max_depth = std::numeric_limits<uint32_t>::max();
     size_t max_arity = MAX_ARITY - 1;
+
+    /// @brief When set, the search becomes LIW rather than IW: it escalates through
+    /// `0, LIW(1), LIW(2), ...` up to `max_arity`, where LIW(k) tracks pairs of a landmark atom
+    /// true in the state and a free atom tuple of size at most `k`.
+    ///
+    /// LIW(k) prunes less than IW(k) and more than IW(k+1) while its table stays linear in the
+    /// number of landmarks, so `max_arity` still counts the *free* coordinates -- LIW(1) tuples
+    /// have size two. This is a variant ladder in its own right, not a refinement inserted into
+    /// IW's: an arity-k rung is either IW(k) or LIW(k), never both, so `max_arity` keeps its
+    /// meaning and one pass still corresponds to one width. See `LandmarkNoveltyTable` for the
+    /// feature family and its guarantees, and `LandmarkNoveltyPruningStrategyImpl` for the
+    /// pruning rule. The arity-0 pass is unaffected.
+    ///
+    /// An empty landmark graph degrades this to exactly plain IW, expansion for expansion.
+    ///
+    /// This is incompatible with the `iw1_*` accelerators, which all reason about atom-level
+    /// novelty; combining them is rejected rather than silently ignored.
+    landmarks::FactLandmarkGraph landmark_novelty_graph = nullptr;
+
+    /// @brief Storage budget for the landmark novelty tables; ignored without
+    /// `landmark_novelty_graph`. See `iw::LandmarkNoveltyTableOptions`.
+    LandmarkNoveltyTableOptions landmark_novelty_table_options = {};
 
     /// @brief Wall-clock budget for the whole search, spanning every arity pass. Each pass is given
     /// what is left of it, so raising `max_arity` cannot silently multiply the time spent.

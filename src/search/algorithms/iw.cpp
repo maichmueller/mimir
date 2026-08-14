@@ -108,6 +108,18 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
                                  + std::to_string(MAX_ARITY) + ") compile time constant.");
     }
 
+    /* Landmark-restricted novelty tracks (landmark, free tuple) pairs, so none of the width-1
+       accelerators apply: they query atom-level novelty, which this feature family does not
+       expose. Reject the combination instead of quietly dropping the requested options. */
+    const auto use_landmark_novelty = (options.landmark_novelty_graph != nullptr);
+    if (use_landmark_novelty
+        && (options.iw1_precheck_add_effect_novelty || options.iw1_atom_first_mode || options.iw1_incremental_first_applicability
+            || options.iw1_incremental_first_applicability_debug_crosscheck))
+    {
+        throw std::invalid_argument("iw::find_solution(...): iw1_* accelerators require atom-level novelty and cannot be combined with "
+                                    "landmark_novelty_graph.");
+    }
+
     iw_event_handler->on_start_search(start_state);
 
     /* Every path out of here from now on owes the handler its end-of-search report. */
@@ -130,7 +142,8 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
     const auto& ground_fluent_atom_repository =
         boost::hana::at_key(context->get_problem()->get_repositories().get_hana_repositories(), boost::hana::type<GroundAtomImpl<FluentTag>> {});
 
-    const auto optimize_iw1_root_actions = (max_arity == 1);
+    /* This optimization is specific to `ArityKNoveltyPruningStrategyImpl`'s root bookkeeping. */
+    const auto optimize_iw1_root_actions = (max_arity == 1) && !use_landmark_novelty;
     if (optimize_iw1_root_actions)
     {
         // Optimized IW(1) skips the standalone width-0 BrFS run and lets the width-1
@@ -164,7 +177,7 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
 
         iw_event_handler->on_start_arity_search(start_state, cur_arity);
 
-        const auto use_iw1_specific_options = (cur_arity == 1);
+        const auto use_iw1_specific_options = (cur_arity == 1) && !use_landmark_novelty;
 
         auto options_i = brfs::Options();
         options_i.start_state = start_state;
@@ -192,10 +205,16 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
         options_i.max_time_in_ms = remaining_time_in_ms();
         options_i.max_num_states = options.max_num_states;
         options_i.control = options.control;
-        options_i.pruning_strategy = (cur_arity > 0) ? ArityKNoveltyPruningStrategyImpl::create(cur_arity,
-                                                                                                  ground_fluent_atom_repository.size(),
-                                                                                                  optimize_iw1_root_actions && (cur_arity == 1)) :
-                                                       ArityZeroNoveltyPruningStrategyImpl::create(start_state);
+        options_i.pruning_strategy =
+            (cur_arity == 0) ? ArityZeroNoveltyPruningStrategyImpl::create(start_state) :
+            use_landmark_novelty ?
+                             LandmarkNoveltyPruningStrategyImpl::create(options.landmark_novelty_graph,
+                                                                        cur_arity,
+                                                                        ground_fluent_atom_repository.size(),
+                                                                        options.landmark_novelty_table_options) :
+                             ArityKNoveltyPruningStrategyImpl::create(cur_arity,
+                                                            ground_fluent_atom_repository.size(),
+                                                            optimize_iw1_root_actions && (cur_arity == 1));
 
         auto result = SearchResult();
         if constexpr (Ordering::requires_deferred_novelty)

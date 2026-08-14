@@ -1088,6 +1088,8 @@ void bind_module_definitions(nb::module_& m)
         .def_rw("goal_strategy", &astar_iw::Options::goal_strategy)
         .def_rw("width", &astar_iw::Options::width)
         .def_rw("novelty_feature_mode", &astar_iw::Options::novelty_feature_mode)
+        // Restricts novelty to (landmark atom, free tuple) pairs; CLASSICAL mode only.
+        .def_rw("landmark_novelty_graph", &astar_iw::Options::landmark_novelty_graph)
         .def_rw("preserve_goal_atoms", &astar_iw::Options::preserve_goal_atoms)
         .def_rw("heuristic_weight", &astar_iw::Options::heuristic_weight)
         .def_rw("allow_non_novel_root_goal", &astar_iw::Options::allow_non_novel_root_goal)
@@ -1639,6 +1641,11 @@ void bind_module_definitions(nb::module_& m)
         .def("get_observation", &iw::ObservationEventHandlerImpl::get_observation, nb::rv_policy::reference_internal)
         .def_prop_ro("observation", &iw::ObservationEventHandlerImpl::get_observation, nb::rv_policy::reference_internal);
 
+    nb::class_<iw::LandmarkNoveltyTableOptions>(m, "LandmarkNoveltyTableOptions")  //
+        .def(nb::init<>())
+        .def_rw("max_dense_table_bytes", &iw::LandmarkNoveltyTableOptions::max_dense_table_bytes)
+        .def_rw("force_dense", &iw::LandmarkNoveltyTableOptions::force_dense);
+
     nb::class_<iw::Options>(m, "IWOptions")  //
         .def(nb::init<>())
         .def_rw("start_state", &iw::Options::start_state)
@@ -1662,6 +1669,10 @@ void bind_module_definitions(nb::module_& m)
                 &iw::Options::iw1_incremental_first_applicability_debug_crosscheck)
         .def_rw("max_depth", &iw::Options::max_depth)
         .def_rw("max_arity", &iw::Options::max_arity)
+        // Setting this turns the search into LIW: the ladder becomes 0, LIW(1), LIW(2), ..., where
+        // LIW(k) tests novelty over (landmark atom, free tuple of size <= k) pairs.
+        .def_rw("landmark_novelty_graph", &iw::Options::landmark_novelty_graph)
+        .def_rw("landmark_novelty_table_options", &iw::Options::landmark_novelty_table_options)
         // `control` is deliberately not exposed: it is a raw pointer to state shared with other
         // native searches, which has no meaning from Python.
         .def_rw("max_time_in_ms", &iw::Options::max_time_in_ms)

@@ -19,6 +19,9 @@
 #include "mimir/search/state.hpp"
 
 #include <algorithm>
+#include <cassert>
+#include <limits>
+#include <utility>
 
 using namespace mimir::formalism;
 
@@ -381,10 +384,72 @@ MinimumGNoveltyTable::MinimumGNoveltyTable(size_t arity) : MinimumGNoveltyTable(
 
 MinimumGNoveltyTable::MinimumGNoveltyTable(size_t arity, size_t num_atoms) :
     m_tuple_index_mapper(arity, num_atoms),
-    m_minimum_g_values(m_tuple_index_mapper.get_max_tuple_index() + 1, INFINITY_CONTINUOUS_COST),
+    m_minimum_g_ranks(Ranks8(m_tuple_index_mapper.get_max_tuple_index() + 1, std::numeric_limits<uint8_t>::max())),
     m_state_tuple_index_generator(&m_tuple_index_mapper),
     m_state_pair_tuple_index_generator(&m_tuple_index_mapper)
 {
+}
+
+/// The largest rank the current storage can hold; the maximum value of the element type
+/// is reserved as the "never reached" marker.
+static constexpr uint32_t max_rank_of(size_t element_size)
+{
+    return element_size == 1 ? uint32_t(std::numeric_limits<uint8_t>::max()) - 1 :
+           element_size == 2 ? uint32_t(std::numeric_limits<uint16_t>::max()) - 1 :
+                               std::numeric_limits<uint32_t>::max() - 1;
+}
+
+void MinimumGNoveltyTable::widen_ranks_to_fit(uint32_t rank)
+{
+    /// Widening copies the whole table, so it is done only when a search actually sees
+    /// more distinct g values than the current element type can index. With unit costs
+    /// that means a plan depth beyond 254, and then beyond 65534.
+    const auto widen = [&](const auto& from, auto&& to)
+    {
+        using ToVec = std::decay_t<decltype(to)>;
+        using ToElem = typename ToVec::value_type;
+        using FromElem = typename std::decay_t<decltype(from)>::value_type;
+        constexpr auto from_none = std::numeric_limits<FromElem>::max();
+        constexpr auto to_none = std::numeric_limits<ToElem>::max();
+        to.assign(from.size(), to_none);
+        for (size_t i = 0; i < from.size(); ++i)
+        {
+            if (from[i] != from_none)
+            {
+                to[i] = static_cast<ToElem>(from[i]);
+            }
+        }
+    };
+
+    if (std::holds_alternative<Ranks8>(m_minimum_g_ranks) && rank > max_rank_of(1))
+    {
+        auto widened = Ranks16 {};
+        widen(std::get<Ranks8>(m_minimum_g_ranks), widened);
+        m_minimum_g_ranks = std::move(widened);
+    }
+    if (std::holds_alternative<Ranks16>(m_minimum_g_ranks) && rank > max_rank_of(2))
+    {
+        auto widened = Ranks32 {};
+        widen(std::get<Ranks16>(m_minimum_g_ranks), widened);
+        m_minimum_g_ranks = std::move(widened);
+    }
+}
+
+uint32_t MinimumGNoveltyTable::get_or_create_rank(ContinuousCost g_value)
+{
+    const auto [it, inserted] = m_g_value_to_rank.try_emplace(g_value, static_cast<uint32_t>(m_g_values.size()));
+    if (inserted)
+    {
+        m_g_values.push_back(g_value);
+        widen_ranks_to_fit(it->second);
+    }
+    return it->second;
+}
+
+std::optional<uint32_t> MinimumGNoveltyTable::find_rank(ContinuousCost g_value) const
+{
+    const auto it = m_g_value_to_rank.find(g_value);
+    return it == m_g_value_to_rank.end() ? std::nullopt : std::optional<uint32_t>(it->second);
 }
 
 void MinimumGNoveltyTable::resize_to_fit(AtomIndex atom_index)
@@ -405,26 +470,41 @@ void MinimumGNoveltyTable::resize_to_fit(AtomIndex atom_index)
     const auto old_tuple_index_mapper = m_tuple_index_mapper;
     m_tuple_index_mapper.initialize(arity, new_size);
 
-    auto new_values = std::vector<ContinuousCost>(m_tuple_index_mapper.get_max_tuple_index() + 1, INFINITY_CONTINUOUS_COST);
-    auto atom_indices = AtomIndexList {};
-    atom_indices.reserve(arity);
-    for (TupleIndex tuple_index = 0; tuple_index < m_minimum_g_values.size(); ++tuple_index)
-    {
-        const auto old_value = m_minimum_g_values[tuple_index];
-        if (old_value == INFINITY_CONTINUOUS_COST)
+    /// Remap every labelled tuple into the wider index space, keeping the smaller label
+    /// where two old tuples collapse onto one new index.
+    std::visit(
+        [&](auto& old_ranks)
         {
-            continue;
-        }
+            using Vec = std::decay_t<decltype(old_ranks)>;
+            using Elem = typename Vec::value_type;
+            constexpr auto none = std::numeric_limits<Elem>::max();
 
-        old_tuple_index_mapper.to_atom_indices(tuple_index, atom_indices);
-        for (size_t i = atom_indices.size(); i < arity; ++i)
-        {
-            atom_indices.push_back(new_placeholder);
-        }
-        const auto new_tuple_index = m_tuple_index_mapper.to_tuple_index(atom_indices);
-        new_values[new_tuple_index] = std::min(new_values[new_tuple_index], old_value);
-    }
-    m_minimum_g_values = std::move(new_values);
+            auto new_ranks = Vec(m_tuple_index_mapper.get_max_tuple_index() + 1, none);
+            auto atom_indices = AtomIndexList {};
+            atom_indices.reserve(arity);
+            for (TupleIndex tuple_index = 0; tuple_index < old_ranks.size(); ++tuple_index)
+            {
+                const auto old_rank = old_ranks[tuple_index];
+                if (old_rank == none)
+                {
+                    continue;
+                }
+
+                old_tuple_index_mapper.to_atom_indices(tuple_index, atom_indices);
+                for (size_t i = atom_indices.size(); i < arity; ++i)
+                {
+                    atom_indices.push_back(new_placeholder);
+                }
+                const auto new_tuple_index = m_tuple_index_mapper.to_tuple_index(atom_indices);
+                auto& slot = new_ranks[new_tuple_index];
+                if (slot == none || m_g_values[old_rank] < m_g_values[slot])
+                {
+                    slot = old_rank;
+                }
+            }
+            old_ranks = std::move(new_ranks);
+        },
+        m_minimum_g_ranks);
 }
 
 void MinimumGNoveltyTable::resize_to_fit(const State& state)
@@ -437,6 +517,44 @@ void MinimumGNoveltyTable::resize_to_fit(const State& state)
     }
 }
 
+/// Shared inner loop of both update overloads: one `std::visit` per call, so the loop over
+/// tuple indices itself stays monomorphic and free of bounds checks.
+template<typename Generator, typename... Args>
+bool MinimumGNoveltyTable::update_from(Generator& generator, ContinuousCost g_value, Args&&... args)
+{
+    const auto rank = get_or_create_rank(g_value);
+
+    return std::visit(
+        [&](auto& ranks)
+        {
+            using Elem = typename std::decay_t<decltype(ranks)>::value_type;
+            constexpr auto none = std::numeric_limits<Elem>::max();
+            const auto new_rank = static_cast<Elem>(rank);
+            const auto* g_values = m_g_values.data();
+
+            auto improved = false;
+            for (auto it = generator.begin(std::forward<Args>(args)...); it != generator.end(); ++it)
+            {
+                const auto tuple_index = *it;
+                assert(tuple_index < ranks.size());
+                auto& slot = ranks[tuple_index];
+                if (slot == none)
+                {
+                    slot = new_rank;
+                    improved = true;
+                }
+                else if (g_value < g_values[slot])
+                {
+                    slot = new_rank;
+                    improved = true;
+                    m_lowered_existing_label = true;
+                }
+            }
+            return improved;
+        },
+        m_minimum_g_ranks);
+}
+
 bool MinimumGNoveltyTable::test_novelty_and_update_table(const State& state, ContinuousCost g_value)
 {
     resize_to_fit(state);
@@ -444,17 +562,7 @@ bool MinimumGNoveltyTable::test_novelty_and_update_table(const State& state, Con
     {
         return false;
     }
-    auto improved = false;
-    for (auto it = m_state_tuple_index_generator.begin(state); it != m_state_tuple_index_generator.end(); ++it)
-    {
-        auto& minimum_g = m_minimum_g_values.at(*it);
-        if (g_value < minimum_g)
-        {
-            minimum_g = g_value;
-            improved = true;
-        }
-    }
-    return improved;
+    return update_from(m_state_tuple_index_generator, g_value, state);
 }
 
 bool MinimumGNoveltyTable::test_novelty_and_update_table(const State& state, const State& succ_state, ContinuousCost g_value)
@@ -465,36 +573,41 @@ bool MinimumGNoveltyTable::test_novelty_and_update_table(const State& state, con
     {
         return false;
     }
-    auto improved = false;
-    for (auto it = m_state_pair_tuple_index_generator.begin(state, succ_state); it != m_state_pair_tuple_index_generator.end(); ++it)
-    {
-        auto& minimum_g = m_minimum_g_values.at(*it);
-        if (g_value < minimum_g)
-        {
-            minimum_g = g_value;
-            improved = true;
-        }
-    }
-    return improved;
+    return update_from(m_state_pair_tuple_index_generator, g_value, state, succ_state);
 }
 
-bool MinimumGNoveltyTable::test_novelty_at_g_read_only(const State& state, ContinuousCost g_value) const
+bool MinimumGNoveltyTable::test_novelty_at_g_read_only(const State& state, ContinuousCost g_value)
 {
-    auto* self = const_cast<MinimumGNoveltyTable*>(this);
-    self->resize_to_fit(state);
+    resize_to_fit(state);
     if (state.get_atoms<FluentTag>().count() + 1 < m_tuple_index_mapper.get_arity())
     {
         return false;
     }
-    auto generator = StateTupleIndexGenerator(&m_tuple_index_mapper);
-    for (auto it = generator.begin(state); it != generator.end(); ++it)
+    /// A cost never recorded cannot be any tuple's label, and looking it up must not
+    /// create a rank for it.
+    const auto rank = find_rank(g_value);
+    if (!rank)
     {
-        if (m_minimum_g_values.at(*it) == g_value)
-        {
-            return true;
-        }
+        return false;
     }
-    return false;
+
+    return std::visit(
+        [&](const auto& ranks)
+        {
+            using Elem = typename std::decay_t<decltype(ranks)>::value_type;
+            const auto wanted = static_cast<Elem>(*rank);
+            for (auto it = m_state_tuple_index_generator.begin(state); it != m_state_tuple_index_generator.end(); ++it)
+            {
+                const auto tuple_index = *it;
+                assert(tuple_index < ranks.size());
+                if (ranks[tuple_index] == wanted)
+                {
+                    return true;
+                }
+            }
+            return false;
+        },
+        m_minimum_g_ranks);
 }
 
 const TupleIndexMapper& MinimumGNoveltyTable::get_tuple_index_mapper() const { return m_tuple_index_mapper; }

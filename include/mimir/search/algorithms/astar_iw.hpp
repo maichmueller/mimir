@@ -27,6 +27,15 @@ struct Options
     GoalStrategy goal_strategy = nullptr;
     size_t width = 1;
     NoveltyFeatureMode novelty_feature_mode = NoveltyFeatureMode::CLASSICAL;
+
+    /// @brief When set, novelty is restricted to `(landmark atom true in the state, free tuple of
+    /// size at most width)` pairs -- the LIW(width) feature family, which prunes less than
+    /// IW(width) and more than IW(width+1) while staying linear in the number of landmarks. See
+    /// `iw::LandmarkMinimumGNoveltyTable`.
+    ///
+    /// Composes with every `novelty_feature_mode`: the landmark coordinate is always a concrete
+    /// landmark rank, and only the free coordinates are abstracted in the abstracted modes.
+    landmarks::FactLandmarkGraph landmark_novelty_graph = nullptr;
     bool preserve_goal_atoms = true;
     ContinuousCost heuristic_weight = 1.0;
     bool allow_non_novel_root_goal = true;

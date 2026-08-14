@@ -18,6 +18,7 @@
 #include "mimir/search/algorithms/iw/pruning_strategy.hpp"
 
 #include "mimir/formalism/problem.hpp"
+#include "mimir/search/landmarks/fact_landmark_graph.hpp"
 #include "mimir/search/state.hpp"
 
 #include <algorithm>
@@ -555,6 +556,45 @@ void ArityKNoveltyPruningStrategyImpl::on_end_beam_replay(BeamNoveltyMode beam_n
     m_scratch_novel_tuples.clear();
 }
 
+LandmarkNoveltyPruningStrategyImpl::LandmarkNoveltyPruningStrategyImpl(const landmarks::FactLandmarkGraph& landmarks,
+                                                                       size_t arity,
+                                                                       size_t num_atoms,
+                                                                       LandmarkNoveltyTableOptions table_options) :
+    m_novelty_table(landmarks ? AtomIndexList(landmarks->get_landmark_atom_indices().begin(), landmarks->get_landmark_atom_indices().end()) : AtomIndexList {},
+                    arity,
+                    num_atoms,
+                    table_options)
+{
+}
+
+PruningStrategy LandmarkNoveltyPruningStrategyImpl::create(const landmarks::FactLandmarkGraph& landmarks,
+                                                           size_t arity,
+                                                           size_t num_atoms,
+                                                           LandmarkNoveltyTableOptions table_options)
+{
+    return std::make_shared<LandmarkNoveltyPruningStrategyImpl>(landmarks, arity, num_atoms, table_options);
+}
+
+bool LandmarkNoveltyPruningStrategyImpl::test_prune_initial_state(const State& state) { return !m_novelty_table.test_novelty_and_update_table(state); }
+
+bool LandmarkNoveltyPruningStrategyImpl::test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ)
+{
+    if (state == succ_state)
+    {
+        return true;
+    }
+
+    if (!is_new_succ)
+    {
+        // Same reasoning as `ArityKNoveltyPruningStrategyImpl`: transition novelty depends on the
+        // predecessor, so a duplicate successor can still be novel, but it is pruned either way.
+        return true;
+    }
+
+    return !m_novelty_table.test_novelty_and_update_table(state, succ_state);
+}
+
+const LandmarkNoveltyTable& LandmarkNoveltyPruningStrategyImpl::get_novelty_table() const { return m_novelty_table; }
 
 namespace
 {

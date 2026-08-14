@@ -132,7 +132,11 @@ SearchResult find_solution(const SearchContext& context, const Heuristic& heuris
         return result;
     }
 
-    auto novelty = MinimumGNoveltyBackend(context->get_problem(), options.novelty_feature_mode, options.width, options.preserve_goal_atoms);
+    auto novelty = MinimumGNoveltyBackend(context->get_problem(),
+                                          options.novelty_feature_mode,
+                                          options.width,
+                                          options.preserve_goal_atoms,
+                                          options.landmark_novelty_graph);
     novelty.initialize(start_state, start_g_value);
 
     auto& start_node = get_or_create_search_node(start_state.get_index(), search_nodes);
@@ -187,7 +191,16 @@ SearchResult find_solution(const SearchContext& context, const Heuristic& heuris
             return result;
         }
 
-        if (state.get_index() != start_state.get_index() && !novelty.test_at_g(state, entry_g_value))
+        /* The stale-novelty test costs a full tuple enumeration per expansion, and it can
+           only fail for a state that no longer owns any tuple at its own g value. Every
+           state reaches the queue by lowering some tuple to exactly that g, so until some
+           already-set label is lowered again -- which never happens while the queue pops in
+           non-decreasing g, i.e. the blind case -- the test cannot fail and can be skipped.
+           Root successors are the exception: `allow_non_novel_root_goal` admits them
+           without any tuple of their own, so they are always tested. */
+        const auto admitted_without_novelty = is_root_successor && options.allow_non_novel_root_goal;
+        if ((admitted_without_novelty || novelty.may_have_stale_novelty()) && state.get_index() != start_state.get_index()
+            && !novelty.test_at_g(state, entry_g_value))
         {
             search_node.status = SearchNodeStatus::CLOSED;
             event_handler->on_discard_stale_novelty(state);

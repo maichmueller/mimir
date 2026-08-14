@@ -18,6 +18,7 @@
 #ifndef MIMIR_SEARCH_ALGORITHMS_IW_PRUNING_STRATEGY_HPP_
 #define MIMIR_SEARCH_ALGORITHMS_IW_PRUNING_STRATEGY_HPP_
 
+#include "mimir/search/algorithms/iw/landmark_novelty_table.hpp"
 #include "mimir/search/algorithms/iw/novelty_table.hpp"
 #include "mimir/search/algorithms/iw/tuple_index_mapper.hpp"
 #include "mimir/search/algorithms/strategies/pruning_strategy.hpp"
@@ -153,6 +154,39 @@ public:
     void on_end_beam_replay(BeamNoveltyMode beam_novelty_mode) override;
 };
 
+/// @brief `LandmarkNoveltyPruningStrategyImpl` prunes with landmark-restricted novelty: a state is
+/// admitted when it exposes an unseen pair `(l, t)` of a landmark atom `l` true in it and a free
+/// atom tuple `t` of size at most `arity`. This is LIW(arity), which sits strictly between
+/// IW(arity) and IW(arity+1); see `LandmarkNoveltyTable` for the feature family and its
+/// guarantees.
+///
+/// Only the two core novelty tests are provided, and the IW(1) accelerators
+/// (`supports_action_add_effect_precheck`, `supports_atom_novelty_query`, ...) are deliberately
+/// left at their unsupported defaults rather than being given approximate answers: they all reason
+/// about *atom*-level novelty, and an atom being new says nothing about whether any landmark pair
+/// containing it is. `iw::find_solution` rejects those options up front instead of silently
+/// dropping them.
+class LandmarkNoveltyPruningStrategyImpl : public IPruningStrategy
+{
+private:
+    LandmarkNoveltyTable m_novelty_table;
+
+public:
+    LandmarkNoveltyPruningStrategyImpl(const landmarks::FactLandmarkGraph& landmarks,
+                                       size_t arity,
+                                       size_t num_atoms,
+                                       LandmarkNoveltyTableOptions table_options = {});
+
+    static PruningStrategy create(const landmarks::FactLandmarkGraph& landmarks,
+                                  size_t arity,
+                                  size_t num_atoms,
+                                  LandmarkNoveltyTableOptions table_options = {});
+
+    bool test_prune_initial_state(const State& state) override;
+    bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;
+
+    const LandmarkNoveltyTable& get_novelty_table() const;
+};
 
 class AbstractedNoveltyPruningStrategyImpl : public IPruningStrategy
 {
