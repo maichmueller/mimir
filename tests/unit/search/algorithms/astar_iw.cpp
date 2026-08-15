@@ -288,6 +288,69 @@ TEST(MimirTests, SearchAlgorithmsMinimumGNoveltyTracksLoweringOfExistingLabels)
     EXPECT_TRUE(table.has_lowered_existing_label());
 }
 
+TEST(MimirTests, SearchAlgorithmsAStarIWProbeOptionDoesNotChangeTheSearch)
+{
+    /* `probe_novelty_before_heuristic` only moves when the heuristic is evaluated, so both
+       settings must return the same plan for the same expansions.
+
+       One `Fixture` per mode/width pair, shared by both settings, for the reason spelled out
+       above: a second grounding of the same PDDL can order actions differently, and under
+       novelty pruning generation order decides which candidate claims a contested tuple. */
+    for (const auto mode :
+         { astar_iw::NoveltyFeatureMode::CLASSICAL, astar_iw::NoveltyFeatureMode::ABSTRACTED, astar_iw::NoveltyFeatureMode::BASE_ABSTRACTED })
+    {
+        for (const auto width : { size_t(1), size_t(2) })
+        {
+            auto fixture = Fixture {};
+            const auto run = [&](bool probe)
+            {
+                auto handler = astar_iw::DefaultEventHandlerImpl::create(fixture.problem, true);
+                auto options = astar_iw::Options {};
+                options.width = width;
+                options.novelty_feature_mode = mode;
+                options.probe_novelty_before_heuristic = probe;
+                options.event_handler = handler;
+                const auto result = astar_iw::find_solution(fixture.context, fixture.heuristic, options);
+                return std::make_tuple(result.status,
+                                       result.plan.has_value() ? result.plan->get_length() : 0,
+                                       handler->get_statistics().get_num_expanded(),
+                                       handler->get_statistics().get_num_generated());
+            };
+            EXPECT_EQ(run(true), run(false)) << "mode " << static_cast<int>(mode) << " width " << width;
+        }
+    }
+}
+
+TEST(MimirTests, SearchAlgorithmsMinimumGNoveltyProbeAgreesAndDoesNotWrite)
+{
+    auto fixture = Fixture {};
+    const auto [start_state, start_g] = fixture.state_repository->get_or_create_initial_state();
+    auto probed = iw::MinimumGNoveltyTable(2);
+    auto committed = iw::MinimumGNoveltyTable(2);
+    EXPECT_TRUE(probed.test_novelty_and_update_table(start_state, start_g));
+    EXPECT_TRUE(committed.test_novelty_and_update_table(start_state, start_g));
+
+    auto actions = fixture.action_generator->create_applicable_action_generator(start_state);
+    const auto action = *actions.begin();
+    const auto [successor, successor_g] = fixture.state_repository->get_or_create_successor_state(start_state, action, start_g);
+
+    // The probe must answer what the update would have answered...
+    EXPECT_TRUE(probed.test_would_improve(start_state, successor, successor_g));
+    EXPECT_TRUE(committed.test_novelty_and_update_table(start_state, successor, successor_g));
+
+    // ...and must have written nothing: the table that was only probed still reports the
+    // transition as novel, and still owns no tuple at the successor's cost.
+    EXPECT_FALSE(probed.test_novelty_at_g_read_only(successor, successor_g));
+    EXPECT_TRUE(probed.test_would_improve(start_state, successor, successor_g));
+    EXPECT_TRUE(probed.test_novelty_and_update_table(start_state, successor, successor_g));
+
+    // Once committed on both sides, the probe agrees that there is nothing left to lower.
+    EXPECT_FALSE(probed.test_would_improve(start_state, successor, successor_g));
+    EXPECT_FALSE(committed.test_would_improve(start_state, successor, successor_g));
+    // A strictly smaller cost still improves, and the probe sees that too.
+    EXPECT_TRUE(committed.test_would_improve(start_state, successor, start_g));
+}
+
 TEST(MimirTests, SearchAlgorithmsMinimumGNoveltyWidensRanksBeyondEightBits)
 {
     auto fixture = Fixture {};

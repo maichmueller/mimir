@@ -157,6 +157,24 @@ private:
         return improved;
     }
 
+    bool would_update(const GeneratedTuples& tuples, const std::vector<uint32_t>& ranks, ContinuousCost g_value) const
+    {
+        const auto improvable = [&](const auto& table, const auto& key)
+        {
+            const auto it = table.find(key);
+            return it == table.end() || g_value < it->second;
+        };
+        return std::ranges::any_of(
+            ranks,
+            [&](const auto rank)
+            {
+                return std::ranges::any_of(tuples.m_singles, [&](const auto key) { return improvable(m_singletons, RankedSingle { rank, key }); })
+                       || std::ranges::any_of(tuples.m_pairs, [&](const auto& key) { return improvable(m_pairs, RankedPair { rank, key.m_a, key.m_b }); })
+                       || std::ranges::any_of(tuples.m_triples,
+                                              [&](const auto& key) { return improvable(m_triples, RankedTriple { rank, key.m_a, key.m_b, key.m_c }); });
+            });
+    }
+
     bool contains_at_g(const GeneratedTuples& tuples, const std::vector<uint32_t>& ranks, ContinuousCost g_value) const
     {
         const auto has = [&](const auto& table, const auto& key)
@@ -209,6 +227,20 @@ public:
             improved = update(generate_transition_tuples(state, succ_state), m_scratch_kept_ranks, g_value) || improved;
         }
         return improved;
+    }
+
+    /// @brief Read-only counterpart of `test_and_update`. Unlike the classical and landmark
+    /// tables this regenerates the feature tuples rather than reusing a scratch buffer, so it
+    /// costs a second generation pass; abstracted mode trades that for skipping the heuristic.
+    bool test_would_improve(const State& state, const State& succ_state, ContinuousCost g_value)
+    {
+        m_coordinates.collect_transition(state, succ_state, m_scratch_flipped_ranks, m_scratch_kept_ranks);
+
+        if (!m_scratch_flipped_ranks.empty() && would_update(generate_state_tuples(succ_state), m_scratch_flipped_ranks, g_value))
+        {
+            return true;
+        }
+        return !m_scratch_kept_ranks.empty() && would_update(generate_transition_tuples(state, succ_state), m_scratch_kept_ranks, g_value);
     }
 
     bool test_at_g(const State& state, ContinuousCost g_value) const
@@ -324,6 +356,16 @@ public:
                 }
             },
             m_table);
+    }
+
+    /// @brief Whether `test_and_update` would report novelty, without touching the table.
+    ///
+    /// Splitting the test from the commit lets the caller reject a non-novel successor before
+    /// evaluating the heuristic, while still leaving the table untouched for a successor that
+    /// turns out to be a dead end -- which is what keeps the search identical.
+    bool would_improve(const State& state, const State& succ_state, ContinuousCost g_value)
+    {
+        return std::visit([&](auto& table) { return table->test_would_improve(state, succ_state, g_value); }, m_table);
     }
 
     /// @brief Whether any tuple label was ever lowered after it was first set.

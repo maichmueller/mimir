@@ -576,6 +576,40 @@ bool MinimumGNoveltyTable::test_novelty_and_update_table(const State& state, con
     return update_from(m_state_pair_tuple_index_generator, g_value, state, succ_state);
 }
 
+bool MinimumGNoveltyTable::test_would_improve(const State& state, const State& succ_state, ContinuousCost g_value)
+{
+    resize_to_fit(state);
+    resize_to_fit(succ_state);
+    if (succ_state.get_atoms<FluentTag>().count() + 1 < m_tuple_index_mapper.get_arity())
+    {
+        return false;
+    }
+    /// Deliberately no rank lookup: the predicate is "is this cost below the tuple's own", which
+    /// reads the label's cost and never needs a rank for `g_value`. Minting one here would both
+    /// mutate a read-only path and make the answer depend on which costs happen to have been
+    /// recorded rather than on the labels themselves.
+    return std::visit(
+        [&](const auto& ranks)
+        {
+            using Elem = typename std::decay_t<decltype(ranks)>::value_type;
+            constexpr auto none = std::numeric_limits<Elem>::max();
+            const auto* g_values = m_g_values.data();
+
+            for (auto it = m_state_pair_tuple_index_generator.begin(state, succ_state); it != m_state_pair_tuple_index_generator.end(); ++it)
+            {
+                const auto tuple_index = *it;
+                assert(tuple_index < ranks.size());
+                const auto slot = ranks[tuple_index];
+                if (slot == none || g_value < g_values[slot])
+                {
+                    return true;
+                }
+            }
+            return false;
+        },
+        m_minimum_g_ranks);
+}
+
 bool MinimumGNoveltyTable::test_novelty_at_g_read_only(const State& state, ContinuousCost g_value)
 {
     resize_to_fit(state);

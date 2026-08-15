@@ -39,6 +39,19 @@ struct Options
     bool preserve_goal_atoms = true;
     ContinuousCost heuristic_weight = 1.0;
     bool allow_non_novel_root_goal = true;
+
+    /// @brief Reject a successor on novelty before evaluating the heuristic on it.
+    ///
+    /// Most generated successors fail the novelty test, and a heuristic evaluation costs far more
+    /// than one, so testing first skips the majority of that work -- worth roughly half the search
+    /// time under `h_FF`. The test is done as a read-only probe followed by the usual update, so
+    /// neither a rejected successor nor a dead end writes to the novelty table and the search is
+    /// unchanged; only a successor that is both non-novel and a dead end moves between the
+    /// `num_deadends` and `num_novelty_rejected` counters.
+    ///
+    /// Turn it off for a blind search: the probe is then pure overhead, since the evaluation it
+    /// avoids is free.
+    bool probe_novelty_before_heuristic = true;
     uint32_t max_num_states = std::numeric_limits<uint32_t>::max();
     uint32_t max_time_in_ms = std::numeric_limits<uint32_t>::max();
 };

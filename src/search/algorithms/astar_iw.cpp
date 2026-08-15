@@ -254,6 +254,22 @@ SearchResult find_solution(const SearchContext& context, const Heuristic& heuris
             successor_node.g_value = successor_g_value;
             successor_node.parent_state = state.get_index();
 
+            /* Novelty is tested before the heuristic is evaluated, because most generated
+               successors are rejected by it and a heuristic evaluation is by far the more
+               expensive of the two. The test is split into a read-only probe and the commit
+               below so the table still sees exactly the states it saw before: a successor
+               that fails novelty writes nothing (its update never lowered anything anyway),
+               and one that turns out to be a dead end writes nothing either. */
+            const auto root_successor = state.get_index() == start_state.get_index();
+            const auto novelty_exempt = root_successor && options.allow_non_novel_root_goal;
+            if (options.probe_novelty_before_heuristic && !novelty_exempt
+                && !novelty.would_improve(state, successor_state, successor_g_value))
+            {
+                successor_node.status = SearchNodeStatus::CLOSED;
+                event_handler->on_reject_state_novelty(successor_state);
+                continue;
+            }
+
             const auto successor_h_value = heuristic->compute_heuristic(successor_state);
             if (std::isnan(successor_h_value))
             {
@@ -267,8 +283,7 @@ SearchResult find_solution(const SearchContext& context, const Heuristic& heuris
             }
 
             const auto improves_novelty = novelty.test_and_update(state, successor_state, successor_g_value);
-            const auto root_successor = state.get_index() == start_state.get_index();
-            if (!improves_novelty && !(root_successor && options.allow_non_novel_root_goal))
+            if (!improves_novelty && !novelty_exempt)
             {
                 successor_node.status = SearchNodeStatus::CLOSED;
                 event_handler->on_reject_state_novelty(successor_state);

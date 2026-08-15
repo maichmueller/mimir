@@ -230,6 +230,10 @@ public:
     /// @return true iff at least one label was lowered.
     bool test_novelty_and_update_table(const State& state, const State& succ_state, ContinuousCost g_value);
 
+    /// @brief Whether the transition's tuples would lower any label, without writing anything.
+    /// Stops at the first improvable tuple, so it is cheap exactly when the answer is yes.
+    bool test_would_improve(const State& state, const State& succ_state, ContinuousCost g_value);
+
     /// @brief Whether `state` still owns a landmark-restricted tuple labelled exactly `g_value`.
     bool test_novelty_at_g_read_only(const State& state, ContinuousCost g_value);
 
@@ -246,6 +250,7 @@ private:
     void resize_to_fit(const State& state);
 
     bool lower_scratch_tuples(const std::vector<uint32_t>& ranks, ContinuousCost g_value);
+    bool scratch_tuples_would_lower(const std::vector<uint32_t>& ranks, ContinuousCost g_value) const;
     bool scratch_tuples_contain_g(const std::vector<uint32_t>& ranks, ContinuousCost g_value) const;
 
     void fill_scratch_with_state_tuples(const State& state);

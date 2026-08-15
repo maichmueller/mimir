@@ -1093,6 +1093,9 @@ void bind_module_definitions(nb::module_& m)
         .def_rw("preserve_goal_atoms", &astar_iw::Options::preserve_goal_atoms)
         .def_rw("heuristic_weight", &astar_iw::Options::heuristic_weight)
         .def_rw("allow_non_novel_root_goal", &astar_iw::Options::allow_non_novel_root_goal)
+        // Skips the heuristic on successors novelty would reject; off is only worth it when the
+        // heuristic is free, since the probe is then the only thing it adds.
+        .def_rw("probe_novelty_before_heuristic", &astar_iw::Options::probe_novelty_before_heuristic)
         .def_rw("max_num_states", &astar_iw::Options::max_num_states)
         .def_rw("max_time_in_ms", &astar_iw::Options::max_time_in_ms);
 

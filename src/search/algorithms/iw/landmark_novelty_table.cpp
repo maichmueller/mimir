@@ -622,6 +622,48 @@ bool LandmarkMinimumGNoveltyTable::test_novelty_and_update_table(const State& st
     return improved;
 }
 
+bool LandmarkMinimumGNoveltyTable::scratch_tuples_would_lower(const std::vector<uint32_t>& ranks, ContinuousCost g_value) const
+{
+    for (const auto rank : ranks)
+    {
+        for (const auto tuple_index : m_scratch_tuples)
+        {
+            const auto it = m_minimum_g_values.find(make_landmark_tuple_key(rank, tuple_index));
+            if (it == m_minimum_g_values.end() || g_value < it->second)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool LandmarkMinimumGNoveltyTable::test_would_improve(const State& state, const State& succ_state, ContinuousCost g_value)
+{
+    resize_to_fit(state);
+    resize_to_fit(succ_state);
+
+    m_coordinates.collect_transition(state, succ_state, m_scratch_flipped_ranks, m_scratch_kept_ranks);
+
+    if (!m_scratch_flipped_ranks.empty())
+    {
+        fill_scratch_with_state_tuples(succ_state);
+        if (scratch_tuples_would_lower(m_scratch_flipped_ranks, g_value))
+        {
+            return true;
+        }
+    }
+    if (!m_scratch_kept_ranks.empty())
+    {
+        fill_scratch_with_transition_tuples(state, succ_state);
+        if (scratch_tuples_would_lower(m_scratch_kept_ranks, g_value))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool LandmarkMinimumGNoveltyTable::test_novelty_at_g_read_only(const State& state, ContinuousCost g_value)
 {
     resize_to_fit(state);

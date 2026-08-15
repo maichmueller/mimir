@@ -135,6 +135,13 @@ public:
     /// @return true iff at least one tuple label was lowered.
     bool test_novelty_and_update_table(const State& state, const State& succ_state, ContinuousCost g_value);
 
+    /// @brief Whether the transition's tuples would lower any label, without writing anything.
+    ///
+    /// Lets a caller find out that a successor is not novel before paying for whatever else it
+    /// would need to know to insert it. Stops at the first improvable tuple, so it is cheap
+    /// exactly when the answer is yes.
+    bool test_would_improve(const State& state, const State& succ_state, ContinuousCost g_value);
+
     /// @brief Test whether `state` contains a tuple whose current minimum label equals `g_value`.
     bool test_novelty_at_g_read_only(const State& state, ContinuousCost g_value);
 
