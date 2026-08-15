@@ -322,11 +322,14 @@ IW1ActionPrecheckController::IW1ActionPrecheckController(const Options& options,
                                                          const State& start_state) :
     m_enabled((options.iw1_precheck_add_effect_novelty || options.iw1_atom_first_mode) && pruning_strategy->supports_action_add_effect_precheck()),
     m_atom_first_mode(options.iw1_atom_first_mode && pruning_strategy->supports_atom_novelty_query()),
+    m_requires_delete_effects(pruning_strategy->precheck_requires_delete_effects()),
     m_atom_first_ratio(options.iw1_atom_first_ratio),
     m_pruning_strategy(pruning_strategy),
     m_filtered_actions(),
     m_action_add_atoms(),
     m_single_action_add_atoms(),
+    m_single_action_del_atoms(),
+    m_no_del_atoms(),
     m_selected_action_mask(),
     m_remaining_atoms(),
     m_atom_in_remaining(),
@@ -396,6 +399,22 @@ IW1ActionPrecheckController::filter_actions(const State& state, const std::span<
     }
 
     m_filtered_actions.clear();
+
+    if (m_requires_delete_effects)
+    {
+        /* Stream one action at a time. The alternative -- collecting every action's effects up
+           front -- only exists for atom-first mode, which no delete-consuming strategy supports,
+           and it would force the per-action effect derivation this path is built to avoid. */
+        for (const auto action : actions)
+        {
+            if (test_action_with_delete_effects(state, action, state_repository))
+            {
+                m_filtered_actions.push_back(action);
+            }
+        }
+        return m_filtered_actions;
+    }
+
     m_action_add_atoms.clear();
     m_action_add_atoms.resize(actions.size());
 
@@ -416,7 +435,7 @@ IW1ActionPrecheckController::filter_actions(const State& state, const std::span<
     {
         for (size_t action_index = 0; action_index < actions.size(); ++action_index)
         {
-            if (m_pruning_strategy->test_transition_novelty_from_add_effects(state, m_action_add_atoms[action_index]))
+            if (m_pruning_strategy->test_transition_novelty_from_add_effects(state, m_action_add_atoms[action_index], m_no_del_atoms))
             {
                 m_filtered_actions.push_back(actions[action_index]);
             }
@@ -457,12 +476,53 @@ IW1ActionPrecheckController::filter_actions(const State& state, const std::span<
         {
             continue;
         }
-        if (m_pruning_strategy->test_transition_novelty_from_add_effects(state, m_action_add_atoms[action_index]))
+        if (m_pruning_strategy->test_transition_novelty_from_add_effects(state, m_action_add_atoms[action_index], m_no_del_atoms))
         {
             m_filtered_actions.push_back(actions[action_index]);
         }
     }
     return m_filtered_actions;
+}
+
+bool IW1ActionPrecheckController::test_action_with_delete_effects(const State& state,
+                                                                  formalism::GroundAction action,
+                                                                  StateRepositoryImpl& state_repository)
+{
+    const auto& unconditional_effects = state_repository.get_unconditional_fluent_effect_atoms(action);
+    if (!unconditional_effects.state_independent)
+    {
+        /* Branch B -- the action has a conditional effect that can change a fluent atom, so which
+           effects fire depends on the state and has to be resolved against it. Still no successor:
+           the collector only walks the action's conditional effects. */
+        state_repository.collect_action_change_effect_fluent_atom_indices(state, action, m_single_action_add_atoms, m_single_action_del_atoms);
+        return m_pruning_strategy->test_transition_novelty_from_add_effects(state, m_single_action_add_atoms, m_single_action_del_atoms);
+    }
+
+    /* Branch A -- the fluent effects are state-independent, so the two cached sets need only be
+       intersected against the state. `E^-_eff` already has the positive-wins overlap resolved, so
+       `add` and `del` come out exact with no further reconciliation. Both sets are tiny; the whole
+       point is that nothing here scales with the size of the state. */
+    const auto& state_fluent_atoms = state.get_atoms<formalism::FluentTag>();
+
+    m_single_action_add_atoms.clear();
+    for (const auto atom_index : unconditional_effects.add)
+    {
+        if (!state_fluent_atoms.get(atom_index))
+        {
+            m_single_action_add_atoms.push_back(atom_index);
+        }
+    }
+
+    m_single_action_del_atoms.clear();
+    for (const auto atom_index : unconditional_effects.del)
+    {
+        if (state_fluent_atoms.get(atom_index))
+        {
+            m_single_action_del_atoms.push_back(atom_index);
+        }
+    }
+
+    return m_pruning_strategy->test_transition_novelty_from_add_effects(state, m_single_action_add_atoms, m_single_action_del_atoms);
 }
 
 bool IW1ActionPrecheckController::test_action(const State& state, formalism::GroundAction action, StateRepositoryImpl& state_repository)
@@ -472,8 +532,13 @@ bool IW1ActionPrecheckController::test_action(const State& state, formalism::Gro
         return true;
     }
 
+    if (m_requires_delete_effects)
+    {
+        return test_action_with_delete_effects(state, action, state_repository);
+    }
+
     state_repository.collect_action_add_effect_fluent_atom_indices(state, action, m_single_action_add_atoms);
-    return m_pruning_strategy->test_transition_novelty_from_add_effects(state, m_single_action_add_atoms);
+    return m_pruning_strategy->test_transition_novelty_from_add_effects(state, m_single_action_add_atoms, m_no_del_atoms);
 }
 
 SearchResult find_solution_with_beam(const SearchContext& context,

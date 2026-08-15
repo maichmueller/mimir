@@ -88,6 +88,20 @@ bool supports_iw1_incremental_first_applicability(const ProblemImpl& problem)
     return true;
 }
 
+/// @brief Whether incremental first-applicability is sound for this pruning strategy.
+///
+/// The optimization tests every ground action at most once across the entire search. What makes
+/// that sound is an invariant of ATOM-level novelty: every atom true in a generated state has been
+/// marked (the initial state marks all of its atoms, and every transition marks the ones it adds),
+/// so re-applying an already-tested action can never add an unmarked atom and can never be novel.
+///
+/// The invariant is a property of the feature family, not of the queries a strategy happens to
+/// expose, and it fails for landmark-restricted novelty: there the feature is a pair
+/// `(landmark coordinate, free tuple)`, and the same action applied at a state with different
+/// coordinates can expose a pair no earlier application could have marked. `supports_atom_novelty_query`
+/// is exactly the right question to ask -- it is true precisely for the width-1 atom-level
+/// strategies -- so this is deliberately NOT relaxed to the transition-level capability, which the
+/// landmark strategy does provide.
 bool supports_iw1_incremental_first_applicability(const PruningStrategy& pruning_strategy)
 {
     return pruning_strategy->supports_atom_novelty_query();

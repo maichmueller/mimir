@@ -215,18 +215,43 @@ TEST(MimirTests, SearchAlgorithmsIWLandmarkNoveltyRejectsAtomLevelAccelerators)
     options.iw_event_handler = iw::DefaultEventHandlerImpl::create(instance.problem, true);
     options.landmark_novelty_graph = instance.landmarks;
 
-    // Each of these queries atom-level novelty, which landmark-restricted novelty does not expose.
+    /* These two do not survive the move from atom-level features to (landmark, free tuple) pairs,
+       for two different reasons:
+
+       - atom-first mode filters actions by `test_atom_novelty_read_only`, which is handed an atom
+         index with no state and no transition. There is nothing to quantify the landmark
+         coordinate over, so no exact answer exists even in principle.
+       - incremental first-applicability tests every ground action at most once across the whole
+         search. That is sound under IW(1), where every atom of every generated state is marked, so
+         a re-application can never add an unmarked atom. Under LIW it is not: the same action at a
+         state with different coordinates can expose a pair nothing has marked.
+
+       The add-effect precheck is deliberately NOT in this list -- it gets the whole transition and
+       is exact; see `landmark_novelty_precheck.cpp`. */
     for (const auto set_option :
          std::vector<void (*)(iw::Options&)> {
-             [](iw::Options& o) { o.iw1_precheck_add_effect_novelty = true; },
              [](iw::Options& o) { o.iw1_atom_first_mode = true; },
              [](iw::Options& o) { o.iw1_incremental_first_applicability = true; },
+             [](iw::Options& o) { o.iw1_incremental_first_applicability_debug_crosscheck = true; },
          })
     {
         auto bad_options = options;
         set_option(bad_options);
         EXPECT_THROW(iw::find_solution(instance.context, bad_options), std::invalid_argument);
     }
+}
+
+TEST(MimirTests, SearchAlgorithmsIWLandmarkNoveltyAcceptsTheAddEffectPrecheck)
+{
+    auto instance = Instance("blocks_3", "test_problem.pddl");
+
+    auto options = iw::Options {};
+    options.max_arity = 1;
+    options.iw_event_handler = iw::DefaultEventHandlerImpl::create(instance.problem, true);
+    options.landmark_novelty_graph = instance.landmarks;
+    options.iw1_precheck_add_effect_novelty = true;
+
+    EXPECT_NO_THROW(iw::find_solution(instance.context, options));
 }
 
 }

@@ -27,6 +27,7 @@
 
 #include <absl/container/flat_hash_map.h>
 #include <chrono>
+#include <optional>
 #include <valla/indexed_hash_set.hpp>
 #include <valla/slot.hpp>
 
@@ -116,6 +117,35 @@ public:
         std::chrono::nanoseconds reached_atom_update_time = std::chrono::nanoseconds::zero();
     };
 
+    /// @brief The fluent propositional effects of a grounded action, as far as they can be
+    /// determined without a state.
+    ///
+    /// This is what makes an action-level novelty precheck cheap: for an action whose fluent
+    /// propositional effects are all unconditional, the effect sets depend on the grounded action
+    /// alone, so the per-action work at each expanded state collapses to intersecting these two
+    /// (usually tiny) lists against the state -- no conditional-effect applicability pass, no
+    /// bitset clearing, and above all no successor construction.
+    ///
+    /// `del` has the positive-wins overlap of `apply_action_effects` already resolved
+    /// (`E^- \ E^+`), so `Add = add \ s` and `Del = del & s` reconstruct the successor exactly:
+    /// `atoms(s') = (atoms(s) \ Del) | Add`.
+    struct UnconditionalFluentEffectAtoms
+    {
+        iw::AtomIndexList add;  ///< `E^+`, sorted ascending.
+        iw::AtomIndexList del;  ///< `E^- \ E^+`, sorted ascending.
+
+        /// @brief Whether every effect of the action that can change a `FluentTag` atom fires
+        /// unconditionally, i.e. whether `add`/`del` describe the action's fluent effects at
+        /// every state. When false the two lists are empty and a caller must fall back to
+        /// `collect_action_change_effect_fluent_atom_indices`.
+        ///
+        /// Effects that are conditional but touch only numeric variables do not disqualify an
+        /// action: they cannot change which fluent atoms hold. Static-only conditions are
+        /// treated conservatively as state-dependent -- they are decidable up front, but the
+        /// grounded representation keeps them, and the fallback is correct either way.
+        bool state_independent = false;
+    };
+
 private:
     using IndexTreeTable = valla::IndexedHashSet<valla::Slot<Index>, Index>;
     using DoubleLeafTable = valla::IndexedHashSet<double, Index>;
@@ -154,6 +184,15 @@ private:
     IndexList m_index_list;
 
     SharedObjectPool<UnpackedStateImpl> m_unpacked_state_pool;
+
+    /// Ground action index -> its state-independent fluent effects, grown lazily because ground
+    /// actions are created on demand in lifted mode. Keyed on the grounded action alone, so it is
+    /// valid for the whole lifetime of the problem and shared by every search over it.
+    std::vector<std::optional<UnconditionalFluentEffectAtoms>> m_unconditional_fluent_effect_atoms;
+
+    /// Counts every entry point that builds a successor state, in any form. See
+    /// `get_num_successor_state_constructions`.
+    mutable size_t m_num_successor_state_constructions = 0;
 
 private:
     /// @brief Record the first achiever of every atom `state_fluent_atoms` newly reaches.
@@ -226,10 +265,22 @@ public:
 
     /// @brief Collect fluent atoms that actually change truth value when applying
     /// `action` in `state`.
+    ///
+    /// "Actually change" is meant literally in both directions: an atom appears in the add list
+    /// only if it was false in `state`, and in the delete list only if it was true in `state`
+    /// AND no applied positive effect re-establishes it. The latter matters because
+    /// `apply_action_effects` applies negatives before positives, so an atom in both applied
+    /// effect sets survives into the successor; classifying it as deleted would make
+    /// `(atoms(s) \ del) | add` disagree with the state the repository actually builds.
     void collect_action_change_effect_fluent_atom_indices(const State& state,
                                                           formalism::GroundAction action,
                                                           iw::AtomIndexList& out_add_fluent_atom_indices,
                                                           iw::AtomIndexList& out_del_fluent_atom_indices);
+
+    /// @brief The cached state-independent fluent effects of `action`; see
+    /// `UnconditionalFluentEffectAtoms`. Computed on first use and never invalidated -- a
+    /// grounded action's effects do not change.
+    const UnconditionalFluentEffectAtoms& get_unconditional_fluent_effect_atoms(formalism::GroundAction action);
 
     /// @brief Compute a successor into worker-local dense storage for the grounded
     /// parallel beam path. This does not mutate the repository state.
@@ -332,6 +383,18 @@ public:
     /// @brief Get the underlying axiom evaluator.
     /// @return the axiom evaluator.
     const AxiomEvaluator& get_axiom_evaluator() const;
+
+    /// @brief How many times a successor state has been built here, counting EVERY entry point
+    /// that does so: `get_or_create_successor_state`, `compute_staged_successor_state`,
+    /// `get_or_create_staged_successor_handle`, `materialize_staged_successor_state` and
+    /// `make_temporary_staged_successor_state`.
+    ///
+    /// This exists so tests can assert the negative: an action-level novelty precheck must decide
+    /// whether a successor could survive pruning WITHOUT building it, and naming one function in a
+    /// test would let a later refactor route through the staged API and keep every correctness
+    /// test green while destroying the accelerator's entire purpose. Axiom evaluation is reachable
+    /// only through these five, so counting them covers it.
+    size_t get_num_successor_state_constructions() const { return m_num_successor_state_constructions; }
 };
 
 /**

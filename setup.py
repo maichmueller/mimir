@@ -10,7 +10,11 @@ from setuptools import setup, find_packages, Extension
 from setuptools.command.build_ext import build_ext
 
 
-__version__ = "0.13.60"
+# Single source of truth for the pymimir wheel version and for MIMIR_VERSION_INFO.
+# Bumping rules live in docs/VERSIONING.md -- in short, a new binding-visible feature bumps
+# the MINOR component, so downstream can gate on `pymimir>=X.Y` instead of probing with
+# `hasattr`. 0.14.0: landmark-restricted novelty (LIW) reached the Python surface.
+__version__ = "0.14.0"
 HERE = Path(__file__).resolve().parent
 
 

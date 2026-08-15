@@ -392,6 +392,8 @@ static void apply_action_effects(GroundAction action,
 
 std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_successor_state(const State& state, GroundAction action, ContinuousCost state_metric_value)
 {
+    ++m_num_successor_state_constructions;
+
     auto& problem = *m_axiom_evaluator->get_problem();
     auto& index_tree_table = m_index_tree_table;
     auto& double_leaf_table = m_double_leaf_table;
@@ -511,11 +513,79 @@ void StateRepositoryImpl::collect_action_change_effect_fluent_atom_indices(const
     }
     for (const auto atom_index : m_applied_negative_effect_atoms)
     {
-        if (state_fluent_atoms.get(atom_index))
+        /* `apply_action_effects` subtracts the negatives and then unions the positives, so an atom
+           in both applied sets survives into the successor. Classifying it as deleted here would
+           make `(atoms(s) \ del) | add` drop an atom the real successor keeps -- and a novelty
+           precheck reasoning over that reconstruction would prune admissible transitions. */
+        if (state_fluent_atoms.get(atom_index) && !m_applied_positive_effect_atoms.get(atom_index))
         {
             out_del_fluent_atom_indices.push_back(atom_index);
         }
     }
+}
+
+const StateRepositoryImpl::UnconditionalFluentEffectAtoms& StateRepositoryImpl::get_unconditional_fluent_effect_atoms(GroundAction action)
+{
+    const auto action_index = action->get_index();
+    if (action_index >= m_unconditional_fluent_effect_atoms.size())
+    {
+        m_unconditional_fluent_effect_atoms.resize(action_index + 1);
+    }
+    auto& slot = m_unconditional_fluent_effect_atoms[action_index];
+    if (slot.has_value())
+    {
+        return *slot;
+    }
+
+    auto entry = UnconditionalFluentEffectAtoms {};
+    entry.state_independent = true;
+
+    m_applied_positive_effect_atoms.unset_all();
+    m_applied_negative_effect_atoms.unset_all();
+
+    for (const auto& conditional_effect : action->get_conditional_effects())
+    {
+        const auto& conjunctive_effect = conditional_effect->get_conjunctive_effect();
+        const auto& positive_effects = conjunctive_effect->get_propositional_effects<PositiveTag>();
+        const auto& negative_effects = conjunctive_effect->get_propositional_effects<NegativeTag>();
+        if (positive_effects.empty() && negative_effects.empty())
+        {
+            /* Cannot change a fluent atom, so its condition is irrelevant to the fluent
+               reconstruction even when it is state-dependent. */
+            continue;
+        }
+
+        const auto& condition = conditional_effect->get_conjunctive_condition();
+        const auto is_unconditional =
+            (condition->get_num_preconditions<StaticTag, FluentTag, DerivedTag>() == 0) && condition->get_numeric_constraints().empty();
+        if (!is_unconditional)
+        {
+            entry.state_independent = false;
+            break;
+        }
+
+        insert_into_bitset(positive_effects, m_applied_positive_effect_atoms);
+        insert_into_bitset(negative_effects, m_applied_negative_effect_atoms);
+    }
+
+    if (entry.state_independent)
+    {
+        for (const auto atom_index : m_applied_positive_effect_atoms)
+        {
+            entry.add.push_back(atom_index);
+        }
+        /* Resolve the positive-wins overlap once, statically, so no caller has to. */
+        for (const auto atom_index : m_applied_negative_effect_atoms)
+        {
+            if (!m_applied_positive_effect_atoms.get(atom_index))
+            {
+                entry.del.push_back(atom_index);
+            }
+        }
+    }
+
+    slot = std::move(entry);
+    return *slot;
 }
 
 StateRepositoryImpl::StagedSuccessorState
@@ -524,6 +594,8 @@ StateRepositoryImpl::compute_staged_successor_state(const State& state,
                                                     ContinuousCost state_metric_value,
                                                     StagedSuccessorScratch& scratch) const
 {
+    ++m_num_successor_state_constructions;
+
     const auto& problem = *m_axiom_evaluator->get_problem();
 
     // Parallel beam workers evaluate successors in dense worker-local storage so they
@@ -590,6 +662,8 @@ StateRepositoryImpl::compute_staged_successor_state(const State& state,
 StateRepositoryImpl::StagedSuccessorHandle
 StateRepositoryImpl::get_or_create_staged_successor_handle(const StagedSuccessorState& successor_state, StagedSuccessorInternTimings* timings)
 {
+    ++m_num_successor_state_constructions;
+
     auto& index_tree_table = m_index_tree_table;
     auto& double_leaf_table = m_double_leaf_table;
 
@@ -663,6 +737,8 @@ StateRepositoryImpl::get_or_create_staged_successor_handle(const StagedSuccessor
 
 State StateRepositoryImpl::materialize_staged_successor_state(const StagedSuccessorState& successor_state, const StagedSuccessorHandle& successor_handle)
 {
+    ++m_num_successor_state_constructions;
+
     const auto& problem = *m_axiom_evaluator->get_problem();
     auto unpacked_state = m_unpacked_state_pool.get_or_allocate(problem);
     unpacked_state->get_atoms<FluentTag>() = successor_state.fluent_atoms;
@@ -675,6 +751,8 @@ State StateRepositoryImpl::make_temporary_staged_successor_state(const StagedSuc
                                                                  const StagedSuccessorHandle& successor_handle,
                                                                  StagedSuccessorScratch& scratch)
 {
+    ++m_num_successor_state_constructions;
+
     const auto& problem = *m_axiom_evaluator->get_problem();
     auto unpacked_state = scratch.unpacked_state_pool.get_or_allocate(problem);
     unpacked_state->get_atoms<FluentTag>() = successor_state.fluent_atoms;

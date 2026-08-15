@@ -90,13 +90,26 @@ def test_landmark_novelty_without_landmarks_matches_plain_iw(domain_name):
 
 
 def test_landmark_novelty_rejects_atom_level_accelerators():
-    """The iw1_* accelerators all query atom-level novelty, which LIW does not expose."""
+    """Two of the iw1_* accelerators do not survive the move from atom-level novelty to
+    (landmark, free tuple) pairs, for two different reasons.
+
+    Atom-first mode filters actions by ``test_atom_novelty_read_only``, which is handed an atom
+    index with no state and no transition attached -- there is nothing to quantify the landmark
+    coordinate over, so no exact answer exists even in principle.
+
+    Incremental first-applicability tests every ground action at most once in the whole search.
+    That is sound under IW(1), where every atom of every generated state is marked, so a
+    re-application can never add an unmarked atom. Under LIW it is not: the same action applied
+    at a state with different coordinates can expose a pair nothing has marked.
+
+    The add-effect precheck is deliberately absent from this list -- see the test below.
+    """
     instance = _Instance("blocks_3")
 
     for set_option in [
-        lambda o: setattr(o, "iw1_precheck_add_effect_novelty", True),
         lambda o: setattr(o, "iw1_atom_first_mode", True),
         lambda o: setattr(o, "iw1_incremental_first_applicability", True),
+        lambda o: setattr(o, "iw1_incremental_first_applicability_debug_crosscheck", True),
     ]:
         options = search.IWOptions()
         options.max_arity = 1
@@ -106,3 +119,71 @@ def test_landmark_novelty_rejects_atom_level_accelerators():
 
         with pytest.raises(Exception):
             search.find_solution_iw(instance.context, options)
+
+
+@pytest.mark.parametrize("domain_name", WIDTH_GAP_DOMAINS)
+def test_landmark_novelty_precheck_preserves_the_result(domain_name):
+    """The add-effect precheck is exact for LIW, so switching it on may only remove work.
+
+    Expansion counts legitimately drop -- pruning an action before generating its successor is
+    the entire point -- but the verdict and the plan length must not move.
+    """
+    baseline = _run_iw(_Instance(domain_name), 1, _Instance(domain_name).landmarks)
+
+    instance = _Instance(domain_name)
+    options = search.IWOptions()
+    options.max_arity = 1
+    options.iw_event_handler = search.DefaultIWEventHandler(instance.problem, True)
+    options.max_num_states = 500000
+    options.landmark_novelty_graph = instance.landmarks
+    options.iw1_precheck_add_effect_novelty = True
+    accelerated = search.find_solution_iw(instance.context, options)
+
+    assert accelerated.status == baseline[0].status
+    if accelerated.status == search.SearchStatus.SOLVED:
+        assert len(accelerated.plan.get_actions()) == len(baseline[0].plan.get_actions())
+
+
+def test_landmark_novelty_pruning_strategy_is_bound():
+    """`LandmarkNoveltyPruningStrategy` is what a caller driving `find_solution_brfs` with an
+    explicit pruning strategy needs; without it LIW novelty is reachable only through the
+    `find_solution_iw` ladder."""
+    instance = _Instance("blocks_3")
+
+    num_atoms = len(instance.problem.get_repositories().get_fluent_ground_atoms())
+    strategy = search.LandmarkNoveltyPruningStrategy.create(instance.landmarks, 1, num_atoms)
+
+    assert strategy.supports_action_add_effect_precheck()
+    assert strategy.precheck_requires_delete_effects()
+    assert strategy.supports_transition_novel_witness_query()
+    # Landmark coordinates are not atom-level features; this one cannot be answered exactly.
+    assert not strategy.supports_atom_novelty_query()
+
+    options = search.BrFSOptions()
+    options.pruning_strategy = strategy
+    options.max_num_states = 500000
+    result = search.find_solution_brfs(instance.context, options)
+    assert result.status == search.SearchStatus.SOLVED
+
+
+def test_landmark_novelty_precheck_builds_no_successor_state():
+    """The precheck exists to decide whether a successor could survive pruning WITHOUT building
+    it. The repository counts every construction entry point, staged ones included, so this stays
+    honest through a refactor that reroutes via the staged API."""
+    instance = _Instance("blocks_3")
+
+    num_atoms = len(instance.problem.get_repositories().get_fluent_ground_atoms())
+    strategy = search.LandmarkNoveltyPruningStrategy.create(instance.landmarks, 1, num_atoms)
+
+    state_repository = instance.context.get_state_repository()
+    state, _ = state_repository.get_or_create_initial_state()
+    strategy.test_prune_initial_state(state)
+
+    actions = list(instance.context.get_applicable_action_generator().generate_applicable_actions(state))
+    assert actions
+
+    before = state_repository.get_num_successor_state_constructions()
+    for action in actions:
+        add_atoms, del_atoms = state_repository.collect_action_change_effect_fluent_atom_indices(state, action)
+        strategy.test_transition_novelty_from_add_effects(state, add_atoms, del_atoms)
+    assert state_repository.get_num_successor_state_constructions() == before

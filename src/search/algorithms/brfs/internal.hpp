@@ -92,18 +92,28 @@ class IW1ActionPrecheckController
 private:
     bool m_enabled;
     bool m_atom_first_mode;
+    /// Whether the pruning strategy's precheck also needs the transition's delete effects, which
+    /// additionally unlocks the cached-effect fast path. See `IPruningStrategy`.
+    bool m_requires_delete_effects;
     double m_atom_first_ratio;
     PruningStrategy m_pruning_strategy;
 
     std::vector<formalism::GroundAction> m_filtered_actions;
     std::vector<iw::AtomIndexList> m_action_add_atoms;
     iw::AtomIndexList m_single_action_add_atoms;
+    iw::AtomIndexList m_single_action_del_atoms;
+    /// Only used on the empty-delete path, so it is allocated once and never written.
+    iw::AtomIndexList m_no_del_atoms;
     std::vector<uint8_t> m_selected_action_mask;
     std::vector<Index> m_remaining_atoms;
     std::vector<uint8_t> m_atom_in_remaining;
     absl::flat_hash_map<Index, std::vector<size_t>> m_atom_to_action_indices;
 
     void refresh_remaining_atoms();
+
+    /// @brief Run the precheck for one action, deriving the transition delta the cheapest way the
+    /// action allows. Never builds a successor state.
+    bool test_action_with_delete_effects(const State& state, formalism::GroundAction action, StateRepositoryImpl& state_repository);
 
 public:
     IW1ActionPrecheckController(const Options& options, const PruningStrategy& pruning_strategy, const formalism::Problem& problem, const State& start_state);

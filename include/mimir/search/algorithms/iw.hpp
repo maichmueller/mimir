@@ -26,6 +26,13 @@ namespace mimir::search::iw
 {
 struct Options
 {
+    /// @brief Where to start, defaulting to the search context's initial state.
+    ///
+    /// ATTENTION: the state is looked up in the search context's OWN state repository. A `State`
+    /// obtained from a different context -- including one over the same `Problem` -- is not a valid
+    /// key there, and the failure surfaces as an `IndexError` thrown from inside the search rather
+    /// than at the call site. Re-create the start state through this context's repository (see
+    /// `StateRepositoryImpl::get_or_create_state`) before handing it over.
     std::optional<State> start_state = std::nullopt;
     EventHandler iw_event_handler = nullptr;
     brfs::EventHandler brfs_event_handler = nullptr;

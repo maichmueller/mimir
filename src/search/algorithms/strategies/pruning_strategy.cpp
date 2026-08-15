@@ -31,10 +31,15 @@ bool IPruningStrategy::should_bypass_action_add_effect_precheck(const State& sta
     return false;
 }
 
-bool IPruningStrategy::test_transition_novelty_from_add_effects(const State& state, const iw::AtomIndexList& add_fluent_atom_indices) const
+bool IPruningStrategy::precheck_requires_delete_effects() const { return false; }
+
+bool IPruningStrategy::test_transition_novelty_from_add_effects(const State& state,
+                                                                 const iw::AtomIndexList& add_fluent_atom_indices,
+                                                                 const iw::AtomIndexList& del_fluent_atom_indices) const
 {
     [[maybe_unused]] const auto& ignored_state = state;
     [[maybe_unused]] const auto& ignored_add_fluent_atom_indices = add_fluent_atom_indices;
+    [[maybe_unused]] const auto& ignored_del_fluent_atom_indices = del_fluent_atom_indices;
     throw std::invalid_argument("IPruningStrategy does not support add-effect novelty prechecks.");
 }
 

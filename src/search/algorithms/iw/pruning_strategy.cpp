@@ -238,8 +238,14 @@ bool ArityKNoveltyPruningStrategyImpl::should_bypass_action_add_effect_precheck(
 }
 
 bool ArityKNoveltyPruningStrategyImpl::test_transition_novelty_from_add_effects(const State& state,
-                                                                                 const AtomIndexList& add_fluent_atom_indices) const
+                                                                                 const AtomIndexList& add_fluent_atom_indices,
+                                                                                 const AtomIndexList& del_fluent_atom_indices) const
 {
+    /* Atom-level novelty only ever grows: a tuple is novel because the transition ADDS an atom, so
+       what the action removes cannot make it novel, and cannot make a novel tuple stale either.
+       Hence `precheck_requires_delete_effects()` stays false here and the list is not consulted. */
+    [[maybe_unused]] const auto& ignored_del_fluent_atom_indices = del_fluent_atom_indices;
+
     if (should_bypass_action_add_effect_precheck(state))
     {
         return true;
@@ -592,6 +598,40 @@ bool LandmarkNoveltyPruningStrategyImpl::test_prune_successor_state(const State&
     }
 
     return !m_novelty_table.test_novelty_and_update_table(state, succ_state);
+}
+
+bool LandmarkNoveltyPruningStrategyImpl::supports_action_add_effect_precheck() const
+{
+    /* The witness half of the precheck decomposes tuples into single atoms, which is only
+       meaningful at arity 1 -- the same limit `ArityKNoveltyPruningStrategyImpl` puts on its
+       atom-level queries. Wider passes fall back to testing the successor itself. */
+    return m_novelty_table.get_tuple_index_mapper().get_arity() == 1;
+}
+
+bool LandmarkNoveltyPruningStrategyImpl::precheck_requires_delete_effects() const { return true; }
+
+bool LandmarkNoveltyPruningStrategyImpl::test_transition_novelty_from_add_effects(const State& state,
+                                                                                   const AtomIndexList& add_fluent_atom_indices,
+                                                                                   const AtomIndexList& del_fluent_atom_indices) const
+{
+    return mutable_novelty_table().test_novelty_read_only_from_delta(state, add_fluent_atom_indices, del_fluent_atom_indices);
+}
+
+bool LandmarkNoveltyPruningStrategyImpl::supports_transition_novel_witness_query() const
+{
+    return m_novelty_table.get_tuple_index_mapper().get_arity() == 1;
+}
+
+void LandmarkNoveltyPruningStrategyImpl::compute_transition_novel_fluent_atom_indices_read_only(const State& state,
+                                                                                                 const State& succ_state,
+                                                                                                 AtomIndexList& out_novel_fluent_atom_indices) const
+{
+    if (!supports_transition_novel_witness_query())
+    {
+        throw std::invalid_argument("LandmarkNoveltyPruningStrategyImpl transition witness query only supports arity 1.");
+    }
+
+    mutable_novelty_table().compute_transition_novel_fluent_atom_indices_read_only(state, succ_state, out_novel_fluent_atom_indices);
 }
 
 const LandmarkNoveltyTable& LandmarkNoveltyPruningStrategyImpl::get_novelty_table() const { return m_novelty_table; }
@@ -1532,8 +1572,12 @@ bool AbstractedNoveltyPruningStrategyImpl::should_bypass_action_add_effect_prech
 }
 
 bool AbstractedNoveltyPruningStrategyImpl::test_transition_novelty_from_add_effects(const State& state,
-                                                                                    const AtomIndexList& add_fluent_atom_indices) const
+                                                                                    const AtomIndexList& add_fluent_atom_indices,
+                                                                                    const AtomIndexList& del_fluent_atom_indices) const
 {
+    /* Abstracted features are still atom-level, so deletes cannot create novelty here either. */
+    [[maybe_unused]] const auto& ignored_del_fluent_atom_indices = del_fluent_atom_indices;
+
     if (m_width != 1 || should_bypass_action_add_effect_precheck(state))
     {
         return true;

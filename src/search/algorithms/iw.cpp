@@ -108,16 +108,30 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
                                  + std::to_string(MAX_ARITY) + ") compile time constant.");
     }
 
-    /* Landmark-restricted novelty tracks (landmark, free tuple) pairs, so none of the width-1
-       accelerators apply: they query atom-level novelty, which this feature family does not
-       expose. Reject the combination instead of quietly dropping the requested options. */
+    /* Landmark-restricted novelty supports the add-effect precheck -- exactly, not approximately;
+       see `LandmarkNoveltyPruningStrategyImpl`. The other two width-1 accelerators do not survive
+       the move from atom-level to (landmark, free tuple) features and are rejected rather than
+       silently dropped. */
     const auto use_landmark_novelty = (options.landmark_novelty_graph != nullptr);
-    if (use_landmark_novelty
-        && (options.iw1_precheck_add_effect_novelty || options.iw1_atom_first_mode || options.iw1_incremental_first_applicability
-            || options.iw1_incremental_first_applicability_debug_crosscheck))
+    if (use_landmark_novelty && options.iw1_atom_first_mode)
     {
-        throw std::invalid_argument("iw::find_solution(...): iw1_* accelerators require atom-level novelty and cannot be combined with "
+        /* Atom-first mode orders and FILTERS actions by `test_atom_novelty_read_only`, which takes
+           an atom index with no state and no transition attached. There is nothing to quantify the
+           landmark coordinate over, so no exact answer exists even in principle, and the only sound
+           one ("unseen under some rank") admits everything. */
+        throw std::invalid_argument("iw::find_solution(...): iw1_atom_first_mode requires atom-level novelty and cannot be combined with "
                                     "landmark_novelty_graph.");
+    }
+    if (use_landmark_novelty && (options.iw1_incremental_first_applicability || options.iw1_incremental_first_applicability_debug_crosscheck))
+    {
+        /* Incremental first-applicability tests every ground action at most once in the whole
+           search. That is sound under IW(1) because every atom true in a generated state is marked,
+           so re-applying an action can never add an unmarked atom. It is NOT sound under LIW(k):
+           the feature is a pair, so the same action applied at a state with different landmark
+           coordinates can expose a pair no earlier application could have marked. Enabling it would
+           prune exactly the transitions LIW exists to keep. */
+        throw std::invalid_argument("iw::find_solution(...): iw1_incremental_first_applicability tests each ground action at most once, which is sound only "
+                                    "for atom-level novelty, and cannot be combined with landmark_novelty_graph.");
     }
 
     iw_event_handler->on_start_search(start_state);
@@ -177,7 +191,10 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
 
         iw_event_handler->on_start_arity_search(start_state, cur_arity);
 
-        const auto use_iw1_specific_options = (cur_arity == 1) && !use_landmark_novelty;
+        /* The add-effect precheck only needs the pass to be width 1; the rest additionally need
+           atom-level novelty, which the landmark table does not expose. */
+        const auto use_width_one_options = (cur_arity == 1);
+        const auto use_iw1_specific_options = use_width_one_options && !use_landmark_novelty;
 
         auto options_i = brfs::Options();
         options_i.start_state = start_state;
@@ -194,7 +211,7 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
         options_i.parallel_beam_chunk_size = options.parallel_beam_chunk_size;
         // These controls are width-1-specific and must not be applied to the arity-0
         // warm-up pass or any wider IW(k) pass.
-        options_i.iw1_precheck_add_effect_novelty = use_iw1_specific_options && options.iw1_precheck_add_effect_novelty;
+        options_i.iw1_precheck_add_effect_novelty = use_width_one_options && options.iw1_precheck_add_effect_novelty;
         options_i.iw1_atom_first_mode = use_iw1_specific_options && options.iw1_atom_first_mode;
         options_i.iw1_atom_first_ratio = options.iw1_atom_first_ratio;
         options_i.iw1_incremental_first_applicability =

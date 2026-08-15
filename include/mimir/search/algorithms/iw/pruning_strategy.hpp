@@ -111,7 +111,9 @@ public:
     bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;
     bool supports_action_add_effect_precheck() const override;
     bool should_bypass_action_add_effect_precheck(const State& state) const override;
-    bool test_transition_novelty_from_add_effects(const State& state, const AtomIndexList& add_fluent_atom_indices) const override;
+    bool test_transition_novelty_from_add_effects(const State& state,
+                                                  const AtomIndexList& add_fluent_atom_indices,
+                                                  const AtomIndexList& del_fluent_atom_indices) const override;
     bool consume_skip_state_expansion(const State& state) override;
     bool supports_atom_novelty_query() const override;
     bool test_atom_novelty_read_only(Index atom_index) const override;
@@ -160,16 +162,31 @@ public:
 /// IW(arity) and IW(arity+1); see `LandmarkNoveltyTable` for the feature family and its
 /// guarantees.
 ///
-/// Only the two core novelty tests are provided, and the IW(1) accelerators
-/// (`supports_action_add_effect_precheck`, `supports_atom_novelty_query`, ...) are deliberately
-/// left at their unsupported defaults rather than being given approximate answers: they all reason
-/// about *atom*-level novelty, and an atom being new says nothing about whether any landmark pair
-/// containing it is. `iw::find_solution` rejects those options up front instead of silently
-/// dropping them.
+/// Which IW(1) accelerators this strategy exposes follows from how much context each of their
+/// entry points carries, not from a blanket policy:
+///
+///   * The add-effect precheck and the transition witness query are supported and **exact**. Both
+///     are handed the whole transition -- the precheck as an atom-level delta, the witness query as
+///     both states -- which is enough to compute the successor's landmark coordinates and probe the
+///     `(coordinate, free tuple)` table directly. The precheck needs the transition's DELETE
+///     effects as well as its adds (see `precheck_requires_delete_effects`), because a landmark
+///     coordinate can disappear as well as appear.
+///
+///   * `supports_atom_novelty_query` stays unsupported, and cannot be made exact even in
+///     principle: it is handed an atom index alone, with no state and no transition, so there is
+///     nothing to quantify the landmark coordinate over. The only sound answer -- "unseen under
+///     *some* rank in the whole table" -- is so permissive it buys nothing, and this query is not
+///     ordering-only (`IW1ActionPrecheckController::refresh_remaining_atoms` drops atoms from the
+///     candidate set on the strength of it), so an over-strict answer would prune wrongly.
+///     `iw::find_solution` therefore still rejects `iw1_atom_first_mode` up front.
 class LandmarkNoveltyPruningStrategyImpl : public IPruningStrategy
 {
 private:
     LandmarkNoveltyTable m_novelty_table;
+
+    /// The read-only queries are `const` by interface but need the table's scratch buffers and its
+    /// lazy resize, exactly as `DynamicNoveltyTable`'s read-only queries do.
+    LandmarkNoveltyTable& mutable_novelty_table() const { return const_cast<LandmarkNoveltyTable&>(m_novelty_table); }
 
 public:
     LandmarkNoveltyPruningStrategyImpl(const landmarks::FactLandmarkGraph& landmarks,
@@ -184,6 +201,15 @@ public:
 
     bool test_prune_initial_state(const State& state) override;
     bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;
+    bool supports_action_add_effect_precheck() const override;
+    bool precheck_requires_delete_effects() const override;
+    bool test_transition_novelty_from_add_effects(const State& state,
+                                                  const AtomIndexList& add_fluent_atom_indices,
+                                                  const AtomIndexList& del_fluent_atom_indices) const override;
+    bool supports_transition_novel_witness_query() const override;
+    void compute_transition_novel_fluent_atom_indices_read_only(const State& state,
+                                                                const State& succ_state,
+                                                                AtomIndexList& out_novel_fluent_atom_indices) const override;
 
     const LandmarkNoveltyTable& get_novelty_table() const;
 };
@@ -364,7 +390,9 @@ public:
     bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;
     bool supports_action_add_effect_precheck() const override;
     bool should_bypass_action_add_effect_precheck(const State& state) const override;
-    bool test_transition_novelty_from_add_effects(const State& state, const AtomIndexList& add_fluent_atom_indices) const override;
+    bool test_transition_novelty_from_add_effects(const State& state,
+                                                  const AtomIndexList& add_fluent_atom_indices,
+                                                  const AtomIndexList& del_fluent_atom_indices) const override;
     bool consume_skip_state_expansion(const State& state) override;
     bool supports_atom_novelty_query() const override;
     bool test_atom_novelty_read_only(Index atom_index) const override;

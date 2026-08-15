@@ -1868,6 +1868,16 @@ ParallelRelaxedBeamSuccessorGenerationResult KPKCLiftedApplicableActionGenerator
             "KPKCLiftedApplicableActionGeneratorImpl::create_relaxed_parallel_beam_successor_candidates requires BeamNoveltyMode::SURVIVORS_ONLY.");
     }
 
+    /* This path derives add effects only. A strategy whose precheck also needs the delete effects
+       -- landmark-restricted novelty, whose coordinates can disappear as well as appear -- would be
+       handed an incomplete transition and could prune an admissible action, so it simply does not
+       get the precheck here. Skipping a precheck costs speed; running it on a partial transition
+       would cost correctness. */
+    if (pruning_strategy->precheck_requires_delete_effects())
+    {
+        iw1_precheck_add_effect_novelty = false;
+    }
+
     const auto generation_start = std::chrono::steady_clock::now();
 
     const auto dynamic_assignment_initialization_start = std::chrono::steady_clock::now();
@@ -1949,6 +1959,9 @@ ParallelRelaxedBeamSuccessorGenerationResult KPKCLiftedApplicableActionGenerator
                                                           auto& action_validator = typed_worker_context.action_validators[schema_task.schema_index];
                                                           auto local_binding_index = uint32_t(0);
                                                           auto add_effect_atom_indices = iw::AtomIndexList {};
+                                                          /* Never populated: strategies that read
+                                                             it are excluded from this path above. */
+                                                          const auto no_del_effect_atom_indices = iw::AtomIndexList {};
 
                                                           condition_grounder.for_each_candidate_binding_indices(state.get_unpacked_state(),
                                                                                                                 dynamic_assignment_sets,
@@ -1970,7 +1983,7 @@ ParallelRelaxedBeamSuccessorGenerationResult KPKCLiftedApplicableActionGenerator
                                                                                                                           typed_worker_context.successor_scratch,
                                                                                                                           add_effect_atom_indices);
                                                                   if (!pruning_strategy->test_transition_novelty_from_add_effects(
-                                                                          state, add_effect_atom_indices))
+                                                                          state, add_effect_atom_indices, no_del_effect_atom_indices))
                                                                   {
                                                                       ++local_binding_index;
                                                                       return;

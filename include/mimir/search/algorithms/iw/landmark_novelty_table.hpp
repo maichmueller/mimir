@@ -70,6 +70,22 @@ public:
     /// exactly when no real landmark is, and flips like any other.
     void collect_transition(const State& state, const State& succ_state, std::vector<uint32_t>& out_flipped_ranks, std::vector<uint32_t>& out_kept_ranks) const;
 
+    /// @brief `collect_transition` from the transition's atom-level delta instead of from a
+    /// materialized successor, for callers deciding whether to build one at all.
+    ///
+    /// Exactly equivalent to `collect_transition(state, succ_state, ...)` whenever
+    /// `atoms(succ_state) == (atoms(state) \ del_atom_indices) | add_atom_indices`, which is what
+    /// `StateRepositoryImpl::collect_action_change_effect_fluent_atom_indices` guarantees.
+    ///
+    /// Costs `|add| + |del| + |L(state)|` rather than a pass over `L`: only landmarks the action
+    /// touches can flip, and the `BOT` coordinate flips on exactly when the action deletes every
+    /// landmark that was true and adds none, which is decided from the true-landmark list alone.
+    void collect_transition_from_delta(const State& state,
+                                       const AtomIndexList& add_atom_indices,
+                                       const AtomIndexList& del_atom_indices,
+                                       std::vector<uint32_t>& out_flipped_ranks,
+                                       std::vector<uint32_t>& out_kept_ranks) const;
+
 private:
     AtomIndexList m_landmark_atom_indices;
     /// atom index -> rank, sized to the largest landmark atom index.
@@ -159,6 +175,31 @@ public:
     bool test_novelty_read_only(const State& state);
     bool test_novelty_read_only(const State& state, const State& succ_state);
 
+    /// @brief `test_novelty_read_only(state, succ_state)` computed from the transition's
+    /// atom-level delta, without a successor `State`.
+    ///
+    /// Exact, not conservative: given `add`/`del` that describe the transition faithfully, this
+    /// answers exactly what the two-state overload would. It is the query an action-level precheck
+    /// needs, since the whole point there is to decide whether a successor could survive pruning
+    /// before paying to build it.
+    ///
+    /// The successor's atoms are enumerated logically, and only when a coordinate actually flips:
+    /// with no flip the marked pairs `coords(state) x tuples(state)` already cover everything but
+    /// the tuples containing an added atom, so the test reduces to `kept x add`.
+    ///
+    /// @param add_atom_indices atoms that become true -- sorted ascending, none true in `state`.
+    /// @param del_atom_indices atoms that become false -- sorted ascending, all true in `state`.
+    bool test_novelty_read_only_from_delta(const State& state, const AtomIndexList& add_atom_indices, const AtomIndexList& del_atom_indices);
+
+    /// @brief The atoms of `succ_state` that participate in an unseen landmark-restricted tuple of
+    /// the transition `state -> succ_state`, without touching the table.
+    ///
+    /// The landmark counterpart of the atom-level witness query: an atom is reported when some
+    /// pair `(l, t)` that the transition would mark is unseen and `t` contains it. Both halves of
+    /// the marking split contribute -- kept coordinates paired with added atoms, and, when a
+    /// coordinate flips on, flipped coordinates paired with any atom of the successor.
+    void compute_transition_novel_fluent_atom_indices_read_only(const State& state, const State& succ_state, AtomIndexList& out_novel_fluent_atom_indices);
+
     uint32_t get_landmark_rank(AtomIndex atom_index) const { return m_coordinates.get_rank(atom_index); }
     uint32_t get_bot_rank() const { return m_coordinates.get_bot_rank(); }
     size_t get_num_landmarks() const { return m_coordinates.get_num_landmarks(); }
@@ -189,8 +230,17 @@ private:
     /// @brief Mark `ranks x m_scratch_tuples`, or only test it when `update` is false.
     bool visit_scratch_tuples(const std::vector<uint32_t>& ranks, bool update);
 
+    /// @brief Whether the pair `(rank, tuple_index)` has been marked.
+    bool contains_pair(uint32_t rank, TupleIndex tuple_index) const;
+
     void fill_scratch_with_state_tuples(const State& state);
     void fill_scratch_with_transition_tuples(const State& state, const State& succ_state);
+    /// @brief The free tuples of the logical successor `(atoms(state) \ del) | add`, built without
+    /// materializing a `State`. Mirrors `fill_scratch_with_state_tuples`, placeholder included.
+    void fill_scratch_with_delta_successor_tuples(const State& state, const AtomIndexList& add_atom_indices, const AtomIndexList& del_atom_indices);
+    /// @brief The free tuples of the transition that contain at least one added atom, from the
+    /// delta. Mirrors `fill_scratch_with_transition_tuples`.
+    void fill_scratch_with_delta_transition_tuples(const State& state, const AtomIndexList& add_atom_indices, const AtomIndexList& del_atom_indices);
 
     LandmarkCoordinates m_coordinates;
     LandmarkNoveltyTableOptions m_options;
@@ -205,6 +255,9 @@ private:
     TupleIndexList m_scratch_tuples;
     mutable std::vector<uint32_t> m_scratch_flipped_ranks;
     mutable std::vector<uint32_t> m_scratch_kept_ranks;
+    /// Logical successor atom lists, only ever filled on the flipping branch of a delta query.
+    AtomIndexList m_scratch_delta_kept_atoms;
+    AtomIndexList m_scratch_delta_successor_atoms;
 };
 
 /// @brief Landmark-restricted counterpart of `MinimumGNoveltyTable`: stores the smallest path cost

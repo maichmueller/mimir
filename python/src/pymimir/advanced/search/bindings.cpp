@@ -775,7 +775,21 @@ void bind_module_definitions(nb::module_& m)
             "state_index"_a)
         .def("get_state_count", &StateRepositoryImpl::get_state_count, nb::rv_policy::copy)
         .def("get_reached_fluent_ground_atoms_bitset", &StateRepositoryImpl::get_reached_fluent_ground_atoms_bitset, nb::rv_policy::copy)
-        .def("get_reached_derived_ground_atoms_bitset", &StateRepositoryImpl::get_reached_derived_ground_atoms_bitset, nb::rv_policy::copy);
+        .def("get_reached_derived_ground_atoms_bitset", &StateRepositoryImpl::get_reached_derived_ground_atoms_bitset, nb::rv_policy::copy)
+        // Exposed so a test can assert that an action-level novelty precheck decides without
+        // building successors. Counts every construction entry point, staged ones included.
+        .def("get_num_successor_state_constructions", &StateRepositoryImpl::get_num_successor_state_constructions, nb::rv_policy::copy)
+        .def(
+            "collect_action_change_effect_fluent_atom_indices",
+            [](StateRepositoryImpl& self, const State& state, GroundAction action)
+            {
+                auto add_fluent_atom_indices = iw::AtomIndexList {};
+                auto del_fluent_atom_indices = iw::AtomIndexList {};
+                self.collect_action_change_effect_fluent_atom_indices(state, action, add_fluent_atom_indices, del_fluent_atom_indices);
+                return std::make_pair(add_fluent_atom_indices, del_fluent_atom_indices);
+            },
+            "state"_a,
+            "action"_a);
 
     /* Grounder */
 
@@ -925,11 +939,26 @@ void bind_module_definitions(nb::module_& m)
         .def(nb::init<Problem, bool>(), "problem"_a, "prefer_more_satisfied_goals"_a = true)
         .def_static("create", &GoalCountLayerOrderingStrategyImpl::create, "problem"_a, "prefer_more_satisfied_goals"_a = true);
 
+    // Declared before the pruning strategies because `LandmarkNoveltyPruningStrategy` uses a
+    // default-constructed instance as a default argument, which nanobind converts eagerly.
+    nb::class_<iw::LandmarkNoveltyTableOptions>(m, "LandmarkNoveltyTableOptions")  //
+        .def(nb::init<>())
+        .def_rw("max_dense_table_bytes", &iw::LandmarkNoveltyTableOptions::max_dense_table_bytes)
+        .def_rw("force_dense", &iw::LandmarkNoveltyTableOptions::force_dense);
+
     // PruningStrategy
     nb::class_<IPruningStrategy, IPyPruningStrategy>(m, "IPruningStrategy")
         .def(nb::init<>())
         .def("test_prune_initial_state", &IPruningStrategy::test_prune_initial_state, "initial_state"_a)
         .def("test_prune_successor_state", &IPruningStrategy::test_prune_successor_state, "state"_a, "successor_state"_a, "is_new_successor"_a)
+        .def("supports_action_add_effect_precheck", &IPruningStrategy::supports_action_add_effect_precheck)
+        .def("precheck_requires_delete_effects", &IPruningStrategy::precheck_requires_delete_effects)
+        .def("test_transition_novelty_from_add_effects",
+             &IPruningStrategy::test_transition_novelty_from_add_effects,
+             "state"_a,
+             "add_fluent_atom_indices"_a,
+             "del_fluent_atom_indices"_a = iw::AtomIndexList {})
+        .def("supports_atom_novelty_query", &IPruningStrategy::supports_atom_novelty_query)
         .def("supports_transition_novel_witness_query", &IPruningStrategy::supports_transition_novel_witness_query)
         .def("compute_transition_novel_fluent_atom_indices_read_only",
              [](const IPruningStrategy& self, const State& state, const State& successor_state)
@@ -956,6 +985,22 @@ void bind_module_definitions(nb::module_& m)
     nb::class_<iw::ArityKNoveltyPruningStrategyImpl, IPruningStrategy>(m, "ArityKNoveltyPruningStrategy")  //
         .def(nb::init<size_t, size_t>(), "arity"_a, "num_atoms"_a)
         .def_static("create", &iw::ArityKNoveltyPruningStrategyImpl::create, "arity"_a, "num_atoms"_a, "optimize_root_depth_one_continuation"_a = false);
+
+    // LIW(k): novelty over `(landmark coordinate, free tuple of size <= arity)` pairs. Exposed for
+    // callers that drive `find_solution_brfs` with an explicit pruning strategy; `IWOptions`'
+    // `landmark_novelty_graph` is the equivalent for the `find_solution_iw` ladder.
+    nb::class_<iw::LandmarkNoveltyPruningStrategyImpl, IPruningStrategy>(m, "LandmarkNoveltyPruningStrategy")  //
+        .def(nb::init<const landmarks::FactLandmarkGraph&, size_t, size_t, iw::LandmarkNoveltyTableOptions>(),
+             "landmarks"_a,
+             "arity"_a,
+             "num_atoms"_a,
+             "table_options"_a = iw::LandmarkNoveltyTableOptions())
+        .def_static("create",
+                    &iw::LandmarkNoveltyPruningStrategyImpl::create,
+                    "landmarks"_a,
+                    "arity"_a,
+                    "num_atoms"_a,
+                    "table_options"_a = iw::LandmarkNoveltyTableOptions());
 
     nb::class_<iw::AbstractedNoveltyPruningStrategyImpl, IPruningStrategy>(m, "AbstractedNoveltyPruningStrategy")  //
         .def(nb::init<Problem, size_t, bool, bool, bool>(),
@@ -1643,11 +1688,6 @@ void bind_module_definitions(nb::module_& m)
         .def_static("create", &iw::ObservationEventHandlerImpl::create, "problem"_a, "brfs_observation_handler"_a)
         .def("get_observation", &iw::ObservationEventHandlerImpl::get_observation, nb::rv_policy::reference_internal)
         .def_prop_ro("observation", &iw::ObservationEventHandlerImpl::get_observation, nb::rv_policy::reference_internal);
-
-    nb::class_<iw::LandmarkNoveltyTableOptions>(m, "LandmarkNoveltyTableOptions")  //
-        .def(nb::init<>())
-        .def_rw("max_dense_table_bytes", &iw::LandmarkNoveltyTableOptions::max_dense_table_bytes)
-        .def_rw("force_dense", &iw::LandmarkNoveltyTableOptions::force_dense);
 
     nb::class_<iw::Options>(m, "IWOptions")  //
         .def(nb::init<>())

@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <cassert>
 #include <optional>
+#include <stdexcept>
 
 using namespace mimir::formalism;
 
@@ -129,6 +130,64 @@ void LandmarkCoordinates::collect_transition(const State& state,
     /* If the predecessor held a landmark and the successor holds none, BOT has just become the
        successor's coordinate and must pair with all free tuples, not only with new ones. */
     if (!any_true_in_succ)
+    {
+        (any_true_in_state ? out_flipped_ranks : out_kept_ranks).push_back(get_bot_rank());
+    }
+}
+
+void LandmarkCoordinates::collect_transition_from_delta(const State& state,
+                                                        const AtomIndexList& add_atom_indices,
+                                                        const AtomIndexList& del_atom_indices,
+                                                        std::vector<uint32_t>& out_flipped_ranks,
+                                                        std::vector<uint32_t>& out_kept_ranks) const
+{
+    out_flipped_ranks.clear();
+    out_kept_ranks.clear();
+
+    if (m_landmark_atom_indices.empty())
+    {
+        /* Degenerate LIW: BOT is the only coordinate and is true in every state, so it is always
+           kept. Bail out before touching the state at all. */
+        out_kept_ranks.push_back(get_bot_rank());
+        return;
+    }
+
+    const auto& fluent_atoms = state.get_atoms<FluentTag>();
+
+    /* Only atoms the action touches can change a coordinate, so the added landmarks are the whole
+       flipped set: a landmark in `add_atom_indices` was false in `state` by construction. */
+    for (const auto atom_index : add_atom_indices)
+    {
+        const auto rank = get_rank(atom_index);
+        if (rank != NOT_A_LANDMARK)
+        {
+            out_flipped_ranks.push_back(rank);
+        }
+    }
+
+    /* The kept coordinates are the landmarks true in `state` that the action does not delete.
+       `del_atom_indices` is tiny and sorted, so membership is a binary search rather than a set. */
+    const auto is_deleted = [&](AtomIndex atom_index)
+    { return std::binary_search(del_atom_indices.begin(), del_atom_indices.end(), atom_index); };
+
+    auto any_true_in_state = false;
+    for (const auto atom_index : m_landmark_atom_indices)
+    {
+        if (!fluent_atoms.get(atom_index))
+        {
+            continue;
+        }
+        any_true_in_state = true;
+        if (!is_deleted(atom_index))
+        {
+            out_kept_ranks.push_back(m_rank_by_atom_index[atom_index]);
+        }
+    }
+
+    /* BOT is a coordinate of the successor exactly when it holds no real landmark, and it flips on
+       exactly when the predecessor did hold one. Both conjuncts are needed: deleting every true
+       landmark does not produce BOT if the same action makes another landmark true. */
+    if (out_flipped_ranks.empty() && out_kept_ranks.empty())
     {
         (any_true_in_state ? out_flipped_ranks : out_kept_ranks).push_back(get_bot_rank());
     }
@@ -384,6 +443,114 @@ bool LandmarkNoveltyTable::visit_scratch_tuples(const std::vector<uint32_t>& ran
     return novel;
 }
 
+void LandmarkNoveltyTable::fill_scratch_with_delta_successor_tuples(const State& state,
+                                                                    const AtomIndexList& add_atom_indices,
+                                                                    const AtomIndexList& del_atom_indices)
+{
+    m_scratch_tuples.clear();
+
+    /* `atoms(s') = (atoms(s) \ del) | add`, merged in ascending order because the tuple generator
+       requires a sorted list. All three inputs are already ascending. */
+    m_scratch_delta_successor_atoms.clear();
+    auto it_add = add_atom_indices.begin();
+    auto it_del = del_atom_indices.begin();
+    for (const auto atom_index : state.get_atoms<FluentTag>())
+    {
+        for (; (it_add != add_atom_indices.end()) && (*it_add < atom_index); ++it_add)
+        {
+            m_scratch_delta_successor_atoms.push_back(*it_add);
+        }
+        for (; (it_del != del_atom_indices.end()) && (*it_del < atom_index); ++it_del)
+        {
+        }
+        if ((it_del != del_atom_indices.end()) && (*it_del == atom_index))
+        {
+            ++it_del;
+            continue;
+        }
+        m_scratch_delta_successor_atoms.push_back(atom_index);
+    }
+    for (; it_add != add_atom_indices.end(); ++it_add)
+    {
+        m_scratch_delta_successor_atoms.push_back(*it_add);
+    }
+
+    if (m_scratch_delta_successor_atoms.size() + 1 < m_tuple_index_mapper.get_arity())
+    {
+        return;
+    }
+
+    /* `StateTupleIndexGenerator::begin(const State&)` appends the placeholder itself; the
+       atom-list overload does not, so the empty tuple would be missing without this. */
+    m_scratch_delta_successor_atoms.push_back(m_tuple_index_mapper.get_num_atoms());
+
+    for (auto it = m_state_tuple_index_generator.begin(m_scratch_delta_successor_atoms); it != m_state_tuple_index_generator.end(); ++it)
+    {
+        m_scratch_tuples.push_back(*it);
+    }
+}
+
+void LandmarkNoveltyTable::fill_scratch_with_delta_transition_tuples(const State& state,
+                                                                     const AtomIndexList& add_atom_indices,
+                                                                     const AtomIndexList& del_atom_indices)
+{
+    m_scratch_tuples.clear();
+
+    if (add_atom_indices.empty())
+    {
+        /* No tuple of the transition contains an added atom, so this half is empty. */
+        return;
+    }
+
+    if (m_tuple_index_mapper.get_arity() == 1)
+    {
+        /* The tuples containing an added atom are exactly the singletons of the added atoms, and at
+           arity 1 the tuple index of `{a}` is `a`. Taking the shortcut is the whole point of the
+           fast path: the general branch below has to materialize `atoms(s) \ del` only to hand the
+           generator a list it never reads at this arity. */
+        m_scratch_tuples.assign(add_atom_indices.begin(), add_atom_indices.end());
+        return;
+    }
+
+    m_scratch_delta_kept_atoms.clear();
+    auto it_del = del_atom_indices.begin();
+    for (const auto atom_index : state.get_atoms<FluentTag>())
+    {
+        for (; (it_del != del_atom_indices.end()) && (*it_del < atom_index); ++it_del)
+        {
+        }
+        if ((it_del != del_atom_indices.end()) && (*it_del == atom_index))
+        {
+            ++it_del;
+            continue;
+        }
+        m_scratch_delta_kept_atoms.push_back(atom_index);
+    }
+
+    if (m_scratch_delta_kept_atoms.size() + add_atom_indices.size() + 1 < m_tuple_index_mapper.get_arity())
+    {
+        return;
+    }
+
+    for (auto it = m_state_pair_tuple_index_generator.begin(m_scratch_delta_kept_atoms, add_atom_indices);
+         it != m_state_pair_tuple_index_generator.end();
+         ++it)
+    {
+        m_scratch_tuples.push_back(*it);
+    }
+}
+
+bool LandmarkNoveltyTable::contains_pair(uint32_t rank, TupleIndex tuple_index) const
+{
+    if (const auto* dense = std::get_if<DenseTable>(&m_table))
+    {
+        const auto index = size_t(rank) * get_stride() + tuple_index;
+        assert(index < dense->size());
+        return (*dense)[index];
+    }
+    return std::get<SparseTable>(m_table).contains(make_landmark_tuple_key(rank, tuple_index));
+}
+
 bool LandmarkNoveltyTable::test_novelty_and_update_table(const State& state)
 {
     resize_to_fit(state);
@@ -449,6 +616,93 @@ bool LandmarkNoveltyTable::test_novelty_read_only(const State& state, const Stat
         }
     }
     return false;
+}
+
+bool LandmarkNoveltyTable::test_novelty_read_only_from_delta(const State& state,
+                                                             const AtomIndexList& add_atom_indices,
+                                                             const AtomIndexList& del_atom_indices)
+{
+    resize_to_fit(state);
+    if (!add_atom_indices.empty())
+    {
+        /* The successor's atoms are a subset of `atoms(state) | add`, so widening for the largest
+           added index covers every tuple this query can generate. */
+        resize_to_fit(add_atom_indices.back());
+    }
+
+    m_coordinates.collect_transition_from_delta(state, add_atom_indices, del_atom_indices, m_scratch_flipped_ranks, m_scratch_kept_ranks);
+
+    /* Order matters for cost, not for the answer: the kept half never reconstructs the successor,
+       so running it first keeps the common no-flip transition off the expensive branch entirely. */
+    if (!m_scratch_kept_ranks.empty())
+    {
+        fill_scratch_with_delta_transition_tuples(state, add_atom_indices, del_atom_indices);
+        if (visit_scratch_tuples(m_scratch_kept_ranks, false))
+        {
+            return true;
+        }
+    }
+    if (!m_scratch_flipped_ranks.empty())
+    {
+        fill_scratch_with_delta_successor_tuples(state, add_atom_indices, del_atom_indices);
+        if (visit_scratch_tuples(m_scratch_flipped_ranks, false))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+void LandmarkNoveltyTable::compute_transition_novel_fluent_atom_indices_read_only(const State& state,
+                                                                                  const State& succ_state,
+                                                                                  AtomIndexList& out_novel_fluent_atom_indices)
+{
+    if (m_tuple_index_mapper.get_arity() != 1)
+    {
+        throw std::invalid_argument("LandmarkNoveltyTable::compute_transition_novel_fluent_atom_indices_read_only only supports arity 1.");
+    }
+
+    out_novel_fluent_atom_indices.clear();
+
+    resize_to_fit(state);
+    resize_to_fit(succ_state);
+
+    m_coordinates.collect_transition(state, succ_state, m_scratch_flipped_ranks, m_scratch_kept_ranks);
+
+    const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
+    for (const auto atom_index : succ_state.get_atoms<FluentTag>())
+    {
+        /* At arity 1 the tuple index of the singleton `{atom_index}` is the atom index itself. */
+        const auto tuple_index = static_cast<TupleIndex>(atom_index);
+
+        auto is_novel = false;
+        for (const auto rank : m_scratch_flipped_ranks)
+        {
+            if (!contains_pair(rank, tuple_index))
+            {
+                is_novel = true;
+                break;
+            }
+        }
+        /* A kept coordinate only ever pairs with atoms the transition adds; an already-true atom
+           under an already-true coordinate was marked when the predecessor was processed. */
+        if (!is_novel && !state_fluent_atoms.get(atom_index))
+        {
+            for (const auto rank : m_scratch_kept_ranks)
+            {
+                if (!contains_pair(rank, tuple_index))
+                {
+                    is_novel = true;
+                    break;
+                }
+            }
+        }
+
+        if (is_novel)
+        {
+            out_novel_fluent_atom_indices.push_back(atom_index);
+        }
+    }
 }
 
 /**
