@@ -26,6 +26,7 @@
 #include <absl/container/flat_hash_set.h>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <variant>
 #include <vector>
 
@@ -70,6 +71,10 @@ public:
     /// exactly when no real landmark is, and flips like any other.
     void collect_transition(const State& state, const State& succ_state, std::vector<uint32_t>& out_flipped_ranks, std::vector<uint32_t>& out_kept_ranks) const;
 
+    /// @brief The landmark atoms true in `state`, ascending. This is `L(s)`, the input every
+    /// per-action query of one state shares.
+    void collect_true_landmark_atoms(const State& state, AtomIndexList& out_atom_indices) const;
+
     /// @brief `collect_transition` from the transition's atom-level delta instead of from a
     /// materialized successor, for callers deciding whether to build one at all.
     ///
@@ -77,10 +82,11 @@ public:
     /// `atoms(succ_state) == (atoms(state) \ del_atom_indices) | add_atom_indices`, which is what
     /// `StateRepositoryImpl::collect_action_change_effect_fluent_atom_indices` guarantees.
     ///
-    /// Costs `|add| + |del| + |L(state)|` rather than a pass over `L`: only landmarks the action
-    /// touches can flip, and the `BOT` coordinate flips on exactly when the action deletes every
-    /// landmark that was true and adds none, which is decided from the true-landmark list alone.
-    void collect_transition_from_delta(const State& state,
+    /// Takes `L(state)` rather than the state because it is per-state, not per-action, while the
+    /// caller loops over the actions of one state. Costs `|add| + |del| + |L(state)|` and never
+    /// scans `L`: only landmarks the action touches can flip, and `BOT` flips on exactly when the
+    /// action deletes every landmark that was true and adds none.
+    void collect_transition_from_delta(const AtomIndexList& true_landmark_atom_indices,
                                        const AtomIndexList& add_atom_indices,
                                        const AtomIndexList& del_atom_indices,
                                        std::vector<uint32_t>& out_flipped_ranks,
@@ -242,6 +248,10 @@ private:
     /// delta. Mirrors `fill_scratch_with_transition_tuples`.
     void fill_scratch_with_delta_transition_tuples(const State& state, const AtomIndexList& add_atom_indices, const AtomIndexList& del_atom_indices);
 
+    /// @brief Make `m_delta_query_state_index` describe `state`, recomputing the per-state inputs
+    /// of a delta query only when the state has actually changed.
+    void refresh_delta_query_state(const State& state);
+
     LandmarkCoordinates m_coordinates;
     LandmarkNoveltyTableOptions m_options;
     TupleIndexMapper m_tuple_index_mapper;
@@ -258,6 +268,17 @@ private:
     /// Logical successor atom lists, only ever filled on the flipping branch of a delta query.
     AtomIndexList m_scratch_delta_kept_atoms;
     AtomIndexList m_scratch_delta_successor_atoms;
+
+    /// The per-state inputs of a delta query, held across the caller's loop over the actions of
+    /// one state. `L(s)` costs a pass over `L` and the resize costs a pass over the state's atoms;
+    /// both are per-state, and a precheck asks them once per applicable action, so recomputing
+    /// them per action is the difference between `O(|L| + |s|)` and `O(|A| * (|L| + |s|))` per
+    /// expansion.
+    ///
+    /// Keyed on the state index, which identifies a state within the repository that created it
+    /// and never changes: states are immutable, so a hit cannot be stale.
+    std::optional<Index> m_delta_query_state_index;
+    AtomIndexList m_delta_query_true_landmark_atoms;
 };
 
 /// @brief Landmark-restricted counterpart of `MinimumGNoveltyTable`: stores the smallest path cost

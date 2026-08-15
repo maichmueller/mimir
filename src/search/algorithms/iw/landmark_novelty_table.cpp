@@ -135,7 +135,21 @@ void LandmarkCoordinates::collect_transition(const State& state,
     }
 }
 
-void LandmarkCoordinates::collect_transition_from_delta(const State& state,
+void LandmarkCoordinates::collect_true_landmark_atoms(const State& state, AtomIndexList& out_atom_indices) const
+{
+    out_atom_indices.clear();
+
+    const auto& fluent_atoms = state.get_atoms<FluentTag>();
+    for (const auto atom_index : m_landmark_atom_indices)
+    {
+        if (fluent_atoms.get(atom_index))
+        {
+            out_atom_indices.push_back(atom_index);
+        }
+    }
+}
+
+void LandmarkCoordinates::collect_transition_from_delta(const AtomIndexList& true_landmark_atom_indices,
                                                         const AtomIndexList& add_atom_indices,
                                                         const AtomIndexList& del_atom_indices,
                                                         std::vector<uint32_t>& out_flipped_ranks,
@@ -147,15 +161,13 @@ void LandmarkCoordinates::collect_transition_from_delta(const State& state,
     if (m_landmark_atom_indices.empty())
     {
         /* Degenerate LIW: BOT is the only coordinate and is true in every state, so it is always
-           kept. Bail out before touching the state at all. */
+           kept. Bail out before looking at the transition at all. */
         out_kept_ranks.push_back(get_bot_rank());
         return;
     }
 
-    const auto& fluent_atoms = state.get_atoms<FluentTag>();
-
     /* Only atoms the action touches can change a coordinate, so the added landmarks are the whole
-       flipped set: a landmark in `add_atom_indices` was false in `state` by construction. */
+       flipped set: a landmark in `add_atom_indices` was false in the predecessor by construction. */
     for (const auto atom_index : add_atom_indices)
     {
         const auto rank = get_rank(atom_index);
@@ -165,23 +177,20 @@ void LandmarkCoordinates::collect_transition_from_delta(const State& state,
         }
     }
 
-    /* The kept coordinates are the landmarks true in `state` that the action does not delete.
-       `del_atom_indices` is tiny and sorted, so membership is a binary search rather than a set. */
-    const auto is_deleted = [&](AtomIndex atom_index)
-    { return std::binary_search(del_atom_indices.begin(), del_atom_indices.end(), atom_index); };
-
-    auto any_true_in_state = false;
-    for (const auto atom_index : m_landmark_atom_indices)
+    /* The kept coordinates are the true landmarks the action does not delete. Both lists are tiny
+       and sorted, so this is a linear merge rather than a membership structure. */
+    auto it_del = del_atom_indices.begin();
+    for (const auto atom_index : true_landmark_atom_indices)
     {
-        if (!fluent_atoms.get(atom_index))
+        for (; (it_del != del_atom_indices.end()) && (*it_del < atom_index); ++it_del)
         {
+        }
+        if ((it_del != del_atom_indices.end()) && (*it_del == atom_index))
+        {
+            ++it_del;
             continue;
         }
-        any_true_in_state = true;
-        if (!is_deleted(atom_index))
-        {
-            out_kept_ranks.push_back(m_rank_by_atom_index[atom_index]);
-        }
+        out_kept_ranks.push_back(m_rank_by_atom_index[atom_index]);
     }
 
     /* BOT is a coordinate of the successor exactly when it holds no real landmark, and it flips on
@@ -189,7 +198,7 @@ void LandmarkCoordinates::collect_transition_from_delta(const State& state,
        landmark does not produce BOT if the same action makes another landmark true. */
     if (out_flipped_ranks.empty() && out_kept_ranks.empty())
     {
-        (any_true_in_state ? out_flipped_ranks : out_kept_ranks).push_back(get_bot_rank());
+        (true_landmark_atom_indices.empty() ? out_kept_ranks : out_flipped_ranks).push_back(get_bot_rank());
     }
 }
 
@@ -618,19 +627,37 @@ bool LandmarkNoveltyTable::test_novelty_read_only(const State& state, const Stat
     return false;
 }
 
+void LandmarkNoveltyTable::refresh_delta_query_state(const State& state)
+{
+    if (m_delta_query_state_index.has_value() && (*m_delta_query_state_index == state.get_index()))
+    {
+        return;
+    }
+
+    resize_to_fit(state);
+    m_coordinates.collect_true_landmark_atoms(state, m_delta_query_true_landmark_atoms);
+    m_delta_query_state_index = state.get_index();
+}
+
 bool LandmarkNoveltyTable::test_novelty_read_only_from_delta(const State& state,
                                                              const AtomIndexList& add_atom_indices,
                                                              const AtomIndexList& del_atom_indices)
 {
-    resize_to_fit(state);
+    refresh_delta_query_state(state);
+
     if (!add_atom_indices.empty())
     {
         /* The successor's atoms are a subset of `atoms(state) | add`, so widening for the largest
-           added index covers every tuple this query can generate. */
+           added index covers every tuple this query can generate. A resize renumbers free tuple
+           indices but not landmark ranks, so the cached `L(state)` survives it. */
         resize_to_fit(add_atom_indices.back());
     }
 
-    m_coordinates.collect_transition_from_delta(state, add_atom_indices, del_atom_indices, m_scratch_flipped_ranks, m_scratch_kept_ranks);
+    m_coordinates.collect_transition_from_delta(m_delta_query_true_landmark_atoms,
+                                                add_atom_indices,
+                                                del_atom_indices,
+                                                m_scratch_flipped_ranks,
+                                                m_scratch_kept_ranks);
 
     /* Order matters for cost, not for the answer: the kept half never reconstructs the successor,
        so running it first keeps the common no-flip transition off the expensive branch entirely. */

@@ -272,19 +272,24 @@ TEST(MimirTests, SearchAlgorithmsIWLandmarkPrecheckAgreesOnConditionalEffects)
 
 TEST(MimirTests, SearchAlgorithmsIWLandmarkPrecheckDoesNotChangeTheSearchResult)
 {
-    /* The precheck may only remove work, never outcomes: same verdict and same plan, action for
+    /* The precheck may only remove work, never outcomes: same verdict and the same plan action for
        action. Expansion counts may legitimately differ -- pruning an action before generating its
-       successor is the point -- but the plan must not. */
+       successor is the point -- but the plan must not.
+
+       Both runs share ONE fixture. Two `Problem` instances of the same PDDL can enumerate grounded
+       actions in different orders, which under novelty pruning changes which candidate claims a
+       contested tuple; comparing action indices across two groundings would compare two different
+       searches. Running two searches over one context is safe: the novelty table lives in the
+       pruning strategy, which is rebuilt per search. */
     for (const auto& [domain, problem_file] : agreement_instances())
     {
-        auto without_precheck = Fixture(domain, "domain.pddl", problem_file);
-        auto with_precheck = Fixture(domain, "domain.pddl", problem_file);
+        auto fixture = Fixture(domain, "domain.pddl", problem_file);
 
-        const auto baseline = run_iw1(without_precheck, false);
-        const auto accelerated = run_iw1(with_precheck, true);
+        const auto baseline = run_iw1(fixture, false);
+        const auto accelerated = run_iw1(fixture, true);
 
         EXPECT_EQ(accelerated.status, baseline.status) << domain;
-        EXPECT_EQ(accelerated.plan_action_indices.size(), baseline.plan_action_indices.size()) << domain;
+        EXPECT_EQ(accelerated.plan_action_indices, baseline.plan_action_indices) << domain;
     }
 }
 
@@ -479,6 +484,81 @@ TEST(MimirTests, SearchAlgorithmsIWLandmarkPrecheckPrunesWhenNothingIsNew)
     driver.advance("drop-lm1");
 
     EXPECT_FALSE(driver.precheck("flip-lm1")) << "every pair of this transition was marked the first time round";
+}
+
+TEST(MimirTests, SearchAlgorithmsIWLandmarkPrecheckBranchesAgreeOnTheSameActions)
+{
+    /* The branch-equivalence test proper: rather than trusting that two hand-written domains
+       encode the same transition system, force BOTH derivations on the SAME action at the SAME
+       state and require them to produce the same delta.
+
+       Branch A reads the cached state-independent effect sets and intersects them against the
+       state; Branch B walks the action's conditional effects and resolves them against it. The two
+       must differ only in cost, so on any action that qualifies for the fast path the deltas must
+       be identical -- and with identical deltas the prune decision is identical by construction,
+       since both branches then call the same query. */
+    for (const auto& [domain, problem_file] : agreement_instances())
+    {
+        auto fixture = Fixture(domain, "domain.pddl", problem_file);
+        SCOPED_TRACE(domain);
+
+        const auto [initial_state, initial_g_value] = fixture.state_repository->get_or_create_initial_state();
+
+        auto queue = std::deque<State> { initial_state };
+        auto seen = std::unordered_set<Index> { initial_state.get_index() };
+        auto branch_b_add = iw::AtomIndexList {};
+        auto branch_b_del = iw::AtomIndexList {};
+        auto branch_a_add = iw::AtomIndexList {};
+        auto branch_a_del = iw::AtomIndexList {};
+        auto num_fast_path_actions = size_t(0);
+
+        while (!queue.empty() && (seen.size() < 300))
+        {
+            const auto state = queue.front();
+            queue.pop_front();
+
+            for (const auto action : fixture.action_generator->create_applicable_action_generator(state))
+            {
+                const auto& unconditional_effects = fixture.state_repository->get_unconditional_fluent_effect_atoms(action);
+
+                fixture.state_repository->collect_action_change_effect_fluent_atom_indices(state, action, branch_b_add, branch_b_del);
+
+                if (unconditional_effects.state_independent)
+                {
+                    /* Branch A, spelled out exactly as `IW1ActionPrecheckController` does it. */
+                    const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
+                    branch_a_add.clear();
+                    for (const auto atom_index : unconditional_effects.add)
+                    {
+                        if (!state_fluent_atoms.get(atom_index))
+                        {
+                            branch_a_add.push_back(atom_index);
+                        }
+                    }
+                    branch_a_del.clear();
+                    for (const auto atom_index : unconditional_effects.del)
+                    {
+                        if (state_fluent_atoms.get(atom_index))
+                        {
+                            branch_a_del.push_back(atom_index);
+                        }
+                    }
+
+                    EXPECT_EQ(branch_a_add, branch_b_add) << "add lists differ on " << action->get_action()->get_name();
+                    EXPECT_EQ(branch_a_del, branch_b_del) << "delete lists differ on " << action->get_action()->get_name();
+                    ++num_fast_path_actions;
+                }
+
+                const auto [succ_state, succ_g_value] = fixture.state_repository->get_or_create_successor_state(state, action, 0);
+                if (seen.insert(succ_state.get_index()).second)
+                {
+                    queue.push_back(succ_state);
+                }
+            }
+        }
+
+        EXPECT_GT(num_fast_path_actions, 0u) << "no action qualified for the fast path, so nothing was compared";
+    }
 }
 
 TEST(MimirTests, SearchAlgorithmsIWLandmarkPrecheckBranchesAgree)
