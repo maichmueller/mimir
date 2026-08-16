@@ -398,8 +398,11 @@ TEST(MimirTests, SearchAlgorithmsLandmarkNoveltyTableDenseLayoutsAgree)
             const auto landmark_atoms = landmark_atom_indices(fixture);
             ASSERT_FALSE(landmark_atoms.empty());
 
+            /* Pinned to `VECTOR_BOOL` rather than left at the default, which is one of the layouts
+               under test -- comparing a layout against itself would pass no matter what it does. */
             auto baseline_options = iw::LandmarkNoveltyTableOptions {};
             baseline_options.force_dense = true;
+            baseline_options.dense_layout = iw::LandmarkDenseLayout::VECTOR_BOOL;
             auto candidate_options = baseline_options;
             candidate_options.dense_layout = layout;
 

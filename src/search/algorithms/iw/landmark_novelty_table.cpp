@@ -691,50 +691,7 @@ bool LandmarkNoveltyTable::visit_scratch_tuples(const std::vector<uint32_t>& ran
 {
     auto novel = false;
 
-    if (auto* dense = std::get_if<DenseTable>(&m_table))
-    {
-        const auto stride = get_stride();
-        for (const auto rank : ranks)
-        {
-            const auto base = size_t(rank) * stride;
-            for (const auto tuple_index : m_scratch_tuples)
-            {
-                const auto index = base + tuple_index;
-                assert(index < dense->size());
-
-                if (!(*dense)[index])
-                {
-                    novel = true;
-                    if (!update)
-                    {
-                        return true;
-                    }
-                    (*dense)[index] = true;
-                }
-            }
-        }
-        return novel;
-    }
-
-    if (auto* dense = std::get_if<RankMajorBitTable>(&m_table))
-    {
-        for (const auto rank : ranks)
-        {
-            for (const auto tuple_index : m_scratch_tuples)
-            {
-                if (update)
-                {
-                    novel = dense->set(rank, tuple_index) || novel;
-                }
-                else if (!dense->get(rank, tuple_index))
-                {
-                    return true;
-                }
-            }
-        }
-        return novel;
-    }
-
+    /* Layouts are tried in the order they are expected, so the default costs no failed checks. */
     if (auto* dense = std::get_if<TupleMajorBitTable>(&m_table))
     {
         /* Each free tuple's ranks live in one padded bitmap, so the whole rank set is tested at
@@ -771,6 +728,50 @@ bool LandmarkNoveltyTable::visit_scratch_tuples(const std::vector<uint32_t>& ran
             {
                 novel = ((mask[word] & ~row[word]) != 0) || novel;
                 row[word] |= mask[word];
+            }
+        }
+        return novel;
+    }
+
+    if (auto* dense = std::get_if<RankMajorBitTable>(&m_table))
+    {
+        for (const auto rank : ranks)
+        {
+            for (const auto tuple_index : m_scratch_tuples)
+            {
+                if (update)
+                {
+                    novel = dense->set(rank, tuple_index) || novel;
+                }
+                else if (!dense->get(rank, tuple_index))
+                {
+                    return true;
+                }
+            }
+        }
+        return novel;
+    }
+
+    if (auto* dense = std::get_if<DenseTable>(&m_table))
+    {
+        const auto stride = get_stride();
+        for (const auto rank : ranks)
+        {
+            const auto base = size_t(rank) * stride;
+            for (const auto tuple_index : m_scratch_tuples)
+            {
+                const auto index = base + tuple_index;
+                assert(index < dense->size());
+
+                if (!(*dense)[index])
+                {
+                    novel = true;
+                    if (!update)
+                    {
+                        return true;
+                    }
+                    (*dense)[index] = true;
+                }
             }
         }
         return novel;
@@ -944,19 +945,19 @@ void LandmarkNoveltyTable::fill_scratch_with_delta_transition_tuples(const State
 
 bool LandmarkNoveltyTable::contains_pair(uint32_t rank, TupleIndex tuple_index) const
 {
-    if (const auto* dense = std::get_if<DenseTable>(&m_table))
+    if (const auto* dense = std::get_if<TupleMajorBitTable>(&m_table))
     {
-        const auto index = size_t(rank) * get_stride() + tuple_index;
-        assert(index < dense->size());
-        return (*dense)[index];
+        return dense->get(rank, tuple_index);
     }
     if (const auto* dense = std::get_if<RankMajorBitTable>(&m_table))
     {
         return dense->get(rank, tuple_index);
     }
-    if (const auto* dense = std::get_if<TupleMajorBitTable>(&m_table))
+    if (const auto* dense = std::get_if<DenseTable>(&m_table))
     {
-        return dense->get(rank, tuple_index);
+        const auto index = size_t(rank) * get_stride() + tuple_index;
+        assert(index < dense->size());
+        return (*dense)[index];
     }
     return std::get<SparseTable>(m_table).contains(make_landmark_tuple_key(rank, tuple_index));
 }
