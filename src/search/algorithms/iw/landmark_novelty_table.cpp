@@ -49,6 +49,21 @@ size_t grown_num_atoms(size_t current_num_atoms, AtomIndex atom_index)
     return new_size;
 }
 
+/// @brief Whether `state` holds any fluent atom whose index is at or beyond `capacity`.
+///
+/// The question `resize_to_fit` actually needs, and much cheaper to answer than the maximum: only
+/// the words at or past `capacity` are inspected, and none at all when the bitset does not reach
+/// that far -- the usual case, since tables are built over the whole fluent atom universe.
+bool has_fluent_atom_at_or_beyond(const State& state, size_t capacity)
+{
+    const auto& fluent_atoms = state.get_atoms<FluentTag>();
+    if (capacity >= fluent_atoms.blocks().size() * FlatBitset::block_size)
+    {
+        return false;
+    }
+    return fluent_atoms.next_set_bit(capacity) != FlatBitset::no_position;
+}
+
 /// @brief Largest fluent atom index of `state`, if any.
 std::optional<AtomIndex> max_fluent_atom_index(const State& state)
 {
@@ -368,6 +383,15 @@ void LandmarkNoveltyTable::resize_to_fit(AtomIndex atom_index)
 
 void LandmarkNoveltyTable::resize_to_fit(const State& state)
 {
+    /* Tables are normally created over the whole fluent atom universe (see `iw.cpp`), so every one
+       of these calls -- one per state and one per successor, on every query -- exists only to
+       discover it has nothing to do. Scanning for the maximum costs a step per atom in the state,
+       which showed up as a measurable share of a landmark search's time. */
+    if (!has_fluent_atom_at_or_beyond(state, m_tuple_index_mapper.get_num_atoms()))
+    {
+        return;
+    }
+
     if (const auto atom_index = max_fluent_atom_index(state))
     {
         resize_to_fit(*atom_index);
@@ -383,6 +407,19 @@ void LandmarkNoveltyTable::fill_scratch_with_state_tuples(const State& state)
         return;
     }
 
+    if (m_tuple_index_mapper.get_arity() == 1)
+    {
+        /* `to_tuple_index({a}) == a` at arity 1 (`m_factors[0] == 1`) and the all-placeholder tuple
+           is `num_atoms`, so the generator would spend its whole iteration protocol reproducing the
+           atom indices it was handed. See `fill_scratch_with_delta_transition_tuples`. */
+        for (const auto atom_index : state.get_atoms<FluentTag>())
+        {
+            m_scratch_tuples.push_back(static_cast<TupleIndex>(atom_index));
+        }
+        m_scratch_tuples.push_back(static_cast<TupleIndex>(m_tuple_index_mapper.get_num_atoms()));
+        return;
+    }
+
     for (auto it = m_state_tuple_index_generator.begin(state); it != m_state_tuple_index_generator.end(); ++it)
     {
         m_scratch_tuples.push_back(*it);
@@ -395,6 +432,22 @@ void LandmarkNoveltyTable::fill_scratch_with_transition_tuples(const State& stat
 
     if (succ_state.get_atoms<FluentTag>().count() + 1 < m_tuple_index_mapper.get_arity())
     {
+        return;
+    }
+
+    if (m_tuple_index_mapper.get_arity() == 1)
+    {
+        /* The tuples of the transition containing an added atom are the singletons of
+           `atoms(succ) \ atoms(state)`, whose tuple indices are the atom indices themselves. The
+           empty tuple contains no added atom and is correctly absent. */
+        const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
+        for (const auto atom_index : succ_state.get_atoms<FluentTag>())
+        {
+            if (!state_fluent_atoms.get(atom_index))
+            {
+                m_scratch_tuples.push_back(static_cast<TupleIndex>(atom_index));
+            }
+        }
         return;
     }
 
@@ -457,6 +510,37 @@ void LandmarkNoveltyTable::fill_scratch_with_delta_successor_tuples(const State&
                                                                     const AtomIndexList& del_atom_indices)
 {
     m_scratch_tuples.clear();
+
+    if (m_tuple_index_mapper.get_arity() == 1)
+    {
+        /* At arity 1 the successor's tuple indices are its atom indices, so the merge can write the
+           answer straight into the scratch tuples: no second list and no generator pass. This is
+           the hot path -- an action that flips a landmark on reaches it for every transition. */
+        auto it_add_fast = add_atom_indices.begin();
+        auto it_del_fast = del_atom_indices.begin();
+        for (const auto atom_index : state.get_atoms<FluentTag>())
+        {
+            for (; (it_add_fast != add_atom_indices.end()) && (*it_add_fast < atom_index); ++it_add_fast)
+            {
+                m_scratch_tuples.push_back(static_cast<TupleIndex>(*it_add_fast));
+            }
+            for (; (it_del_fast != del_atom_indices.end()) && (*it_del_fast < atom_index); ++it_del_fast)
+            {
+            }
+            if ((it_del_fast != del_atom_indices.end()) && (*it_del_fast == atom_index))
+            {
+                ++it_del_fast;
+                continue;
+            }
+            m_scratch_tuples.push_back(static_cast<TupleIndex>(atom_index));
+        }
+        for (; it_add_fast != add_atom_indices.end(); ++it_add_fast)
+        {
+            m_scratch_tuples.push_back(static_cast<TupleIndex>(*it_add_fast));
+        }
+        m_scratch_tuples.push_back(static_cast<TupleIndex>(m_tuple_index_mapper.get_num_atoms()));
+        return;
+    }
 
     /* `atoms(s') = (atoms(s) \ del) | add`, merged in ascending order because the tuple generator
        requires a sorted list. All three inputs are already ascending. */
@@ -797,6 +881,12 @@ void LandmarkMinimumGNoveltyTable::resize_to_fit(AtomIndex atom_index)
 
 void LandmarkMinimumGNoveltyTable::resize_to_fit(const State& state)
 {
+    /* Same cheap "already covered?" test as `LandmarkNoveltyTable::resize_to_fit`. */
+    if (!has_fluent_atom_at_or_beyond(state, m_tuple_index_mapper.get_num_atoms()))
+    {
+        return;
+    }
+
     if (const auto atom_index = max_fluent_atom_index(state))
     {
         resize_to_fit(*atom_index);

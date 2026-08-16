@@ -22,6 +22,8 @@
 #include "mimir/formalism/parser.hpp"
 #include "mimir/formalism/problem.hpp"
 #include "mimir/search/algorithms/iw/novelty_table.hpp"
+#include "mimir/search/algorithms/iw/tuple_index_generators.hpp"
+#include "mimir/search/algorithms/iw/tuple_index_mapper.hpp"
 #include "mimir/search/applicable_action_generators.hpp"
 #include "mimir/search/axiom_evaluators.hpp"
 #include "mimir/search/grounders.hpp"
@@ -31,6 +33,7 @@
 #include "mimir/search/state.hpp"
 #include "mimir/search/state_repository.hpp"
 
+#include <algorithm>
 #include <deque>
 #include <gtest/gtest.h>
 #include <unordered_set>
@@ -501,6 +504,71 @@ TEST(MimirTests, SearchAlgorithmsLandmarkNoveltyTableReadOnlyDoesNotUpdate)
     EXPECT_TRUE(table.test_novelty_read_only(transition.state, transition.succ_state));
     EXPECT_TRUE(table.test_novelty_and_update_table(transition.state, transition.succ_state));
     EXPECT_FALSE(table.test_novelty_read_only(transition.state, transition.succ_state));
+}
+
+/// At arity 1 the landmark table skips the tuple generators altogether and writes atom indices
+/// straight into its scratch tuples. That is only sound because `to_tuple_index({a}) == a` and the
+/// all-placeholder tuple is `num_atoms` -- properties of `TupleIndexMapper` and the generators, not
+/// of the table. Pinned here, because a generator that stopped agreeing with the closed form would
+/// make the fast paths silently wrong rather than merely slow, and nothing else would notice.
+TEST(MimirTests, SearchAlgorithmsIWArityOneTupleGeneratorsMatchTheClosedForm)
+{
+    auto fixture = Fixture {};
+    const auto num_atoms = boost::hana::at_key(fixture.problem->get_repositories().get_hana_repositories(),
+                                               boost::hana::type<GroundAtomImpl<FluentTag>> {})
+                               .size();
+    auto mapper = iw::TupleIndexMapper(1, num_atoms);
+    auto state_generator = iw::StateTupleIndexGenerator(&mapper);
+    auto pair_generator = iw::StatePairTupleIndexGenerator(&mapper);
+
+    const auto transitions = collect_transitions(fixture, 200);
+    ASSERT_FALSE(transitions.empty());
+
+    auto num_nonempty_transition_halves = size_t(0);
+    for (const auto& transition : transitions)
+    {
+        auto expected_state_tuples = std::vector<iw::TupleIndex> {};
+        for (const auto atom_index : transition.state.get_atoms<FluentTag>())
+        {
+            expected_state_tuples.push_back(atom_index);
+        }
+        expected_state_tuples.push_back(num_atoms);
+
+        auto actual_state_tuples = std::vector<iw::TupleIndex> {};
+        for (auto it = state_generator.begin(transition.state); it != state_generator.end(); ++it)
+        {
+            actual_state_tuples.push_back(*it);
+        }
+        std::sort(actual_state_tuples.begin(), actual_state_tuples.end());
+        std::sort(expected_state_tuples.begin(), expected_state_tuples.end());
+        EXPECT_EQ(actual_state_tuples, expected_state_tuples);
+
+        /* The transition half is the singletons of the added atoms -- and no empty tuple, which
+           contains no added atom. */
+        const auto& state_fluent_atoms = transition.state.get_atoms<FluentTag>();
+        auto expected_transition_tuples = std::vector<iw::TupleIndex> {};
+        for (const auto atom_index : transition.succ_state.get_atoms<FluentTag>())
+        {
+            if (!state_fluent_atoms.get(atom_index))
+            {
+                expected_transition_tuples.push_back(atom_index);
+            }
+        }
+
+        auto actual_transition_tuples = std::vector<iw::TupleIndex> {};
+        for (auto it = pair_generator.begin(transition.state, transition.succ_state); it != pair_generator.end(); ++it)
+        {
+            actual_transition_tuples.push_back(*it);
+        }
+        std::sort(actual_transition_tuples.begin(), actual_transition_tuples.end());
+        std::sort(expected_transition_tuples.begin(), expected_transition_tuples.end());
+        EXPECT_EQ(actual_transition_tuples, expected_transition_tuples);
+
+        num_nonempty_transition_halves += expected_transition_tuples.empty() ? 0 : 1;
+    }
+
+    /* Without this the transition half could be vacuously equal on every transition. */
+    EXPECT_GT(num_nonempty_transition_halves, 0u);
 }
 
 }
