@@ -92,6 +92,24 @@ public:
                                        std::vector<uint32_t>& out_flipped_ranks,
                                        std::vector<uint32_t>& out_kept_ranks) const;
 
+    /// @brief Number of `uint64_t` words a rank bitmap needs.
+    size_t get_rank_mask_words() const { return (get_num_ranks() + 63) / 64; }
+
+    /// @brief `L(state)` as a rank bitmap: the bitmap counterpart of `collect_true_landmark_atoms`.
+    void collect_true_landmark_mask(const State& state, std::vector<uint64_t>& out_mask) const;
+
+    /// @brief `collect_transition_from_delta` producing rank bitmaps rather than rank lists.
+    ///
+    /// Takes the predecessor's landmark bitmap, which is per-state and so is computed once for the
+    /// caller's whole loop over actions. That is the point of the bitmap form: `L(s)` is the long
+    /// input and the action does not change it, so the kept coordinates cost one bit clear per
+    /// deleted landmark instead of a pass over `L(s)` per action.
+    void collect_transition_masks_from_delta(const std::vector<uint64_t>& true_landmark_mask,
+                                             const AtomIndexList& add_atom_indices,
+                                             const AtomIndexList& del_atom_indices,
+                                             std::vector<uint64_t>& out_flipped_mask,
+                                             std::vector<uint64_t>& out_kept_mask) const;
+
 private:
     AtomIndexList m_landmark_atom_indices;
     /// atom index -> rank, sized to the largest landmark atom index.
@@ -105,6 +123,99 @@ inline uint64_t make_landmark_tuple_key(uint32_t rank, TupleIndex tuple_index)
 {
     return (static_cast<uint64_t>(rank) << 32) | static_cast<uint64_t>(tuple_index);
 }
+
+/// @brief Dense bit storage for the `(landmark rank, free tuple)` table, rank-major.
+///
+/// Cell `(l, t)` is bit `l * num_tuples + t` of a flat word array -- the index arithmetic
+/// `std::vector<bool>` used, addressed directly so that a probe is a load, a shift and a test
+/// instead of a proxy-reference round trip. Bit-for-bit the same size as the `std::vector<bool>`,
+/// so this is purely an instruction-count change.
+class RankMajorBitTable
+{
+public:
+    RankMajorBitTable() = default;
+    RankMajorBitTable(size_t num_ranks, size_t num_tuples);
+
+    bool get(uint32_t rank, TupleIndex tuple_index) const
+    {
+        const auto index = size_t(rank) * m_num_tuples + tuple_index;
+        return (m_words[index >> 6] >> (index & 63)) & uint64_t(1);
+    }
+
+    /// @brief Mark the cell. @return whether it was previously unmarked.
+    bool set(uint32_t rank, TupleIndex tuple_index)
+    {
+        const auto index = size_t(rank) * m_num_tuples + tuple_index;
+        auto& word = m_words[index >> 6];
+        const auto bit = uint64_t(1) << (index & 63);
+        const auto was_unset = (word & bit) == 0;
+        word |= bit;
+        return was_unset;
+    }
+
+    size_t get_num_cells() const { return m_num_ranks * m_num_tuples; }
+    size_t get_num_bytes() const { return m_words.size() * sizeof(uint64_t); }
+
+private:
+    size_t m_num_ranks = 0;
+    size_t m_num_tuples = 0;
+    std::vector<uint64_t> m_words;
+};
+
+/// @brief Dense bit storage for the `(landmark rank, free tuple)` table, tuple-major.
+///
+/// Each free tuple owns a contiguous bitmap over landmark ranks, padded to whole words. This turns
+/// the question a LIW query actually asks -- "is any rank of this set unmarked for this tuple" --
+/// into `ceil(num_ranks / 64)` word operations against a precomputed rank mask, rather than one bit
+/// probe per rank at a `num_tuples`-sized stride. It suits the query shape: a state holds many
+/// landmarks while a transition contributes few tuples, so the rank side is the long one.
+///
+/// The padding is the price, and it is charged honestly: a table over few landmarks wastes up to 63
+/// bits per tuple, so `LandmarkNoveltyTable::fits_dense` sizes this layout by its padded footprint.
+class TupleMajorBitTable
+{
+public:
+    TupleMajorBitTable() = default;
+    TupleMajorBitTable(size_t num_ranks, size_t num_tuples);
+
+    static size_t words_per_row(size_t num_ranks) { return (num_ranks + 63) / 64; }
+
+    bool get(uint32_t rank, TupleIndex tuple_index) const { return (row(tuple_index)[rank >> 6] >> (rank & 63)) & uint64_t(1); }
+
+    bool set(uint32_t rank, TupleIndex tuple_index)
+    {
+        auto& word = row(tuple_index)[rank >> 6];
+        const auto bit = uint64_t(1) << (rank & 63);
+        const auto was_unset = (word & bit) == 0;
+        word |= bit;
+        return was_unset;
+    }
+
+    const uint64_t* row(TupleIndex tuple_index) const { return m_words.data() + size_t(tuple_index) * m_row_words; }
+    uint64_t* row(TupleIndex tuple_index) { return m_words.data() + size_t(tuple_index) * m_row_words; }
+    size_t get_row_words() const { return m_row_words; }
+
+    size_t get_num_cells() const { return m_num_ranks * m_num_tuples; }
+    size_t get_num_bytes() const { return m_words.size() * sizeof(uint64_t); }
+
+private:
+    size_t m_num_ranks = 0;
+    size_t m_num_tuples = 0;
+    size_t m_row_words = 0;
+    std::vector<uint64_t> m_words;
+};
+
+/// @brief Which physical layout a dense `LandmarkNoveltyTable` uses. See `RankMajorBitTable` and
+/// `TupleMajorBitTable`; the choice changes speed and footprint, never which pairs are marked.
+enum class LandmarkDenseLayout
+{
+    /// `std::vector<bool>`, cell `(l, t)` at bit `l * num_tuples + t`.
+    VECTOR_BOOL,
+    /// `RankMajorBitTable`: the same index arithmetic over an explicit word array.
+    RANK_MAJOR,
+    /// `TupleMajorBitTable`: one padded rank bitmap per free tuple.
+    TUPLE_MAJOR,
+};
 
 /// @brief Storage budget for `LandmarkNoveltyTable`.
 ///
@@ -130,6 +241,15 @@ struct LandmarkNoveltyTableOptions
     /// `TupleIndex`-wide, so a table whose stride cannot be addressed still falls back to sparse.
     /// Useful to measure what the budget costs, and to pin the layout in benchmarks.
     bool force_dense = false;
+
+    /// @brief Preferred physical layout of the dense table. Affects speed and footprint only; every
+    /// layout answers every query identically.
+    ///
+    /// A *preference*, not a demand: `TUPLE_MAJOR` pads each free tuple's row to whole words and is
+    /// charged that padded size, so a table can be within budget unpadded but not padded. That case
+    /// falls back to `RANK_MAJOR` rather than all the way to the sparse layout -- the padding is a
+    /// reason to pick a different dense layout, never a reason to give up on dense storage.
+    LandmarkDenseLayout dense_layout = LandmarkDenseLayout::TUPLE_MAJOR;
 };
 
 /// @brief `LandmarkNoveltyTable` tests novelty over *landmark-restricted* tuples.
@@ -215,13 +335,27 @@ public:
     const TupleIndexMapper& get_tuple_index_mapper() const { return m_tuple_index_mapper; }
     const LandmarkNoveltyTableOptions& get_options() const { return m_options; }
 
-    bool is_dense() const { return std::holds_alternative<DenseTable>(m_table); }
+    bool is_dense() const { return !std::holds_alternative<SparseTable>(m_table); }
     /// @brief Dense cells when dense, live entries when sparse.
     size_t get_table_size() const;
+    /// @brief Bytes the table's own storage occupies, so a layout's footprint can be measured
+    /// rather than inferred. Sparse tables report their bucket array's capacity.
+    size_t get_table_bytes() const;
 
-    /// @brief Whether a dense table of `num_ranks * (num_atoms + 1)^arity` cells is within budget
-    /// and addressable. Exposed so callers can predict the layout without building a table.
-    static bool fits_dense(size_t num_ranks, size_t num_atoms, size_t arity, const LandmarkNoveltyTableOptions& options);
+    /// @brief The dense layout a table of this shape would be built with, or `nullopt` when no
+    /// dense layout is within budget and addressable and the sparse layout is used instead.
+    /// Exposed so callers can predict the layout without building a table.
+    static std::optional<LandmarkDenseLayout>
+    select_dense_layout(size_t num_ranks, size_t num_atoms, size_t arity, const LandmarkNoveltyTableOptions& options);
+
+    /// @brief Whether *some* dense layout fits, i.e. whether `select_dense_layout` yields one.
+    static bool fits_dense(size_t num_ranks, size_t num_atoms, size_t arity, const LandmarkNoveltyTableOptions& options)
+    {
+        return select_dense_layout(num_ranks, num_atoms, arity, options).has_value();
+    }
+
+    /// @brief The layout this table is actually using, or `nullopt` when it is sparse.
+    std::optional<LandmarkDenseLayout> get_dense_layout() const;
 
 private:
     using DenseTable = std::vector<bool>;
@@ -230,11 +364,24 @@ private:
     /// Number of free-tuple indices per landmark rank; the landmark rank is the high digit.
     size_t get_stride() const { return m_tuple_index_mapper.get_max_tuple_index() + 1; }
 
+    /// @brief A zeroed dense table in `layout`.
+    static std::variant<DenseTable, RankMajorBitTable, TupleMajorBitTable, SparseTable>
+    make_dense_table(LandmarkDenseLayout layout, size_t num_ranks, size_t num_tuples);
+
     void resize_to_fit(AtomIndex atom_index);
     void resize_to_fit(const State& state);
 
     /// @brief Mark `ranks x m_scratch_tuples`, or only test it when `update` is false.
     bool visit_scratch_tuples(const std::vector<uint32_t>& ranks, bool update);
+
+    /// @brief `visit_scratch_tuples` for a rank set already held as a bitmap, read-only.
+    ///
+    /// Only `TUPLE_MAJOR` stores ranks in a form this can be tested against directly, so this is
+    /// the layout's own query and the caller checks `uses_rank_masks()` before taking it.
+    bool test_scratch_tuples_masked(const std::vector<uint64_t>& mask) const;
+
+    /// @brief Whether the current layout answers queries from rank bitmaps rather than rank lists.
+    bool uses_rank_masks() const { return std::holds_alternative<TupleMajorBitTable>(m_table); }
 
     /// @brief Whether the pair `(rank, tuple_index)` has been marked.
     bool contains_pair(uint32_t rank, TupleIndex tuple_index) const;
@@ -252,10 +399,18 @@ private:
     /// of a delta query only when the state has actually changed.
     void refresh_delta_query_state(const State& state);
 
+    /// @brief `test_novelty_read_only_from_delta` for the layouts that query from rank bitmaps,
+    /// which lets the predecessor's `L(s)` bitmap be reused across the caller's loop over actions
+    /// instead of a rank list being rebuilt per action.
+    bool test_novelty_read_only_from_delta_masked(const State& state, const AtomIndexList& add_atom_indices, const AtomIndexList& del_atom_indices);
+
     LandmarkCoordinates m_coordinates;
     LandmarkNoveltyTableOptions m_options;
     TupleIndexMapper m_tuple_index_mapper;
-    std::variant<DenseTable, SparseTable> m_table;
+    /// The dense layout chosen at construction, kept for the table's lifetime. Meaningful only
+    /// while `is_dense()`; a table that outgrows its budget stops using it rather than changing it.
+    LandmarkDenseLayout m_dense_layout = LandmarkDenseLayout::VECTOR_BOOL;
+    std::variant<DenseTable, RankMajorBitTable, TupleMajorBitTable, SparseTable> m_table;
 
     StateTupleIndexGenerator m_state_tuple_index_generator;
     StatePairTupleIndexGenerator m_state_pair_tuple_index_generator;
@@ -263,6 +418,9 @@ private:
     /// The free tuples of the current state/transition, materialized once so that the loop over
     /// landmark ranks does not re-run the (comparatively expensive) tuple generator per rank.
     TupleIndexList m_scratch_tuples;
+    /// The rank list of the current query as a bitmap, for `TUPLE_MAJOR`. Sized once at
+    /// construction: the landmark set is fixed, so the number of ranks never changes.
+    std::vector<uint64_t> m_scratch_rank_mask;
     mutable std::vector<uint32_t> m_scratch_flipped_ranks;
     mutable std::vector<uint32_t> m_scratch_kept_ranks;
     /// Logical successor atom lists, only ever filled on the flipping branch of a delta query.
@@ -279,6 +437,11 @@ private:
     /// and never changes: states are immutable, so a hit cannot be stale.
     std::optional<Index> m_delta_query_state_index;
     AtomIndexList m_delta_query_true_landmark_atoms;
+    /// `L(s)` as a rank bitmap, for the layouts that query from bitmaps. Cached alongside the atom
+    /// list and for the same reason: it is per-state, and the caller asks it once per action.
+    std::vector<uint64_t> m_delta_query_true_landmark_mask;
+    mutable std::vector<uint64_t> m_scratch_flipped_mask;
+    mutable std::vector<uint64_t> m_scratch_kept_mask;
 };
 
 /// @brief Landmark-restricted counterpart of `MinimumGNoveltyTable`: stores the smallest path cost

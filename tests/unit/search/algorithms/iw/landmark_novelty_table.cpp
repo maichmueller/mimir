@@ -120,6 +120,11 @@ iw::AtomIndexList landmark_atom_indices(const Fixture& fixture)
     return iw::AtomIndexList(indices.begin(), indices.end());
 }
 
+size_t num_fluent_atoms(const Fixture& fixture)
+{
+    return boost::hana::at_key(fixture.problem->get_repositories().get_hana_repositories(), boost::hana::type<GroundAtomImpl<FluentTag>> {}).size();
+}
+
 bool has_true_landmark(const Fixture& fixture, const State& state)
 {
     const auto& fluent_atoms = state.get_atoms<FluentTag>();
@@ -374,6 +379,307 @@ TEST(MimirTests, SearchAlgorithmsLandmarkNoveltyTableSparseLayoutAgreesWithDense
                 << "arity " << arity;
         }
     }
+}
+
+TEST(MimirTests, SearchAlgorithmsLandmarkNoveltyTableDenseLayoutsAgree)
+{
+    /* The dense layouts differ only in where a cell lives, so they must be indistinguishable
+       through the table's interface -- on every query, at every arity, and across the resizes that
+       renumber free tuple indices under them. `TUPLE_MAJOR` in particular reaches its answer by a
+       different route (word masks over ranks, not one probe per pair), so nothing but a comparison
+       against the layout it replaces establishes that the two routes agree. */
+    const auto layouts = { iw::LandmarkDenseLayout::RANK_MAJOR, iw::LandmarkDenseLayout::TUPLE_MAJOR };
+
+    for (const auto layout : layouts)
+    {
+        for (const size_t arity : { size_t(1), size_t(2) })
+        {
+            auto fixture = Fixture {};
+            const auto landmark_atoms = landmark_atom_indices(fixture);
+            ASSERT_FALSE(landmark_atoms.empty());
+
+            auto baseline_options = iw::LandmarkNoveltyTableOptions {};
+            baseline_options.force_dense = true;
+            auto candidate_options = baseline_options;
+            candidate_options.dense_layout = layout;
+
+            // Starting at zero atoms forces the resize path, which each layout remaps its own way.
+            auto baseline = iw::LandmarkNoveltyTable(landmark_atoms, arity, 0, baseline_options);
+            auto candidate = iw::LandmarkNoveltyTable(landmark_atoms, arity, 0, candidate_options);
+            ASSERT_TRUE(baseline.is_dense());
+            ASSERT_TRUE(candidate.is_dense());
+
+            const auto transitions = collect_transitions(fixture, 400);
+            ASSERT_FALSE(transitions.empty());
+
+            EXPECT_EQ(baseline.test_novelty_and_update_table(transitions.front().state), candidate.test_novelty_and_update_table(transitions.front().state));
+
+            auto add_atom_indices = iw::AtomIndexList {};
+            auto del_atom_indices = iw::AtomIndexList {};
+            auto baseline_witnesses = iw::AtomIndexList {};
+            auto candidate_witnesses = iw::AtomIndexList {};
+            auto num_novel_read_only = size_t(0);
+
+            for (const auto& transition : transitions)
+            {
+                const auto& fluent_atoms = transition.state.get_atoms<FluentTag>();
+                const auto& succ_fluent_atoms = transition.succ_state.get_atoms<FluentTag>();
+                add_atom_indices.clear();
+                del_atom_indices.clear();
+                for (const auto atom_index : succ_fluent_atoms)
+                {
+                    if (!fluent_atoms.get(atom_index))
+                    {
+                        add_atom_indices.push_back(atom_index);
+                    }
+                }
+                for (const auto atom_index : fluent_atoms)
+                {
+                    if (!succ_fluent_atoms.get(atom_index))
+                    {
+                        del_atom_indices.push_back(atom_index);
+                    }
+                }
+
+                const auto baseline_read_only = baseline.test_novelty_read_only(transition.state, transition.succ_state);
+                EXPECT_EQ(baseline_read_only, candidate.test_novelty_read_only(transition.state, transition.succ_state)) << "arity " << arity;
+                num_novel_read_only += baseline_read_only;
+
+                EXPECT_EQ(baseline.test_novelty_read_only_from_delta(transition.state, add_atom_indices, del_atom_indices),
+                          candidate.test_novelty_read_only_from_delta(transition.state, add_atom_indices, del_atom_indices))
+                    << "arity " << arity;
+
+                if (arity == 1)
+                {
+                    baseline.compute_transition_novel_fluent_atom_indices_read_only(transition.state, transition.succ_state, baseline_witnesses);
+                    candidate.compute_transition_novel_fluent_atom_indices_read_only(transition.state, transition.succ_state, candidate_witnesses);
+                    EXPECT_EQ(baseline_witnesses, candidate_witnesses);
+                }
+
+                EXPECT_EQ(baseline.test_novelty_and_update_table(transition.state, transition.succ_state),
+                          candidate.test_novelty_and_update_table(transition.state, transition.succ_state))
+                    << "arity " << arity;
+            }
+
+            // Without this the comparison could pass on a table that never marked anything.
+            EXPECT_GT(num_novel_read_only, 0u) << "arity " << arity;
+            EXPECT_EQ(baseline.get_table_size(), candidate.get_table_size()) << "cell counts are layout-independent";
+        }
+    }
+}
+
+TEST(MimirTests, SearchAlgorithmsIWDenseBitTablesAddressEveryCellIndependently)
+{
+    /* The bit arithmetic is tested here rather than only through a table driven by a fixture,
+       because a fixture pins the geometry to whatever its problem happens to have. Both layouts
+       pack a rank into a word, so an index that is right for fewer than 64 ranks can still be
+       wrong past the first word boundary -- which is exactly the case a small problem never
+       reaches. 130 ranks spans three words. */
+    constexpr auto num_ranks = size_t(130);
+    constexpr auto num_tuples = size_t(70);
+
+    auto rank_major = iw::RankMajorBitTable(num_ranks, num_tuples);
+    auto tuple_major = iw::TupleMajorBitTable(num_ranks, num_tuples);
+
+    const auto should_be_set = [](size_t rank, size_t tuple_index) { return ((rank * 31 + tuple_index * 17) % 5) == 0; };
+
+    for (size_t rank = 0; rank < num_ranks; ++rank)
+    {
+        for (size_t tuple_index = 0; tuple_index < num_tuples; ++tuple_index)
+        {
+            if (!should_be_set(rank, tuple_index))
+            {
+                continue;
+            }
+            const auto r = static_cast<uint32_t>(rank);
+            const auto t = static_cast<iw::TupleIndex>(tuple_index);
+            EXPECT_TRUE(rank_major.set(r, t)) << "first set of (" << rank << ", " << tuple_index << ") should report the cell as new";
+            EXPECT_TRUE(tuple_major.set(r, t));
+            EXPECT_FALSE(rank_major.set(r, t)) << "second set should report the cell as already marked";
+            EXPECT_FALSE(tuple_major.set(r, t));
+        }
+    }
+
+    // No cell may have collided with another: every one reads back exactly what was written.
+    for (size_t rank = 0; rank < num_ranks; ++rank)
+    {
+        for (size_t tuple_index = 0; tuple_index < num_tuples; ++tuple_index)
+        {
+            const auto r = static_cast<uint32_t>(rank);
+            const auto t = static_cast<iw::TupleIndex>(tuple_index);
+            EXPECT_EQ(rank_major.get(r, t), should_be_set(rank, tuple_index)) << "rank-major (" << rank << ", " << tuple_index << ")";
+            EXPECT_EQ(tuple_major.get(r, t), should_be_set(rank, tuple_index)) << "tuple-major (" << rank << ", " << tuple_index << ")";
+        }
+    }
+
+    EXPECT_EQ(rank_major.get_num_cells(), num_ranks * num_tuples);
+    EXPECT_EQ(tuple_major.get_num_cells(), num_ranks * num_tuples);
+    // 130 ranks needs three words per row, so the tuple-major table pays for 192 ranks per tuple.
+    EXPECT_EQ(tuple_major.get_row_words(), 3u);
+    EXPECT_EQ(tuple_major.get_num_bytes(), num_tuples * 3u * 8u);
+}
+
+TEST(MimirTests, SearchAlgorithmsLandmarkNoveltyTableCarriesAFullyMarkedTableOutOfTupleMajor)
+{
+    /* The dense -> sparse switch has to carry the marks it already holds. Reaching that with a
+       table built at zero atoms does not test much: the atom universe is exhausted by the first
+       resize, so the switch happens while the table is still empty and there is nothing to lose.
+       Building over the whole universe first, marking it, and only then growing past it puts real
+       marks on the wrong side of the switch. */
+    auto fixture = Fixture {};
+    const auto landmark_atoms = landmark_atom_indices(fixture);
+    ASSERT_FALSE(landmark_atoms.empty());
+    const auto num_atoms = num_fluent_atoms(fixture);
+    ASSERT_GT(num_atoms, 0u);
+
+    const auto transitions = collect_transitions(fixture, 400);
+    ASSERT_FALSE(transitions.empty());
+
+    for (const auto layout : { iw::LandmarkDenseLayout::VECTOR_BOOL, iw::LandmarkDenseLayout::RANK_MAJOR, iw::LandmarkDenseLayout::TUPLE_MAJOR })
+    {
+        auto options = iw::LandmarkNoveltyTableOptions {};
+        options.dense_layout = layout;
+
+        /* Exactly what this layout needs over the real universe, so that the doubling a resize
+           performs takes it over. `TUPLE_MAJOR` pads its rows, so it is charged more for the same
+           cells and needs its own figure. */
+        const auto num_ranks = landmark_atoms.size() + 1;
+        const auto charged_ranks = (layout == iw::LandmarkDenseLayout::TUPLE_MAJOR) ? ((num_ranks + 63) / 64) * 64 : num_ranks;
+        options.max_dense_table_bytes = (charged_ranks * (num_atoms + 1) + 7) / 8;
+        /* This layout fits now and not after the doubling a resize performs. Asked of the pinned
+           layout, not of `fits_dense`: a table keeps the layout it was built with, so a budget that
+           `TUPLE_MAJOR` outgrows takes it to sparse even where `RANK_MAJOR` would still have fit. */
+        ASSERT_EQ(iw::LandmarkNoveltyTable::select_dense_layout(num_ranks, num_atoms, 1, options), layout);
+        ASSERT_NE(iw::LandmarkNoveltyTable::select_dense_layout(num_ranks, 2 * num_atoms, 1, options), layout);
+
+        auto table = iw::LandmarkNoveltyTable(landmark_atoms, 1, num_atoms, options);
+        ASSERT_TRUE(table.is_dense());
+
+        for (const auto& transition : transitions)
+        {
+            table.test_novelty_and_update_table(transition.state, transition.succ_state);
+        }
+        ASSERT_TRUE(table.is_dense()) << "the sweep should have marked a dense table, not switched during it";
+
+        /* Grow the universe past what the table was built for. A read-only delta query resizes for
+           the atoms it is told become true, which is the one entry point that can widen the table
+           without also marking anything -- so whatever survives afterwards came through the remap. */
+        const auto beyond = iw::AtomIndexList { static_cast<iw::AtomIndex>(num_atoms + 1) };
+        table.test_novelty_read_only_from_delta(transitions.front().state, beyond, iw::AtomIndexList {});
+        ASSERT_FALSE(table.is_dense()) << "the grown table should have outgrown the budget";
+
+        for (const auto& transition : transitions)
+        {
+            EXPECT_FALSE(table.test_novelty_read_only(transition.state, transition.succ_state))
+                << "a mark was lost in the switch out of the dense layout";
+        }
+    }
+}
+
+TEST(MimirTests, SearchAlgorithmsLandmarkNoveltyTableDeltaQuerySurvivesTheSwitchOutOfTupleMajor)
+{
+    /* `TUPLE_MAJOR` answers the delta query from a cached `L(s)` bitmap, while every other layout
+       answers it from a cached `L(s)` atom list. The delta query resizes for the added atoms after
+       that cache is filled, and a resize can take the table over budget and switch it to sparse --
+       so the form the cache was filled in is not the form the query ends up reading. Driving the
+       query across a budget that is outgrown mid-sweep is what exercises that seam. */
+    auto fixture = Fixture {};
+    const auto landmark_atoms = landmark_atom_indices(fixture);
+    ASSERT_FALSE(landmark_atoms.empty());
+
+    const auto transitions = collect_transitions(fixture, 400);
+    ASSERT_FALSE(transitions.empty());
+
+    /* Exactly where the switch lands depends on the budget, and only a switch that happens inside
+       the delta query's own resize -- between the cache being filled and being read -- exercises
+       the seam. Sweeping the budget puts it there for some size rather than hoping one guess does. */
+    auto num_switched = size_t(0);
+    for (const size_t budget : { size_t(64), size_t(128), size_t(256), size_t(512), size_t(1024), size_t(4096), size_t(16384) })
+    {
+        for (const size_t arity : { size_t(1), size_t(2) })
+        {
+            auto switching_options = iw::LandmarkNoveltyTableOptions {};
+            switching_options.dense_layout = iw::LandmarkDenseLayout::TUPLE_MAJOR;
+            switching_options.max_dense_table_bytes = budget;
+            auto sparse_options = iw::LandmarkNoveltyTableOptions {};
+            sparse_options.max_dense_table_bytes = 0;
+
+            auto switching = iw::LandmarkNoveltyTable(landmark_atoms, arity, 0, switching_options);
+            auto reference = iw::LandmarkNoveltyTable(landmark_atoms, arity, 0, sparse_options);
+
+            auto add_atom_indices = iw::AtomIndexList {};
+            auto del_atom_indices = iw::AtomIndexList {};
+
+            for (const auto& transition : transitions)
+            {
+                const auto& fluent_atoms = transition.state.get_atoms<FluentTag>();
+                const auto& succ_fluent_atoms = transition.succ_state.get_atoms<FluentTag>();
+                add_atom_indices.clear();
+                del_atom_indices.clear();
+                for (const auto atom_index : succ_fluent_atoms)
+                {
+                    if (!fluent_atoms.get(atom_index))
+                    {
+                        add_atom_indices.push_back(atom_index);
+                    }
+                }
+                for (const auto atom_index : fluent_atoms)
+                {
+                    if (!succ_fluent_atoms.get(atom_index))
+                    {
+                        del_atom_indices.push_back(atom_index);
+                    }
+                }
+
+                EXPECT_EQ(switching.test_novelty_read_only_from_delta(transition.state, add_atom_indices, del_atom_indices),
+                          reference.test_novelty_read_only_from_delta(transition.state, add_atom_indices, del_atom_indices))
+                    << "budget " << budget << ", arity " << arity;
+
+                EXPECT_EQ(switching.test_novelty_and_update_table(transition.state, transition.succ_state),
+                          reference.test_novelty_and_update_table(transition.state, transition.succ_state))
+                    << "budget " << budget << ", arity " << arity;
+            }
+
+            num_switched += !switching.is_dense();
+        }
+    }
+
+    EXPECT_GT(num_switched, 0u) << "no budget in the sweep was outgrown, so nothing switched";
+}
+
+TEST(MimirTests, SearchAlgorithmsLandmarkNoveltyTableTupleMajorIsChargedForItsPadding)
+{
+    /* `TUPLE_MAJOR` pads each free tuple's rank bitmap to a whole word, so a table over few
+       landmarks costs materially more than one bit per cell. The budget has to see that, or a
+       table admitted as "51 bytes" would allocate 808. */
+    auto options = iw::LandmarkNoveltyTableOptions {};
+    options.dense_layout = iw::LandmarkDenseLayout::TUPLE_MAJOR;
+
+    // 101 tuples x 1 word per row = 808 bytes, against 51 for the unpadded layouts.
+    options.max_dense_table_bytes = 808;
+    EXPECT_EQ(iw::LandmarkNoveltyTable::select_dense_layout(4, 100, 1, options), iw::LandmarkDenseLayout::TUPLE_MAJOR);
+
+    /* One byte short of the padded size, the padding is a reason to pick a cheaper dense layout --
+       not a reason to give up on dense storage, which at 51 bytes is comfortably affordable. */
+    options.max_dense_table_bytes = 807;
+    EXPECT_EQ(iw::LandmarkNoveltyTable::select_dense_layout(4, 100, 1, options), iw::LandmarkDenseLayout::RANK_MAJOR);
+    EXPECT_TRUE(iw::LandmarkNoveltyTable::fits_dense(4, 100, 1, options));
+
+    // Below the unpadded size too, nothing dense fits and the table is sparse.
+    options.max_dense_table_bytes = 50;
+    EXPECT_EQ(iw::LandmarkNoveltyTable::select_dense_layout(4, 100, 1, options), std::nullopt);
+
+    // The fallback is real: the built table uses the layout the selection promised, at its size.
+    options.max_dense_table_bytes = 807;
+    const auto fell_back = iw::LandmarkNoveltyTable(iw::AtomIndexList { 0, 1, 2 }, 1, 100, options);
+    EXPECT_EQ(fell_back.get_dense_layout(), iw::LandmarkDenseLayout::RANK_MAJOR);
+    EXPECT_EQ(fell_back.get_table_bytes(), 56u) << "4 x 101 cells packed into whole words";
+
+    options.max_dense_table_bytes = 808;
+    const auto table = iw::LandmarkNoveltyTable(iw::AtomIndexList { 0, 1, 2 }, 1, 100, options);
+    EXPECT_EQ(table.get_dense_layout(), iw::LandmarkDenseLayout::TUPLE_MAJOR);
+    EXPECT_EQ(table.get_table_bytes(), 808u);
+    EXPECT_EQ(table.get_table_size(), 4u * 101u);
 }
 
 TEST(MimirTests, SearchAlgorithmsLandmarkNoveltyTableSwitchesToSparseMidSearchWithoutLosingMarks)

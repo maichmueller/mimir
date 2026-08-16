@@ -23,6 +23,7 @@
 #include <cassert>
 #include <optional>
 #include <stdexcept>
+#include <type_traits>
 
 using namespace mimir::formalism;
 
@@ -70,6 +71,68 @@ std::optional<AtomIndex> max_fluent_atom_index(const State& state)
     const auto& fluent_atoms = state.get_atoms<FluentTag>();
     const auto it = std::max_element(fluent_atoms.begin(), fluent_atoms.end());
     return (it == fluent_atoms.end()) ? std::nullopt : std::optional<AtomIndex>(*it);
+}
+
+/* Uniform cell access over the dense layouts, so the resize remap can be written once. The word
+   tables know their own geometry and ignore the stride the `std::vector<bool>` layout needs. */
+bool dense_cell_get(const std::vector<bool>& table, size_t stride, uint32_t rank, TupleIndex tuple_index)
+{
+    return table[size_t(rank) * stride + tuple_index];
+}
+bool dense_cell_get(const RankMajorBitTable& table, size_t, uint32_t rank, TupleIndex tuple_index) { return table.get(rank, tuple_index); }
+bool dense_cell_get(const TupleMajorBitTable& table, size_t, uint32_t rank, TupleIndex tuple_index) { return table.get(rank, tuple_index); }
+
+void dense_cell_set(std::vector<bool>& table, size_t stride, uint32_t rank, TupleIndex tuple_index) { table[size_t(rank) * stride + tuple_index] = true; }
+void dense_cell_set(RankMajorBitTable& table, size_t, uint32_t rank, TupleIndex tuple_index) { table.set(rank, tuple_index); }
+void dense_cell_set(TupleMajorBitTable& table, size_t, uint32_t rank, TupleIndex tuple_index) { table.set(rank, tuple_index); }
+
+/// @brief Copy a dense table's marks into its resized replacement, or into a sparse table when the
+/// resize takes it over budget.
+///
+/// The free tuple is the outer loop so that each (comparatively expensive) index remap is paid once
+/// per free tuple rather than once per `(rank, free tuple)` pair; a resize never renumbers ranks.
+template<typename Table, typename Remap>
+void remap_dense_marks(const Table& old_table,
+                       size_t num_ranks,
+                       size_t old_stride,
+                       size_t new_stride,
+                       Remap&& remap,
+                       Table* new_table,
+                       absl::flat_hash_set<uint64_t>* new_sparse)
+{
+    for (TupleIndex tuple_index = 0; tuple_index < old_stride; ++tuple_index)
+    {
+        auto any_rank_set = false;
+        for (size_t rank = 0; rank < num_ranks; ++rank)
+        {
+            if (dense_cell_get(old_table, old_stride, static_cast<uint32_t>(rank), tuple_index))
+            {
+                any_rank_set = true;
+                break;
+            }
+        }
+        if (!any_rank_set)
+        {
+            continue;
+        }
+
+        const auto new_tuple_index = remap(tuple_index);
+        for (size_t rank = 0; rank < num_ranks; ++rank)
+        {
+            if (!dense_cell_get(old_table, old_stride, static_cast<uint32_t>(rank), tuple_index))
+            {
+                continue;
+            }
+            if (new_table)
+            {
+                dense_cell_set(*new_table, new_stride, static_cast<uint32_t>(rank), new_tuple_index);
+            }
+            else
+            {
+                new_sparse->insert(make_landmark_tuple_key(static_cast<uint32_t>(rank), new_tuple_index));
+            }
+        }
+    }
 }
 }
 
@@ -218,10 +281,111 @@ void LandmarkCoordinates::collect_transition_from_delta(const AtomIndexList& tru
 }
 
 /**
+ * Dense table layouts
+ */
+
+RankMajorBitTable::RankMajorBitTable(size_t num_ranks, size_t num_tuples) :
+    m_num_ranks(num_ranks),
+    m_num_tuples(num_tuples),
+    m_words((num_ranks * num_tuples + 63) / 64, uint64_t(0))
+{
+}
+
+TupleMajorBitTable::TupleMajorBitTable(size_t num_ranks, size_t num_tuples) :
+    m_num_ranks(num_ranks),
+    m_num_tuples(num_tuples),
+    m_row_words(words_per_row(num_ranks)),
+    m_words(num_tuples * words_per_row(num_ranks), uint64_t(0))
+{
+}
+
+void LandmarkCoordinates::collect_true_landmark_mask(const State& state, std::vector<uint64_t>& out_mask) const
+{
+    out_mask.assign(get_rank_mask_words(), uint64_t(0));
+
+    const auto& fluent_atoms = state.get_atoms<FluentTag>();
+    for (const auto atom_index : m_landmark_atom_indices)
+    {
+        if (fluent_atoms.get(atom_index))
+        {
+            const auto rank = m_rank_by_atom_index[atom_index];
+            out_mask[rank >> 6] |= uint64_t(1) << (rank & 63);
+        }
+    }
+}
+
+void LandmarkCoordinates::collect_transition_masks_from_delta(const std::vector<uint64_t>& true_landmark_mask,
+                                                              const AtomIndexList& add_atom_indices,
+                                                              const AtomIndexList& del_atom_indices,
+                                                              std::vector<uint64_t>& out_flipped_mask,
+                                                              std::vector<uint64_t>& out_kept_mask) const
+{
+    const auto num_words = get_rank_mask_words();
+    out_flipped_mask.assign(num_words, uint64_t(0));
+
+    if (m_landmark_atom_indices.empty())
+    {
+        /* Degenerate LIW: BOT is the only coordinate and is true in every state. */
+        out_kept_mask.assign(num_words, uint64_t(0));
+        out_kept_mask[0] = uint64_t(1) << get_bot_rank();
+        return;
+    }
+
+    /* The kept coordinates are `L(s)` minus what the action deletes, so the long input is copied
+       rather than rebuilt: `del_atom_indices` is short and rarely holds a landmark at all. */
+    out_kept_mask.assign(true_landmark_mask.begin(), true_landmark_mask.end());
+    for (const auto atom_index : del_atom_indices)
+    {
+        const auto rank = get_rank(atom_index);
+        if (rank != NOT_A_LANDMARK)
+        {
+            out_kept_mask[rank >> 6] &= ~(uint64_t(1) << (rank & 63));
+        }
+    }
+
+    /* A landmark in `add_atom_indices` was false in the predecessor by construction, so the added
+       landmarks are the whole flipped set. */
+    auto any_flipped = false;
+    for (const auto atom_index : add_atom_indices)
+    {
+        const auto rank = get_rank(atom_index);
+        if (rank != NOT_A_LANDMARK)
+        {
+            out_flipped_mask[rank >> 6] |= uint64_t(1) << (rank & 63);
+            any_flipped = true;
+        }
+    }
+
+    if (any_flipped)
+    {
+        return;
+    }
+    for (const auto word : out_kept_mask)
+    {
+        if (word)
+        {
+            return;
+        }
+    }
+
+    /* BOT is a coordinate of the successor exactly when it holds no real landmark, and it flips on
+       exactly when the predecessor did hold one. */
+    auto predecessor_had_landmark = false;
+    for (const auto word : true_landmark_mask)
+    {
+        predecessor_had_landmark = predecessor_had_landmark || (word != 0);
+    }
+    const auto bot_rank = get_bot_rank();
+    auto& target = predecessor_had_landmark ? out_flipped_mask : out_kept_mask;
+    target[bot_rank >> 6] |= uint64_t(1) << (bot_rank & 63);
+}
+
+/**
  * LandmarkNoveltyTable
  */
 
-bool LandmarkNoveltyTable::fits_dense(size_t num_ranks, size_t num_atoms, size_t arity, const LandmarkNoveltyTableOptions& options)
+std::optional<LandmarkDenseLayout>
+LandmarkNoveltyTable::select_dense_layout(size_t num_ranks, size_t num_atoms, size_t arity, const LandmarkNoveltyTableOptions& options)
 {
     /* Representational limit first, because `force_dense` cannot make an unaddressable table
        addressable: free tuple indices are `TupleIndex`-wide. Computed by repeated multiplication
@@ -233,24 +397,48 @@ bool LandmarkNoveltyTable::fits_dense(size_t num_ranks, size_t num_atoms, size_t
     {
         if (stride > max_stride / (num_atoms + 1))
         {
-            return false;
+            return std::nullopt;
         }
         stride *= (num_atoms + 1);
     }
 
     if (options.force_dense)
     {
-        return true;
+        return options.dense_layout;
     }
     if (options.max_dense_table_bytes == 0 || num_ranks == 0)
     {
-        return false;
+        return std::nullopt;
     }
 
-    // One bit per cell.
     const auto max_cells =
         (options.max_dense_table_bytes > std::numeric_limits<size_t>::max() / 8) ? std::numeric_limits<size_t>::max() : options.max_dense_table_bytes * 8;
-    return stride <= max_cells / num_ranks;
+
+    /* One bit per cell, except that `TUPLE_MAJOR` pads every free tuple's rank bitmap to whole
+       words and so is charged for the padding it actually allocates. */
+    const auto fits = [&](LandmarkDenseLayout layout)
+    {
+        const auto charged_ranks = (layout == LandmarkDenseLayout::TUPLE_MAJOR) ? TupleMajorBitTable::words_per_row(num_ranks) * 64 : num_ranks;
+        return stride <= max_cells / charged_ranks;
+    };
+
+    if (fits(options.dense_layout))
+    {
+        return options.dense_layout;
+    }
+
+    /* Only `TUPLE_MAJOR` can fail here while another dense layout would fit, and its padding is a
+       reason to pick a cheaper dense layout rather than to fall all the way to sparse. */
+    if ((options.dense_layout == LandmarkDenseLayout::TUPLE_MAJOR) && fits(LandmarkDenseLayout::RANK_MAJOR))
+    {
+        return LandmarkDenseLayout::RANK_MAJOR;
+    }
+    return std::nullopt;
+}
+
+std::optional<LandmarkDenseLayout> LandmarkNoveltyTable::get_dense_layout() const
+{
+    return is_dense() ? std::optional<LandmarkDenseLayout>(m_dense_layout) : std::nullopt;
 }
 
 LandmarkNoveltyTable::LandmarkNoveltyTable(AtomIndexList landmark_atom_indices, size_t arity, LandmarkNoveltyTableOptions options) :
@@ -266,9 +454,16 @@ LandmarkNoveltyTable::LandmarkNoveltyTable(AtomIndexList landmark_atom_indices, 
     m_state_tuple_index_generator(&m_tuple_index_mapper),
     m_state_pair_tuple_index_generator(&m_tuple_index_mapper)
 {
-    if (fits_dense(m_coordinates.get_num_ranks(), num_atoms, arity, m_options))
+    m_scratch_rank_mask.assign(TupleMajorBitTable::words_per_row(m_coordinates.get_num_ranks()), uint64_t(0));
+
+    /* Chosen once and kept for the table's lifetime: the resize remap rewrites a table into another
+       of the same layout, and the choice is made from the atom universe the table is built over,
+       which is the whole universe in practice. A later resize can still take the table out of dense
+       storage altogether, but never into a different dense layout. */
+    if (const auto layout = select_dense_layout(m_coordinates.get_num_ranks(), num_atoms, arity, m_options))
     {
-        m_table = DenseTable(m_coordinates.get_num_ranks() * get_stride(), false);
+        m_dense_layout = *layout;
+        m_table = make_dense_table(m_dense_layout, m_coordinates.get_num_ranks(), get_stride());
     }
     else
     {
@@ -276,9 +471,62 @@ LandmarkNoveltyTable::LandmarkNoveltyTable(AtomIndexList landmark_atom_indices, 
     }
 }
 
+std::variant<LandmarkNoveltyTable::DenseTable, RankMajorBitTable, TupleMajorBitTable, LandmarkNoveltyTable::SparseTable>
+LandmarkNoveltyTable::make_dense_table(LandmarkDenseLayout layout, size_t num_ranks, size_t num_tuples)
+{
+    switch (layout)
+    {
+        case LandmarkDenseLayout::RANK_MAJOR:
+            return RankMajorBitTable(num_ranks, num_tuples);
+        case LandmarkDenseLayout::TUPLE_MAJOR:
+            return TupleMajorBitTable(num_ranks, num_tuples);
+        case LandmarkDenseLayout::VECTOR_BOOL:
+        default:
+            return DenseTable(num_ranks * num_tuples, false);
+    }
+}
+
 size_t LandmarkNoveltyTable::get_table_size() const
 {
-    return std::visit([](const auto& table) { return table.size(); }, m_table);
+    /* Cells when dense -- the same count for every dense layout, since they differ only in where a
+       cell lives -- and live entries when sparse. */
+    return std::visit(
+        [](const auto& table)
+        {
+            using Table = std::decay_t<decltype(table)>;
+            if constexpr (std::is_same_v<Table, DenseTable> || std::is_same_v<Table, SparseTable>)
+            {
+                return table.size();
+            }
+            else
+            {
+                return table.get_num_cells();
+            }
+        },
+        m_table);
+}
+
+size_t LandmarkNoveltyTable::get_table_bytes() const
+{
+    return std::visit(
+        [](const auto& table)
+        {
+            using Table = std::decay_t<decltype(table)>;
+            if constexpr (std::is_same_v<Table, DenseTable>)
+            {
+                return (table.size() + 7) / 8;
+            }
+            else if constexpr (std::is_same_v<Table, SparseTable>)
+            {
+                // One slot plus one control byte per bucket, which is how a flat hash set is laid out.
+                return table.capacity() * (sizeof(uint64_t) + 1);
+            }
+            else
+            {
+                return table.get_num_bytes();
+            }
+        },
+        m_table);
 }
 
 void LandmarkNoveltyTable::resize_to_fit(AtomIndex atom_index)
@@ -299,8 +547,11 @@ void LandmarkNoveltyTable::resize_to_fit(AtomIndex atom_index)
     m_tuple_index_mapper.initialize(arity, new_num_atoms);
 
     /* The atom universe only grows, so a table that no longer fits its budget never fits again:
-       the dense -> sparse switch below is one-way. */
-    const auto target_dense = fits_dense(num_ranks, new_num_atoms, arity, m_options);
+       the dense -> sparse switch below is one-way. The question is whether *this table's* layout
+       still fits, not whether some layout would -- the layout is fixed at construction. */
+    auto pinned_options = m_options;
+    pinned_options.dense_layout = m_dense_layout;
+    const auto target_dense = select_dense_layout(num_ranks, new_num_atoms, arity, pinned_options) == std::optional<LandmarkDenseLayout>(m_dense_layout);
 
     auto atom_indices = AtomIndexList {};
     atom_indices.reserve(arity);
@@ -314,51 +565,30 @@ void LandmarkNoveltyTable::resize_to_fit(AtomIndex atom_index)
         return m_tuple_index_mapper.to_tuple_index(atom_indices);
     };
 
-    if (auto* dense = std::get_if<DenseTable>(&m_table))
+    if (!std::holds_alternative<SparseTable>(m_table))
     {
-        /* The landmark rank is the high digit, so only the free-tuple digits are remapped.
-           Iterating the free tuple in the outer loop keeps the number of (comparatively expensive)
-           index conversions at one per free tuple instead of one per (rank, free tuple) pair. */
+        /* The landmark rank is the high digit of every dense layout, so only the free-tuple side is
+           remapped, whichever layout is in use. */
         const auto new_stride = target_dense ? get_stride() : 0;
-        auto new_dense = target_dense ? DenseTable(num_ranks * new_stride, false) : DenseTable {};
+        auto new_table = target_dense ? make_dense_table(m_dense_layout, num_ranks, new_stride) : decltype(m_table) {};
         auto new_sparse = SparseTable {};
 
-        for (TupleIndex tuple_index = 0; tuple_index < old_stride; ++tuple_index)
-        {
-            auto any_rank_set = false;
-            for (size_t rank = 0; rank < num_ranks; ++rank)
+        std::visit(
+            [&](const auto& old_table)
             {
-                if ((*dense)[rank * old_stride + tuple_index])
+                using Table = std::decay_t<decltype(old_table)>;
+                if constexpr (!std::is_same_v<Table, SparseTable>)
                 {
-                    any_rank_set = true;
-                    break;
+                    /* The layout is fixed by the options, so the replacement is the same type. */
+                    auto* new_dense = target_dense ? &std::get<Table>(new_table) : static_cast<Table*>(nullptr);
+                    remap_dense_marks(old_table, num_ranks, old_stride, new_stride, remap, new_dense, &new_sparse);
                 }
-            }
-            if (!any_rank_set)
-            {
-                continue;
-            }
-
-            const auto new_tuple_index = remap(tuple_index);
-            for (size_t rank = 0; rank < num_ranks; ++rank)
-            {
-                if ((*dense)[rank * old_stride + tuple_index])
-                {
-                    if (target_dense)
-                    {
-                        new_dense[rank * new_stride + new_tuple_index] = true;
-                    }
-                    else
-                    {
-                        new_sparse.insert(make_landmark_tuple_key(static_cast<uint32_t>(rank), new_tuple_index));
-                    }
-                }
-            }
-        }
+            },
+            m_table);
 
         if (target_dense)
         {
-            m_table = std::move(new_dense);
+            m_table = std::move(new_table);
         }
         else
         {
@@ -486,6 +716,66 @@ bool LandmarkNoveltyTable::visit_scratch_tuples(const std::vector<uint32_t>& ran
         return novel;
     }
 
+    if (auto* dense = std::get_if<RankMajorBitTable>(&m_table))
+    {
+        for (const auto rank : ranks)
+        {
+            for (const auto tuple_index : m_scratch_tuples)
+            {
+                if (update)
+                {
+                    novel = dense->set(rank, tuple_index) || novel;
+                }
+                else if (!dense->get(rank, tuple_index))
+                {
+                    return true;
+                }
+            }
+        }
+        return novel;
+    }
+
+    if (auto* dense = std::get_if<TupleMajorBitTable>(&m_table))
+    {
+        /* Each free tuple's ranks live in one padded bitmap, so the whole rank set is tested at
+           once against a mask built from `ranks`. The mask costs a pass over `ranks`; the test then
+           costs `row_words` word operations per free tuple instead of one probe per pair. */
+        const auto row_words = dense->get_row_words();
+        auto* const mask = m_scratch_rank_mask.data();
+        std::fill(m_scratch_rank_mask.begin(), m_scratch_rank_mask.end(), uint64_t(0));
+        for (const auto rank : ranks)
+        {
+            mask[rank >> 6] |= uint64_t(1) << (rank & 63);
+        }
+
+        if (!update)
+        {
+            for (const auto tuple_index : m_scratch_tuples)
+            {
+                const auto* row = dense->row(tuple_index);
+                for (size_t word = 0; word < row_words; ++word)
+                {
+                    if (mask[word] & ~row[word])
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        for (const auto tuple_index : m_scratch_tuples)
+        {
+            auto* row = dense->row(tuple_index);
+            for (size_t word = 0; word < row_words; ++word)
+            {
+                novel = ((mask[word] & ~row[word]) != 0) || novel;
+                row[word] |= mask[word];
+            }
+        }
+        return novel;
+    }
+
     auto& sparse = std::get<SparseTable>(m_table);
     for (const auto rank : ranks)
     {
@@ -503,6 +793,25 @@ bool LandmarkNoveltyTable::visit_scratch_tuples(const std::vector<uint32_t>& ran
         }
     }
     return novel;
+}
+
+bool LandmarkNoveltyTable::test_scratch_tuples_masked(const std::vector<uint64_t>& mask) const
+{
+    const auto& dense = std::get<TupleMajorBitTable>(m_table);
+    const auto row_words = dense.get_row_words();
+
+    for (const auto tuple_index : m_scratch_tuples)
+    {
+        const auto* row = dense.row(tuple_index);
+        for (size_t word = 0; word < row_words; ++word)
+        {
+            if (mask[word] & ~row[word])
+            {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 void LandmarkNoveltyTable::fill_scratch_with_delta_successor_tuples(const State& state,
@@ -641,6 +950,14 @@ bool LandmarkNoveltyTable::contains_pair(uint32_t rank, TupleIndex tuple_index) 
         assert(index < dense->size());
         return (*dense)[index];
     }
+    if (const auto* dense = std::get_if<RankMajorBitTable>(&m_table))
+    {
+        return dense->get(rank, tuple_index);
+    }
+    if (const auto* dense = std::get_if<TupleMajorBitTable>(&m_table))
+    {
+        return dense->get(rank, tuple_index);
+    }
     return std::get<SparseTable>(m_table).contains(make_landmark_tuple_key(rank, tuple_index));
 }
 
@@ -719,8 +1036,56 @@ void LandmarkNoveltyTable::refresh_delta_query_state(const State& state)
     }
 
     resize_to_fit(state);
+    /* Both forms, not just the one the current layout wants: `test_novelty_read_only_from_delta`
+       resizes again for the added atoms after this cache is filled, and that resize can take the
+       table over budget and switch it from dense to sparse -- which changes which form the query
+       then reads. Both are `O(|L|)` and paid once per state, against a per-action query. */
     m_coordinates.collect_true_landmark_atoms(state, m_delta_query_true_landmark_atoms);
+    m_coordinates.collect_true_landmark_mask(state, m_delta_query_true_landmark_mask);
     m_delta_query_state_index = state.get_index();
+}
+
+bool LandmarkNoveltyTable::test_novelty_read_only_from_delta_masked(const State& state,
+                                                                    const AtomIndexList& add_atom_indices,
+                                                                    const AtomIndexList& del_atom_indices)
+{
+    m_coordinates.collect_transition_masks_from_delta(m_delta_query_true_landmark_mask,
+                                                      add_atom_indices,
+                                                      del_atom_indices,
+                                                      m_scratch_flipped_mask,
+                                                      m_scratch_kept_mask);
+
+    const auto any = [](const std::vector<uint64_t>& mask)
+    {
+        for (const auto word : mask)
+        {
+            if (word)
+            {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    /* Same order as the rank-list path, and for the same reason: the kept half never reconstructs
+       the successor, so running it first keeps the common no-flip transition off that branch. */
+    if (any(m_scratch_kept_mask))
+    {
+        fill_scratch_with_delta_transition_tuples(state, add_atom_indices, del_atom_indices);
+        if (test_scratch_tuples_masked(m_scratch_kept_mask))
+        {
+            return true;
+        }
+    }
+    if (any(m_scratch_flipped_mask))
+    {
+        fill_scratch_with_delta_successor_tuples(state, add_atom_indices, del_atom_indices);
+        if (test_scratch_tuples_masked(m_scratch_flipped_mask))
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool LandmarkNoveltyTable::test_novelty_read_only_from_delta(const State& state,
@@ -735,6 +1100,11 @@ bool LandmarkNoveltyTable::test_novelty_read_only_from_delta(const State& state,
            added index covers every tuple this query can generate. A resize renumbers free tuple
            indices but not landmark ranks, so the cached `L(state)` survives it. */
         resize_to_fit(add_atom_indices.back());
+    }
+
+    if (uses_rank_masks())
+    {
+        return test_novelty_read_only_from_delta_masked(state, add_atom_indices, del_atom_indices);
     }
 
     m_coordinates.collect_transition_from_delta(m_delta_query_true_landmark_atoms,

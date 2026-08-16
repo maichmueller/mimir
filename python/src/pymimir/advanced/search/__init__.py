@@ -166,6 +166,7 @@ from pymimir.pymimir.advanced.search import (
     ObservationIWEventHandler,
     IWObservation,
     IWArityObservation,
+    LandmarkDenseLayout,
     LandmarkNoveltyTableOptions,
     IWOptions,
     find_solution_iw,
