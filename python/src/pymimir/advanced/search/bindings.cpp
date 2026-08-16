@@ -942,7 +942,6 @@ void bind_module_definitions(nb::module_& m)
     // Declared before the pruning strategies because `LandmarkNoveltyPruningStrategy` uses a
     // default-constructed instance as a default argument, which nanobind converts eagerly.
     nb::enum_<iw::LandmarkDenseLayout>(m, "LandmarkDenseLayout")  //
-        .value("VECTOR_BOOL", iw::LandmarkDenseLayout::VECTOR_BOOL)
         .value("RANK_MAJOR", iw::LandmarkDenseLayout::RANK_MAJOR)
         .value("TUPLE_MAJOR", iw::LandmarkDenseLayout::TUPLE_MAJOR);
 
@@ -1011,6 +1010,7 @@ void bind_module_definitions(nb::module_& m)
         .def_prop_ro("table_is_dense", [](const iw::LandmarkNoveltyPruningStrategyImpl& self) { return self.get_novelty_table().is_dense(); })
         .def_prop_ro("table_num_cells", [](const iw::LandmarkNoveltyPruningStrategyImpl& self) { return self.get_novelty_table().get_table_size(); })
         .def_prop_ro("table_num_bytes", [](const iw::LandmarkNoveltyPruningStrategyImpl& self) { return self.get_novelty_table().get_table_bytes(); });
+
 
     nb::class_<iw::AbstractedNoveltyPruningStrategyImpl, IPruningStrategy>(m, "AbstractedNoveltyPruningStrategy")  //
         .def(nb::init<Problem, size_t, bool, bool, bool>(),

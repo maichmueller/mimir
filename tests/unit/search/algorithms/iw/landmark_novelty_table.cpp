@@ -383,14 +383,13 @@ TEST(MimirTests, SearchAlgorithmsLandmarkNoveltyTableSparseLayoutAgreesWithDense
 
 TEST(MimirTests, SearchAlgorithmsLandmarkNoveltyTableDenseLayoutsAgree)
 {
-    /* The dense layouts differ only in where a cell lives, so they must be indistinguishable
+    /* The two dense layouts differ only in where a cell lives, so they must be indistinguishable
        through the table's interface -- on every query, at every arity, and across the resizes that
-       renumber free tuple indices under them. `TUPLE_MAJOR` in particular reaches its answer by a
-       different route (word masks over ranks, not one probe per pair), so nothing but a comparison
-       against the layout it replaces establishes that the two routes agree. */
-    const auto layouts = { iw::LandmarkDenseLayout::RANK_MAJOR, iw::LandmarkDenseLayout::TUPLE_MAJOR };
-
-    for (const auto layout : layouts)
+       renumber free tuple indices under them. They are worth comparing precisely because they reach
+       their answers by different routes: `TUPLE_MAJOR` tests a whole rank set with word masks where
+       `RANK_MAJOR` probes one bit per pair, and only the former caches `L(s)` as a bitmap. Both are
+       pinned explicitly, so neither side of the comparison can drift onto the other's layout if the
+       default changes. */
     {
         for (const size_t arity : { size_t(1), size_t(2) })
         {
@@ -398,13 +397,11 @@ TEST(MimirTests, SearchAlgorithmsLandmarkNoveltyTableDenseLayoutsAgree)
             const auto landmark_atoms = landmark_atom_indices(fixture);
             ASSERT_FALSE(landmark_atoms.empty());
 
-            /* Pinned to `VECTOR_BOOL` rather than left at the default, which is one of the layouts
-               under test -- comparing a layout against itself would pass no matter what it does. */
             auto baseline_options = iw::LandmarkNoveltyTableOptions {};
             baseline_options.force_dense = true;
-            baseline_options.dense_layout = iw::LandmarkDenseLayout::VECTOR_BOOL;
+            baseline_options.dense_layout = iw::LandmarkDenseLayout::RANK_MAJOR;
             auto candidate_options = baseline_options;
-            candidate_options.dense_layout = layout;
+            candidate_options.dense_layout = iw::LandmarkDenseLayout::TUPLE_MAJOR;
 
             // Starting at zero atoms forces the resize path, which each layout remaps its own way.
             auto baseline = iw::LandmarkNoveltyTable(landmark_atoms, arity, 0, baseline_options);
@@ -538,7 +535,7 @@ TEST(MimirTests, SearchAlgorithmsLandmarkNoveltyTableCarriesAFullyMarkedTableOut
     const auto transitions = collect_transitions(fixture, 400);
     ASSERT_FALSE(transitions.empty());
 
-    for (const auto layout : { iw::LandmarkDenseLayout::VECTOR_BOOL, iw::LandmarkDenseLayout::RANK_MAJOR, iw::LandmarkDenseLayout::TUPLE_MAJOR })
+    for (const auto layout : { iw::LandmarkDenseLayout::RANK_MAJOR, iw::LandmarkDenseLayout::TUPLE_MAJOR })
     {
         auto options = iw::LandmarkNoveltyTableOptions {};
         options.dense_layout = layout;

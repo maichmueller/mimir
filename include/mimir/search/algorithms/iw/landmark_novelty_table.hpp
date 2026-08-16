@@ -126,10 +126,12 @@ inline uint64_t make_landmark_tuple_key(uint32_t rank, TupleIndex tuple_index)
 
 /// @brief Dense bit storage for the `(landmark rank, free tuple)` table, rank-major.
 ///
-/// Cell `(l, t)` is bit `l * num_tuples + t` of a flat word array -- the index arithmetic
-/// `std::vector<bool>` used, addressed directly so that a probe is a load, a shift and a test
-/// instead of a proxy-reference round trip. Bit-for-bit the same size as the `std::vector<bool>`,
-/// so this is purely an instruction-count change.
+/// Cell `(l, t)` is bit `l * num_tuples + t` of a flat word array, addressed directly so that a
+/// probe is a load, a shift and a test rather than a `std::vector<bool>` proxy-reference round
+/// trip -- the same bits in the same order, for about 5% less time on a landmark search.
+///
+/// The layout `TupleMajorBitTable` improves on, and still the right choice where that one's row
+/// padding would not fit the budget; see `LandmarkNoveltyTable::select_dense_layout`.
 class RankMajorBitTable
 {
 public:
@@ -209,11 +211,10 @@ private:
 /// `TupleMajorBitTable`; the choice changes speed and footprint, never which pairs are marked.
 enum class LandmarkDenseLayout
 {
-    /// `std::vector<bool>`, cell `(l, t)` at bit `l * num_tuples + t`.
-    VECTOR_BOOL,
-    /// `RankMajorBitTable`: the same index arithmetic over an explicit word array.
+    /// `RankMajorBitTable`: cell `(l, t)` at bit `l * num_tuples + t` of a flat word array.
     RANK_MAJOR,
-    /// `TupleMajorBitTable`: one padded rank bitmap per free tuple.
+    /// `TupleMajorBitTable`: one padded rank bitmap per free tuple. Faster on the query shape LIW
+    /// actually has, and the default; see `LandmarkNoveltyTableOptions::dense_layout`.
     TUPLE_MAJOR,
 };
 
@@ -358,15 +359,13 @@ public:
     std::optional<LandmarkDenseLayout> get_dense_layout() const;
 
 private:
-    using DenseTable = std::vector<bool>;
     using SparseTable = absl::flat_hash_set<uint64_t>;
 
     /// Number of free-tuple indices per landmark rank; the landmark rank is the high digit.
     size_t get_stride() const { return m_tuple_index_mapper.get_max_tuple_index() + 1; }
 
     /// @brief A zeroed dense table in `layout`.
-    static std::variant<DenseTable, RankMajorBitTable, TupleMajorBitTable, SparseTable>
-    make_dense_table(LandmarkDenseLayout layout, size_t num_ranks, size_t num_tuples);
+    static std::variant<TupleMajorBitTable, RankMajorBitTable, SparseTable> make_dense_table(LandmarkDenseLayout layout, size_t num_ranks, size_t num_tuples);
 
     void resize_to_fit(AtomIndex atom_index);
     void resize_to_fit(const State& state);
@@ -409,8 +408,8 @@ private:
     TupleIndexMapper m_tuple_index_mapper;
     /// The dense layout chosen at construction, kept for the table's lifetime. Meaningful only
     /// while `is_dense()`; a table that outgrows its budget stops using it rather than changing it.
-    LandmarkDenseLayout m_dense_layout = LandmarkDenseLayout::VECTOR_BOOL;
-    std::variant<DenseTable, RankMajorBitTable, TupleMajorBitTable, SparseTable> m_table;
+    LandmarkDenseLayout m_dense_layout = LandmarkDenseLayout::TUPLE_MAJOR;
+    std::variant<TupleMajorBitTable, RankMajorBitTable, SparseTable> m_table;
 
     StateTupleIndexGenerator m_state_tuple_index_generator;
     StatePairTupleIndexGenerator m_state_pair_tuple_index_generator;
