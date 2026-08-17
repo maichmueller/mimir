@@ -84,6 +84,18 @@ struct Options
     /// share a node budget: each one restarts from the start state with its own search tree.
     uint32_t max_num_states = std::numeric_limits<uint32_t>::max();
 
+    /// @brief States the search must not enter; see `brfs::Options::blocked_states` for the
+    /// contract and the repository caveat.
+    ///
+    /// Forwarded unchanged to every arity pass, the arity-0 warm-up included: a caller's closed
+    /// set describes where it stands in its own episode, not the width being tried, so a pass
+    /// that ignored it could return precisely the plan the ladder exists to avoid.
+    ///
+    /// With a non-empty set an exhausted ladder no longer proves the goal is unreachable at
+    /// `max_arity` -- only that it is unreachable *without re-entering a blocked state*. Callers
+    /// that turn an empty plan into a reachability verdict must account for that.
+    IndexSet blocked_states = {};
+
     /// @brief Optional coordination with searches running alongside this one; see
     /// `brfs::Options::control`. Forwarded to every arity pass, so an IW(1) run used as a
     /// portfolio's certifier publishes its completed depths through it.

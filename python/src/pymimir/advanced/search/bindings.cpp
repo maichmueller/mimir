@@ -1467,6 +1467,10 @@ void bind_module_definitions(nb::module_& m)
         .def_rw("equal_score_tie_seed", &brfs::Options::equal_score_tie_seed)
         .def_rw("parallel_beam_num_threads", &brfs::Options::parallel_beam_num_threads)
         .def_rw("parallel_beam_chunk_size", &brfs::Options::parallel_beam_chunk_size)
+        // Set of state indices in the search context's OWN state repository; see the C++ option
+        // for the repository caveat. Owned by the options object, so the Python caller may drop
+        // its own reference.
+        .def_rw("blocked_states", &brfs::Options::blocked_states)
         .def_rw("iw1_precheck_add_effect_novelty", &brfs::Options::iw1_precheck_add_effect_novelty)
         .def_rw("iw1_atom_first_mode", &brfs::Options::iw1_atom_first_mode)
         .def_rw("iw1_atom_first_ratio", &brfs::Options::iw1_atom_first_ratio)
@@ -1729,6 +1733,10 @@ void bind_module_definitions(nb::module_& m)
         // `control` is deliberately not exposed: it is a raw pointer to state shared with other
         // native searches, which has no meaning from Python.
         .def_rw("max_time_in_ms", &iw::Options::max_time_in_ms)
+        // Set of state indices in the search context's OWN state repository, applied to every
+        // arity pass; see the C++ option. With a non-empty set an exhausted ladder proves only
+        // that the goal is unreachable *without re-entering a blocked state*.
+        .def_rw("blocked_states", &iw::Options::blocked_states)
         .def_rw("max_num_states", &iw::Options::max_num_states);
 
     // `iw::find_solution` is overloaded, so the function address must be disambiguated explicitly.

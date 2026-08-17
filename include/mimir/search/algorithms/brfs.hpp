@@ -55,6 +55,27 @@ struct Options
     uint32_t max_num_states = std::numeric_limits<uint32_t>::max();
     uint32_t max_time_in_ms = std::numeric_limits<uint32_t>::max();
 
+    /// @brief States the search must not enter, as indices in the search context's OWN state
+    /// repository.
+    ///
+    /// This exists for callers that execute the returned plan inside a longer episode which has
+    /// already visited states of its own. An executor that merely *replays* a plan and vetoes it
+    /// on reaching a visited state learns only that the plan this search happened to return
+    /// crosses the closed set -- never that no other route exists. Blocking the states during the
+    /// search makes the second question the one the search answers, so an exhausted search means
+    /// "no plan avoiding these states" instead of "the first plan found was unusable".
+    ///
+    /// A blocked successor is dropped exactly like a pruned one: never enqueued, never goal
+    /// tested, never a plan's parent. The *start* state is deliberately exempt -- a caller
+    /// standing on a state it has already visited is the normal case, and blocking it would make
+    /// every such search fail immediately.
+    ///
+    /// ATTENTION: the same repository caveat as `start_state`. Indices are assigned per
+    /// repository, so a set built against a different `SearchContext` -- even one over the same
+    /// `Problem` -- names unrelated states and silently prunes the wrong ones. Empty (the default)
+    /// means "block nothing" and costs one null check per generated successor.
+    IndexSet blocked_states = {};
+
     /// @brief Optional coordination with searches running alongside this one. Null means "run
     /// alone", and costs one predictable branch per node pop.
     ///

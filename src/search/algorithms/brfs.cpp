@@ -169,6 +169,10 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
     const auto event_handler = (options.event_handler) ? options.event_handler : DefaultEventHandlerImpl::create(context->get_problem());
     const auto goal_strategy = (options.goal_strategy) ? options.goal_strategy : ProblemGoalStrategyImpl::create(context->get_problem());
     const auto pruning_strategy = (options.pruning_strategy) ? options.pruning_strategy : DuplicatePruningStrategyImpl::create();
+    // Null when nothing is blocked, which is the overwhelmingly common case and keeps the check
+    // in `handle_surviving_action` to a single predictable branch. Never applied to `start_state`:
+    // see the option's documentation.
+    const auto* const blocked_states = options.blocked_states.empty() ? nullptr : &options.blocked_states;
     const auto layer_ordering_strategy = options.layer_ordering_strategy;
     const auto max_next_layer_states = options.max_next_layer_states;
     const auto use_next_layer_limit = (max_next_layer_states < std::numeric_limits<uint32_t>::max());
@@ -439,6 +443,27 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
             const auto [successor_state, successor_state_metric_value] = state_repository.get_or_create_successor_state(state, action, search_node.g_value);
             auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
             auto action_cost = successor_state_metric_value - search_node.g_value;
+
+            // Deliberately BEFORE `test_prune_successor_state`, which is what both tests and
+            // *marks* novelty. The semantics are "run this search on the state space with the
+            // blocked states removed": in that induced subgraph a blocked state does not exist,
+            // so it must not claim a tuple's first-witness slot. Marking it would shadow states
+            // that ARE allowed and share the tuple -- pruning away the alternative route because
+            // of a state we refuse to enter, which is the opposite of what the caller asked for.
+            //
+            // The price is honest and worth naming: pruning is weaker (more expansions), and the
+            // width guarantee now applies to the induced subgraph, whose width can exceed the
+            // full graph's. So an exhausted search under a non-empty blocked set does NOT prove
+            // the goal is out of reach at this width -- see the option's documentation.
+            //
+            // Tested here rather than in a pruning strategy because `iw::Options` composes its
+            // own strategy per arity and this must hold for every one of them, plus plain BrFS.
+            if (blocked_states && blocked_states->contains(successor_state.get_index()))
+            {
+                event_handler->on_generate_state(state, action, action_cost, successor_state);
+                event_handler->on_generate_state_not_in_search_tree(state, action, action_cost, successor_state);
+                return true;
+            }
 
             if (emit_novel_witness_events)
             {

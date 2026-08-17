@@ -222,6 +222,11 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
         options_i.max_time_in_ms = remaining_time_in_ms();
         options_i.max_num_states = options.max_num_states;
         options_i.control = options.control;
+        // Every arity pass sees the same blocked set, including the arity-0 warm-up: the caller's
+        // closed set is a property of where it stands in its episode, not of the width being
+        // tried, and a pass that ignored it could return exactly the plan the ladder exists to
+        // avoid. Borrowed, not copied -- the caller owns the set for the whole ladder.
+        options_i.blocked_states = options.blocked_states;
         options_i.pruning_strategy =
             (cur_arity == 0) ? ArityZeroNoveltyPruningStrategyImpl::create(start_state) :
             use_landmark_novelty ?
