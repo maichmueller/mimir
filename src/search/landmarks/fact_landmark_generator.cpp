@@ -31,6 +31,7 @@
 #include <algorithm>
 #include <deque>
 #include <iterator>
+#include <unordered_map>
 
 // `mimir::search::rpg` defines its own `Action`/`Axiom`, which collide with
 // `mimir::formalism::Action`/`Axiom` under a blanket `using namespace`. Only import the specific
@@ -305,6 +306,126 @@ FactLandmarkGraph ApproximateFactLandmarkGenerator::create(const IGrounder& grou
     }
 
     /**
+     * Step 4b: disjunctive landmarks, from the same minimal-cost achievers Step 3-4 intersected.
+     *
+     * Where that intersection asks "which atom does EVERY achiever need", this asks the weaker
+     * question "which *predicate* does every achiever need", and answers with the union of the
+     * atoms they contribute. Every plan fires some achiever and every achiever needs one of those
+     * atoms, so the union is a landmark of the set even though no member is one individually --
+     * which is exactly the information `std::set_intersection` above discards, and why a landmark
+     * set can collapse onto the goal facts on a problem with several interchangeable achievers.
+     *
+     * Back-chaining continues through the members, because the useful stepping stones are usually
+     * one level below the disjunction rather than in it: with N rovers able to photograph an
+     * objective, `have_image ?r o m` is disjunctive, but each member's own preconditions are
+     * single-achiever again and yield precise atoms.
+     */
+
+    auto disjunctive_landmarks = std::vector<IndexList> {};
+    if (options.max_disjunctive_landmark_size > 0)
+    {
+        const auto predicate_index_of = [&](Index atom_index)
+        { return problem->get_repositories().template get_ground_atom<FluentTag>(atom_index)->get_predicate()->get_index(); };
+
+        auto expanded_mask = FlatBitset {};
+        auto frontier = IndexList {};
+        for (const auto landmark_atom_index : landmark_atom_indices)
+        {
+            expanded_mask.set(landmark_atom_index);
+            frontier.push_back(landmark_atom_index);
+        }
+
+        // Grouped preconditions of one achiever, reused across achievers and atoms so the loop does
+        // not allocate per achiever.
+        auto grouped = std::unordered_map<Index, IndexList> {};
+        auto by_achiever = std::vector<std::unordered_map<Index, IndexList>> {};
+
+        for (size_t depth = 0; !frontier.empty(); ++depth)
+        {
+            if (options.max_disjunctive_landmark_depth > 0 && depth >= options.max_disjunctive_landmark_depth)
+            {
+                break;
+            }
+
+            auto next_frontier = IndexList {};
+            for (const auto atom_index : frontier)
+            {
+                const auto& qualifying_unary_actions = action_achievers_by_proposition[positive_fluent_offsets[atom_index]];
+                if (qualifying_unary_actions.empty())
+                {
+                    continue;  // true in the initial state: no achiever, nothing to require
+                }
+
+                by_achiever.clear();
+                for (const auto unary_action_index : qualifying_unary_actions)
+                {
+                    grouped.clear();
+                    for (const auto precondition_atom_index : collect_positive_fluent_preconditions(get<Action>(structures)[unary_action_index]))
+                    {
+                        grouped[predicate_index_of(precondition_atom_index)].push_back(precondition_atom_index);
+                    }
+                    by_achiever.push_back(grouped);
+                }
+
+                /* A predicate qualifies only if EVERY achiever contributes one of its atoms -- an
+                   achiever missing it can discharge the parent without touching the union, which
+                   would make the union no landmark at all. */
+                for (const auto& [predicate_index, _atoms] : by_achiever.front())
+                {
+                    auto members = IndexList {};
+                    auto in_every_achiever = true;
+                    for (const auto& achiever_groups : by_achiever)
+                    {
+                        const auto it = achiever_groups.find(predicate_index);
+                        if (it == achiever_groups.end())
+                        {
+                            in_every_achiever = false;
+                            break;
+                        }
+                        members.insert(members.end(), it->second.begin(), it->second.end());
+                    }
+                    if (!in_every_achiever)
+                    {
+                        continue;
+                    }
+
+                    std::sort(members.begin(), members.end());
+                    members.erase(std::unique(members.begin(), members.end()), members.end());
+                    if (members.size() > options.max_disjunctive_landmark_size)
+                    {
+                        continue;
+                    }
+
+                    disjunctive_landmarks.push_back(members);
+                    for (const auto member_atom_index : members)
+                    {
+                        if (!expanded_mask.get(member_atom_index))
+                        {
+                            expanded_mask.set(member_atom_index);
+                            next_frontier.push_back(member_atom_index);
+                        }
+                    }
+                }
+            }
+            frontier = std::move(next_frontier);
+        }
+
+        /* Deduplicate, and drop any set holding a fact landmark: that member is true in every plan,
+           so the set is implied by it and tracking both is redundant. Done here rather than inline
+           because `landmark_atom_mask` is still growing while Step 3-4 runs. */
+        std::sort(disjunctive_landmarks.begin(), disjunctive_landmarks.end());
+        disjunctive_landmarks.erase(std::unique(disjunctive_landmarks.begin(), disjunctive_landmarks.end()), disjunctive_landmarks.end());
+        disjunctive_landmarks.erase(std::remove_if(disjunctive_landmarks.begin(),
+                                                   disjunctive_landmarks.end(),
+                                                   [&](const IndexList& members) {
+                                                       return std::any_of(members.begin(),
+                                                                          members.end(),
+                                                                          [&](Index member) { return landmark_atom_mask.get(member); });
+                                                   }),
+                                    disjunctive_landmarks.end());
+    }
+
+    /**
      * Step 5-6: full achiever index (any RPG level) and first-achiever index (minimal-cost only),
      * both deduplicated by the underlying `GroundAction` index, computed for every fluent atom.
      */
@@ -371,6 +492,7 @@ FactLandmarkGraph ApproximateFactLandmarkGenerator::create(const IGrounder& grou
     return std::make_shared<const FactLandmarkGraphImpl>(problem,
                                                           std::move(landmark_atom_mask),
                                                           std::move(landmark_atom_indices),
+                                                          std::move(disjunctive_landmarks),
                                                           std::move(achiever_action_indices_by_atom),
                                                           std::move(first_achiever_action_indices_by_atom),
                                                           std::move(landmarks_achieved_by_action),

@@ -316,4 +316,144 @@ TEST(MimirTests, SearchLandmarksAchievedUnachievedInitialStateTest)
     EXPECT_TRUE(contains_atom(landmarks, unachieved, "on-table", { "b1" }));
 }
 
+/**
+ * Disjunctive landmarks.
+ *
+ * Gripper is the minimal witness. `(at ball2 roomb)` has exactly two first achievers, `drop ball2
+ * roomb left` and `drop ball2 roomb right`, so the precondition *intersection* keeps only
+ * `(at-robby roomb)` and discards `(carry ball2 ?g)` -- `SearchLandmarksGripperNonUniqueAchieverTest`
+ * asserts that discard directly. The two carry atoms are what a disjunctive landmark recovers.
+ */
+
+TEST(MimirTests, SearchLandmarksDisjunctiveOffByDefaultTest)
+{
+    const auto problem = parse("gripper");
+    const auto grounder = LiftedGrounder(problem);
+    const auto landmarks = ApproximateFactLandmarkGenerator::create(grounder);
+
+    EXPECT_TRUE(landmarks->get_disjunctive_landmarks().empty());
+    EXPECT_TRUE(landmarks->get_disjunctive_landmark_atom_indices().empty());
+}
+
+TEST(MimirTests, SearchLandmarksGripperDisjunctiveCarryTest)
+{
+    const auto problem = parse("gripper");
+    const auto grounder = LiftedGrounder(problem);
+    auto options = FactLandmarkGeneratorOptions();
+    options.max_disjunctive_landmark_size = 4;
+    const auto landmarks = ApproximateFactLandmarkGenerator::create(grounder, options);
+
+    // The pair the intersection drops, recovered whole.
+    auto found_carry_pair = false;
+    for (const auto& members : landmarks->get_disjunctive_landmarks())
+    {
+        if (members.size() == 2 && contains_atom(landmarks, members, "carry", { "ball2", "left" })
+            && contains_atom(landmarks, members, "carry", { "ball2", "right" }))
+        {
+            found_carry_pair = true;
+        }
+    }
+    EXPECT_TRUE(found_carry_pair);
+
+    // ... and it stays out of the fact landmarks, which is the split the graph exists to keep.
+    EXPECT_FALSE(contains_atom(landmarks, landmarks->get_landmark_atom_indices(), "carry", { "ball2", "left" }));
+    EXPECT_FALSE(contains_atom(landmarks, landmarks->get_landmark_atom_indices(), "carry", { "ball2", "right" }));
+    EXPECT_TRUE(contains_atom(landmarks, landmarks->get_disjunctive_landmark_atom_indices(), "carry", { "ball2", "left" }));
+}
+
+TEST(MimirTests, SearchLandmarksDisjunctiveWellFormedTest)
+{
+    const auto problem = parse("gripper");
+    const auto grounder = LiftedGrounder(problem);
+    auto options = FactLandmarkGeneratorOptions();
+    options.max_disjunctive_landmark_size = 4;
+    const auto landmarks = ApproximateFactLandmarkGenerator::create(grounder, options);
+
+    const auto& disjunctive = landmarks->get_disjunctive_landmarks();
+    ASSERT_FALSE(disjunctive.empty());
+
+    auto seen = std::set<IndexList> {};
+    auto union_of_members = IndexList {};
+    for (const auto& members : disjunctive)
+    {
+        EXPECT_FALSE(members.empty());
+        EXPECT_LE(members.size(), options.max_disjunctive_landmark_size);
+        EXPECT_TRUE(std::is_sorted(members.begin(), members.end()));
+        EXPECT_FALSE(has_duplicates(members));
+        EXPECT_TRUE(seen.insert(members).second) << "duplicate disjunctive landmark";
+
+        // Subsumption: a set holding a fact landmark says nothing that landmark does not.
+        for (const auto member : members)
+        {
+            EXPECT_FALSE(landmarks->is_landmark(member));
+        }
+        union_of_members.insert(union_of_members.end(), members.begin(), members.end());
+    }
+
+    std::sort(union_of_members.begin(), union_of_members.end());
+    union_of_members.erase(std::unique(union_of_members.begin(), union_of_members.end()), union_of_members.end());
+    EXPECT_EQ(landmarks->get_disjunctive_landmark_atom_indices(), union_of_members);
+}
+
+TEST(MimirTests, SearchLandmarksDisjunctiveSizeCapTest)
+{
+    const auto problem = parse("gripper");
+    const auto grounder = LiftedGrounder(problem);
+
+    auto capped = FactLandmarkGeneratorOptions();
+    capped.max_disjunctive_landmark_size = 1;
+    const auto narrow = ApproximateFactLandmarkGenerator::create(grounder, capped);
+
+    auto wide_options = FactLandmarkGeneratorOptions();
+    wide_options.max_disjunctive_landmark_size = 4;
+    const auto wide = ApproximateFactLandmarkGenerator::create(grounder, wide_options);
+
+    // A cap of 1 admits only sets the intersection could already have produced, so the two-element
+    // carry pair is gone while the wider run keeps it.
+    for (const auto& members : narrow->get_disjunctive_landmarks())
+    {
+        EXPECT_EQ(members.size(), 1u);
+    }
+    EXPECT_FALSE(contains_atom(narrow, narrow->get_disjunctive_landmark_atom_indices(), "carry", { "ball2", "left" }));
+    EXPECT_TRUE(contains_atom(wide, wide->get_disjunctive_landmark_atom_indices(), "carry", { "ball2", "left" }));
+}
+
+TEST(MimirTests, SearchLandmarksDisjunctiveDepthBoundTest)
+{
+    const auto problem = parse("gripper");
+    const auto grounder = LiftedGrounder(problem);
+
+    auto shallow = FactLandmarkGeneratorOptions();
+    shallow.max_disjunctive_landmark_size = 4;
+    shallow.max_disjunctive_landmark_depth = 1;
+
+    auto unbounded = FactLandmarkGeneratorOptions();
+    unbounded.max_disjunctive_landmark_size = 4;
+
+    const auto shallow_graph = ApproximateFactLandmarkGenerator::create(grounder, shallow);
+    const auto unbounded_graph = ApproximateFactLandmarkGenerator::create(grounder, unbounded);
+
+    EXPECT_LE(shallow_graph->get_disjunctive_landmark_atom_indices().size(), unbounded_graph->get_disjunctive_landmark_atom_indices().size());
+}
+
+TEST(MimirTests, SearchLandmarksDisjunctiveLeavesFactLandmarksUntouchedTest)
+{
+    const auto problem = parse("blocks_4");
+    const auto grounder = LiftedGrounder(problem);
+
+    const auto without = ApproximateFactLandmarkGenerator::create(grounder);
+    auto options = FactLandmarkGeneratorOptions();
+    options.max_disjunctive_landmark_size = 4;
+    const auto with = ApproximateFactLandmarkGenerator::create(grounder, options);
+
+    // The whole point of keeping the two sets apart: turning disjunctive landmarks on must not
+    // move a single fact landmark, or the two settings become one flag.
+    EXPECT_EQ(without->get_landmark_atom_indices(), with->get_landmark_atom_indices());
+    for (const auto atom_index : with->get_landmark_atom_indices())
+    {
+        EXPECT_EQ(without->get_predecessors(atom_index), with->get_predecessors(atom_index));
+        EXPECT_EQ(without->get_achiever_action_indices(atom_index), with->get_achiever_action_indices(atom_index));
+    }
+}
+
 }

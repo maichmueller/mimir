@@ -39,6 +39,7 @@ public:
     FactLandmarkGraphImpl(formalism::Problem problem,
                            FlatBitset landmark_atom_mask,
                            IndexList landmark_atom_indices,
+                           std::vector<IndexList> disjunctive_landmarks,
                            std::vector<IndexList> achiever_action_indices_by_atom,
                            std::vector<IndexList> first_achiever_action_indices_by_atom,
                            std::vector<IndexList> landmarks_achieved_by_action,
@@ -51,6 +52,23 @@ public:
 
     const IndexList& get_landmark_atom_indices() const;
     formalism::GroundAtomList<formalism::FluentTag> get_landmark_atoms() const;
+
+    /// @brief The disjunctive landmarks: sets of which every plan makes at least one member true.
+    ///
+    /// Empty unless `FactLandmarkGeneratorOptions::max_disjunctive_landmark_size` was set. Each set
+    /// is ascending and deduplicated, no set contains a fact landmark (those are subsumed), and no
+    /// two sets are equal.
+    ///
+    /// Deliberately *not* folded into `get_landmark_atom_indices()`, and the reason is the whole
+    /// point of the split: a member is not individually mandatory, so the two sets answer different
+    /// questions and have different consumers. LIW's novelty coordinate wants the members ranked
+    /// (see `iw::LandmarkCoordinates`); anything reading landmarks as obligations must not see
+    /// them. Folding them together would make those two settings one flag and their effects
+    /// impossible to attribute.
+    const std::vector<IndexList>& get_disjunctive_landmarks() const;
+
+    /// @brief Every atom appearing in some disjunctive landmark, ascending and deduplicated.
+    IndexList get_disjunctive_landmark_atom_indices() const;
 
     bool is_landmark(Index atom_index) const;
     bool is_landmark(formalism::GroundAtom<formalism::FluentTag> atom) const;
@@ -82,6 +100,7 @@ private:
 
     FlatBitset m_landmark_atom_mask;
     IndexList m_landmark_atom_indices;
+    std::vector<IndexList> m_disjunctive_landmarks;
 
     std::vector<IndexList> m_achiever_action_indices_by_atom;
     std::vector<IndexList> m_first_achiever_action_indices_by_atom;

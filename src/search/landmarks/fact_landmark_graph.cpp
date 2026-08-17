@@ -23,6 +23,8 @@
 #include "mimir/formalism/repositories.hpp"
 #include "mimir/search/state.hpp"
 
+#include <algorithm>
+
 using namespace mimir::formalism;
 
 namespace mimir::search::landmarks
@@ -31,6 +33,7 @@ namespace mimir::search::landmarks
 FactLandmarkGraphImpl::FactLandmarkGraphImpl(formalism::Problem problem,
                                              FlatBitset landmark_atom_mask,
                                              IndexList landmark_atom_indices,
+                                             std::vector<IndexList> disjunctive_landmarks,
                                              std::vector<IndexList> achiever_action_indices_by_atom,
                                              std::vector<IndexList> first_achiever_action_indices_by_atom,
                                              std::vector<IndexList> landmarks_achieved_by_action,
@@ -41,6 +44,7 @@ FactLandmarkGraphImpl::FactLandmarkGraphImpl(formalism::Problem problem,
     m_problem(std::move(problem)),
     m_landmark_atom_mask(std::move(landmark_atom_mask)),
     m_landmark_atom_indices(std::move(landmark_atom_indices)),
+    m_disjunctive_landmarks(std::move(disjunctive_landmarks)),
     m_achiever_action_indices_by_atom(std::move(achiever_action_indices_by_atom)),
     m_first_achiever_action_indices_by_atom(std::move(first_achiever_action_indices_by_atom)),
     m_landmarks_achieved_by_action(std::move(landmarks_achieved_by_action)),
@@ -63,6 +67,20 @@ GroundAtomList<FluentTag> FactLandmarkGraphImpl::get_landmark_atoms() const
     {
         result.push_back(m_problem->get_repositories().get_ground_atom<FluentTag>(atom_index));
     }
+    return result;
+}
+
+const std::vector<IndexList>& FactLandmarkGraphImpl::get_disjunctive_landmarks() const { return m_disjunctive_landmarks; }
+
+IndexList FactLandmarkGraphImpl::get_disjunctive_landmark_atom_indices() const
+{
+    auto result = IndexList {};
+    for (const auto& members : m_disjunctive_landmarks)
+    {
+        result.insert(result.end(), members.begin(), members.end());
+    }
+    std::sort(result.begin(), result.end());
+    result.erase(std::unique(result.begin(), result.end()), result.end());
     return result;
 }
 

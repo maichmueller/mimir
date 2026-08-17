@@ -852,12 +852,16 @@ void bind_module_definitions(nb::module_& m)
     nb::class_<landmarks::FactLandmarkGeneratorOptions>(m, "FactLandmarkGeneratorOptions")  //
         .def(nb::init<>())
         .def_rw("include_positive_goal_facts", &landmarks::FactLandmarkGeneratorOptions::include_positive_goal_facts)
-        .def_rw("compute_greedy_necessary_orderings", &landmarks::FactLandmarkGeneratorOptions::compute_greedy_necessary_orderings);
+        .def_rw("compute_greedy_necessary_orderings", &landmarks::FactLandmarkGeneratorOptions::compute_greedy_necessary_orderings)
+        .def_rw("max_disjunctive_landmark_size", &landmarks::FactLandmarkGeneratorOptions::max_disjunctive_landmark_size)
+        .def_rw("max_disjunctive_landmark_depth", &landmarks::FactLandmarkGeneratorOptions::max_disjunctive_landmark_depth);
 
     nb::class_<landmarks::FactLandmarkGraphImpl>(m, "FactLandmarkGraph")  //
         .def("get_problem", &landmarks::FactLandmarkGraphImpl::get_problem)
         .def("get_landmark_atom_indices", &landmarks::FactLandmarkGraphImpl::get_landmark_atom_indices)
         .def("get_landmark_atoms", &landmarks::FactLandmarkGraphImpl::get_landmark_atoms)
+        .def("get_disjunctive_landmarks", &landmarks::FactLandmarkGraphImpl::get_disjunctive_landmarks)
+        .def("get_disjunctive_landmark_atom_indices", &landmarks::FactLandmarkGraphImpl::get_disjunctive_landmark_atom_indices)
         .def("is_landmark",
              static_cast<bool (landmarks::FactLandmarkGraphImpl::*)(Index) const>(&landmarks::FactLandmarkGraphImpl::is_landmark),
              "atom_index"_a)
