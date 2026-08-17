@@ -24,8 +24,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
-        with:
-          ref: main
 
       - uses: actions/setup-python@v7
         with:
