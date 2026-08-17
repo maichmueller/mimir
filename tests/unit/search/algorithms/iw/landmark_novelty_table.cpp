@@ -877,4 +877,272 @@ TEST(MimirTests, SearchAlgorithmsIWArityOneTupleGeneratorsMatchTheClosedForm)
     EXPECT_GT(num_nonempty_transition_halves, 0u);
 }
 
+/**
+ * Shared ranks (disjunctive landmarks).
+ *
+ * The members of a disjunctive landmark are alternative ways to discharge one obligation, so they
+ * share a novelty row: whichever member the search reaches first pays for all of them. These tests
+ * pin the two halves of that -- that a rank really is shared, and that the delta queries, which
+ * decide flips from `add`/`del` without materializing a successor, still agree with the two-state
+ * answer once a rank can be held up by more than one atom.
+ */
+
+TEST(MimirTests, SearchAlgorithmsLandmarkNoveltySharedRanksCollapseRows)
+{
+    auto fixture = Fixture {};
+    const auto landmark_atoms = landmark_atom_indices(fixture);
+    ASSERT_GE(landmark_atoms.size(), 3u);
+
+    const auto singletons = iw::LandmarkNoveltyTable(landmark_atoms, 1);
+    EXPECT_FALSE(singletons.get_coordinates().has_shared_ranks());
+
+    // Group the first two landmark atoms; they are then not singletons any more, so one rank goes.
+    auto grouping = iw::LandmarkGrouping {};
+    grouping.disjunctive_landmarks.push_back(iw::AtomIndexList { landmark_atoms[0], landmark_atoms[1] });
+    auto remaining = iw::AtomIndexList(landmark_atoms.begin() + 2, landmark_atoms.end());
+    const auto shared = iw::LandmarkNoveltyTable(remaining, grouping, 1);
+
+    EXPECT_TRUE(shared.get_coordinates().has_shared_ranks());
+    EXPECT_EQ(shared.get_num_landmarks(), landmark_atoms.size());
+    EXPECT_EQ(shared.get_bot_rank() + 1, singletons.get_bot_rank());
+
+    // The two grouped atoms name the same row; every other atom keeps its own.
+    const auto& coordinates = shared.get_coordinates();
+    ASSERT_EQ(coordinates.get_ranks(landmark_atoms[0]).size(), 1u);
+    ASSERT_EQ(coordinates.get_ranks(landmark_atoms[1]).size(), 1u);
+    EXPECT_EQ(coordinates.get_ranks(landmark_atoms[0])[0], coordinates.get_ranks(landmark_atoms[1])[0]);
+    EXPECT_NE(coordinates.get_ranks(landmark_atoms[2])[0], coordinates.get_ranks(landmark_atoms[0])[0]);
+}
+
+TEST(MimirTests, SearchAlgorithmsLandmarkNoveltyAtomInTwoGroupsCarriesTwoRanks)
+{
+    auto fixture = Fixture {};
+    const auto landmark_atoms = landmark_atom_indices(fixture);
+    ASSERT_GE(landmark_atoms.size(), 3u);
+
+    /* An atom is an alternative under more than one parent -- the reason ranks are a list per atom
+       rather than a transitive merge, which would also fuse atoms that were never alternatives. */
+    auto grouping = iw::LandmarkGrouping {};
+    grouping.disjunctive_landmarks.push_back(iw::AtomIndexList { landmark_atoms[0], landmark_atoms[1] });
+    grouping.disjunctive_landmarks.push_back(iw::AtomIndexList { landmark_atoms[0], landmark_atoms[2] });
+    const auto table = iw::LandmarkNoveltyTable(iw::AtomIndexList {}, grouping, 1);
+
+    const auto& coordinates = table.get_coordinates();
+    EXPECT_EQ(coordinates.get_ranks(landmark_atoms[0]).size(), 2u);
+    EXPECT_EQ(coordinates.get_ranks(landmark_atoms[1]).size(), 1u);
+    EXPECT_EQ(coordinates.get_ranks(landmark_atoms[2]).size(), 1u);
+    EXPECT_NE(coordinates.get_ranks(landmark_atoms[1])[0], coordinates.get_ranks(landmark_atoms[2])[0]);
+}
+
+TEST(MimirTests, SearchAlgorithmsLandmarkNoveltyUnsharedAtomKeepsPrivateRank)
+{
+    auto fixture = Fixture {};
+    const auto landmark_atoms = landmark_atom_indices(fixture);
+    ASSERT_GE(landmark_atoms.size(), 2u);
+
+    auto grouping = iw::LandmarkGrouping {};
+    grouping.disjunctive_landmarks.push_back(iw::AtomIndexList { landmark_atoms[0], landmark_atoms[1] });
+    grouping.unshared_atom_indices.insert(landmark_atoms[0]);
+    const auto table = iw::LandmarkNoveltyTable(iw::AtomIndexList {}, grouping, 1);
+
+    const auto& coordinates = table.get_coordinates();
+    ASSERT_EQ(coordinates.get_ranks(landmark_atoms[0]).size(), 1u);
+    ASSERT_EQ(coordinates.get_ranks(landmark_atoms[1]).size(), 1u);
+    // Pulled out of the set it was in, and given a row of its own rather than none.
+    EXPECT_NE(coordinates.get_ranks(landmark_atoms[0])[0], coordinates.get_ranks(landmark_atoms[1])[0]);
+    EXPECT_FALSE(coordinates.has_shared_ranks());
+}
+
+TEST(MimirTests, SearchAlgorithmsLandmarkNoveltySharedRanksDeltaCoordinatesMatchTwoState)
+{
+    auto fixture = Fixture {};
+    const auto landmark_atoms = landmark_atom_indices(fixture);
+    ASSERT_GE(landmark_atoms.size(), 4u);
+    const auto transitions = collect_transitions(fixture, 400);
+    ASSERT_FALSE(transitions.empty());
+
+    /* Overlapping groups, so a rank routinely has several true carriers -- exactly the case the
+       delta path must count rather than assume, since a shared rank goes off only with its LAST
+       carrier and comes on only with its FIRST.
+
+       Compared at the *coordinate* level, which is where the delta form promises to be exact. The
+       tuple half of a full novelty query is a deliberate over-approximation (it reconstructs the
+       successor logically, for callers deciding whether to build one at all), so comparing whole
+       query results here would assert something the delta form never claimed; layout agreement is
+       the invariant that covers the tuple half, and it has its own test below. */
+    auto grouping = iw::LandmarkGrouping {};
+    grouping.disjunctive_landmarks.push_back(iw::AtomIndexList { landmark_atoms[0], landmark_atoms[1] });
+    grouping.disjunctive_landmarks.push_back(iw::AtomIndexList { landmark_atoms[1], landmark_atoms[2] });
+    grouping.disjunctive_landmarks.push_back(iw::AtomIndexList { landmark_atoms[0], landmark_atoms[2], landmark_atoms[3] });
+
+    const auto table = iw::LandmarkNoveltyTable(landmark_atoms, grouping, 1, num_fluent_atoms(fixture));
+    const auto& coordinates = table.get_coordinates();
+    ASSERT_TRUE(coordinates.has_shared_ranks());
+
+    const auto normalized = [](std::vector<uint32_t> ranks)
+    {
+        std::sort(ranks.begin(), ranks.end());
+        ranks.erase(std::unique(ranks.begin(), ranks.end()), ranks.end());
+        return ranks;
+    };
+
+    auto add_atom_indices = iw::AtomIndexList {};
+    auto del_atom_indices = iw::AtomIndexList {};
+    auto true_landmark_atoms = iw::AtomIndexList {};
+    auto carrier_counts = std::vector<uint32_t> {};
+    auto flipped_two_state = std::vector<uint32_t> {};
+    auto kept_two_state = std::vector<uint32_t> {};
+    auto flipped_delta = std::vector<uint32_t> {};
+    auto kept_delta = std::vector<uint32_t> {};
+    auto true_mask = std::vector<uint64_t> {};
+    auto flipped_mask = std::vector<uint64_t> {};
+    auto kept_mask = std::vector<uint64_t> {};
+
+    auto num_kept = size_t(0);
+    for (const auto& transition : transitions)
+    {
+        const auto& fluent_atoms = transition.state.get_atoms<FluentTag>();
+        const auto& succ_fluent_atoms = transition.succ_state.get_atoms<FluentTag>();
+        add_atom_indices.clear();
+        del_atom_indices.clear();
+        for (const auto atom_index : succ_fluent_atoms)
+        {
+            if (!fluent_atoms.get(atom_index))
+            {
+                add_atom_indices.push_back(atom_index);
+            }
+        }
+        for (const auto atom_index : fluent_atoms)
+        {
+            if (!succ_fluent_atoms.get(atom_index))
+            {
+                del_atom_indices.push_back(atom_index);
+            }
+        }
+
+        coordinates.collect_transition(transition.state, transition.succ_state, flipped_two_state, kept_two_state);
+        coordinates.collect_true_landmark_atoms(transition.state, true_landmark_atoms);
+        coordinates.collect_rank_carrier_counts(true_landmark_atoms, carrier_counts);
+        coordinates.collect_transition_from_delta(true_landmark_atoms, carrier_counts, add_atom_indices, del_atom_indices, flipped_delta, kept_delta);
+
+        EXPECT_EQ(normalized(flipped_two_state), normalized(flipped_delta));
+        EXPECT_EQ(normalized(kept_two_state), normalized(kept_delta));
+
+        // ... and the bitmap form of the same query, which the tuple-major layout takes instead.
+        coordinates.collect_true_landmark_mask(transition.state, true_mask);
+        coordinates.collect_transition_masks_from_delta(true_mask, carrier_counts, add_atom_indices, del_atom_indices, flipped_mask, kept_mask);
+        auto flipped_from_mask = std::vector<uint32_t> {};
+        auto kept_from_mask = std::vector<uint32_t> {};
+        for (uint32_t rank = 0; rank < coordinates.get_num_ranks(); ++rank)
+        {
+            if ((flipped_mask[rank >> 6] >> (rank & 63)) & 1)
+            {
+                flipped_from_mask.push_back(rank);
+            }
+            if ((kept_mask[rank >> 6] >> (rank & 63)) & 1)
+            {
+                kept_from_mask.push_back(rank);
+            }
+        }
+        EXPECT_EQ(normalized(flipped_two_state), flipped_from_mask);
+        EXPECT_EQ(normalized(kept_two_state), kept_from_mask);
+
+        num_kept += kept_two_state.size();
+    }
+
+    /* Otherwise every comparison above could be vacuously empty-equals-empty. */
+    EXPECT_GT(num_kept, 0u);
+}
+
+TEST(MimirTests, SearchAlgorithmsLandmarkNoveltySharedRanksAgreeAcrossLayouts)
+{
+    auto fixture = Fixture {};
+    const auto landmark_atoms = landmark_atom_indices(fixture);
+    ASSERT_GE(landmark_atoms.size(), 4u);
+    const auto transitions = collect_transitions(fixture, 400);
+    ASSERT_FALSE(transitions.empty());
+
+    auto grouping = iw::LandmarkGrouping {};
+    grouping.disjunctive_landmarks.push_back(iw::AtomIndexList { landmark_atoms[0], landmark_atoms[1] });
+    grouping.disjunctive_landmarks.push_back(iw::AtomIndexList { landmark_atoms[1], landmark_atoms[2] });
+    grouping.disjunctive_landmarks.push_back(iw::AtomIndexList { landmark_atoms[0], landmark_atoms[2], landmark_atoms[3] });
+
+    /* The dense tuple-major layout answers from rank bitmaps and the sparse one from rank lists --
+       two separate implementations of the sharing rules, which must not diverge. */
+    for (size_t arity = 1; arity <= 2; ++arity)
+    {
+        auto dense = iw::LandmarkNoveltyTable(landmark_atoms, grouping, arity, num_fluent_atoms(fixture));
+        auto sparse_options = iw::LandmarkNoveltyTableOptions();
+        sparse_options.max_dense_table_bytes = 0;
+        auto sparse = iw::LandmarkNoveltyTable(landmark_atoms, grouping, arity, num_fluent_atoms(fixture), sparse_options);
+        ASSERT_TRUE(dense.is_dense());
+        ASSERT_FALSE(sparse.is_dense());
+
+        auto add_atom_indices = iw::AtomIndexList {};
+        auto del_atom_indices = iw::AtomIndexList {};
+        auto num_novel = size_t(0);
+        for (const auto& transition : transitions)
+        {
+            const auto& fluent_atoms = transition.state.get_atoms<FluentTag>();
+            const auto& succ_fluent_atoms = transition.succ_state.get_atoms<FluentTag>();
+            add_atom_indices.clear();
+            del_atom_indices.clear();
+            for (const auto atom_index : succ_fluent_atoms)
+            {
+                if (!fluent_atoms.get(atom_index))
+                {
+                    add_atom_indices.push_back(atom_index);
+                }
+            }
+            for (const auto atom_index : fluent_atoms)
+            {
+                if (!succ_fluent_atoms.get(atom_index))
+                {
+                    del_atom_indices.push_back(atom_index);
+                }
+            }
+
+            const auto novel = dense.test_novelty_read_only(transition.state, transition.succ_state);
+            EXPECT_EQ(novel, sparse.test_novelty_read_only(transition.state, transition.succ_state)) << "arity " << arity;
+            EXPECT_EQ(dense.test_novelty_read_only_from_delta(transition.state, add_atom_indices, del_atom_indices),
+                      sparse.test_novelty_read_only_from_delta(transition.state, add_atom_indices, del_atom_indices))
+                << "arity " << arity;
+            num_novel += novel;
+
+            EXPECT_EQ(dense.test_novelty_and_update_table(transition.state, transition.succ_state),
+                      sparse.test_novelty_and_update_table(transition.state, transition.succ_state))
+                << "arity " << arity;
+        }
+
+        EXPECT_GT(num_novel, 0u) << "arity " << arity;
+    }
+}
+
+TEST(MimirTests, SearchAlgorithmsLandmarkNoveltySharingPrunesAtLeastAsHard)
+{
+    auto fixture = Fixture {};
+    const auto landmark_atoms = landmark_atom_indices(fixture);
+    ASSERT_GE(landmark_atoms.size(), 2u);
+    const auto transitions = collect_transitions(fixture, 400);
+    ASSERT_FALSE(transitions.empty());
+
+    /* Sharing a row is what stops the search exploring the atom universe once per member, so a
+       shared table must never admit a transition the unshared one rejects. */
+    auto grouping = iw::LandmarkGrouping {};
+    grouping.disjunctive_landmarks.push_back(iw::AtomIndexList { landmark_atoms[0], landmark_atoms[1] });
+
+    auto unshared = iw::LandmarkNoveltyTable(landmark_atoms, 1, num_fluent_atoms(fixture));
+    auto remaining = iw::AtomIndexList(landmark_atoms.begin() + 2, landmark_atoms.end());
+    auto shared = iw::LandmarkNoveltyTable(remaining, grouping, 1, num_fluent_atoms(fixture));
+
+    auto num_admitted_unshared = size_t(0);
+    auto num_admitted_shared = size_t(0);
+    for (const auto& transition : transitions)
+    {
+        num_admitted_unshared += unshared.test_novelty_and_update_table(transition.state, transition.succ_state);
+        num_admitted_shared += shared.test_novelty_and_update_table(transition.state, transition.succ_state);
+    }
+    EXPECT_LE(num_admitted_shared, num_admitted_unshared);
+}
+
 }

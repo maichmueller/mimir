@@ -20,6 +20,7 @@
 #include "mimir/search/state.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <cassert>
 #include <optional>
 #include <stdexcept>
@@ -134,23 +135,123 @@ void remap_dense_marks(const Table& old_table,
  * LandmarkCoordinates
  */
 
-LandmarkCoordinates::LandmarkCoordinates(AtomIndexList landmark_atom_indices) :
-    m_landmark_atom_indices(normalize_landmark_atom_indices(std::move(landmark_atom_indices))),
-    m_rank_by_atom_index()
+LandmarkCoordinates::LandmarkCoordinates(AtomIndexList landmark_atom_indices)
 {
-    if (!m_landmark_atom_indices.empty())
+    auto groups = std::vector<AtomIndexList> {};
+    groups.reserve(landmark_atom_indices.size());
+    for (const auto atom_index : normalize_landmark_atom_indices(std::move(landmark_atom_indices)))
     {
-        m_rank_by_atom_index.assign(m_landmark_atom_indices.back() + 1, NOT_A_LANDMARK);
-        for (size_t rank = 0; rank < m_landmark_atom_indices.size(); ++rank)
+        groups.push_back(AtomIndexList { atom_index });
+    }
+    build(std::move(groups));
+}
+
+LandmarkCoordinates::LandmarkCoordinates(AtomIndexList landmark_atom_indices,
+                                         const std::vector<AtomIndexList>& disjunctive_landmarks,
+                                         const IndexSet& unshared_atom_indices)
+{
+    auto groups = std::vector<AtomIndexList> {};
+
+    /* Un-sharing rewrites the groups rather than the ranks they produce, so an atom pulled out of
+       every group it appeared in still gets a rank below: the point is a private row, not the
+       absence of one. */
+    auto singletons = normalize_landmark_atom_indices(std::move(landmark_atom_indices));
+    for (const auto& members : disjunctive_landmarks)
+    {
+        auto kept = AtomIndexList {};
+        for (const auto atom_index : members)
         {
-            m_rank_by_atom_index[m_landmark_atom_indices[rank]] = static_cast<uint32_t>(rank);
+            if (unshared_atom_indices.contains(atom_index))
+            {
+                singletons.push_back(atom_index);
+            }
+            else
+            {
+                kept.push_back(atom_index);
+            }
+        }
+        if (!kept.empty())
+        {
+            groups.push_back(normalize_landmark_atom_indices(std::move(kept)));
         }
     }
+
+    for (const auto atom_index : normalize_landmark_atom_indices(std::move(singletons)))
+    {
+        groups.push_back(AtomIndexList { atom_index });
+    }
+    build(std::move(groups));
+}
+
+void LandmarkCoordinates::build(std::vector<AtomIndexList> groups)
+{
+    m_num_groups = groups.size();
+
+    auto num_ranks_by_atom = std::vector<uint32_t> {};
+    for (const auto& members : groups)
+    {
+        m_has_shared_ranks = m_has_shared_ranks || (members.size() > 1);
+        for (const auto atom_index : members)
+        {
+            if (atom_index >= num_ranks_by_atom.size())
+            {
+                num_ranks_by_atom.resize(atom_index + 1, 0);
+            }
+            ++num_ranks_by_atom[atom_index];
+        }
+    }
+
+    if (num_ranks_by_atom.empty())
+    {
+        m_rank_offsets.assign(1, 0);
+        return;
+    }
+
+    /* CSR: prefix-sum the per-atom counts into offsets, then fill using a copy of the offsets as
+       write cursors. The overwhelmingly common case is one rank per atom, where this degenerates to
+       the flat `atom -> rank` array it replaces plus one offset load. */
+    m_rank_offsets.assign(num_ranks_by_atom.size() + 1, 0);
+    for (size_t atom_index = 0; atom_index < num_ranks_by_atom.size(); ++atom_index)
+    {
+        m_rank_offsets[atom_index + 1] = m_rank_offsets[atom_index] + num_ranks_by_atom[atom_index];
+    }
+    m_ranks_flat.assign(m_rank_offsets.back(), 0);
+
+    auto cursor = m_rank_offsets;
+    for (size_t rank = 0; rank < groups.size(); ++rank)
+    {
+        for (const auto atom_index : groups[rank])
+        {
+            m_ranks_flat[cursor[atom_index]++] = static_cast<uint32_t>(rank);
+        }
+    }
+
+    for (size_t atom_index = 0; atom_index + 1 < m_rank_offsets.size(); ++atom_index)
+    {
+        if (m_rank_offsets[atom_index] != m_rank_offsets[atom_index + 1])
+        {
+            m_landmark_atom_indices.push_back(static_cast<AtomIndex>(atom_index));
+        }
+    }
+
+    m_scratch_state_mask.assign(get_rank_mask_words(), uint64_t(0));
+    m_scratch_succ_mask.assign(get_rank_mask_words(), uint64_t(0));
+}
+
+std::span<const uint32_t> LandmarkCoordinates::get_ranks(AtomIndex atom_index) const
+{
+    if (size_t(atom_index) + 1 >= m_rank_offsets.size())
+    {
+        return {};
+    }
+    const auto begin = m_rank_offsets[atom_index];
+    return std::span<const uint32_t>(m_ranks_flat.data() + begin, m_rank_offsets[atom_index + 1] - begin);
 }
 
 uint32_t LandmarkCoordinates::get_rank(AtomIndex atom_index) const
 {
-    return (atom_index < m_rank_by_atom_index.size()) ? m_rank_by_atom_index[atom_index] : NOT_A_LANDMARK;
+    const auto ranks = get_ranks(atom_index);
+    return ranks.empty() ? NOT_A_LANDMARK : ranks.front();
 }
 
 void LandmarkCoordinates::collect(const State& state, std::vector<uint32_t>& out_ranks) const
@@ -162,8 +263,18 @@ void LandmarkCoordinates::collect(const State& state, std::vector<uint32_t>& out
     {
         if (fluent_atoms.get(atom_index))
         {
-            out_ranks.push_back(m_rank_by_atom_index[atom_index]);
+            const auto ranks = get_ranks(atom_index);
+            out_ranks.insert(out_ranks.end(), ranks.begin(), ranks.end());
         }
+    }
+
+    if (m_has_shared_ranks)
+    {
+        /* Two true members of one group would otherwise contribute their shared rank twice. Marking
+           it twice is harmless -- the second `set` reports "already marked" -- but each duplicate
+           costs a full pass over the scratch tuples. */
+        std::sort(out_ranks.begin(), out_ranks.end());
+        out_ranks.erase(std::unique(out_ranks.begin(), out_ranks.end()), out_ranks.end());
     }
 
     if (out_ranks.empty())
@@ -183,24 +294,81 @@ void LandmarkCoordinates::collect_transition(const State& state,
     const auto& fluent_atoms = state.get_atoms<FluentTag>();
     const auto& succ_fluent_atoms = succ_state.get_atoms<FluentTag>();
 
-    auto any_true_in_state = false;
-    auto any_true_in_succ = false;
+    if (!m_has_shared_ranks)
+    {
+        /* Bijective ranks: a rank is true exactly when its one atom is, so the split can be decided
+           per atom without materializing either state's rank set. */
+        auto any_true_in_state = false;
+        auto any_true_in_succ = false;
+
+        for (const auto atom_index : m_landmark_atom_indices)
+        {
+            const auto in_state = fluent_atoms.get(atom_index);
+            const auto in_succ = succ_fluent_atoms.get(atom_index);
+            any_true_in_state = any_true_in_state || in_state;
+
+            if (in_succ)
+            {
+                any_true_in_succ = true;
+                (in_state ? out_kept_ranks : out_flipped_ranks).push_back(get_ranks(atom_index).front());
+            }
+        }
+
+        /* If the predecessor held a landmark and the successor holds none, BOT has just become the
+           successor's coordinate and must pair with all free tuples, not only with new ones. */
+        if (!any_true_in_succ)
+        {
+            (any_true_in_state ? out_flipped_ranks : out_kept_ranks).push_back(get_bot_rank());
+        }
+        return;
+    }
+
+    /* Shared ranks: a rank is true in a state when ANY of its carriers is, so the per-atom decision
+       above is wrong -- an atom can flip on while its rank was already held up by a sibling, which
+       makes that rank kept rather than flipped. Build both rank sets, then compare. */
+    const auto num_words = get_rank_mask_words();
+    m_scratch_state_mask.assign(num_words, uint64_t(0));
+    m_scratch_succ_mask.assign(num_words, uint64_t(0));
 
     for (const auto atom_index : m_landmark_atom_indices)
     {
         const auto in_state = fluent_atoms.get(atom_index);
         const auto in_succ = succ_fluent_atoms.get(atom_index);
-        any_true_in_state = any_true_in_state || in_state;
-
-        if (in_succ)
+        if (!in_state && !in_succ)
         {
-            any_true_in_succ = true;
-            (in_state ? out_kept_ranks : out_flipped_ranks).push_back(m_rank_by_atom_index[atom_index]);
+            continue;
+        }
+        for (const auto rank : get_ranks(atom_index))
+        {
+            const auto bit = uint64_t(1) << (rank & 63);
+            if (in_state)
+            {
+                m_scratch_state_mask[rank >> 6] |= bit;
+            }
+            if (in_succ)
+            {
+                m_scratch_succ_mask[rank >> 6] |= bit;
+            }
         }
     }
 
-    /* If the predecessor held a landmark and the successor holds none, BOT has just become the
-       successor's coordinate and must pair with all free tuples, not only with new ones. */
+    auto any_true_in_state = false;
+    auto any_true_in_succ = false;
+    for (size_t word = 0; word < num_words; ++word)
+    {
+        any_true_in_state = any_true_in_state || (m_scratch_state_mask[word] != 0);
+        any_true_in_succ = any_true_in_succ || (m_scratch_succ_mask[word] != 0);
+
+        auto remaining = m_scratch_succ_mask[word];
+        while (remaining)
+        {
+            const auto bit = static_cast<uint32_t>(std::countr_zero(remaining));
+            remaining &= remaining - 1;
+            const auto in_state = (m_scratch_state_mask[word] >> bit) & uint64_t(1);
+            (in_state ? out_kept_ranks : out_flipped_ranks).push_back(static_cast<uint32_t>(word * 64) + bit);
+        }
+    }
+
     if (!any_true_in_succ)
     {
         (any_true_in_state ? out_flipped_ranks : out_kept_ranks).push_back(get_bot_rank());
@@ -221,7 +389,25 @@ void LandmarkCoordinates::collect_true_landmark_atoms(const State& state, AtomIn
     }
 }
 
+void LandmarkCoordinates::collect_rank_carrier_counts(const AtomIndexList& true_landmark_atom_indices, std::vector<uint32_t>& out_counts) const
+{
+    out_counts.clear();
+    if (!m_has_shared_ranks)
+    {
+        return;
+    }
+    out_counts.assign(get_num_ranks(), 0);
+    for (const auto atom_index : true_landmark_atom_indices)
+    {
+        for (const auto rank : get_ranks(atom_index))
+        {
+            ++out_counts[rank];
+        }
+    }
+}
+
 void LandmarkCoordinates::collect_transition_from_delta(const AtomIndexList& true_landmark_atom_indices,
+                                                        const std::vector<uint32_t>& true_rank_carrier_counts,
                                                         const AtomIndexList& add_atom_indices,
                                                         const AtomIndexList& del_atom_indices,
                                                         std::vector<uint32_t>& out_flipped_ranks,
@@ -238,31 +424,82 @@ void LandmarkCoordinates::collect_transition_from_delta(const AtomIndexList& tru
         return;
     }
 
-    /* Only atoms the action touches can change a coordinate, so the added landmarks are the whole
-       flipped set: a landmark in `add_atom_indices` was false in the predecessor by construction. */
-    for (const auto atom_index : add_atom_indices)
+    if (!m_has_shared_ranks)
     {
-        const auto rank = get_rank(atom_index);
-        if (rank != NOT_A_LANDMARK)
+        /* Only atoms the action touches can change a coordinate, so the added landmarks are the
+           whole flipped set: a landmark in `add_atom_indices` was false in the predecessor by
+           construction, and with bijective ranks so was its rank. */
+        for (const auto atom_index : add_atom_indices)
         {
-            out_flipped_ranks.push_back(rank);
+            const auto rank = get_rank(atom_index);
+            if (rank != NOT_A_LANDMARK)
+            {
+                out_flipped_ranks.push_back(rank);
+            }
+        }
+
+        /* The kept coordinates are the true landmarks the action does not delete. Both lists are
+           tiny and sorted, so this is a linear merge rather than a membership structure. */
+        auto it_del = del_atom_indices.begin();
+        for (const auto atom_index : true_landmark_atom_indices)
+        {
+            for (; (it_del != del_atom_indices.end()) && (*it_del < atom_index); ++it_del)
+            {
+            }
+            if ((it_del != del_atom_indices.end()) && (*it_del == atom_index))
+            {
+                ++it_del;
+                continue;
+            }
+            out_kept_ranks.push_back(get_ranks(atom_index).front());
         }
     }
-
-    /* The kept coordinates are the true landmarks the action does not delete. Both lists are tiny
-       and sorted, so this is a linear merge rather than a membership structure. */
-    auto it_del = del_atom_indices.begin();
-    for (const auto atom_index : true_landmark_atom_indices)
+    else
     {
-        for (; (it_del != del_atom_indices.end()) && (*it_del < atom_index); ++it_del)
+        /* Shared ranks decouple a rank's fate from any one carrier: adding a member does not flip a
+           rank a sibling already holds up, and deleting one does not take a rank off while another
+           survives. `true_rank_carrier_counts` answers both, and is per state -- the caller
+           computes it once and reuses it across every action of that state. */
+        auto added_ranks = absl::flat_hash_set<uint32_t> {};
+        for (const auto atom_index : add_atom_indices)
         {
+            for (const auto rank : get_ranks(atom_index))
+            {
+                if (!added_ranks.insert(rank).second)
+                {
+                    continue;
+                }
+                if (true_rank_carrier_counts[rank] == 0)
+                {
+                    out_flipped_ranks.push_back(rank);
+                }
+            }
         }
-        if ((it_del != del_atom_indices.end()) && (*it_del == atom_index))
+
+        /* A rank the predecessor held survives when it has a carrier left in the successor: one the
+           action does not delete, or one the action adds. Missing that second case would drop the
+           rank from BOTH halves and silently under-mark the transition. */
+        auto deleted_carriers = absl::flat_hash_map<uint32_t, uint32_t> {};
+        for (const auto atom_index : del_atom_indices)
         {
-            ++it_del;
-            continue;
+            for (const auto rank : get_ranks(atom_index))
+            {
+                ++deleted_carriers[rank];
+            }
         }
-        out_kept_ranks.push_back(m_rank_by_atom_index[atom_index]);
+        for (uint32_t rank = 0; rank < get_num_ranks(); ++rank)
+        {
+            if (true_rank_carrier_counts[rank] == 0)
+            {
+                continue;  // not a coordinate of the predecessor, so it cannot be kept
+            }
+            const auto it = deleted_carriers.find(rank);
+            const auto num_deleted = (it == deleted_carriers.end()) ? uint32_t(0) : it->second;
+            if (true_rank_carrier_counts[rank] > num_deleted || added_ranks.contains(rank))
+            {
+                out_kept_ranks.push_back(rank);
+            }
+        }
     }
 
     /* BOT is a coordinate of the successor exactly when it holds no real landmark, and it flips on
@@ -302,13 +539,16 @@ void LandmarkCoordinates::collect_true_landmark_mask(const State& state, std::ve
     {
         if (fluent_atoms.get(atom_index))
         {
-            const auto rank = m_rank_by_atom_index[atom_index];
-            out_mask[rank >> 6] |= uint64_t(1) << (rank & 63);
+            for (const auto rank : get_ranks(atom_index))
+            {
+                out_mask[rank >> 6] |= uint64_t(1) << (rank & 63);
+            }
         }
     }
 }
 
 void LandmarkCoordinates::collect_transition_masks_from_delta(const std::vector<uint64_t>& true_landmark_mask,
+                                                              const std::vector<uint32_t>& true_rank_carrier_counts,
                                                               const AtomIndexList& add_atom_indices,
                                                               const AtomIndexList& del_atom_indices,
                                                               std::vector<uint64_t>& out_flipped_mask,
@@ -328,23 +568,52 @@ void LandmarkCoordinates::collect_transition_masks_from_delta(const std::vector<
     /* The kept coordinates are `L(s)` minus what the action deletes, so the long input is copied
        rather than rebuilt: `del_atom_indices` is short and rarely holds a landmark at all. */
     out_kept_mask.assign(true_landmark_mask.begin(), true_landmark_mask.end());
-    for (const auto atom_index : del_atom_indices)
+    if (!m_has_shared_ranks)
     {
-        const auto rank = get_rank(atom_index);
-        if (rank != NOT_A_LANDMARK)
+        for (const auto atom_index : del_atom_indices)
         {
-            out_kept_mask[rank >> 6] &= ~(uint64_t(1) << (rank & 63));
+            const auto rank = get_rank(atom_index);
+            if (rank != NOT_A_LANDMARK)
+            {
+                out_kept_mask[rank >> 6] &= ~(uint64_t(1) << (rank & 63));
+            }
+        }
+    }
+    else
+    {
+        /* A shared rank goes off only when its LAST true carrier is deleted; clearing the bit per
+           deleted atom would drop ranks a sibling still holds up, which under-marks and quietly
+           weakens the pruning rather than failing loudly. */
+        auto deleted_carriers = absl::flat_hash_map<uint32_t, uint32_t> {};
+        for (const auto atom_index : del_atom_indices)
+        {
+            for (const auto rank : get_ranks(atom_index))
+            {
+                ++deleted_carriers[rank];
+            }
+        }
+        for (const auto& [rank, num_deleted] : deleted_carriers)
+        {
+            if (true_rank_carrier_counts[rank] <= num_deleted)
+            {
+                out_kept_mask[rank >> 6] &= ~(uint64_t(1) << (rank & 63));
+            }
         }
     }
 
-    /* A landmark in `add_atom_indices` was false in the predecessor by construction, so the added
-       landmarks are the whole flipped set. */
+    /* A landmark in `add_atom_indices` was false in the predecessor by construction, but its RANK
+       need not have been: under sharing a sibling may already hold it, which makes the rank kept
+       rather than flipped. `true_landmark_mask` is exactly that test. */
     auto any_flipped = false;
     for (const auto atom_index : add_atom_indices)
     {
-        const auto rank = get_rank(atom_index);
-        if (rank != NOT_A_LANDMARK)
+        for (const auto rank : get_ranks(atom_index))
         {
+            if (m_has_shared_ranks && ((true_landmark_mask[rank >> 6] >> (rank & 63)) & uint64_t(1)))
+            {
+                out_kept_mask[rank >> 6] |= uint64_t(1) << (rank & 63);
+                continue;
+            }
             out_flipped_mask[rank >> 6] |= uint64_t(1) << (rank & 63);
             any_flipped = true;
         }
@@ -436,12 +705,26 @@ std::optional<LandmarkDenseLayout> LandmarkNoveltyTable::get_dense_layout() cons
 }
 
 LandmarkNoveltyTable::LandmarkNoveltyTable(AtomIndexList landmark_atom_indices, size_t arity, LandmarkNoveltyTableOptions options) :
-    LandmarkNoveltyTable(std::move(landmark_atom_indices), arity, 0, options)
+    LandmarkNoveltyTable(std::move(landmark_atom_indices), LandmarkGrouping {}, arity, 0, options)
 {
 }
 
 LandmarkNoveltyTable::LandmarkNoveltyTable(AtomIndexList landmark_atom_indices, size_t arity, size_t num_atoms, LandmarkNoveltyTableOptions options) :
-    m_coordinates(std::move(landmark_atom_indices)),
+    LandmarkNoveltyTable(std::move(landmark_atom_indices), LandmarkGrouping {}, arity, num_atoms, options)
+{
+}
+
+LandmarkNoveltyTable::LandmarkNoveltyTable(AtomIndexList landmark_atom_indices, LandmarkGrouping grouping, size_t arity, LandmarkNoveltyTableOptions options) :
+    LandmarkNoveltyTable(std::move(landmark_atom_indices), std::move(grouping), arity, 0, options)
+{
+}
+
+LandmarkNoveltyTable::LandmarkNoveltyTable(AtomIndexList landmark_atom_indices,
+                                           LandmarkGrouping grouping,
+                                           size_t arity,
+                                           size_t num_atoms,
+                                           LandmarkNoveltyTableOptions options) :
+    m_coordinates(std::move(landmark_atom_indices), grouping.disjunctive_landmarks, grouping.unshared_atom_indices),
     m_options(options),
     m_tuple_index_mapper(arity, num_atoms),
     m_table(),
@@ -1000,6 +1283,10 @@ void LandmarkNoveltyTable::refresh_delta_query_state(const State& state)
        then reads. Both are `O(|L|)` and paid once per state, against a per-action query. */
     m_coordinates.collect_true_landmark_atoms(state, m_delta_query_true_landmark_atoms);
     m_coordinates.collect_true_landmark_mask(state, m_delta_query_true_landmark_mask);
+    /* Empty unless ranks are shared, in which case both delta forms need to know how many carriers
+       hold each rank up before they can say whether the action takes it off. Per state, like the
+       two above, precisely so the per-action query stays proportional to the delta. */
+    m_coordinates.collect_rank_carrier_counts(m_delta_query_true_landmark_atoms, m_delta_query_rank_carrier_counts);
     m_delta_query_state_index = state.get_index();
 }
 
@@ -1008,6 +1295,7 @@ bool LandmarkNoveltyTable::test_novelty_read_only_from_delta_masked(const State&
                                                                     const AtomIndexList& del_atom_indices)
 {
     m_coordinates.collect_transition_masks_from_delta(m_delta_query_true_landmark_mask,
+                                                      m_delta_query_rank_carrier_counts,
                                                       add_atom_indices,
                                                       del_atom_indices,
                                                       m_scratch_flipped_mask,
@@ -1066,6 +1354,7 @@ bool LandmarkNoveltyTable::test_novelty_read_only_from_delta(const State& state,
     }
 
     m_coordinates.collect_transition_from_delta(m_delta_query_true_landmark_atoms,
+                                                m_delta_query_rank_carrier_counts,
                                                 add_atom_indices,
                                                 del_atom_indices,
                                                 m_scratch_flipped_ranks,
