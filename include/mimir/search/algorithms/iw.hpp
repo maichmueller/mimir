@@ -76,6 +76,31 @@ struct Options
     /// `landmark_novelty_graph`. See `iw::LandmarkNoveltyTableOptions`.
     LandmarkNoveltyTableOptions landmark_novelty_table_options = {};
 
+    /// @brief Also rank the graph's *disjunctive* landmarks, whose members then share one novelty
+    /// row. Ignored without `landmark_novelty_graph`, and a no-op on a graph built without
+    /// `landmarks::FactLandmarkGeneratorOptions::max_disjunctive_landmark_size`.
+    ///
+    /// This is what makes LIW more than IW on a problem whose landmark set is only its goal facts:
+    /// with no coordinate changing between the start state and the goal, the landmark half of every
+    /// feature is constant and LIW(k) prunes exactly like IW(k). Ranking the intermediate atoms a
+    /// disjunctive landmark names gives the coordinate something to move on, which is what turns a
+    /// width-2 conjunction into the width-1 feature `(rank of one conjunct, the other conjunct)`.
+    ///
+    /// Off by default, and separate from the manager-facing use of the same sets, so the two can be
+    /// measured apart.
+    bool landmark_novelty_disjunctive = false;
+
+    /// @brief Atoms that must keep a private novelty row instead of sharing their disjunctive
+    /// landmark's. Ignored unless `landmark_novelty_disjunctive` is set.
+    ///
+    /// Per search, not per problem, because the atom that belongs here is the one the search is
+    /// *for*. Sharing a row means a sibling's exploration can prune the branch that reaches this
+    /// atom, and when the atom is the goal that is the one branch the search must not lose. Note
+    /// the goal state itself is safe without this whenever the goal is a single atom -- it carries
+    /// a free atom no earlier state had, so it is novel under every rank -- but the states leading
+    /// to it are not, and no goal test can protect those.
+    IndexSet landmark_novelty_unshared_atoms = {};
+
     /// @brief Wall-clock budget for the whole search, spanning every arity pass. Each pass is given
     /// what is left of it, so raising `max_arity` cannot silently multiply the time spent.
     uint32_t max_time_in_ms = std::numeric_limits<uint32_t>::max();

@@ -62,6 +62,8 @@ struct Instance
     SearchContext context;
     FactLandmarkGraph landmarks;
     FactLandmarkGraph empty_landmarks;
+    /// The same graph with disjunctive landmarks computed; its fact landmarks are identical.
+    FactLandmarkGraph disjunctive_landmarks;
 
     Instance(const std::string& domain, const std::string& instance) :
         problem(ProblemImpl::create(fs::path(std::string(DATA_DIR) + domain + "/domain.pddl"), fs::path(std::string(DATA_DIR) + domain + "/" + instance))),
@@ -71,12 +73,17 @@ struct Instance
         action_generator(grounder.create_grounded_applicable_action_generator()),
         context(SearchContextImpl::create(problem, action_generator, state_repository)),
         landmarks(ApproximateFactLandmarkGenerator::create(grounder)),
-        empty_landmarks(nullptr)
+        empty_landmarks(nullptr),
+        disjunctive_landmarks(nullptr)
     {
         // Goal seeding is the only seed source, so switching it off yields an empty landmark set.
         auto options = FactLandmarkGeneratorOptions {};
         options.include_positive_goal_facts = false;
         empty_landmarks = ApproximateFactLandmarkGenerator::create(grounder, options);
+
+        auto disjunctive_options = FactLandmarkGeneratorOptions {};
+        disjunctive_options.max_disjunctive_landmark_size = 4;
+        disjunctive_landmarks = ApproximateFactLandmarkGenerator::create(grounder, disjunctive_options);
     }
 
     size_t get_num_fluent_atoms() const
@@ -102,7 +109,7 @@ enum class Novelty
     LANDMARK_WITHOUT_LANDMARKS,
 };
 
-RunResult run_iw(const Instance& instance, size_t max_arity, Novelty novelty)
+RunResult run_iw(const Instance& instance, size_t max_arity, Novelty novelty, bool disjunctive = false, const IndexSet& unshared_atoms = {})
 {
     auto event_handler = iw::DefaultEventHandlerImpl::create(instance.problem, true);
 
@@ -110,12 +117,14 @@ RunResult run_iw(const Instance& instance, size_t max_arity, Novelty novelty)
     options.max_arity = max_arity;
     options.iw_event_handler = event_handler;
     options.max_num_states = 500000;
+    options.landmark_novelty_disjunctive = disjunctive;
+    options.landmark_novelty_unshared_atoms = unshared_atoms;
     switch (novelty)
     {
         case Novelty::PLAIN:
             break;
         case Novelty::LANDMARK:
-            options.landmark_novelty_graph = instance.landmarks;
+            options.landmark_novelty_graph = disjunctive ? instance.disjunctive_landmarks : instance.landmarks;
             break;
         case Novelty::LANDMARK_WITHOUT_LANDMARKS:
             options.landmark_novelty_graph = instance.empty_landmarks;
@@ -252,6 +261,95 @@ TEST(MimirTests, SearchAlgorithmsIWLandmarkNoveltyAcceptsTheAddEffectPrecheck)
     options.iw1_precheck_add_effect_novelty = true;
 
     EXPECT_NO_THROW(iw::find_solution(instance.context, options));
+}
+
+TEST(MimirTests, SearchAlgorithmsIWDisjunctiveNoveltyIsOffByDefault)
+{
+    /* The graph carries disjunctive landmarks and the search ignores them unless asked. Without
+       this, turning them on in the generator would silently change every LIW search. */
+    for (const auto& [domain, instance_file] : width_gap_instances())
+    {
+        auto instance = Instance(domain, instance_file);
+        ASSERT_EQ(instance.landmarks->get_landmark_atom_indices(), instance.disjunctive_landmarks->get_landmark_atom_indices()) << domain;
+
+        const auto without = run_iw(instance, 1, Novelty::LANDMARK);
+        const auto with_graph_flag_off = run_iw(instance, 1, Novelty::LANDMARK, false);
+
+        EXPECT_EQ(with_graph_flag_off.status, without.status) << domain;
+        EXPECT_EQ(with_graph_flag_off.plan_length, without.plan_length) << domain;
+        EXPECT_EQ(with_graph_flag_off.num_expanded, without.num_expanded) << domain;
+    }
+}
+
+TEST(MimirTests, SearchAlgorithmsIWDisjunctiveNoveltyStillSolvesTheWidthOneGap)
+{
+    /* Ranking the disjunct members adds coordinates and shares rows among them at the same time,
+       so the expansion count can move either way. What must not move is the answer. */
+    for (const auto& [domain, instance_file] : width_gap_instances())
+    {
+        auto instance = Instance(domain, instance_file);
+        const auto disjunctive = run_iw(instance, 1, Novelty::LANDMARK, true);
+
+        EXPECT_EQ(disjunctive.status, SearchStatus::SOLVED) << domain;
+        EXPECT_GT(disjunctive.plan_length, 0u) << domain;
+    }
+}
+
+TEST(MimirTests, SearchAlgorithmsIWDisjunctiveNoveltyWithoutDisjunctsIsANoOp)
+{
+    /* A graph built without `max_disjunctive_landmark_size` has nothing to group, so asking for
+       disjunctive novelty over it must reproduce the plain landmark search exactly. */
+    for (const auto& [domain, instance_file] : width_gap_instances())
+    {
+        auto instance = Instance(domain, instance_file);
+        auto event_handler = iw::DefaultEventHandlerImpl::create(instance.problem, true);
+        auto options = iw::Options {};
+        options.max_arity = 1;
+        options.iw_event_handler = event_handler;
+        options.max_num_states = 500000;
+        options.landmark_novelty_graph = instance.landmarks;  // no disjunctive landmarks on it
+        options.landmark_novelty_disjunctive = true;
+        const auto result = iw::find_solution(instance.context, options);
+
+        auto num_expanded = uint64_t(0);
+        for (const auto& statistics : event_handler->get_statistics().get_brfs_statistics_by_arity())
+        {
+            num_expanded += statistics.get_num_expanded();
+        }
+
+        const auto baseline = run_iw(instance, 1, Novelty::LANDMARK);
+        EXPECT_EQ(result.status, baseline.status) << domain;
+        EXPECT_EQ(num_expanded, baseline.num_expanded) << domain;
+    }
+}
+
+TEST(MimirTests, SearchAlgorithmsIWUnsharedAtomsWeakenPruning)
+{
+    /* Un-sharing gives an atom a private row, so it can no longer be pruned on a sibling's marks:
+       the search admits at least as much as it did while sharing. Exempting *every* member makes
+       the grouping trivial again, which is the extreme case worth pinning -- it must then match the
+       plain landmark search exactly. */
+    for (const auto& [domain, instance_file] : width_gap_instances())
+    {
+        auto instance = Instance(domain, instance_file);
+        const auto& disjunctive = instance.disjunctive_landmarks->get_disjunctive_landmarks();
+        if (disjunctive.empty())
+        {
+            continue;  // nothing shared here, so nothing to exempt
+        }
+
+        auto every_member = IndexSet {};
+        for (const auto& members : disjunctive)
+        {
+            every_member.insert(members.begin(), members.end());
+        }
+
+        const auto shared = run_iw(instance, 1, Novelty::LANDMARK, true);
+        const auto fully_unshared = run_iw(instance, 1, Novelty::LANDMARK, true, every_member);
+
+        EXPECT_GE(fully_unshared.num_expanded, shared.num_expanded) << domain;
+        EXPECT_EQ(fully_unshared.status, shared.status) << domain;
+    }
 }
 
 }

@@ -949,6 +949,12 @@ void bind_module_definitions(nb::module_& m)
         .value("RANK_MAJOR", iw::LandmarkDenseLayout::RANK_MAJOR)
         .value("TUPLE_MAJOR", iw::LandmarkDenseLayout::TUPLE_MAJOR);
 
+    nb::class_<iw::LandmarkGrouping>(m, "LandmarkGrouping")  //
+        .def(nb::init<>())
+        .def_rw("disjunctive_landmarks", &iw::LandmarkGrouping::disjunctive_landmarks)
+        .def_rw("unshared_atom_indices", &iw::LandmarkGrouping::unshared_atom_indices)
+        .def("is_trivial", &iw::LandmarkGrouping::is_trivial);
+
     nb::class_<iw::LandmarkNoveltyTableOptions>(m, "LandmarkNoveltyTableOptions")  //
         .def(nb::init<>())
         .def_rw("max_dense_table_bytes", &iw::LandmarkNoveltyTableOptions::max_dense_table_bytes)
@@ -1009,7 +1015,13 @@ void bind_module_definitions(nb::module_& m)
                     "landmarks"_a,
                     "arity"_a,
                     "num_atoms"_a,
-                    "table_options"_a = iw::LandmarkNoveltyTableOptions())
+                    "table_options"_a = iw::LandmarkNoveltyTableOptions(),
+                    "grouping"_a = iw::LandmarkGrouping())
+        .def_static("make_grouping",
+                    &iw::LandmarkNoveltyPruningStrategyImpl::make_grouping,
+                    "landmarks"_a,
+                    "disjunctive"_a,
+                    "unshared_atom_indices"_a = IndexSet())
         // The table's own geometry, so a layout's footprint can be measured rather than inferred.
         .def_prop_ro("table_is_dense", [](const iw::LandmarkNoveltyPruningStrategyImpl& self) { return self.get_novelty_table().is_dense(); })
         .def_prop_ro("table_num_cells", [](const iw::LandmarkNoveltyPruningStrategyImpl& self) { return self.get_novelty_table().get_table_size(); })
@@ -1734,6 +1746,8 @@ void bind_module_definitions(nb::module_& m)
         // LIW(k) tests novelty over (landmark atom, free tuple of size <= k) pairs.
         .def_rw("landmark_novelty_graph", &iw::Options::landmark_novelty_graph)
         .def_rw("landmark_novelty_table_options", &iw::Options::landmark_novelty_table_options)
+        .def_rw("landmark_novelty_disjunctive", &iw::Options::landmark_novelty_disjunctive)
+        .def_rw("landmark_novelty_unshared_atoms", &iw::Options::landmark_novelty_unshared_atoms)
         // `control` is deliberately not exposed: it is a raw pointer to state shared with other
         // native searches, which has no meaning from Python.
         .def_rw("max_time_in_ms", &iw::Options::max_time_in_ms)

@@ -565,8 +565,10 @@ void ArityKNoveltyPruningStrategyImpl::on_end_beam_replay(BeamNoveltyMode beam_n
 LandmarkNoveltyPruningStrategyImpl::LandmarkNoveltyPruningStrategyImpl(const landmarks::FactLandmarkGraph& landmarks,
                                                                        size_t arity,
                                                                        size_t num_atoms,
-                                                                       LandmarkNoveltyTableOptions table_options) :
+                                                                       LandmarkNoveltyTableOptions table_options,
+                                                                       LandmarkGrouping grouping) :
     m_novelty_table(landmarks ? AtomIndexList(landmarks->get_landmark_atom_indices().begin(), landmarks->get_landmark_atom_indices().end()) : AtomIndexList {},
+                    std::move(grouping),
                     arity,
                     num_atoms,
                     table_options)
@@ -576,9 +578,26 @@ LandmarkNoveltyPruningStrategyImpl::LandmarkNoveltyPruningStrategyImpl(const lan
 PruningStrategy LandmarkNoveltyPruningStrategyImpl::create(const landmarks::FactLandmarkGraph& landmarks,
                                                            size_t arity,
                                                            size_t num_atoms,
-                                                           LandmarkNoveltyTableOptions table_options)
+                                                           LandmarkNoveltyTableOptions table_options,
+                                                           LandmarkGrouping grouping)
 {
-    return std::make_shared<LandmarkNoveltyPruningStrategyImpl>(landmarks, arity, num_atoms, table_options);
+    return std::make_shared<LandmarkNoveltyPruningStrategyImpl>(landmarks, arity, num_atoms, table_options, std::move(grouping));
+}
+
+LandmarkGrouping
+LandmarkNoveltyPruningStrategyImpl::make_grouping(const landmarks::FactLandmarkGraph& landmarks, bool disjunctive, const IndexSet& unshared_atom_indices)
+{
+    auto grouping = LandmarkGrouping {};
+    if (!disjunctive || !landmarks)
+    {
+        return grouping;  // one row per fact landmark, exactly as before disjunctive landmarks
+    }
+    for (const auto& members : landmarks->get_disjunctive_landmarks())
+    {
+        grouping.disjunctive_landmarks.emplace_back(members.begin(), members.end());
+    }
+    grouping.unshared_atom_indices = unshared_atom_indices;
+    return grouping;
 }
 
 bool LandmarkNoveltyPruningStrategyImpl::test_prune_initial_state(const State& state) { return !m_novelty_table.test_novelty_and_update_table(state); }

@@ -189,15 +189,24 @@ private:
     LandmarkNoveltyTable& mutable_novelty_table() const { return const_cast<LandmarkNoveltyTable&>(m_novelty_table); }
 
 public:
+    /// @param grouping which landmark atoms share a novelty row, and which are exempt; see
+    /// `LandmarkGrouping`. Default-constructed keeps one row per fact landmark, the behaviour that
+    /// predates disjunctive landmarks.
     LandmarkNoveltyPruningStrategyImpl(const landmarks::FactLandmarkGraph& landmarks,
                                        size_t arity,
                                        size_t num_atoms,
-                                       LandmarkNoveltyTableOptions table_options = {});
+                                       LandmarkNoveltyTableOptions table_options = {},
+                                       LandmarkGrouping grouping = {});
 
     static PruningStrategy create(const landmarks::FactLandmarkGraph& landmarks,
                                   size_t arity,
                                   size_t num_atoms,
-                                  LandmarkNoveltyTableOptions table_options = {});
+                                  LandmarkNoveltyTableOptions table_options = {},
+                                  LandmarkGrouping grouping = {});
+
+    /// @brief The grouping a graph and `iw::Options` imply: the graph's disjunctive landmarks when
+    /// `disjunctive` is set, minus `unshared_atom_indices`, and nothing otherwise.
+    static LandmarkGrouping make_grouping(const landmarks::FactLandmarkGraph& landmarks, bool disjunctive, const IndexSet& unshared_atom_indices);
 
     bool test_prune_initial_state(const State& state) override;
     bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;

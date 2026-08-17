@@ -134,6 +134,12 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
                                     "for atom-level novelty, and cannot be combined with landmark_novelty_graph.");
     }
 
+    /* Built once for the whole ladder: the grouping depends on the graph and the caller's subgoal,
+       neither of which changes between arity passes, and every pass would otherwise re-copy the
+       graph's disjunctive landmarks. */
+    const auto landmark_grouping =
+        LandmarkNoveltyPruningStrategyImpl::make_grouping(options.landmark_novelty_graph, options.landmark_novelty_disjunctive, options.landmark_novelty_unshared_atoms);
+
     iw_event_handler->on_start_search(start_state);
 
     /* Every path out of here from now on owes the handler its end-of-search report. */
@@ -233,7 +239,8 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
                              LandmarkNoveltyPruningStrategyImpl::create(options.landmark_novelty_graph,
                                                                         cur_arity,
                                                                         ground_fluent_atom_repository.size(),
-                                                                        options.landmark_novelty_table_options) :
+                                                                        options.landmark_novelty_table_options,
+                                                                        landmark_grouping) :
                              ArityKNoveltyPruningStrategyImpl::create(cur_arity,
                                                             ground_fluent_atom_repository.size(),
                                                             optimize_iw1_root_actions && (cur_arity == 1));
