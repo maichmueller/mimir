@@ -13,7 +13,7 @@ jobs:
         # "i686" (32-bit x86), "ppc64le" (PowerPC), "s390x" (IBM Z), "armv7l" (32-bit ARM)
         # The user can still build Mimir locally if they need it.
         architecture: ["x86_64"]  # TODO: Add "aarch64"
-        python-version: ["cp38", "cp39", "cp310", "cp311", "cp312", "cp313"]
+        python-version: ["cp39", "cp310", "cp311", "cp312", "cp313"]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
 
@@ -21,14 +21,14 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v7
       with:
         ref: main
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v7
       with:
-        python-version: "3.11"  # Use a fixed version for the setup step
+        python-version: "3.12"  # Use a fixed version for the setup step
 
     - name: Install dependencies
       run: |
