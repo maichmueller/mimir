@@ -236,6 +236,31 @@ void LandmarkCoordinates::build(std::vector<AtomIndexList> groups)
 
     m_scratch_state_mask.assign(get_rank_mask_words(), uint64_t(0));
     m_scratch_succ_mask.assign(get_rank_mask_words(), uint64_t(0));
+    if (m_has_shared_ranks)
+    {
+        m_scratch_rank_delta.assign(get_num_ranks(), RankDeltaScratch {});
+    }
+}
+
+void LandmarkCoordinates::begin_rank_scratch() const
+{
+    if (++m_scratch_generation == 0)
+    {
+        /* Wrapped, so every stale entry would now read as belonging to this query. The only point
+           at which the scratch is cleared, once per 2^32 queries. */
+        std::fill(m_scratch_rank_delta.begin(), m_scratch_rank_delta.end(), RankDeltaScratch {});
+        m_scratch_generation = 1;
+    }
+}
+
+LandmarkCoordinates::RankDeltaScratch& LandmarkCoordinates::touch_rank_scratch(uint32_t rank) const
+{
+    auto& entry = m_scratch_rank_delta[rank];
+    if (entry.generation != m_scratch_generation)
+    {
+        entry = RankDeltaScratch { m_scratch_generation, 0, false, false };
+    }
+    return entry;
 }
 
 std::span<const uint32_t> LandmarkCoordinates::get_ranks(AtomIndex atom_index) const
@@ -459,16 +484,26 @@ void LandmarkCoordinates::collect_transition_from_delta(const AtomIndexList& tru
         /* Shared ranks decouple a rank's fate from any one carrier: adding a member does not flip a
            rank a sibling already holds up, and deleting one does not take a rank off while another
            survives. `true_rank_carrier_counts` answers both, and is per state -- the caller
-           computes it once and reuses it across every action of that state. */
-        auto added_ranks = absl::flat_hash_set<uint32_t> {};
+           computes it once and reuses it across every action of that state.
+
+           The scratch is what keeps this branch a delta query. Sharing needs two per-rank facts
+           the bijective branch gets for free -- whether an added atom already covered this rank,
+           and how many of its carriers the action deletes -- and both are read again while
+           walking a different list. Stamping them into a rank-indexed array touches only the
+           ranks the delta mentions, where a hash map would allocate per query and a scan over
+           `get_num_ranks()` would charge the whole rank universe to every action. */
+        begin_rank_scratch();
+
         for (const auto atom_index : add_atom_indices)
         {
             for (const auto rank : get_ranks(atom_index))
             {
-                if (!added_ranks.insert(rank).second)
+                auto& entry = touch_rank_scratch(rank);
+                if (entry.added)
                 {
                     continue;
                 }
+                entry.added = true;
                 if (true_rank_carrier_counts[rank] == 0)
                 {
                     out_flipped_ranks.push_back(rank);
@@ -476,28 +511,35 @@ void LandmarkCoordinates::collect_transition_from_delta(const AtomIndexList& tru
             }
         }
 
-        /* A rank the predecessor held survives when it has a carrier left in the successor: one the
-           action does not delete, or one the action adds. Missing that second case would drop the
-           rank from BOTH halves and silently under-mark the transition. */
-        auto deleted_carriers = absl::flat_hash_map<uint32_t, uint32_t> {};
         for (const auto atom_index : del_atom_indices)
         {
             for (const auto rank : get_ranks(atom_index))
             {
-                ++deleted_carriers[rank];
+                ++touch_rank_scratch(rank).num_deleted_carriers;
             }
         }
-        for (uint32_t rank = 0; rank < get_num_ranks(); ++rank)
+
+        /* A rank the predecessor held survives when it has a carrier left in the successor: one the
+           action does not delete, or one the action adds. Missing that second case would drop the
+           rank from BOTH halves and silently under-mark the transition.
+
+           The candidates are exactly the ranks `L(state)` carries, so this walks the true landmark
+           atoms like the bijective branch above rather than the rank universe; `emitted` is what
+           collapses the several true carriers of one shared rank back to one entry. */
+        for (const auto atom_index : true_landmark_atom_indices)
         {
-            if (true_rank_carrier_counts[rank] == 0)
+            for (const auto rank : get_ranks(atom_index))
             {
-                continue;  // not a coordinate of the predecessor, so it cannot be kept
-            }
-            const auto it = deleted_carriers.find(rank);
-            const auto num_deleted = (it == deleted_carriers.end()) ? uint32_t(0) : it->second;
-            if (true_rank_carrier_counts[rank] > num_deleted || added_ranks.contains(rank))
-            {
-                out_kept_ranks.push_back(rank);
+                auto& entry = touch_rank_scratch(rank);
+                if (entry.emitted)
+                {
+                    continue;
+                }
+                entry.emitted = true;
+                if ((true_rank_carrier_counts[rank] > entry.num_deleted_carriers) || entry.added)
+                {
+                    out_kept_ranks.push_back(rank);
+                }
             }
         }
     }
@@ -583,18 +625,24 @@ void LandmarkCoordinates::collect_transition_masks_from_delta(const std::vector<
     {
         /* A shared rank goes off only when its LAST true carrier is deleted; clearing the bit per
            deleted atom would drop ranks a sibling still holds up, which under-marks and quietly
-           weakens the pruning rather than failing loudly. */
-        auto deleted_carriers = absl::flat_hash_map<uint32_t, uint32_t> {};
+           weakens the pruning rather than failing loudly. Counted into the stamped rank scratch
+           and revisited through the touched list, so the deletes still cost `O(|del|)` and the
+           query stays a delta query. */
+        begin_rank_scratch();
+        m_scratch_touched_ranks.clear();
         for (const auto atom_index : del_atom_indices)
         {
             for (const auto rank : get_ranks(atom_index))
             {
-                ++deleted_carriers[rank];
+                if (touch_rank_scratch(rank).num_deleted_carriers++ == 0)
+                {
+                    m_scratch_touched_ranks.push_back(rank);
+                }
             }
         }
-        for (const auto& [rank, num_deleted] : deleted_carriers)
+        for (const auto rank : m_scratch_touched_ranks)
         {
-            if (true_rank_carrier_counts[rank] <= num_deleted)
+            if (true_rank_carrier_counts[rank] <= m_scratch_rank_delta[rank].num_deleted_carriers)
             {
                 out_kept_mask[rank >> 6] &= ~(uint64_t(1) << (rank & 63));
             }

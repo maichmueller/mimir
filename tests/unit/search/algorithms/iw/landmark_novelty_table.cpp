@@ -34,7 +34,9 @@
 #include "mimir/search/state_repository.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <deque>
+#include <limits>
 #include <gtest/gtest.h>
 #include <unordered_set>
 #include <vector>
@@ -1145,4 +1147,70 @@ TEST(MimirTests, SearchAlgorithmsLandmarkNoveltySharingPrunesAtLeastAsHard)
     EXPECT_LE(num_admitted_shared, num_admitted_unshared);
 }
 
+}
+
+TEST(MimirTests, SearchAlgorithmsLandmarkNoveltySharedRanksDeltaDoesNotScaleWithRankCount)
+{
+    /* The delta query exists so that the per-action cost tracks the action's delta and `L(s)`,
+       never the rank universe -- which is the whole point of caching `L(s)` per state. Sharing
+       needs per-rank bookkeeping the bijective path does not, and the obvious way to write it is a
+       sweep over all ranks: correct, and quietly `O(#landmarks)` per action instead of
+       `O(|L(s)|)`. Nothing else in the suite would notice, since the answers are identical.
+
+       So this pins the cost rather than the answer. It compares the same query -- same `|L(s)|`,
+       same delta, same sharing -- against two rank universes two orders of magnitude apart, and
+       takes the best of several runs because a slow run is noise while a fast one cannot be. A
+       sweep costs ~40x here; the bound is 8x, loose enough for a loaded machine and still nowhere
+       near a linear scan. */
+    constexpr auto num_true = size_t(20);
+    constexpr auto num_queries = size_t(20000);
+    constexpr auto num_repetitions = size_t(5);
+
+    const auto best_us_per_query = [](size_t num_atoms)
+    {
+        auto groups = std::vector<iw::AtomIndexList> {};
+        for (size_t i = 0; i + 1 < num_atoms; i += 2)
+        {
+            groups.push_back(iw::AtomIndexList { static_cast<iw::AtomIndex>(i), static_cast<iw::AtomIndex>(i + 1) });
+        }
+        const auto coordinates = iw::LandmarkCoordinates(iw::AtomIndexList {}, groups, {});
+        EXPECT_TRUE(coordinates.has_shared_ranks());
+
+        /* True landmarks and delta are fixed across both universes, so the only thing that varies
+           is how many ranks the query could be tempted to look at. */
+        auto true_atoms = iw::AtomIndexList {};
+        for (size_t i = 0; i < num_true; ++i)
+        {
+            true_atoms.push_back(static_cast<iw::AtomIndex>(i * 2));
+        }
+        auto carrier_counts = std::vector<uint32_t> {};
+        coordinates.collect_rank_carrier_counts(true_atoms, carrier_counts);
+
+        const auto add_atom_indices = iw::AtomIndexList { iw::AtomIndex(51), iw::AtomIndex(53) };
+        const auto del_atom_indices = iw::AtomIndexList { iw::AtomIndex(0) };
+
+        auto flipped = std::vector<uint32_t> {};
+        auto kept = std::vector<uint32_t> {};
+        auto best = std::numeric_limits<double>::max();
+        for (size_t repetition = 0; repetition < num_repetitions; ++repetition)
+        {
+            const auto start = std::chrono::steady_clock::now();
+            for (size_t query = 0; query < num_queries; ++query)
+            {
+                coordinates.collect_transition_from_delta(true_atoms, carrier_counts, add_atom_indices, del_atom_indices, flipped, kept);
+            }
+            const auto elapsed = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - start).count();
+            best = std::min(best, elapsed / num_queries);
+        }
+
+        /* Same answer in both universes, or the comparison is between two different queries. */
+        EXPECT_EQ(kept.size(), num_true - 1);
+        EXPECT_EQ(flipped.size(), 2u);
+        return best;
+    };
+
+    const auto small_us = best_us_per_query(100);
+    const auto large_us = best_us_per_query(20000);
+    EXPECT_LT(large_us, 8.0 * small_us) << "the shared-rank delta query scales with the number of ranks (" << small_us << " us at 50 ranks vs "
+                                        << large_us << " us at 10000): it is scanning the rank universe instead of the delta";
 }

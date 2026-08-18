@@ -127,8 +127,10 @@ public:
     ///
     /// Takes `L(state)` rather than the state because it is per-state, not per-action, while the
     /// caller loops over the actions of one state. Costs `|add| + |del| + |L(state)|` and never
-    /// scans `L`: only landmarks the action touches can flip, and `BOT` flips on exactly when the
-    /// action deletes every landmark that was true and adds none.
+    /// scans the rank universe: only landmarks the action touches can flip, only ranks `L(state)`
+    /// carries can be kept, and `BOT` flips on exactly when the action deletes every landmark that
+    /// was true and adds none. Sharing does not change that bound -- it only makes an atom
+    /// contribute its rank *list* rather than one rank.
     ///
     /// @param true_rank_carrier_counts `collect_rank_carrier_counts(L(state))`, and read only when
     /// `has_shared_ranks()`. A shared rank goes off when its *last* true carrier is deleted, not
@@ -167,8 +169,29 @@ public:
                                              std::vector<uint64_t>& out_kept_mask) const;
 
 private:
+    /// @brief Per-rank working storage for one shared-rank delta query.
+    ///
+    /// Generation-stamped rather than cleared: an entry whose `generation` predates the current
+    /// query reads as empty, so a query touches only the ranks its delta mentions and neither
+    /// allocates nor pays for the ranks it does not. This is what keeps the shared path's cost
+    /// proportional to `|add| + |del| + |L(s)|` like the bijective one, instead of to the number
+    /// of ranks -- the two differ by however many landmarks are false in the state, which on the
+    /// instances disjunctive landmarks are for is most of them.
+    struct RankDeltaScratch
+    {
+        uint32_t generation = 0;
+        uint32_t num_deleted_carriers = 0;
+        bool added = false;
+        bool emitted = false;
+    };
+
     /// @brief Build the rank index from `groups`, each of which is one rank.
     void build(std::vector<AtomIndexList> groups);
+
+    /// @brief Invalidate the rank scratch of the previous query, in O(1) except on wraparound.
+    void begin_rank_scratch() const;
+    /// @brief The scratch entry of `rank`, zeroed if this query has not touched it yet.
+    RankDeltaScratch& touch_rank_scratch(uint32_t rank) const;
 
     AtomIndexList m_landmark_atom_indices;
     size_t m_num_groups = 0;
@@ -186,6 +209,12 @@ private:
        `LandmarkNoveltyTable`'s scratch is: one table serves one search on one thread. */
     mutable std::vector<uint64_t> m_scratch_state_mask;
     mutable std::vector<uint64_t> m_scratch_succ_mask;
+
+    /* Rank scratch for the delta queries under sharing; empty and untouched without it. The
+       generation counter belongs to the whole array, so invalidating it is one increment. */
+    mutable std::vector<RankDeltaScratch> m_scratch_rank_delta;
+    mutable std::vector<uint32_t> m_scratch_touched_ranks;
+    mutable uint32_t m_scratch_generation = 0;
 };
 
 /// @brief Packed `(landmark rank, free tuple index)` key used by the sparse table layouts. The rank
