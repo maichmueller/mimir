@@ -30,6 +30,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <functional>
 #include <optional>
 #include <tuple>
 #include <unordered_set>
@@ -223,6 +224,26 @@ public:
     const LandmarkNoveltyTable& get_novelty_table() const;
 };
 
+/// @brief Abstracted IW(k), optionally *landmark-restricted*: abstracted LIW(k).
+///
+/// Passing a landmark graph pairs every abstracted feature tuple with a landmark coordinate,
+/// exactly as `LandmarkNoveltyPruningStrategyImpl` pairs a free atom tuple with one. The two
+/// widenings are orthogonal and compose: abstraction changes what a *tuple* is (object identities
+/// in non-preserved slots become type signatures), while the landmark coordinate changes what a
+/// tuple is *indexed by*. Their combination expresses what neither can alone -- a conjunction that
+/// is width 2 over identities and still width 2 over abstracted features becomes width 1 once an
+/// intermediate landmark ranks it.
+///
+/// Implemented as one novelty table per landmark rank, so with no graph there is exactly one table
+/// and every path below is the pre-landmark one. The split a transition induces is LIW's, and for
+/// LIW's reason (see `LandmarkCoordinates::collect_transition`): a rank that flipped on pairs with
+/// EVERY tuple of the successor, a rank that was already true only with tuples containing an added
+/// atom.
+///
+/// Beam novelty modes are unsupported while a landmark graph is attached. Their staged entry
+/// points are handed a raw successor bitset rather than a `State`, and a landmark coordinate over a
+/// staged bitset is a different query than the one `LandmarkCoordinates` answers; claiming support
+/// would silently score the beam under the wrong feature family.
 class AbstractedNoveltyPruningStrategyImpl : public IPruningStrategy
 {
     friend class astar_iw_friend::AbstractedMinimumGNoveltyTable;
@@ -345,7 +366,63 @@ private:
     absl::flat_hash_set<AtomIndex> m_goal_fluent_atom_indices;
     absl::flat_hash_set<Index> m_skip_depth_one_expansion_state_indices;
     absl::flat_hash_set<AtomIndexList, AtomIndexListHash> m_skip_depth_one_expansion_fluent_atom_indices_fallback;
-    mutable NoveltyTables m_tables;
+
+    /* One `NoveltyTables` per landmark rank. Without a landmark graph the vector holds exactly one
+       entry, `m_active_tables` never moves off it, and every query below is the pre-landmark one --
+       which is what keeps abstracted IW(k) byte-identical. A `NoveltyTables` starts empty and grows
+       lazily, so ranks the search never reaches cost a header each. */
+    mutable std::vector<NoveltyTables> m_tables_by_rank;
+    mutable NoveltyTables* m_active_tables;
+    std::optional<LandmarkCoordinates> m_landmark_coordinates;
+
+    /* Rank scratch, reused across queries for the same reason the tuple scratch is. */
+    mutable std::vector<uint32_t> m_scratch_ranks;
+    mutable std::vector<uint32_t> m_scratch_flipped_ranks;
+    mutable std::vector<uint32_t> m_scratch_kept_ranks;
+    mutable AtomIndexList m_scratch_true_landmark_atoms;
+    mutable std::vector<uint32_t> m_scratch_rank_carrier_counts;
+    /* `L(state)` is per state while the precheck is per action, so the two above are cached for
+       the state the caller is currently looping the actions of. */
+    mutable std::optional<Index> m_delta_query_state_index;
+    /* Whether a rank's tables have had their dense singleton row reserved. Deferred to first use:
+       reserving eagerly would cost `num_ranks x num_features` bytes for ranks the search never
+       reaches, and most ranks of a large landmark graph are never reached. */
+    mutable std::vector<uint8_t> m_rank_reserved;
+
+    /// @brief Whether an attached landmark graph makes this abstracted LIW(k) rather than IW(k).
+    bool has_landmark_coordinate() const { return m_landmark_coordinates.has_value(); }
+    /// @brief The tables of the rank currently being queried.
+    NoveltyTables& tables() const { return *m_active_tables; }
+    /// @brief Point `tables()` at `rank`.
+    void activate_rank(uint32_t rank) const;
+    /// @brief Run `query` once per rank in `ranks`, ORing the results WITHOUT short-circuiting.
+    ///
+    /// Not short-circuiting is the point for the updating variants: every rank the transition
+    /// exposes has to be recorded, or a later state re-derives it as novel.
+    template<typename Query>
+    bool for_each_rank(const std::vector<uint32_t>& ranks, Query&& query) const
+    {
+        auto any = false;
+        for (const auto rank : ranks)
+        {
+            activate_rank(rank);
+            any = query() || any;
+        }
+        return any;
+    }
+    /// @brief `collect_transition` for this strategy: the ranks of a transition, split.
+    void collect_transition_ranks(const State& state, const State& succ_state) const;
+    /// @brief Refresh the per-state landmark caches the delta precheck reads.
+    void refresh_delta_query_state(const State& state) const;
+    /// @brief `test_transition_novelty_and_update_table` under a landmark coordinate.
+    bool test_landmark_transition_novelty_and_update_table(const State& state, const State& succ_state);
+    /// @brief The width-1 lane of a landmark-restricted transition.
+    ///
+    /// One pass over the successor's atoms with the ranks on the inside, rather than one pass per
+    /// rank: an atom's abstracted features are fetched once and probed against every rank that
+    /// wants them. Which ranks want them is the LIW split -- a flipped rank takes every atom, a
+    /// kept rank only the added ones.
+    bool test_landmark_transition_width_one(const State& state, const State& succ_state, bool update);
 
     void precompute_goal_atom_indices();
     void precompute_atom_features();
@@ -383,22 +460,38 @@ public:
     /// Abstracted IW(k) replaces object identities in non-preserved argument slots by
     /// either their type signature (AIW) or a universal type (BAIW). Positive goal atoms
     /// can be kept as full identity atoms to match the paper-faithful goal-detection rule.
+    /// @param landmarks attach to run abstracted LIW(k) instead of abstracted IW(k); null (the
+    /// default) keeps one novelty table and the pre-landmark behaviour exactly.
+    /// @param grouping which landmark atoms share a novelty row; see `LandmarkGrouping`. Ignored
+    /// without `landmarks`.
     explicit AbstractedNoveltyPruningStrategyImpl(formalism::Problem problem,
                                                   size_t width = 1,
                                                   bool base_abstracted = false,
                                                   bool preserve_goal_atoms = true,
-                                                  bool keep_depth_one_novel = false);
+                                                  bool keep_depth_one_novel = false,
+                                                  landmarks::FactLandmarkGraph landmarks = nullptr,
+                                                  LandmarkGrouping grouping = {});
 
     static PruningStrategy create(formalism::Problem problem,
                                   size_t width = 1,
                                   bool base_abstracted = false,
                                   bool preserve_goal_atoms = true,
-                                  bool keep_depth_one_novel = false);
+                                  bool keep_depth_one_novel = false,
+                                  landmarks::FactLandmarkGraph landmarks = nullptr,
+                                  LandmarkGrouping grouping = {});
+
+    /// @brief Whether this instance pairs abstracted tuples with a landmark coordinate.
+    bool is_landmark_restricted() const { return m_landmark_coordinates.has_value(); }
+    /// @brief Number of landmark ranks, i.e. 1 without a landmark graph.
+    size_t get_num_landmark_ranks() const { return m_tables_by_rank.size(); }
 
     bool test_prune_initial_state(const State& state) override;
     bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;
     bool supports_action_add_effect_precheck() const override;
     bool should_bypass_action_add_effect_precheck(const State& state) const override;
+    /// @brief True under a landmark coordinate: a rank can disappear as well as appear, so the
+    /// precheck cannot decide the successor's coordinates from the adds alone.
+    bool precheck_requires_delete_effects() const override;
     bool test_transition_novelty_from_add_effects(const State& state,
                                                   const AtomIndexList& add_fluent_atom_indices,
                                                   const AtomIndexList& del_fluent_atom_indices) const override;

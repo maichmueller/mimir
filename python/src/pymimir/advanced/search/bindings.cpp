@@ -1029,19 +1029,26 @@ void bind_module_definitions(nb::module_& m)
 
 
     nb::class_<iw::AbstractedNoveltyPruningStrategyImpl, IPruningStrategy>(m, "AbstractedNoveltyPruningStrategy")  //
-        .def(nb::init<Problem, size_t, bool, bool, bool>(),
+        .def(nb::init<Problem, size_t, bool, bool, bool, landmarks::FactLandmarkGraph, iw::LandmarkGrouping>(),
              "problem"_a,
              "width"_a = 1,
              "base_abstracted"_a = false,
              "preserve_goal_atoms"_a = true,
-             "keep_depth_one_novel"_a = false)
+             "keep_depth_one_novel"_a = false,
+             "landmarks"_a = landmarks::FactLandmarkGraph(nullptr),
+             "grouping"_a = iw::LandmarkGrouping())
         .def_static("create",
                     &iw::AbstractedNoveltyPruningStrategyImpl::create,
                     "problem"_a,
                     "width"_a = 1,
                     "base_abstracted"_a = false,
                     "preserve_goal_atoms"_a = true,
-                    "keep_depth_one_novel"_a = false);
+                    "keep_depth_one_novel"_a = false,
+                    "landmarks"_a = landmarks::FactLandmarkGraph(nullptr),
+                    "grouping"_a = iw::LandmarkGrouping())
+        // Abstracted LIW(k) rather than abstracted IW(k), and how many landmark ranks it carries.
+        .def_prop_ro("is_landmark_restricted", &iw::AbstractedNoveltyPruningStrategyImpl::is_landmark_restricted)
+        .def_prop_ro("num_landmark_ranks", &iw::AbstractedNoveltyPruningStrategyImpl::get_num_landmark_ranks);
 
     // TransitionOrderingStrategy
     //

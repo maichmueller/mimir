@@ -47,6 +47,7 @@ add_gtest(search_iw_test                                   "search/algorithms/iw
 add_gtest(search_iw_landmark_novelty_table_test            "search/algorithms/iw/landmark_novelty_table.cpp")
 add_gtest(search_iw_landmark_novelty_test                  "search/algorithms/iw/landmark_novelty.cpp")
 add_gtest(search_iw_landmark_novelty_precheck_test         "search/algorithms/iw/landmark_novelty_precheck.cpp")
+add_gtest(search_iw_abstracted_landmark_novelty_test       "search/algorithms/iw/abstracted_landmark_novelty.cpp")
 add_gtest(search_observation_test                          "search/algorithms/search_observation.cpp")
 add_gtest(search_rich_observation_test                     "search/algorithms/rich_observation.cpp")
 add_gtest(search_landmarks_fact_landmarks_test              "search/landmarks/fact_landmarks.cpp")

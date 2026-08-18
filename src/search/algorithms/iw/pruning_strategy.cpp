@@ -858,7 +858,9 @@ AbstractedNoveltyPruningStrategyImpl::AbstractedNoveltyPruningStrategyImpl(forma
                                                                            size_t width,
                                                                            bool base_abstracted,
                                                                            bool preserve_goal_atoms,
-                                                                           bool keep_depth_one_novel) :
+                                                                           bool keep_depth_one_novel,
+                                                                           landmarks::FactLandmarkGraph landmarks,
+                                                                           LandmarkGrouping grouping) :
     m_problem(std::move(problem)),
     m_width(width),
     m_base_abstracted(base_abstracted),
@@ -870,23 +872,81 @@ AbstractedNoveltyPruningStrategyImpl::AbstractedNoveltyPruningStrategyImpl(forma
     m_goal_fluent_atom_indices(),
     m_skip_depth_one_expansion_state_indices(),
     m_skip_depth_one_expansion_fluent_atom_indices_fallback(),
-    m_tables(width)
+    m_tables_by_rank(),
+    m_active_tables(nullptr),
+    m_landmark_coordinates(std::nullopt)
 {
     if (m_width < 1 || m_width > 3)
     {
         throw std::invalid_argument("AbstractedNoveltyPruningStrategyImpl: width must be in {1, 2, 3}.");
     }
+
+    if (landmarks)
+    {
+        /* Abstracted LIW(k). The coordinate is built exactly as the non-abstracted strategy builds
+           it -- same atoms, same grouping -- because the landmark half of the feature is the same
+           question; only the tuple half is abstracted. */
+        auto landmark_atom_indices = AtomIndexList(landmarks->get_landmark_atom_indices().begin(), landmarks->get_landmark_atom_indices().end());
+        m_landmark_coordinates.emplace(std::move(landmark_atom_indices), grouping.disjunctive_landmarks, grouping.unshared_atom_indices);
+        m_tables_by_rank.reserve(m_landmark_coordinates->get_num_ranks());
+        for (size_t rank = 0; rank < m_landmark_coordinates->get_num_ranks(); ++rank)
+        {
+            m_tables_by_rank.emplace_back(width);
+        }
+        m_rank_reserved.assign(m_tables_by_rank.size(), 0);
+    }
+    else
+    {
+        m_tables_by_rank.emplace_back(width);
+        m_rank_reserved.assign(1, 0);
+    }
+    m_active_tables = &m_tables_by_rank.front();
+
     precompute_goal_atom_indices();
     precompute_atom_features();
+}
+
+void AbstractedNoveltyPruningStrategyImpl::activate_rank(uint32_t rank) const
+{
+    m_active_tables = &m_tables_by_rank[rank];
+    if (m_width == 1 && !m_rank_reserved[rank])
+    {
+        m_rank_reserved[rank] = 1;
+        m_active_tables->reserve_singletons(m_feature_ids.size());
+    }
+}
+
+void AbstractedNoveltyPruningStrategyImpl::collect_transition_ranks(const State& state, const State& succ_state) const
+{
+    m_landmark_coordinates->collect_transition(state, succ_state, m_scratch_flipped_ranks, m_scratch_kept_ranks);
+}
+
+void AbstractedNoveltyPruningStrategyImpl::refresh_delta_query_state(const State& state) const
+{
+    if (m_delta_query_state_index.has_value() && (*m_delta_query_state_index == state.get_index()))
+    {
+        return;
+    }
+    m_landmark_coordinates->collect_true_landmark_atoms(state, m_scratch_true_landmark_atoms);
+    m_landmark_coordinates->collect_rank_carrier_counts(m_scratch_true_landmark_atoms, m_scratch_rank_carrier_counts);
+    m_delta_query_state_index = state.get_index();
 }
 
 PruningStrategy AbstractedNoveltyPruningStrategyImpl::create(formalism::Problem problem,
                                                              size_t width,
                                                              bool base_abstracted,
                                                              bool preserve_goal_atoms,
-                                                             bool keep_depth_one_novel)
+                                                             bool keep_depth_one_novel,
+                                                             landmarks::FactLandmarkGraph landmarks,
+                                                             LandmarkGrouping grouping)
 {
-    return std::make_shared<AbstractedNoveltyPruningStrategyImpl>(std::move(problem), width, base_abstracted, preserve_goal_atoms, keep_depth_one_novel);
+    return std::make_shared<AbstractedNoveltyPruningStrategyImpl>(std::move(problem),
+                                                                  width,
+                                                                  base_abstracted,
+                                                                  preserve_goal_atoms,
+                                                                  keep_depth_one_novel,
+                                                                  std::move(landmarks),
+                                                                  std::move(grouping));
 }
 
 void AbstractedNoveltyPruningStrategyImpl::precompute_goal_atom_indices()
@@ -923,7 +983,10 @@ void AbstractedNoveltyPruningStrategyImpl::precompute_atom_features()
     }
     if (m_width == 1)
     {
-        m_tables.reserve_singletons(m_feature_ids.size());
+        /* Rank 0 only. `activate_rank` reserves the others on first use, so a landmark graph whose
+           ranks the search never reaches does not pay `num_ranks x num_features` bytes for them. */
+        m_rank_reserved[0] = 1;
+        m_tables_by_rank.front().reserve_singletons(m_feature_ids.size());
     }
 }
 
@@ -1096,7 +1159,7 @@ bool AbstractedNoveltyPruningStrategyImpl::test_atom_novelty(AtomIndex atom_inde
 {
     for (const auto feature : get_atom_features(atom_index))
     {
-        if (!m_tables.contains_single(feature))
+        if (!tables().contains_single(feature))
         {
             return true;
         }
@@ -1109,7 +1172,7 @@ bool AbstractedNoveltyPruningStrategyImpl::test_atom_novelty_and_update_table(At
     auto is_novel = false;
     for (const auto feature : get_atom_features(atom_index))
     {
-        if (m_tables.insert_single(feature))
+        if (tables().insert_single(feature))
         {
             is_novel = true;
         }
@@ -1122,7 +1185,7 @@ bool AbstractedNoveltyPruningStrategyImpl::test_atom_novelty_and_update_delta(At
     auto is_novel = false;
     for (const auto feature : get_atom_features(atom_index))
     {
-        if (!m_tables.contains_single(feature) && m_tables.insert_delta_single(feature))
+        if (!tables().contains_single(feature) && tables().insert_delta_single(feature))
         {
             is_novel = true;
         }
@@ -1488,15 +1551,15 @@ void AbstractedNoveltyPruningStrategyImpl::insert_tuples(const GeneratedTuples& 
 {
     for (const auto feature : tuples.m_singles)
     {
-        m_tables.insert_single(feature);
+        tables().insert_single(feature);
     }
     for (const auto pair : tuples.m_pairs)
     {
-        m_tables.insert_pair(pair);
+        tables().insert_pair(pair);
     }
     for (const auto triple : tuples.m_triples)
     {
-        m_tables.insert_triple(triple);
+        tables().insert_triple(triple);
     }
 }
 
@@ -1504,31 +1567,31 @@ void AbstractedNoveltyPruningStrategyImpl::insert_delta_tuples(const GeneratedTu
 {
     for (const auto feature : tuples.m_singles)
     {
-        m_tables.insert_delta_single(feature);
+        tables().insert_delta_single(feature);
     }
     for (const auto pair : tuples.m_pairs)
     {
-        m_tables.insert_delta_pair(pair);
+        tables().insert_delta_pair(pair);
     }
     for (const auto triple : tuples.m_triples)
     {
-        m_tables.insert_delta_triple(triple);
+        tables().insert_delta_triple(triple);
     }
 }
 
 bool AbstractedNoveltyPruningStrategyImpl::is_single_novel(FeatureId feature, bool use_delta) const
 {
-    return use_delta ? !m_tables.contains_single_or_delta(feature) : !m_tables.contains_single(feature);
+    return use_delta ? !tables().contains_single_or_delta(feature) : !tables().contains_single(feature);
 }
 
 bool AbstractedNoveltyPruningStrategyImpl::is_pair_novel(PairKey pair, bool use_delta) const
 {
-    return use_delta ? !m_tables.contains_pair_or_delta(pair) : !m_tables.contains_pair(pair);
+    return use_delta ? !tables().contains_pair_or_delta(pair) : !tables().contains_pair(pair);
 }
 
 bool AbstractedNoveltyPruningStrategyImpl::is_triple_novel(TripleKey triple, bool use_delta) const
 {
-    return use_delta ? !m_tables.contains_triple_or_delta(triple) : !m_tables.contains_triple(triple);
+    return use_delta ? !tables().contains_triple_or_delta(triple) : !tables().contains_triple(triple);
 }
 
 bool AbstractedNoveltyPruningStrategyImpl::maybe_prune_depth_one_successor(const State& state, const State& succ_state, bool is_novel)
@@ -1559,11 +1622,73 @@ bool AbstractedNoveltyPruningStrategyImpl::maybe_prune_staged_depth_one_successo
     return !is_novel;
 }
 
+bool AbstractedNoveltyPruningStrategyImpl::test_landmark_transition_width_one(const State& state, const State& succ_state, bool update)
+{
+    const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
+    auto is_novel = false;
+
+    for (const auto atom_index : succ_state.get_atoms<FluentTag>())
+    {
+        const auto& features = get_atom_features(atom_index);
+        if (features.empty())
+        {
+            continue;
+        }
+        const auto is_added = !state_fluent_atoms.get(atom_index);
+
+        /* A flipped rank pairs with EVERY tuple of the successor, so every atom is offered to it;
+           a kept rank only with tuples containing an added atom. */
+        const auto probe = [&](const std::vector<uint32_t>& ranks)
+        {
+            for (const auto rank : ranks)
+            {
+                activate_rank(rank);
+                for (const auto feature : features)
+                {
+                    /* Read-only stops at the first witness; the updating form must not, or the
+                       features it skipped are re-derived as novel by a later state. */
+                    if (update ? tables().insert_single(feature) : !tables().contains_single(feature))
+                    {
+                        is_novel = true;
+                        if (!update)
+                        {
+                            return;
+                        }
+                    }
+                }
+            }
+        };
+
+        probe(m_scratch_flipped_ranks);
+        if (is_novel && !update)
+        {
+            return true;
+        }
+        if (is_added)
+        {
+            probe(m_scratch_kept_ranks);
+            if (is_novel && !update)
+            {
+                return true;
+            }
+        }
+    }
+    return is_novel;
+}
+
 bool AbstractedNoveltyPruningStrategyImpl::test_prune_initial_state(const State& state)
 {
     if (!m_root_state_index)
     {
         m_root_state_index = state.get_index();
+    }
+    if (has_landmark_coordinate())
+    {
+        /* Every coordinate of the initial state is "flipped on" relative to nothing, so each takes
+           all of the state's tuples -- which is what the plain state test already computes. */
+        m_landmark_coordinates->collect(state, m_scratch_ranks);
+        for_each_rank(m_scratch_ranks, [&] { return test_state_novelty_and_update_table(state); });
+        return false;
     }
     test_state_novelty_and_update_table(state);
     return false;
@@ -1579,8 +1704,24 @@ bool AbstractedNoveltyPruningStrategyImpl::test_prune_successor_state(const Stat
     {
         return true;
     }
-    const auto is_novel = test_transition_novelty_and_update_table(state, succ_state);
+    const auto is_novel = has_landmark_coordinate() ? test_landmark_transition_novelty_and_update_table(state, succ_state)
+                                                    : test_transition_novelty_and_update_table(state, succ_state);
     return maybe_prune_depth_one_successor(state, succ_state, is_novel);
+}
+
+bool AbstractedNoveltyPruningStrategyImpl::test_landmark_transition_novelty_and_update_table(const State& state, const State& succ_state)
+{
+    collect_transition_ranks(state, succ_state);
+    if (m_width == 1)
+    {
+        return test_landmark_transition_width_one(state, succ_state, true);
+    }
+    /* Above width 1 the two halves differ in which tuples they generate, not merely in which atoms
+       they offer, so they go through the two existing tuple builders: the state one enumerates all
+       tuples of the successor, the transition one only those containing an added atom. */
+    auto is_novel = for_each_rank(m_scratch_flipped_ranks, [&] { return test_state_novelty_and_update_table(succ_state); });
+    is_novel = for_each_rank(m_scratch_kept_ranks, [&] { return test_transition_novelty_and_update_table(state, succ_state); }) || is_novel;
+    return is_novel;
 }
 
 bool AbstractedNoveltyPruningStrategyImpl::supports_action_add_effect_precheck() const { return m_width == 1; }
@@ -1590,17 +1731,53 @@ bool AbstractedNoveltyPruningStrategyImpl::should_bypass_action_add_effect_prech
     return m_width == 1 && m_root_state_index.has_value() && (state.get_index() == *m_root_state_index);
 }
 
+bool AbstractedNoveltyPruningStrategyImpl::precheck_requires_delete_effects() const { return has_landmark_coordinate(); }
+
 bool AbstractedNoveltyPruningStrategyImpl::test_transition_novelty_from_add_effects(const State& state,
                                                                                     const AtomIndexList& add_fluent_atom_indices,
                                                                                     const AtomIndexList& del_fluent_atom_indices) const
 {
-    /* Abstracted features are still atom-level, so deletes cannot create novelty here either. */
-    [[maybe_unused]] const auto& ignored_del_fluent_atom_indices = del_fluent_atom_indices;
-
     if (m_width != 1 || should_bypass_action_add_effect_precheck(state))
     {
         return true;
     }
+
+    if (has_landmark_coordinate())
+    {
+        /* A landmark coordinate CAN be created by a delete -- a rank goes off with its last true
+           carrier -- so the deletes are read here, unlike below. */
+        refresh_delta_query_state(state);
+        m_landmark_coordinates->collect_transition_from_delta(m_scratch_true_landmark_atoms,
+                                                              m_scratch_rank_carrier_counts,
+                                                              add_fluent_atom_indices,
+                                                              del_fluent_atom_indices,
+                                                              m_scratch_flipped_ranks,
+                                                              m_scratch_kept_ranks);
+        /* A flipped rank pairs with every tuple of the successor, and answering exactly would mean
+           reconstructing the successor's atoms here. The precheck may over-approximate but must
+           never under-approximate -- a false prunes the transition unseen -- so a flipped rank is
+           answered `true` outright. It costs little: a coordinate changes on few transitions. */
+        if (!m_scratch_flipped_ranks.empty())
+        {
+            return true;
+        }
+        for (const auto rank : m_scratch_kept_ranks)
+        {
+            activate_rank(rank);
+            for (const auto atom_index : add_fluent_atom_indices)
+            {
+                if (test_atom_novelty(atom_index))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /* Abstracted features are still atom-level, so without a landmark coordinate deletes cannot
+       create novelty here. */
+    [[maybe_unused]] const auto& ignored_del_fluent_atom_indices = del_fluent_atom_indices;
     for (const auto atom_index : add_fluent_atom_indices)
     {
         if (test_atom_novelty(atom_index))
@@ -1643,6 +1820,43 @@ void AbstractedNoveltyPruningStrategyImpl::compute_transition_novel_fluent_atom_
     }
     out_novel_fluent_atom_indices.clear();
     const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
+
+    if (has_landmark_coordinate())
+    {
+        /* The witness is an ATOM, so only added atoms can be one: a rank that flipped on makes the
+           whole successor novel but names no atom the caller could route on. */
+        collect_transition_ranks(state, succ_state);
+        for (const auto atom_index : succ_state.get_atoms<FluentTag>())
+        {
+            if (state_fluent_atoms.get(atom_index))
+            {
+                continue;
+            }
+            auto is_novel = false;
+            for (const auto& ranks : { std::cref(m_scratch_flipped_ranks), std::cref(m_scratch_kept_ranks) })
+            {
+                for (const auto rank : ranks.get())
+                {
+                    activate_rank(rank);
+                    if (test_atom_novelty(atom_index))
+                    {
+                        is_novel = true;
+                        break;
+                    }
+                }
+                if (is_novel)
+                {
+                    break;
+                }
+            }
+            if (is_novel)
+            {
+                out_novel_fluent_atom_indices.push_back(atom_index);
+            }
+        }
+        return;
+    }
+
     for (const auto atom_index : succ_state.get_atoms<FluentTag>())
     {
         if (!state_fluent_atoms.get(atom_index) && test_atom_novelty(atom_index))
@@ -1654,6 +1868,13 @@ void AbstractedNoveltyPruningStrategyImpl::compute_transition_novel_fluent_atom_
 
 bool AbstractedNoveltyPruningStrategyImpl::supports_beam_novelty_mode(BeamNoveltyMode beam_novelty_mode) const
 {
+    if (has_landmark_coordinate())
+    {
+        /* The staged entry points are handed a raw successor bitset rather than a `State`, and a
+           landmark coordinate over a staged bitset is not the query `LandmarkCoordinates` answers.
+           Claiming support would score the beam under the wrong feature family, silently. */
+        return false;
+    }
     return beam_novelty_mode == BeamNoveltyMode::ALL_TESTED || beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY;
 }
 
@@ -1729,7 +1950,7 @@ void AbstractedNoveltyPruningStrategyImpl::on_begin_beam_replay(BeamNoveltyMode 
 {
     if (beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY)
     {
-        m_tables.clear_delta();
+        tables().clear_delta();
     }
 }
 
@@ -1780,7 +2001,7 @@ void AbstractedNoveltyPruningStrategyImpl::on_end_beam_replay(BeamNoveltyMode be
 {
     if (beam_novelty_mode == BeamNoveltyMode::SURVIVORS_ONLY)
     {
-        m_tables.commit_delta();
+        tables().commit_delta();
     }
 }
 
