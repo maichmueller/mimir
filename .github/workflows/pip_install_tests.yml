@@ -40,6 +40,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
+      - name: Cache built dependencies
+        uses: actions/cache@v4
+        with:
+          path: build/temp*/dependencies/installs
+          key: ${{ runner.os }}-${{ matrix.python-version }}-deps-${{ hashFiles('setup.py', 'CMakeLists.txt', 'dependencies/**/CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.python-version }}-deps-
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v7
         with:

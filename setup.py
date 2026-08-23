@@ -3,6 +3,7 @@ import sys
 import subprocess
 import multiprocessing
 import shutil
+import sysconfig
 
 from pathlib import Path
 
@@ -44,10 +45,25 @@ class CMakeBuild(build_ext):
         # Create the temporary build directory, if it does not already exist
         os.makedirs(temp_directory, exist_ok=True)
 
+        # CI can point PYMIMIR_DEPENDENCY_PREFIX at a cached dependency install.
+        # The effective prefix is scoped by the platform/libc tag so caches for
+        # different wheel variants never collide within one shared directory.
+        dependency_prefix = os.environ.get("PYMIMIR_DEPENDENCY_PREFIX")
+        if dependency_prefix:
+            dependency_prefix = Path(dependency_prefix)
+            if not dependency_prefix.is_absolute():
+                dependency_prefix = (Path.cwd() / dependency_prefix).resolve()
+            dependency_scope = os.environ.get("AUDITWHEEL_PLAT")
+            if not dependency_scope:
+                dependency_scope = sysconfig.get_platform()
+            dependency_prefix = dependency_prefix / dependency_scope
+        else:
+            dependency_prefix = temp_directory / "dependencies" / "installs"
+
         cmake_args = [
             f"-DCMAKE_BUILD_TYPE={build_type}",
-            f"-DCMAKE_INSTALL_PREFIX={str(temp_directory / 'dependencies' / 'installs')}",
-            f"-DCMAKE_PREFIX_PATH={str(temp_directory / 'dependencies' / 'installs')}",
+            f"-DCMAKE_INSTALL_PREFIX={str(dependency_prefix)}",
+            f"-DCMAKE_PREFIX_PATH={str(dependency_prefix)}",
             f"-DPython_EXECUTABLE={sys.executable}"
         ]
 
@@ -77,7 +93,7 @@ class CMakeBuild(build_ext):
             "-DCMAKE_INSTALL_INCLUDEDIR=include",
             f"-DMIMIR_VERSION_INFO={__version__}",
             f"-DCMAKE_BUILD_TYPE={build_type}",  # not used on MSVC, but no harm
-            f"-DCMAKE_PREFIX_PATH={str(temp_directory / 'dependencies' / 'installs')}",
+            f"-DCMAKE_PREFIX_PATH={str(dependency_prefix)}",
             f"-DPython_EXECUTABLE={sys.executable}"
         ]
 

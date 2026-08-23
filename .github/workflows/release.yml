@@ -78,6 +78,18 @@ jobs:
         with:
           python-version: "3.12" # Host interpreter only; cibuildwheel controls build interpreters
 
+      # macOS wheels build on the host runner, so the compiled dependency install
+      # can be cached across releases. Linux wheels build inside the manylinux
+      # container where this path does not apply.
+      - name: Cache built dependencies (macOS)
+        if: matrix.platform == 'macos'
+        uses: actions/cache@v4
+        with:
+          path: build/temp*/dependencies/installs
+          key: ${{ runner.os }}-wheels-${{ matrix.python-tag }}-${{ hashFiles('setup.py', 'CMakeLists.txt', 'dependencies/**/CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-wheels-${{ matrix.python-tag }}-
+
       - name: Build wheels
         env:
           CIBW_BUILD: "${{ matrix.python-tag }}-*"
