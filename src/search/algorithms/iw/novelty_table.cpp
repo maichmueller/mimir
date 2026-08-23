@@ -29,7 +29,7 @@ namespace mimir::search::iw
 {
 DynamicNoveltyTable::DynamicNoveltyTable(size_t arity) :
     m_tuple_index_mapper(arity),
-    m_table(std::vector<bool>(m_tuple_index_mapper.get_max_tuple_index() + 1, false)),
+    m_table(BitTable(m_tuple_index_mapper.get_max_tuple_index() + 1)),
     m_state_tuple_index_generator(&m_tuple_index_mapper),
     m_state_pair_tuple_index_generator(&m_tuple_index_mapper)
 {
@@ -37,7 +37,7 @@ DynamicNoveltyTable::DynamicNoveltyTable(size_t arity) :
 
 DynamicNoveltyTable::DynamicNoveltyTable(size_t arity, size_t num_atoms) :
     m_tuple_index_mapper(TupleIndexMapper(arity, num_atoms)),
-    m_table(std::vector<bool>(m_tuple_index_mapper.get_max_tuple_index() + 1, false)),
+    m_table(BitTable(m_tuple_index_mapper.get_max_tuple_index() + 1)),
     m_state_tuple_index_generator(&m_tuple_index_mapper),
     m_state_pair_tuple_index_generator(&m_tuple_index_mapper)
 {
@@ -63,12 +63,12 @@ void DynamicNoveltyTable::resize_to_fit(AtomIndex atom_index)
 
     m_tuple_index_mapper.initialize(arity, new_size);
 
-    auto new_table = std::vector<bool>(m_tuple_index_mapper.get_max_tuple_index() + 1, false);
+    auto new_table = BitTable(m_tuple_index_mapper.get_max_tuple_index() + 1);
     auto atom_indices = AtomIndexList(arity);
 
     for (TupleIndex tuple_index = 0; tuple_index < m_table.size(); ++tuple_index)
     {
-        if (m_table[tuple_index])
+        if (m_table.test(tuple_index))
         {
             old_tuple_index_mapper.to_atom_indices(tuple_index, atom_indices);
 
@@ -79,7 +79,7 @@ void DynamicNoveltyTable::resize_to_fit(AtomIndex atom_index)
 
             const auto new_tuple_index = m_tuple_index_mapper.to_tuple_index(atom_indices);
 
-            new_table[new_tuple_index] = true;
+            new_table.set(new_tuple_index);
         }
     }
 
@@ -112,7 +112,7 @@ void DynamicNoveltyTable::compute_novel_tuples(const State& state, std::vector<A
 
         assert(tuple_index < m_table.size());
 
-        if (!m_table[tuple_index])
+        if (!m_table.test(tuple_index))
         {
             out_novel_tuples.push_back(m_tuple_index_mapper.to_atom_indices(tuple_index));
         }
@@ -132,7 +132,7 @@ void DynamicNoveltyTable::compute_novel_tuples(const State& state, const State& 
 
         assert(tuple_index < m_table.size());
 
-        if (!m_table[tuple_index])
+        if (!m_table.test(tuple_index))
         {
             out_novel_tuples.push_back(m_tuple_index_mapper.to_atom_indices(tuple_index));
         }
@@ -155,7 +155,7 @@ void DynamicNoveltyTable::compute_novel_tuples(const State& state, const AtomInd
 
         assert(tuple_index < m_table.size());
 
-        if (!m_table[tuple_index])
+        if (!m_table.test(tuple_index))
         {
             out_novel_tuples.push_back(m_tuple_index_mapper.to_atom_indices(tuple_index));
         }
@@ -170,7 +170,7 @@ void DynamicNoveltyTable::insert_tuples(const std::vector<AtomIndexList>& tuples
 
         assert(tuple_index < m_table.size());
 
-        m_table[tuple_index] = true;
+        m_table.set(tuple_index);
     }
 }
 
@@ -184,7 +184,7 @@ bool DynamicNoveltyTable::test_novelty(const State& state)
 
         assert(tuple_index < m_table.size());
 
-        if (!m_table[tuple_index])
+        if (!m_table.test(tuple_index))
         {
             return true;
         }
@@ -203,7 +203,7 @@ bool DynamicNoveltyTable::test_novelty(const State& state, const State& succ_sta
 
         assert(tuple_index < m_table.size());
 
-        if (!m_table[tuple_index])
+        if (!m_table.test(tuple_index))
         {
             return true;
         }
@@ -225,7 +225,7 @@ bool DynamicNoveltyTable::test_novelty(const State& state, const AtomIndexList& 
 
         assert(tuple_index < m_table.size());
 
-        if (!m_table[tuple_index])
+        if (!m_table.test(tuple_index))
         {
             return true;
         }
@@ -245,7 +245,7 @@ bool DynamicNoveltyTable::test_novelty_read_only(const State& state) const
 
         assert(tuple_index < m_table.size());
 
-        if (!m_table[tuple_index])
+        if (!m_table.test(tuple_index))
         {
             return true;
         }
@@ -267,7 +267,7 @@ bool DynamicNoveltyTable::test_novelty_read_only(const State& state, const State
 
         assert(tuple_index < m_table.size());
 
-        if (!m_table[tuple_index])
+        if (!m_table.test(tuple_index))
         {
             return true;
         }
@@ -292,7 +292,7 @@ bool DynamicNoveltyTable::test_novelty_read_only(const State& state, const AtomI
 
         assert(tuple_index < m_table.size());
 
-        if (!m_table[tuple_index])
+        if (!m_table.test(tuple_index))
         {
             return true;
         }
@@ -309,7 +309,7 @@ bool DynamicNoveltyTable::test_atom_novelty_read_only(AtomIndex atom_index) cons
     auto atom_tuple = AtomIndexList { atom_index };
     const auto tuple_index = tuple_index_mapper.to_tuple_index(atom_tuple);
     assert(tuple_index < m_table.size());
-    return !m_table[tuple_index];
+    return !m_table.test(tuple_index);
 }
 
 bool DynamicNoveltyTable::test_novelty_and_update_table(const State& state)
@@ -323,11 +323,11 @@ bool DynamicNoveltyTable::test_novelty_and_update_table(const State& state)
 
         assert(tuple_index < m_table.size());
 
-        if (!is_novel && !m_table[tuple_index])
+        if (!is_novel && !m_table.test(tuple_index))
         {
             is_novel = true;
         }
-        m_table[tuple_index] = true;
+        m_table.set(tuple_index);
     }
     return is_novel;
 }
@@ -344,11 +344,11 @@ bool DynamicNoveltyTable::test_novelty_and_update_table(const State& state, cons
 
         assert(tuple_index < m_table.size());
 
-        if (!is_novel && !m_table[tuple_index])
+        if (!is_novel && !m_table.test(tuple_index))
         {
             is_novel = true;
         }
-        m_table[tuple_index] = true;
+        m_table.set(tuple_index);
     }
     return is_novel;
 }
@@ -368,16 +368,22 @@ bool DynamicNoveltyTable::test_novelty_and_update_table(const State& state, cons
 
         assert(tuple_index < m_table.size());
 
-        if (!is_novel && !m_table[tuple_index])
+        if (!is_novel && !m_table.test(tuple_index))
         {
             is_novel = true;
         }
-        m_table[tuple_index] = true;
+        m_table.set(tuple_index);
     }
     return is_novel;
 }
 
-void DynamicNoveltyTable::reset() { std::fill(m_table.begin(), m_table.end(), false); }
+void DynamicNoveltyTable::reset()
+{
+    for (auto& word : m_table.words)
+    {
+        word = 0;
+    }
+}
 const TupleIndexMapper& DynamicNoveltyTable::get_tuple_index_mapper() const { return m_tuple_index_mapper; }
 
 MinimumGNoveltyTable::MinimumGNoveltyTable(size_t arity) : MinimumGNoveltyTable(arity, 0) {}

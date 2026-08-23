@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <optional>
 #include <variant>
+#include <vector>
 
 namespace mimir::search::iw
 {
@@ -39,7 +40,23 @@ class DynamicNoveltyTable
 private:
     TupleIndexMapper m_tuple_index_mapper;
 
-    std::vector<bool> m_table;
+    /// Flat word-addressed bit table: same memory footprint as the vector<bool> it
+    /// replaced, but each probe is a direct load/shift/test instead of a proxy reference.
+    /// `size()` reports the logical number of bits, which may be smaller than the capacity.
+    struct BitTable
+    {
+        std::vector<uint64_t> words;
+        size_t num_bits = 0;
+
+        BitTable() = default;
+        explicit BitTable(size_t num_entries) : words((num_entries + 63) / 64, 0), num_bits(num_entries) {}
+
+        size_t size() const { return num_bits; }
+        bool test(TupleIndex tuple_index) const { return (words[tuple_index >> 6] >> (tuple_index & 63)) & uint64_t(1); }
+        void set(TupleIndex tuple_index) { words[tuple_index >> 6] |= uint64_t(1) << (tuple_index & 63); }
+    };
+
+    BitTable m_table;
 
     void resize_to_fit(AtomIndex atom_index);
     void resize_to_fit(const State& state);
