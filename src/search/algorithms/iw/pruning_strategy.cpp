@@ -162,6 +162,7 @@ ArityKNoveltyPruningStrategyImpl::ArityKNoveltyPruningStrategyImpl(size_t arity,
     m_beam_layer_delta_tuples(),
     m_beam_layer_delta_tuple_set(),
     m_scratch_novel_tuples(),
+    m_scratch_atom_indices_key(),
     m_skip_depth_one_expansion_state_indices(),
     m_skip_depth_one_expansion_fluent_atom_indices_fallback()
 {
@@ -256,14 +257,18 @@ bool ArityKNoveltyPruningStrategyImpl::test_transition_novelty_from_add_effects(
 
 bool ArityKNoveltyPruningStrategyImpl::consume_skip_state_expansion(const State& state)
 {
-    if (m_skip_depth_one_expansion_state_indices.erase(state.get_index()) > 0)
+    if (!m_skip_depth_one_expansion_state_indices.empty() && m_skip_depth_one_expansion_state_indices.erase(state.get_index()) > 0)
     {
         return true;
     }
 
-    auto fluent_atom_indices = AtomIndexList {};
-    fluent_atom_indices.assign(state.get_atoms<FluentTag>().begin(), state.get_atoms<FluentTag>().end());
-    return m_skip_depth_one_expansion_fluent_atom_indices_fallback.erase(fluent_atom_indices) > 0;
+    if (m_skip_depth_one_expansion_fluent_atom_indices_fallback.empty())
+    {
+        return false;
+    }
+
+    m_scratch_atom_indices_key.assign(state.get_atoms<FluentTag>().begin(), state.get_atoms<FluentTag>().end());
+    return m_skip_depth_one_expansion_fluent_atom_indices_fallback.erase(m_scratch_atom_indices_key) > 0;
 }
 
 bool ArityKNoveltyPruningStrategyImpl::supports_atom_novelty_query() const
@@ -1097,9 +1102,9 @@ void AbstractedNoveltyPruningStrategyImpl::append_object_type_signature(formalis
     }
 }
 
-std::vector<AbstractedNoveltyPruningStrategyImpl::AtomFeatureGroup> AbstractedNoveltyPruningStrategyImpl::state_groups(const State& state) const
+void AbstractedNoveltyPruningStrategyImpl::state_groups(const State& state, std::vector<AtomFeatureGroup>& out_groups) const
 {
-    auto groups = std::vector<AtomFeatureGroup> {};
+    out_groups.clear();
     const auto& atoms = state.get_atoms<FluentTag>();
     auto has_atoms = false;
     auto atom_count = size_t(0);
@@ -1115,20 +1120,27 @@ std::vector<AbstractedNoveltyPruningStrategyImpl::AtomFeatureGroup> AbstractedNo
     {
         ensure_atom_feature_capacity(max_atom_index);
     }
-    groups.reserve(atom_count);
+    out_groups.reserve(atom_count);
     for (const auto atom_index : atoms)
     {
         const auto fluent_atom_index = static_cast<AtomIndex>(atom_index);
-        groups.push_back(AtomFeatureGroup { fluent_atom_index, false, &get_atom_features(fluent_atom_index) });
+        out_groups.push_back(AtomFeatureGroup { fluent_atom_index, false, &get_atom_features(fluent_atom_index) });
     }
+}
+
+std::vector<AbstractedNoveltyPruningStrategyImpl::AtomFeatureGroup> AbstractedNoveltyPruningStrategyImpl::state_groups(const State& state) const
+{
+    auto groups = std::vector<AtomFeatureGroup> {};
+    state_groups(state, groups);
     return groups;
 }
 
-std::vector<AbstractedNoveltyPruningStrategyImpl::AtomFeatureGroup>
-AbstractedNoveltyPruningStrategyImpl::successor_groups(const State& state, const AtomIndexList& succ_fluent_atom_indices) const
+void AbstractedNoveltyPruningStrategyImpl::successor_groups(const State& state,
+                                                            const AtomIndexList& succ_fluent_atom_indices,
+                                                            std::vector<AtomFeatureGroup>& out_groups) const
 {
     const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
-    auto groups = std::vector<AtomFeatureGroup> {};
+    out_groups.clear();
     auto has_atoms = false;
     auto max_atom_index = AtomIndex(0);
     for (const auto atom_index : succ_fluent_atom_indices)
@@ -1140,18 +1152,30 @@ AbstractedNoveltyPruningStrategyImpl::successor_groups(const State& state, const
     {
         ensure_atom_feature_capacity(max_atom_index);
     }
-    groups.reserve(succ_fluent_atom_indices.size());
+    out_groups.reserve(succ_fluent_atom_indices.size());
     for (const auto atom_index : succ_fluent_atom_indices)
     {
-        groups.push_back(AtomFeatureGroup { atom_index, !state_fluent_atoms.get(atom_index), &get_atom_features(atom_index) });
+        out_groups.push_back(AtomFeatureGroup { atom_index, !state_fluent_atoms.get(atom_index), &get_atom_features(atom_index) });
     }
+}
+
+std::vector<AbstractedNoveltyPruningStrategyImpl::AtomFeatureGroup>
+AbstractedNoveltyPruningStrategyImpl::successor_groups(const State& state, const AtomIndexList& succ_fluent_atom_indices) const
+{
+    auto groups = std::vector<AtomFeatureGroup> {};
+    successor_groups(state, succ_fluent_atom_indices, groups);
     return groups;
+}
+
+void AbstractedNoveltyPruningStrategyImpl::atom_indices_key(const State& state, AtomIndexList& out_atom_indices) const
+{
+    out_atom_indices.assign(state.get_atoms<FluentTag>().begin(), state.get_atoms<FluentTag>().end());
 }
 
 AtomIndexList AbstractedNoveltyPruningStrategyImpl::atom_indices_key(const State& state) const
 {
     auto atom_indices = AtomIndexList {};
-    atom_indices.assign(state.get_atoms<FluentTag>().begin(), state.get_atoms<FluentTag>().end());
+    atom_indices_key(state, atom_indices);
     return atom_indices;
 }
 
@@ -1208,12 +1232,13 @@ bool AbstractedNoveltyPruningStrategyImpl::test_state_novelty_and_update_table(c
         return is_novel;
     }
 
-    auto groups = state_groups(state);
-    for (auto& group : groups)
+    state_groups(state, m_scratch_atom_feature_groups);
+    for (auto& group : m_scratch_atom_feature_groups)
     {
         group.m_added = true;
     }
-    const auto tuples = generate_tuples(groups, false);
+    generate_tuples(m_scratch_atom_feature_groups, false, m_scratch_generated_tuples);
+    const auto& tuples = m_scratch_generated_tuples;
     const auto is_novel = !tuples.m_singles.empty() || !tuples.m_pairs.empty() || !tuples.m_triples.empty();
     if (is_novel)
     {
@@ -1226,7 +1251,8 @@ bool AbstractedNoveltyPruningStrategyImpl::test_transition_novelty(const State& 
 {
     if (m_width != 1)
     {
-        return test_transition_novelty(state, atom_indices_key(succ_state));
+        atom_indices_key(succ_state, m_scratch_atom_indices_key);
+        return test_transition_novelty(state, m_scratch_atom_indices_key);
     }
 
     const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
@@ -1279,8 +1305,9 @@ bool AbstractedNoveltyPruningStrategyImpl::test_transition_novelty(const State& 
         }
         return false;
     }
-    const auto groups = successor_groups(state, succ_fluent_atom_indices);
-    const auto tuples = generate_tuples(groups, false);
+    successor_groups(state, succ_fluent_atom_indices, m_scratch_atom_feature_groups);
+    generate_tuples(m_scratch_atom_feature_groups, false, m_scratch_generated_tuples);
+    const auto& tuples = m_scratch_generated_tuples;
     return !tuples.m_singles.empty() || !tuples.m_pairs.empty() || !tuples.m_triples.empty();
 }
 
@@ -1288,7 +1315,8 @@ bool AbstractedNoveltyPruningStrategyImpl::test_transition_novelty_and_update_ta
 {
     if (m_width != 1)
     {
-        return test_transition_novelty_and_update_table(state, atom_indices_key(succ_state));
+        atom_indices_key(succ_state, m_scratch_atom_indices_key);
+        return test_transition_novelty_and_update_table(state, m_scratch_atom_indices_key);
     }
 
     const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
@@ -1337,7 +1365,8 @@ bool AbstractedNoveltyPruningStrategyImpl::test_transition_novelty_and_update_de
 {
     if (m_width != 1)
     {
-        return test_transition_novelty_and_update_delta(state, atom_indices_key(succ_state));
+        atom_indices_key(succ_state, m_scratch_atom_indices_key);
+        return test_transition_novelty_and_update_delta(state, m_scratch_atom_indices_key);
     }
 
     const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
@@ -1403,8 +1432,9 @@ bool AbstractedNoveltyPruningStrategyImpl::test_transition_and_update(const Stat
         return is_novel;
     }
 
-    const auto groups = successor_groups(state, succ_fluent_atom_indices);
-    const auto tuples = generate_tuples(groups, use_delta);
+    successor_groups(state, succ_fluent_atom_indices, m_scratch_atom_feature_groups);
+    generate_tuples(m_scratch_atom_feature_groups, use_delta, m_scratch_generated_tuples);
+    const auto& tuples = m_scratch_generated_tuples;
     const auto is_novel = !tuples.m_singles.empty() || !tuples.m_pairs.empty() || !tuples.m_triples.empty();
     if (is_novel)
     {
@@ -1420,14 +1450,19 @@ bool AbstractedNoveltyPruningStrategyImpl::test_transition_and_update(const Stat
     return is_novel;
 }
 
-AbstractedNoveltyPruningStrategyImpl::GeneratedTuples
-AbstractedNoveltyPruningStrategyImpl::generate_tuples(const std::vector<AtomFeatureGroup>& groups, bool use_delta) const
+void AbstractedNoveltyPruningStrategyImpl::generate_tuples(const std::vector<AtomFeatureGroup>& groups, bool use_delta, GeneratedTuples& out_tuples) const
 {
-    auto tuples = GeneratedTuples {};
-    auto local_singletons = absl::flat_hash_set<FeatureId> {};
-    auto local_pairs = absl::flat_hash_set<PairKey, PairKeyHash> {};
-    auto local_triples = absl::flat_hash_set<TripleKey, TripleKeyHash> {};
-    auto added_group_indices = std::vector<size_t> {};
+    out_tuples.m_singles.clear();
+    out_tuples.m_pairs.clear();
+    out_tuples.m_triples.clear();
+    auto& local_singletons = m_scratch_local_singletons;
+    auto& local_pairs = m_scratch_local_pairs;
+    auto& local_triples = m_scratch_local_triples;
+    local_singletons.clear();
+    local_pairs.clear();
+    local_triples.clear();
+    auto& added_group_indices = m_scratch_added_group_indices;
+    added_group_indices.clear();
     added_group_indices.reserve(groups.size());
 
     for (size_t i = 0; i < groups.size(); ++i)
@@ -1440,7 +1475,7 @@ AbstractedNoveltyPruningStrategyImpl::generate_tuples(const std::vector<AtomFeat
             {
                 if (is_single_novel(fi, use_delta) && local_singletons.emplace(fi).second)
                 {
-                    tuples.m_singles.push_back(fi);
+                    out_tuples.m_singles.push_back(fi);
                 }
             }
         }
@@ -1448,7 +1483,7 @@ AbstractedNoveltyPruningStrategyImpl::generate_tuples(const std::vector<AtomFeat
 
     if (m_width < 2 || added_group_indices.empty())
     {
-        return tuples;
+        return;
     }
 
     auto emit_pair = [&](size_t lhs_group_index, size_t rhs_group_index)
@@ -1472,7 +1507,7 @@ AbstractedNoveltyPruningStrategyImpl::generate_tuples(const std::vector<AtomFeat
                 const auto pair = PairKey { pair_lhs, pair_rhs };
                 if (is_pair_novel(pair, use_delta) && local_pairs.emplace(pair).second)
                 {
-                    tuples.m_pairs.push_back(pair);
+                    out_tuples.m_pairs.push_back(pair);
                 }
             }
         }
@@ -1493,7 +1528,7 @@ AbstractedNoveltyPruningStrategyImpl::generate_tuples(const std::vector<AtomFeat
 
     if (m_width < 3)
     {
-        return tuples;
+        return;
     }
 
     auto emit_triple = [&](size_t first_group_index, size_t second_group_index, size_t third_group_index)
@@ -1516,7 +1551,7 @@ AbstractedNoveltyPruningStrategyImpl::generate_tuples(const std::vector<AtomFeat
                     const auto triple = TripleKey { triple_values[0], triple_values[1], triple_values[2] };
                     if (is_triple_novel(triple, use_delta) && local_triples.emplace(triple).second)
                     {
-                        tuples.m_triples.push_back(triple);
+                        out_tuples.m_triples.push_back(triple);
                     }
                 }
             }
@@ -1544,6 +1579,13 @@ AbstractedNoveltyPruningStrategyImpl::generate_tuples(const std::vector<AtomFeat
             }
         }
     }
+}
+
+AbstractedNoveltyPruningStrategyImpl::GeneratedTuples
+AbstractedNoveltyPruningStrategyImpl::generate_tuples(const std::vector<AtomFeatureGroup>& groups, bool use_delta) const
+{
+    auto tuples = GeneratedTuples {};
+    generate_tuples(groups, use_delta, tuples);
     return tuples;
 }
 
@@ -1790,11 +1832,16 @@ bool AbstractedNoveltyPruningStrategyImpl::test_transition_novelty_from_add_effe
 
 bool AbstractedNoveltyPruningStrategyImpl::consume_skip_state_expansion(const State& state)
 {
-    if (m_skip_depth_one_expansion_state_indices.erase(state.get_index()) > 0)
+    if (!m_skip_depth_one_expansion_state_indices.empty() && m_skip_depth_one_expansion_state_indices.erase(state.get_index()) > 0)
     {
         return true;
     }
-    return m_skip_depth_one_expansion_fluent_atom_indices_fallback.erase(atom_indices_key(state)) > 0;
+    if (m_skip_depth_one_expansion_fluent_atom_indices_fallback.empty())
+    {
+        return false;
+    }
+    atom_indices_key(state, m_scratch_atom_indices_key);
+    return m_skip_depth_one_expansion_fluent_atom_indices_fallback.erase(m_scratch_atom_indices_key) > 0;
 }
 
 bool AbstractedNoveltyPruningStrategyImpl::supports_atom_novelty_query() const { return m_width == 1; }

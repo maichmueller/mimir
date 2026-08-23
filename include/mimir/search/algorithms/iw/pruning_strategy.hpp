@@ -97,6 +97,7 @@ private:
     std::vector<AtomIndexList> m_beam_layer_delta_tuples;
     std::unordered_set<AtomIndexList, AtomIndexListHash> m_beam_layer_delta_tuple_set;
     std::vector<AtomIndexList> m_scratch_novel_tuples;
+    AtomIndexList m_scratch_atom_indices_key;
     std::unordered_set<Index> m_skip_depth_one_expansion_state_indices;
     std::unordered_set<AtomIndexList, AtomIndexListHash> m_skip_depth_one_expansion_fluent_atom_indices_fallback;
 
@@ -389,6 +390,17 @@ private:
        reaches, and most ranks of a large landmark graph are never reached. */
     mutable std::vector<uint8_t> m_rank_reserved;
 
+    /* Tuple-generation scratch, reused across novelty tests instead of reallocated per call.
+       Mutable for the same reason `LandmarkNoveltyTable`'s scratch is: one strategy instance
+       serves one search on one thread. */
+    mutable std::vector<AtomFeatureGroup> m_scratch_atom_feature_groups;
+    mutable GeneratedTuples m_scratch_generated_tuples;
+    mutable AtomIndexList m_scratch_atom_indices_key;
+    mutable absl::flat_hash_set<FeatureId> m_scratch_local_singletons;
+    mutable absl::flat_hash_set<PairKey, PairKeyHash> m_scratch_local_pairs;
+    mutable absl::flat_hash_set<TripleKey, TripleKeyHash> m_scratch_local_triples;
+    mutable std::vector<size_t> m_scratch_added_group_indices;
+
     /// @brief Whether an attached landmark graph makes this abstracted LIW(k) rather than IW(k).
     bool has_landmark_coordinate() const { return m_landmark_coordinates.has_value(); }
     /// @brief The tables of the rank currently being queried.
@@ -433,8 +445,11 @@ private:
     FeatureKey make_full_atom_key(formalism::GroundAtom<formalism::FluentTag> atom) const;
     FeatureKey make_abstracted_key(formalism::GroundAtom<formalism::FluentTag> atom, Index preserved_position) const;
     void append_object_type_signature(formalism::Object object, IndexList& out) const;
+    void state_groups(const State& state, std::vector<AtomFeatureGroup>& out_groups) const;
     std::vector<AtomFeatureGroup> state_groups(const State& state) const;
+    void successor_groups(const State& state, const AtomIndexList& succ_fluent_atom_indices, std::vector<AtomFeatureGroup>& out_groups) const;
     std::vector<AtomFeatureGroup> successor_groups(const State& state, const AtomIndexList& succ_fluent_atom_indices) const;
+    void atom_indices_key(const State& state, AtomIndexList& out_atom_indices) const;
     AtomIndexList atom_indices_key(const State& state) const;
     bool test_atom_novelty(AtomIndex atom_index) const;
     bool test_atom_novelty_and_update_table(AtomIndex atom_index);
@@ -447,6 +462,7 @@ private:
     bool test_transition_novelty_and_update_delta(const State& state, const State& succ_state);
     bool test_transition_novelty_and_update_delta(const State& state, const AtomIndexList& succ_fluent_atom_indices);
     bool test_transition_and_update(const State& state, const AtomIndexList& succ_fluent_atom_indices, bool use_delta);
+    void generate_tuples(const std::vector<AtomFeatureGroup>& groups, bool use_delta, GeneratedTuples& out_tuples) const;
     GeneratedTuples generate_tuples(const std::vector<AtomFeatureGroup>& groups, bool use_delta) const;
     void insert_tuples(const GeneratedTuples& tuples);
     void insert_delta_tuples(const GeneratedTuples& tuples);
