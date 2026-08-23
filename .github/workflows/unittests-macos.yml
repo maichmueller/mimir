@@ -2,22 +2,34 @@ name: Googletest Unit Tests - Macos
 
 on: [push, pull_request]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: macos-latest
 
     steps:
     - name: Checkout Mimir
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
-    - uses: actions/setup-python@v6
+    - uses: actions/setup-python@v7
       with:
-        python-version: "3.14t"
+        python-version: "3.12"
 
     - name: Install python requirements
       run: |
         python -m pip install --upgrade pip
         python -m pip install typing_extensions
+
+    - name: Configure, Build, and Install Dependencies
+      run: |
+        cd dependencies
+        cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/dependencies/installs
+        cmake --build build
+        cmake --install build/
+
 
     - name: Cache built dependencies
       uses: actions/cache@v4
@@ -26,13 +38,6 @@ jobs:
         key: ${{ runner.os }}-unittests-deps-${{ hashFiles('CMakeLists.txt', 'dependencies/**/CMakeLists.txt') }}
         restore-keys: |
           ${{ runner.os }}-unittests-deps-
-
-    - name: Configure, Build, and Install Dependencies
-      run: |
-        cd dependencies
-        cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/dependencies/installs
-        cmake --build build
-        cmake --install build/
 
     # Debug
     - name: Debug, Configure, and Build Mimir

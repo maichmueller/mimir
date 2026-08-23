@@ -21,6 +21,8 @@
 #include "mimir/formalism/declarations.hpp"
 #include "mimir/search/declarations.hpp"
 
+#include <ranges>
+
 namespace mimir::search
 {
 
@@ -34,19 +36,54 @@ public:
     virtual bool test_dynamic_goal(const State& state) = 0;
 };
 
+
 /// @brief `ProblemGoalStrategyImpl` identifies a state as a goal if and only if it satisfies the goal in the given problem.
 class ProblemGoalStrategyImpl : public IGoalStrategy
 {
 private:
     formalism::Problem m_problem;
+    formalism::GroundConjunctiveCondition m_condition;
+    const bool m_static_goal_holds;
 
+    bool _compute_static_goal_holds() const;
 public:
-    explicit ProblemGoalStrategyImpl(formalism::Problem problem);
+    explicit ProblemGoalStrategyImpl(formalism::Problem problem, std::optional<formalism::GroundConjunctiveCondition> condition = std::nullopt);
 
     bool test_static_goal() override;
     bool test_dynamic_goal(const State& state) override;
 
-    static ProblemGoalStrategy create(formalism::Problem problem);
+    static ProblemGoalStrategy create(formalism::Problem problem,std::optional<formalism::GroundConjunctiveCondition> condition = std::nullopt);
+};
+
+/// @brief `ProblemMultiGoalStrategyImpl` identifies a state as a goal if any of the given goal conditions is satisfied.
+class ProblemMultiGoalStrategyImpl : public IGoalStrategy
+{
+private:
+    formalism::Problem m_problem;
+    std::vector<formalism::GroundConjunctiveCondition> m_conditions;
+    std::vector<bool> m_static_goal_holds;
+    bool m_any_static_goal_holds;
+
+    bool _compute_static_goal_holds(formalism::GroundConjunctiveCondition condition) const;
+
+public:
+    explicit ProblemMultiGoalStrategyImpl(formalism::Problem problem, std::vector<formalism::GroundConjunctiveCondition> conditions);
+
+    bool test_static_goal() override;
+    bool test_dynamic_goal(const State& state) override;
+
+    static ProblemMultiGoalStrategy create(formalism::Problem problem, std::vector<formalism::GroundConjunctiveCondition> conditions);
+
+    template<std::ranges::input_range Range>
+    static ProblemMultiGoalStrategy create(formalism::Problem problem, Range&& conditions)
+    {
+        auto condition_list = std::vector<formalism::GroundConjunctiveCondition> {};
+        for (const auto condition : conditions)
+        {
+            condition_list.push_back(condition);
+        }
+        return create(problem, std::move(condition_list));
+    }
 };
 }
 

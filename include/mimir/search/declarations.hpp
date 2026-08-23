@@ -62,7 +62,7 @@ class ConjunctiveConditionSatisficingBindingGenerator;
 
 namespace satisficing_binding_generator
 {
-struct Statistics;
+class Statistics;
 class IEventHandler;
 using EventHandler = std::shared_ptr<IEventHandler>;
 class DefaultEventHandlerImpl;
@@ -72,6 +72,8 @@ using DefaultEventHandler = std::shared_ptr<DefaultEventHandlerImpl>;
 /* ApplicableActionGenerators */
 class IApplicableActionGenerator;
 using ApplicableActionGenerator = std::shared_ptr<IApplicableActionGenerator>;
+class IParallelApplicableActionGeneratorWorkerContext;
+using ParallelApplicableActionGeneratorWorkerContext = std::unique_ptr<IParallelApplicableActionGeneratorWorkerContext>;
 class GroundedApplicableActionGeneratorImpl;
 using GroundedApplicableActionGenerator = std::shared_ptr<GroundedApplicableActionGeneratorImpl>;
 class KPKCLiftedApplicableActionGeneratorImpl;
@@ -117,6 +119,8 @@ using DefaultEventHandler = std::shared_ptr<DefaultEventHandlerImpl>;
 /* AxiomEvaluators */
 class IAxiomEvaluator;
 using AxiomEvaluator = std::shared_ptr<IAxiomEvaluator>;
+class IParallelAxiomWorkerContext;
+using ParallelAxiomWorkerContext = std::unique_ptr<IParallelAxiomWorkerContext>;
 class GroundedAxiomEvaluatorImpl;
 using GroundedAxiomEvaluator = std::shared_ptr<GroundedAxiomEvaluatorImpl>;
 class KPKCLiftedAxiomEvaluatorImpl;
@@ -175,27 +179,76 @@ using SetAddHeuristic = std::shared_ptr<SetAddHeuristicImpl>;
 class FFHeuristicImpl;
 using FFHeuristic = std::shared_ptr<FFHeuristicImpl>;
 
+/* Landmarks */
+namespace landmarks
+{
+class FactLandmarkGraphImpl;
+using FactLandmarkGraph = std::shared_ptr<const FactLandmarkGraphImpl>;
+class ApproximateFactLandmarkGenerator;
+struct FactLandmarkGeneratorOptions;
+}
+
 /* Algorithms */
 class IPruningStrategy;
 using PruningStrategy = std::shared_ptr<IPruningStrategy>;
+enum class BeamNoveltyMode
+{
+    ALL_TESTED,
+    SURVIVORS_ONLY,
+};
 class NoPruningStrategyImpl;
 using NoPruningStrategy = std::shared_ptr<NoPruningStrategyImpl>;
 class DuplicatePruningStrategyImpl;
 using DuplicatePruningStrategy = std::shared_ptr<DuplicatePruningStrategyImpl>;
+class ILayerOrderingStrategy;
+using LayerOrderingStrategy = std::shared_ptr<ILayerOrderingStrategy>;
+class InOrderLayerOrderingStrategyImpl;
+using InOrderLayerOrderingStrategy = std::shared_ptr<InOrderLayerOrderingStrategyImpl>;
+class ReverseOrderLayerOrderingStrategyImpl;
+using ReverseOrderLayerOrderingStrategy = std::shared_ptr<ReverseOrderLayerOrderingStrategyImpl>;
+class RandomizedLayerOrderingStrategyImpl;
+using RandomizedLayerOrderingStrategy = std::shared_ptr<RandomizedLayerOrderingStrategyImpl>;
+class GoalCountLayerOrderingStrategyImpl;
+using GoalCountLayerOrderingStrategy = std::shared_ptr<GoalCountLayerOrderingStrategyImpl>;
 namespace iw
 {
 class ArityZeroNoveltyPruningStrategyImpl;
 using ArityZeroNoveltyPruningStrategy = std::shared_ptr<ArityZeroNoveltyPruningStrategyImpl>;
 class ArityKNoveltyPruningStrategyImpl;
 using ArityKNoveltyPruningStrategy = std::shared_ptr<ArityKNoveltyPruningStrategyImpl>;
+class AbstractedNoveltyPruningStrategyImpl;
+using AbstractedNoveltyPruningStrategy = std::shared_ptr<AbstractedNoveltyPruningStrategyImpl>;
+}
+
+struct SearchControl;
+
+namespace rollout_iw
+{
+class IActionOrderingStrategy;
+using ActionOrderingStrategy = std::shared_ptr<IActionOrderingStrategy>;
+enum class ActionOrderingKind;
+struct ActionOrderingConfiguration;
+struct PlanStep;
+struct Options;
+struct Statistics;
+struct Result;
 }
 
 class IGoalStrategy;
 using GoalStrategy = std::shared_ptr<IGoalStrategy>;
 class ProblemGoalStrategyImpl;
 using ProblemGoalStrategy = std::shared_ptr<ProblemGoalStrategyImpl>;
+class ProblemMultiGoalStrategyImpl;
+using ProblemMultiGoalStrategy = std::shared_ptr<ProblemMultiGoalStrategyImpl>;
 class IExplorationStrategy;
 using ExplorationStategy = std::shared_ptr<IExplorationStrategy>;
+
+template<class Derived>
+class TransitionOrderingStrategyBase;
+class QueuedTransitionOrderingStrategy;
+struct LandmarkTransitionOrderingOptions;
+struct LandmarkTransitionScore;
+class LandmarkTransitionOrderingStrategy;
 
 // AStar_EAGER
 namespace astar_eager
@@ -204,6 +257,16 @@ class IEventHandler;
 using EventHandler = std::shared_ptr<IEventHandler>;
 class DebugEventHandlerImpl;
 using DebugEventHandler = std::shared_ptr<DebugEventHandlerImpl>;
+class DefaultEventHandlerImpl;
+using DefaultEventHandler = std::shared_ptr<DefaultEventHandlerImpl>;
+class Statistics;
+}
+
+// AStarIW
+namespace astar_iw
+{
+class IEventHandler;
+using EventHandler = std::shared_ptr<IEventHandler>;
 class DefaultEventHandlerImpl;
 using DefaultEventHandler = std::shared_ptr<DefaultEventHandlerImpl>;
 class Statistics;
@@ -230,6 +293,17 @@ class DebugEventHandlerImpl;
 using DebugEventHandler = std::shared_ptr<DebugEventHandlerImpl>;
 class DefaultEventHandlerImpl;
 using DefaultEventHandler = std::shared_ptr<DefaultEventHandlerImpl>;
+class ObservationEventHandlerImpl;
+using ObservationEventHandler = std::shared_ptr<ObservationEventHandlerImpl>;
+class CompositeEventHandlerImpl;
+using CompositeEventHandler = std::shared_ptr<CompositeEventHandlerImpl>;
+class Observation;
+class SearchTree;
+struct SearchTreeNode;
+struct TransitionObservation;
+struct GroundActionEffectSummary;
+struct ObservationOptions;
+struct TransitionAggregates;
 class Statistics;
 }
 
@@ -262,6 +336,10 @@ namespace iw
 {
 class IEventHandler;
 using EventHandler = std::shared_ptr<IEventHandler>;
+class ObservationEventHandlerImpl;
+using ObservationEventHandler = std::shared_ptr<ObservationEventHandlerImpl>;
+class Observation;
+struct ArityObservation;
 class DefaultEventHandlerImpl;
 using DefaultEventHandler = std::shared_ptr<DefaultEventHandlerImpl>;
 class Statistics;

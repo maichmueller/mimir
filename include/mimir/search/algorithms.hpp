@@ -24,6 +24,8 @@
 
 #include "mimir/search/algorithms/astar_eager.hpp"
 #include "mimir/search/algorithms/astar_eager/event_handlers.hpp"
+#include "mimir/search/algorithms/astar_iw.hpp"
+#include "mimir/search/algorithms/astar_iw/event_handlers.hpp"
 #include "mimir/search/algorithms/astar_lazy.hpp"
 #include "mimir/search/algorithms/astar_lazy/event_handlers.hpp"
 #include "mimir/search/algorithms/brfs.hpp"
@@ -34,6 +36,11 @@
 #include "mimir/search/algorithms/gbfs_lazy/event_handlers.hpp"
 #include "mimir/search/algorithms/iw.hpp"
 #include "mimir/search/algorithms/iw/event_handlers.hpp"
+#include "mimir/search/algorithms/iw/atomic_goal_portfolio.hpp"
+#include "mimir/search/algorithms/iw/parallel_rollouts.hpp"
+#include "mimir/search/algorithms/rollout_iw.hpp"
+#include "mimir/search/algorithms/rollout_iw/action_ordering.hpp"
+#include "mimir/search/algorithms/search_control.hpp"
 #include "mimir/search/algorithms/siw.hpp"
 #include "mimir/search/algorithms/siw/event_handlers.hpp"
 

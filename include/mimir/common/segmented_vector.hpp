@@ -20,6 +20,7 @@
 
 #include <bit>
 #include <vector>
+#include <cassert>
 
 namespace mimir
 {

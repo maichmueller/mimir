@@ -2,13 +2,17 @@ name: Integration Tests - Macos
 
 on: [push, pull_request]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: macos-latest
 
     steps:
     - name: Checkout Mimir
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Configure, Build, and Install Dependencies
       run: |

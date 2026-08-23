@@ -54,6 +54,7 @@ private:
 
 public:
     using SatisficingBindingGenerator<ActionSatisficingBindingGenerator>::create_binding_generator;
+    using SatisficingBindingGenerator<ActionSatisficingBindingGenerator>::create_candidate_binding_generator;
     using SatisficingBindingGenerator<ActionSatisficingBindingGenerator>::create_ground_conjunction_generator;
     using SatisficingBindingGenerator<ActionSatisficingBindingGenerator>::get_event_handler;
     using SatisficingBindingGenerator<ActionSatisficingBindingGenerator>::get_static_consistency_graph;
@@ -61,6 +62,7 @@ public:
     ActionSatisficingBindingGenerator(formalism::Action action, formalism::Problem problem, EventHandler event_handler = nullptr);
 
     const formalism::Action& get_action() const;
+    bool test_binding(const UnpackedStateImpl& unpacked_state, const formalism::ObjectList& binding);
 };
 
 using ActionSatisficingBindingGeneratorList = std::vector<ActionSatisficingBindingGenerator>;

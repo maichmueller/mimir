@@ -23,6 +23,7 @@
 #include "mimir/search/declarations.hpp"
 
 #include <chrono>
+#include <cstddef>
 #include <concepts>
 #include <cstdint>
 
@@ -45,6 +46,20 @@ public:
 
     /// @brief React on generating a state by applying an action.
     virtual void on_generate_state(const State& state, formalism::GroundAction action, ContinuousCost action_cost, const State& successor_state) = 0;
+    virtual bool supports_novel_witness_events() const { return false; }
+    virtual void on_generate_state_with_novel_witness(const State& state,
+                                                       formalism::GroundAction action,
+                                                       ContinuousCost action_cost,
+                                                       const State& successor_state,
+                                                       const iw::AtomIndexList& novel_fluent_atom_indices)
+    {
+    }
+
+    /// @brief Lightweight generated-state hook for quiet handlers in the staged beam fast path.
+    virtual bool supports_payloadless_generated_state_events() const { return false; }
+    virtual void on_generate_state_without_payload() {}
+    virtual void on_generate_state_in_search_tree_without_payload() {}
+    virtual void on_generate_state_not_in_search_tree_without_payload() {}
 
     /// @brief React on generating a state in the search tree by applying an action.
     virtual void
@@ -67,6 +82,32 @@ public:
                                uint64_t num_nodes,
                                uint64_t num_actions,
                                uint64_t num_axioms) = 0;
+
+    virtual void on_finish_iw1_incremental_first_applicability(
+        const IW1IncrementalFirstApplicabilityStatistics& iw1_incremental_first_applicability_statistics)
+    {
+    }
+
+    /// @brief React on finishing one parallel beam chunk.
+    virtual void on_finish_parallel_beam_chunk(size_t chunk_size,
+                                               std::chrono::nanoseconds worker_compute_time,
+                                               std::chrono::nanoseconds main_thread_merge_time,
+                                               std::chrono::nanoseconds main_thread_intern_time,
+                                               std::chrono::nanoseconds fluent_slot_time,
+                                               std::chrono::nanoseconds numeric_slot_time,
+                                               std::chrono::nanoseconds derived_slot_time,
+                                               std::chrono::nanoseconds state_lookup_time,
+                                               std::chrono::nanoseconds reached_atom_update_time)
+    {
+    }
+
+    /// @brief React on finishing the parallel beam pipeline for one search.
+    virtual void on_finish_parallel_beam_pipeline(size_t ready_queue_high_water,
+                                                  size_t in_flight_chunks_high_water,
+                                                  std::chrono::nanoseconds consumer_stall_time,
+                                                  std::chrono::nanoseconds producer_stall_time)
+    {
+    }
 
     /// @brief React on solving a search.
     virtual void on_solved(const Plan& plan) = 0;
@@ -116,6 +157,8 @@ public:
 
     void on_expand_goal_state(const State& state) override
     {
+        m_statistics.increment_num_expanded_goal_states();
+
         if (!m_quiet)
         {
             self().on_expand_goal_state_impl(state);
@@ -132,8 +175,42 @@ public:
         }
     }
 
+    /* Computing a novelty witness costs a scan of the transition's novel atoms, so a search only
+       pays for it when a handler says it consumes the witness. That is a capability of the concrete
+       handler, not of its verbosity: a non-quiet handler that never reads witnesses (this base's own
+       `on_generate_state_with_novel_witness` ignores them) would otherwise make every search compute
+       them for nothing, and a handler that does want them while staying quiet could not ask. Derived
+       handlers that implement `on_generate_state_with_novel_witness` override this to return true. */
+    bool supports_novel_witness_events() const override { return false; }
+
+    void on_generate_state_with_novel_witness(const State& state,
+                                              formalism::GroundAction action,
+                                              ContinuousCost action_cost,
+                                              const State& successor_state,
+                                              const iw::AtomIndexList& novel_fluent_atom_indices) override
+    {
+        [[maybe_unused]] const auto& ignored_state = state;
+        [[maybe_unused]] const auto ignored_action = action;
+        [[maybe_unused]] const auto ignored_action_cost = action_cost;
+        [[maybe_unused]] const auto& ignored_successor_state = successor_state;
+        [[maybe_unused]] const auto& ignored_novel_fluent_atom_indices = novel_fluent_atom_indices;
+    }
+
+    bool supports_payloadless_generated_state_events() const override { return m_quiet; }
+
+    /* The payloadless hooks feed exactly the same counters as their payloadful counterparts, so a
+       search that reports a transition without payload is indistinguishable in the statistics from
+       one that reports it with payload. */
+    void on_generate_state_without_payload() override { m_statistics.increment_num_generated(); }
+
+    void on_generate_state_in_search_tree_without_payload() override { m_statistics.increment_num_generated_in_search_tree(); }
+
+    void on_generate_state_not_in_search_tree_without_payload() override { m_statistics.increment_num_generated_not_in_search_tree(); }
+
     void on_generate_state_in_search_tree(const State& state, formalism::GroundAction action, ContinuousCost action_cost, const State& successor_state) override
     {
+        m_statistics.increment_num_generated_in_search_tree();
+
         if (!m_quiet)
         {
             self().on_generate_state_in_search_tree_impl(state, action, action_cost, successor_state);
@@ -143,6 +220,8 @@ public:
     void
     on_generate_state_not_in_search_tree(const State& state, formalism::GroundAction action, ContinuousCost action_cost, const State& successor_state) override
     {
+        m_statistics.increment_num_generated_not_in_search_tree();
+
         if (!m_quiet)
         {
             self().on_generate_state_not_in_search_tree_impl(state, action, action_cost, successor_state);
@@ -151,7 +230,7 @@ public:
 
     void on_finish_g_layer(DiscreteCost g_value) override
     {
-        m_statistics.on_finish_g_layer();
+        m_statistics.on_finish_g_layer(static_cast<int64_t>(g_value));
 
         if (!m_quiet)
         {
@@ -191,6 +270,44 @@ public:
         {
             self().on_end_search_impl(num_reached_fluent_atoms, num_reached_derived_atoms, num_states, num_nodes, num_actions, num_axioms);
         }
+    }
+
+    void on_finish_iw1_incremental_first_applicability(
+        const IW1IncrementalFirstApplicabilityStatistics& iw1_incremental_first_applicability_statistics) override
+    {
+        m_statistics.set_iw1_incremental_first_applicability_statistics(iw1_incremental_first_applicability_statistics);
+    }
+
+    void on_finish_parallel_beam_chunk(size_t chunk_size,
+                                       std::chrono::nanoseconds worker_compute_time,
+                                       std::chrono::nanoseconds main_thread_merge_time,
+                                       std::chrono::nanoseconds main_thread_intern_time,
+                                       std::chrono::nanoseconds fluent_slot_time,
+                                       std::chrono::nanoseconds numeric_slot_time,
+                                       std::chrono::nanoseconds derived_slot_time,
+                                       std::chrono::nanoseconds state_lookup_time,
+                                       std::chrono::nanoseconds reached_atom_update_time) override
+    {
+        m_statistics.record_parallel_beam_chunk(chunk_size,
+                                               worker_compute_time,
+                                               main_thread_merge_time,
+                                               main_thread_intern_time,
+                                               fluent_slot_time,
+                                               numeric_slot_time,
+                                               derived_slot_time,
+                                               state_lookup_time,
+                                               reached_atom_update_time);
+    }
+
+    void on_finish_parallel_beam_pipeline(size_t ready_queue_high_water,
+                                          size_t in_flight_chunks_high_water,
+                                          std::chrono::nanoseconds consumer_stall_time,
+                                          std::chrono::nanoseconds producer_stall_time) override
+    {
+        m_statistics.record_parallel_beam_pipeline(ready_queue_high_water,
+                                                   in_flight_chunks_high_water,
+                                                   consumer_stall_time,
+                                                   producer_stall_time);
     }
 
     void on_solved(const Plan& plan) override

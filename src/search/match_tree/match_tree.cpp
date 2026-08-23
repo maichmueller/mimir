@@ -81,18 +81,19 @@ MatchTreeImpl<E>::MatchTreeImpl(const Repositories& pddl_repositories, std::vect
 template<formalism::HasConjunctiveCondition E>
 void MatchTreeImpl<E>::generate_applicable_elements_iteratively(const UnpackedStateImpl& state, std::vector<const E*>& out_applicable_elements)
 {
-    m_evaluate_stack.clear();
+    static thread_local auto s_evaluate_stack = std::vector<const INode<E>*> {};
+    s_evaluate_stack.clear();
     out_applicable_elements.clear();
 
-    m_evaluate_stack.push_back(m_root.get());
+    s_evaluate_stack.push_back(m_root.get());
 
-    while (!m_evaluate_stack.empty())
+    while (!s_evaluate_stack.empty())
     {
-        const auto node = m_evaluate_stack.back();
+        const auto node = s_evaluate_stack.back();
 
-        m_evaluate_stack.pop_back();
+        s_evaluate_stack.pop_back();
 
-        node->generate_applicable_actions(state, m_evaluate_stack, out_applicable_elements);
+        node->generate_applicable_actions(state, s_evaluate_stack, out_applicable_elements);
     }
 }
 

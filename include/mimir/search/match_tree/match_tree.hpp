@@ -39,8 +39,6 @@ private:
     Node<E> m_root;
     Statistics m_statistics;
 
-    std::vector<const INode<E>*> m_evaluate_stack;  ///< temporary during evaluation.
-
     MatchTreeImpl();
 
     MatchTreeImpl(const formalism::Repositories& pddl_repositories, std::vector<const E*> elements, const Options& options = Options());

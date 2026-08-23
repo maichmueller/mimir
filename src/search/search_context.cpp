@@ -109,4 +109,10 @@ const Problem& SearchContextImpl::get_problem() const { return m_problem; }
 const ApplicableActionGenerator SearchContextImpl::get_applicable_action_generator() const { return m_applicable_action_generator; }
 
 const StateRepository SearchContextImpl::get_state_repository() const { return m_state_repository; }
+
+void SearchContextImpl::release_parallel_memory(bool clear_shared_caches) const
+{
+    m_applicable_action_generator->release_parallel_memory(clear_shared_caches);
+    m_state_repository->get_axiom_evaluator()->release_parallel_memory(clear_shared_caches);
+}
 }

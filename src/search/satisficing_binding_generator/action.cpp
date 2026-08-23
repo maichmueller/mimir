@@ -36,6 +36,11 @@ ActionSatisficingBindingGenerator::ActionSatisficingBindingGenerator(Action acti
 
 const Action& ActionSatisficingBindingGenerator::get_action() const { return m_action; }
 
+bool ActionSatisficingBindingGenerator::test_binding(const UnpackedStateImpl& unpacked_state, const ObjectList& binding)
+{
+    return SatisficingBindingGenerator<ActionSatisficingBindingGenerator>::is_valid_binding(unpacked_state, binding);
+}
+
 bool ActionSatisficingBindingGenerator::is_valid_binding_impl(const UnpackedStateImpl& unpacked_state, const ObjectList& binding)
 {
     // Reset

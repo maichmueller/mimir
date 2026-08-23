@@ -1,0 +1,217 @@
+diff --git a/include/loki/details/utils/indexed_hash_set.hpp b/include/loki/details/utils/indexed_hash_set.hpp
+index bd54abf..e167042 100644
+--- a/include/loki/details/utils/indexed_hash_set.hpp
++++ b/include/loki/details/utils/indexed_hash_set.hpp
+@@ -27,6 +27,10 @@
+ #include <unordered_set>
+ #include <variant>
+ 
++/// @brief Chains of arbitrary depth are supported: every parent access below goes through the
++/// parent's own recursive public API instead of reaching into its private members.
++#define LOKI_INDEXED_HASH_SET_SUPPORTS_MULTI_LEVEL_CHAINING 1
++
+ namespace loki
+ {
+ 
+@@ -51,49 +55,40 @@ private:
+     }
+ 
+ public:
+-    explicit IndexedHashSet(const IndexedHashSet* parent = nullptr) : m_set(), m_vector(), m_parent(parent)
+-    {
+-        if (parent)
+-        {
+-            if (parent->m_parent)
+-                throw std::runtime_error("IndexedHashSet::IndexedHashSet: Multi chaining of IndexedHashSet is not supported.");
+-        }
+-    }
++    explicit IndexedHashSet(const IndexedHashSet* parent = nullptr) : m_set(), m_vector(), m_parent(parent) {}
+ 
+     IndexedHashSet(const IndexedHashSet& other) = delete;
+     IndexedHashSet& operator=(const IndexedHashSet& other) = delete;
+     IndexedHashSet(IndexedHashSet&& other) = default;
+     IndexedHashSet& operator=(IndexedHashSet&& other) = default;
+ 
+-    T const* find(const T& element) const
++    /// @brief Looks the key up in this level and then in every ancestor, innermost first.
++    /// The layers are disjoint by construction (an element is only inserted locally after the
++    /// whole ancestor chain missed), so the visiting order does not affect the result.
++    /// @param key may be a `T` or any heterogeneously comparable view of one.
++    template<typename Key>
++    T const* find_in_chain(const Key& key) const
+     {
++        for (const IndexedHashSet* level = this; level; level = level->m_parent)
+         {
+-            if (auto it = m_set.find(element); it != m_set.end())
++            if (auto it = level->m_set.find(key); it != level->m_set.end())
+             {
+                 return &*it;
+             }
+         }
+ 
+-        {
+-            if (m_parent)
+-            {
+-                if (auto it = m_parent->m_set.find(element); it != m_parent->m_set.end())
+-                {
+-                    return &*it;
+-                }
+-            }
+-        }
+-
+         return nullptr;
+     }
+ 
++    T const* find(const T& element) const { return find_in_chain(element); }
++
+     T const* insert(const T& element)
+     {
+         if (m_parent)
+         {
+-            if (auto it = m_parent->m_set.find(element); it != m_parent->m_set.end())
++            if (auto existing = m_parent->find_in_chain(element))
+             {
+-                return &*it;
++                return existing;
+             }
+         }
+ 
+@@ -118,20 +113,13 @@ public:
+         // 1) Build a non-owning view over the identity (no alloc)
+         auto view = T::identifying_args(args...);
+ 
+-        // 2) Probe parent first (no construction of T on hits)
+-        if (m_parent)
++        // 2) Probe this level and every ancestor (no construction of T on hits)
++        if (auto existing = find_in_chain(view))
+         {
+-            if (auto it = m_parent->m_set.find(view); it != m_parent->m_set.end())
+-            {
+-                return &*it;
+-            }
++            return existing;
+         }
+ 
+-        // 3) Probe local set (still no construction of T on hits)
+-        if (auto it = m_set.find(view); it != m_set.end())
+-            return &*it;
+-
+-        // 4) Miss: construct in-place (no temporary), assign index
++        // 3) Miss: construct in-place (no temporary), assign index
+         auto [it, success] = m_set.insert(T(size(), std::forward<Args>(args)...));
+         if (success)
+             m_vector.push_back(&*it);
+@@ -147,7 +135,8 @@ public:
+     T const* operator[](size_t pos) const
+     {
+         assert(pos < size());
+-        return (pos < parent_size()) ? m_parent->m_vector[pos] : (m_vector[pos - parent_size()]);
++        const auto num_inherited = parent_size();
++        return (pos < num_inherited) ? (*m_parent)[pos] : m_vector[pos - num_inherited];
+     }
+ 
+     /// @brief Returns a pointer to an existing object with the given pos.
+@@ -156,17 +145,18 @@ public:
+     T const* at(size_t pos) const
+     {
+         range_check(pos);
+-        return (pos < parent_size()) ? m_parent->m_vector.at(pos) : (m_vector.at(pos - parent_size()));
++        const auto num_inherited = parent_size();
++        return (pos < num_inherited) ? m_parent->at(pos) : m_vector.at(pos - num_inherited);
+     }
+ 
++    /// @brief Walks the whole chain in index order: inherited elements first, local ones last.
++    /// Indexing through `operator[]` keeps this correct at any chain depth, and matches the
++    /// insertion order as long as no ancestor grows while the iteration runs.
+     class const_iterator
+     {
+     private:
+         const IndexedHashSet* m_repo;
+-        bool m_in_parent;
+-
+-        std::vector<const T*>::const_iterator m_it;
+-        std::vector<const T*>::const_iterator m_end;
++        size_t m_pos;
+ 
+     public:
+         using difference_type = std::ptrdiff_t;
+@@ -176,41 +166,12 @@ public:
+         using iterator_category = std::input_iterator_tag;
+         using iterator_concept = std::input_iterator_tag;
+ 
+-        const_iterator() : m_repo(nullptr), m_in_parent(false), m_it(), m_end() {}
+-        const_iterator(const IndexedHashSet& repo, bool begin) : m_repo(&repo)
+-        {
+-            if (begin)
+-            {
+-                if (repo.m_parent && !repo.m_parent->m_vector.empty())
+-                {
+-                    m_in_parent = true;
+-                    m_it = repo.m_parent->m_vector.begin();
+-                    m_end = repo.m_parent->m_vector.end();
+-                }
+-                else
+-                {
+-                    m_in_parent = false;
+-                    m_it = repo.m_vector.begin();
+-                    m_end = repo.m_vector.end();
+-                }
+-            }
+-            else
+-            {
+-                m_in_parent = false;
+-                m_it = repo.m_vector.end();
+-                m_end = repo.m_vector.end();
+-            }
+-        }
+-        reference operator*() const { return **m_it; }
++        const_iterator() : m_repo(nullptr), m_pos(0) {}
++        const_iterator(const IndexedHashSet& repo, bool begin) : m_repo(&repo), m_pos(begin ? 0 : repo.size()) {}
++        reference operator*() const { return *(*m_repo)[m_pos]; }
+         const_iterator& operator++()
+         {
+-            ++m_it;
+-            if (m_in_parent && m_it == m_end)
+-            {
+-                m_it = m_repo->m_vector.begin();
+-                m_end = m_repo->m_vector.end();
+-                m_in_parent = false;
+-            }
++            ++m_pos;
+             return *this;
+         }
+         const_iterator operator++(int)
+@@ -221,8 +182,7 @@ public:
+         }
+         const_iterator& operator+=(difference_type n)
+         {
+-            while (n-- > 0)
+-                ++(*this);
++            m_pos += n;
+             return *this;
+         }
+ 
+@@ -232,7 +192,7 @@ public:
+             copy += n;
+             return copy;
+         }
+-        bool operator==(const const_iterator& other) const { return m_in_parent == other.m_in_parent && m_it == other.m_it; }
++        bool operator==(const const_iterator& other) const { return m_pos == other.m_pos; }
+         bool operator!=(const const_iterator& other) const { return !(*this == other); }
+     };
+ 
+@@ -240,10 +200,14 @@ public:
+ 
+     const_iterator end() const { return const_iterator(*this, false); }
+ 
++    /// @brief Returns the elements stored at this level only, excluding inherited ones.
+     const absl::node_hash_set<T, Hash, EqualTo>& get_set() const { return m_set; }
+ 
++    /// @brief Returns the elements stored at this level only, excluding inherited ones.
+     const std::vector<const T*>& get_vector() const { return m_vector; }
+ 
++    const IndexedHashSet* get_parent() const { return m_parent; }
++
+     /**
+      * Capacity
+      */

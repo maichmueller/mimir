@@ -49,12 +49,15 @@ namespace mimir::search
  * Helpers
  */
 
-inline void clear_full_consistency_graph(std::vector<boost::dynamic_bitset<>>& full_consistency_graph)
+inline void clear_touched_consistency_edges(std::vector<boost::dynamic_bitset<>>& full_consistency_graph,
+                                            std::vector<std::pair<Index, Index>>& touched_consistency_edges)
 {
-    for (auto& row : full_consistency_graph)
+    for (const auto& [first_index, second_index] : touched_consistency_edges)
     {
-        row.reset();
+        full_consistency_graph[first_index][second_index] = 0;
+        full_consistency_graph[second_index][first_index] = 0;
     }
+    touched_consistency_edges.clear();
 }
 
 /**
@@ -156,6 +159,28 @@ mimir::generator<formalism::ObjectList> SatisficingBindingGenerator<Derived_>::n
 }
 
 template<typename Derived_>
+mimir::generator<formalism::ObjectList> SatisficingBindingGenerator<Derived_>::candidate_nullary_case(const UnpackedStateImpl&)
+{
+    co_yield formalism::ObjectList {};
+}
+
+template<typename Derived_>
+template<typename Callback>
+void SatisficingBindingGenerator<Derived_>::candidate_nullary_case_for_each(const UnpackedStateImpl&, Callback&& callback)
+{
+    auto binding = formalism::ObjectList {};
+    callback(binding);
+}
+
+template<typename Derived_>
+template<typename Callback>
+void SatisficingBindingGenerator<Derived_>::candidate_nullary_case_for_each_indices(const UnpackedStateImpl&, Callback&& callback)
+{
+    auto binding_indices = IndexList {};
+    callback(binding_indices);
+}
+
+template<typename Derived_>
 mimir::generator<formalism::ObjectList> SatisficingBindingGenerator<Derived_>::unary_case(const UnpackedStateImpl& unpacked_state,
                                                                                           const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
                                                                                           const std::optional<boost::dynamic_bitset<>>& vertex_mask)
@@ -170,16 +195,58 @@ mimir::generator<formalism::ObjectList> SatisficingBindingGenerator<Derived_>::u
 }
 
 template<typename Derived_>
+mimir::generator<formalism::ObjectList> SatisficingBindingGenerator<Derived_>::candidate_unary_case(
+    const UnpackedStateImpl&,
+    const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+    const std::optional<boost::dynamic_bitset<>>& vertex_mask)
+{
+    for (const auto& vertex : m_static_consistency_graph.consistent_vertices(m_problem->get_static_assignment_sets(), dynamic_assignment_sets, vertex_mask))
+    {
+        co_yield formalism::ObjectList { m_problem->get_repositories().get_object(vertex.get_object_index()) };
+    }
+}
+
+template<typename Derived_>
+template<typename Callback>
+void SatisficingBindingGenerator<Derived_>::candidate_unary_case_for_each(const UnpackedStateImpl&,
+                                                                          const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                                                          const std::optional<boost::dynamic_bitset<>>& vertex_mask,
+                                                                          Callback&& callback)
+{
+    auto binding = formalism::ObjectList(1);
+    for (const auto& vertex : m_static_consistency_graph.consistent_vertices(m_problem->get_static_assignment_sets(), dynamic_assignment_sets, vertex_mask))
+    {
+        binding[0] = m_problem->get_repositories().get_object(vertex.get_object_index());
+        callback(binding);
+    }
+}
+
+template<typename Derived_>
+template<typename Callback>
+void SatisficingBindingGenerator<Derived_>::candidate_unary_case_for_each_indices(const UnpackedStateImpl&,
+                                                                                  const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                                                                  const std::optional<boost::dynamic_bitset<>>& vertex_mask,
+                                                                                  Callback&& callback)
+{
+    auto binding_indices = IndexList(1);
+    for (const auto& vertex : m_static_consistency_graph.consistent_vertices(m_problem->get_static_assignment_sets(), dynamic_assignment_sets, vertex_mask))
+    {
+        binding_indices[0] = vertex.get_object_index();
+        callback(binding_indices);
+    }
+}
+
+template<typename Derived_>
 mimir::generator<formalism::ObjectList> SatisficingBindingGenerator<Derived_>::general_case(const UnpackedStateImpl& unpacked_state,
                                                                                             const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
                                                                                             const std::optional<boost::dynamic_bitset<>>& vertex_mask)
 {
+    clear_touched_consistency_edges(m_full_consistency_graph, m_touched_consistency_edges);
+
     if (m_static_consistency_graph.get_num_edges() == 0)
     {
         co_return;
     }
-
-    clear_full_consistency_graph(m_full_consistency_graph);
 
     for (const auto& edge : m_static_consistency_graph.consistent_edges(m_problem->get_static_assignment_sets(), dynamic_assignment_sets, vertex_mask))
     {
@@ -189,6 +256,7 @@ mimir::generator<formalism::ObjectList> SatisficingBindingGenerator<Derived_>::g
         auto& second_row = m_full_consistency_graph[second_index];
         first_row[second_index] = 1;
         second_row[first_index] = 1;
+        m_touched_consistency_edges.emplace_back(first_index, second_index);
     }
 
     // Find all cliques of size num_parameters whose labels denote complete assignments that might yield an applicable precondition. The relatively few
@@ -217,6 +285,134 @@ mimir::generator<formalism::ObjectList> SatisficingBindingGenerator<Derived_>::g
 }
 
 template<typename Derived_>
+mimir::generator<formalism::ObjectList> SatisficingBindingGenerator<Derived_>::candidate_general_case(
+    const UnpackedStateImpl&,
+    const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+    const std::optional<boost::dynamic_bitset<>>& vertex_mask)
+{
+    clear_touched_consistency_edges(m_full_consistency_graph, m_touched_consistency_edges);
+
+    if (m_static_consistency_graph.get_num_edges() == 0)
+    {
+        co_return;
+    }
+
+    for (const auto& edge : m_static_consistency_graph.consistent_edges(m_problem->get_static_assignment_sets(), dynamic_assignment_sets, vertex_mask))
+    {
+        const auto first_index = edge.get_src().get_index();
+        const auto second_index = edge.get_dst().get_index();
+        auto& first_row = m_full_consistency_graph[first_index];
+        auto& second_row = m_full_consistency_graph[second_index];
+        first_row[second_index] = 1;
+        second_row[first_index] = 1;
+        m_touched_consistency_edges.emplace_back(first_index, second_index);
+    }
+
+    const auto& problem = *m_problem;
+    const auto& vertices = m_static_consistency_graph.get_vertices();
+    const auto& partitions = m_static_consistency_graph.get_vertices_by_parameter_index();
+    for (const auto& clique : create_k_clique_in_k_partite_graph_generator(m_full_consistency_graph, partitions))
+    {
+        auto binding = formalism::ObjectList(clique.size());
+
+        for (std::size_t index = 0; index < clique.size(); ++index)
+        {
+            const auto& vertex = vertices[clique[index]];
+            const auto parameter_index = vertex.get_parameter_index();
+            const auto object_index = vertex.get_object_index();
+            binding[parameter_index] = problem.get_problem_and_domain_objects()[object_index];
+        }
+
+        co_yield std::move(binding);
+    }
+}
+
+template<typename Derived_>
+template<typename Callback>
+void SatisficingBindingGenerator<Derived_>::candidate_general_case_for_each(const UnpackedStateImpl&,
+                                                                            const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                                                            const std::optional<boost::dynamic_bitset<>>& vertex_mask,
+                                                                            Callback&& callback)
+{
+    clear_touched_consistency_edges(m_full_consistency_graph, m_touched_consistency_edges);
+
+    if (m_static_consistency_graph.get_num_edges() == 0)
+    {
+        return;
+    }
+
+    for (const auto& edge : m_static_consistency_graph.consistent_edges(m_problem->get_static_assignment_sets(), dynamic_assignment_sets, vertex_mask))
+    {
+        const auto first_index = edge.get_src().get_index();
+        const auto second_index = edge.get_dst().get_index();
+        auto& first_row = m_full_consistency_graph[first_index];
+        auto& second_row = m_full_consistency_graph[second_index];
+        first_row[second_index] = 1;
+        second_row[first_index] = 1;
+        m_touched_consistency_edges.emplace_back(first_index, second_index);
+    }
+
+    const auto& problem = *m_problem;
+    const auto& vertices = m_static_consistency_graph.get_vertices();
+    const auto& partitions = m_static_consistency_graph.get_vertices_by_parameter_index();
+    auto binding = formalism::ObjectList(m_conjunctive_condition->get_arity());
+    for_each_k_clique_in_k_partite_graph(m_full_consistency_graph, partitions, [&](const std::vector<uint32_t>& clique)
+    {
+        for (std::size_t index = 0; index < clique.size(); ++index)
+        {
+            const auto& vertex = vertices[clique[index]];
+            const auto parameter_index = vertex.get_parameter_index();
+            const auto object_index = vertex.get_object_index();
+            binding[parameter_index] = problem.get_problem_and_domain_objects()[object_index];
+        }
+
+        callback(binding);
+    });
+}
+
+template<typename Derived_>
+template<typename Callback>
+void SatisficingBindingGenerator<Derived_>::candidate_general_case_for_each_indices(const UnpackedStateImpl&,
+                                                                                    const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                                                                    const std::optional<boost::dynamic_bitset<>>& vertex_mask,
+                                                                                    Callback&& callback)
+{
+    clear_touched_consistency_edges(m_full_consistency_graph, m_touched_consistency_edges);
+
+    if (m_static_consistency_graph.get_num_edges() == 0)
+    {
+        return;
+    }
+
+    for (const auto& edge : m_static_consistency_graph.consistent_edges(m_problem->get_static_assignment_sets(), dynamic_assignment_sets, vertex_mask))
+    {
+        const auto first_index = edge.get_src().get_index();
+        const auto second_index = edge.get_dst().get_index();
+        auto& first_row = m_full_consistency_graph[first_index];
+        auto& second_row = m_full_consistency_graph[second_index];
+        first_row[second_index] = 1;
+        second_row[first_index] = 1;
+        m_touched_consistency_edges.emplace_back(first_index, second_index);
+    }
+
+    const auto& vertices = m_static_consistency_graph.get_vertices();
+    const auto& partitions = m_static_consistency_graph.get_vertices_by_parameter_index();
+    auto binding_indices = IndexList(m_conjunctive_condition->get_arity());
+    for_each_k_clique_in_k_partite_graph(m_full_consistency_graph, partitions, [&](const std::vector<uint32_t>& clique)
+    {
+        for (std::size_t index = 0; index < clique.size(); ++index)
+        {
+            const auto& vertex = vertices[clique[index]];
+            const auto parameter_index = vertex.get_parameter_index();
+            const auto object_index = vertex.get_object_index();
+            binding_indices[parameter_index] = object_index;
+        }
+
+        callback(binding_indices);
+    });
+}
+
+template<typename Derived_>
 SatisficingBindingGenerator<Derived_>::SatisficingBindingGenerator(formalism::ConjunctiveCondition conjunctive_condition,
                                                                    formalism::Problem problem,
                                                                    EventHandler event_handler) :
@@ -224,7 +420,8 @@ SatisficingBindingGenerator<Derived_>::SatisficingBindingGenerator(formalism::Co
     m_problem(problem),
     m_event_handler(event_handler ? event_handler : std::make_shared<DefaultEventHandlerImpl>()),
     m_static_consistency_graph(*m_problem, m_conjunctive_condition, 0, m_conjunctive_condition->get_parameters().size()),
-    m_full_consistency_graph(m_static_consistency_graph.get_vertices().size(), boost::dynamic_bitset<>(m_static_consistency_graph.get_vertices().size()))
+    m_full_consistency_graph(m_static_consistency_graph.get_vertices().size(), boost::dynamic_bitset<>(m_static_consistency_graph.get_vertices().size())),
+    m_touched_consistency_edges()
 {
 }
 
@@ -259,6 +456,103 @@ SatisficingBindingGenerator<Derived_>::create_binding_generator(const UnpackedSt
     else
     {
         return general_case(unpacked_state, dynamic_assignment_sets, vertex_mask);
+    }
+}
+
+template<typename Derived_>
+mimir::generator<formalism::ObjectList>
+SatisficingBindingGenerator<Derived_>::create_candidate_binding_generator(const State& state,
+                                                                          const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                                                          const std::optional<boost::dynamic_bitset<>>& vertex_mask)
+{
+    return create_candidate_binding_generator(state.get_unpacked_state(), dynamic_assignment_sets, vertex_mask);
+}
+
+template<typename Derived_>
+mimir::generator<formalism::ObjectList>
+SatisficingBindingGenerator<Derived_>::create_candidate_binding_generator(const UnpackedStateImpl& unpacked_state,
+                                                                          const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                                                          const std::optional<boost::dynamic_bitset<>>& vertex_mask)
+{
+    assert(nullary_conditions_hold(m_conjunctive_condition, unpacked_state));
+
+    if (m_conjunctive_condition->get_arity() == 0)
+    {
+        return candidate_nullary_case(unpacked_state);
+    }
+    else if (m_conjunctive_condition->get_arity() == 1)
+    {
+        return candidate_unary_case(unpacked_state, dynamic_assignment_sets, vertex_mask);
+    }
+    else
+    {
+        return candidate_general_case(unpacked_state, dynamic_assignment_sets, vertex_mask);
+    }
+}
+
+template<typename Derived_>
+template<typename Callback>
+void SatisficingBindingGenerator<Derived_>::for_each_candidate_binding(const State& state,
+                                                                       const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                                                       const std::optional<boost::dynamic_bitset<>>& vertex_mask,
+                                                                       Callback&& callback)
+{
+    for_each_candidate_binding(state.get_unpacked_state(), dynamic_assignment_sets, vertex_mask, std::forward<Callback>(callback));
+}
+
+template<typename Derived_>
+template<typename Callback>
+void SatisficingBindingGenerator<Derived_>::for_each_candidate_binding(const UnpackedStateImpl& unpacked_state,
+                                                                       const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                                                       const std::optional<boost::dynamic_bitset<>>& vertex_mask,
+                                                                       Callback&& callback)
+{
+    assert(nullary_conditions_hold(m_conjunctive_condition, unpacked_state));
+
+    if (m_conjunctive_condition->get_arity() == 0)
+    {
+        candidate_nullary_case_for_each(unpacked_state, std::forward<Callback>(callback));
+    }
+    else if (m_conjunctive_condition->get_arity() == 1)
+    {
+        candidate_unary_case_for_each(unpacked_state, dynamic_assignment_sets, vertex_mask, std::forward<Callback>(callback));
+    }
+    else
+    {
+        candidate_general_case_for_each(unpacked_state, dynamic_assignment_sets, vertex_mask, std::forward<Callback>(callback));
+    }
+}
+
+template<typename Derived_>
+template<typename Callback>
+void SatisficingBindingGenerator<Derived_>::for_each_candidate_binding_indices(const State& state,
+                                                                               const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                                                               const std::optional<boost::dynamic_bitset<>>& vertex_mask,
+                                                                               Callback&& callback)
+{
+    for_each_candidate_binding_indices(state.get_unpacked_state(), dynamic_assignment_sets, vertex_mask, std::forward<Callback>(callback));
+}
+
+template<typename Derived_>
+template<typename Callback>
+void SatisficingBindingGenerator<Derived_>::for_each_candidate_binding_indices(const UnpackedStateImpl& unpacked_state,
+                                                                               const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                                                               const std::optional<boost::dynamic_bitset<>>& vertex_mask,
+                                                                               Callback&& callback)
+{
+    assert(nullary_conditions_hold(m_conjunctive_condition, unpacked_state));
+
+    if (m_conjunctive_condition->get_arity() == 0)
+    {
+        candidate_nullary_case_for_each_indices(unpacked_state, std::forward<Callback>(callback));
+    }
+    else if (m_conjunctive_condition->get_arity() == 1)
+    {
+        candidate_unary_case_for_each_indices(unpacked_state, dynamic_assignment_sets, vertex_mask, std::forward<Callback>(callback));
+    }
+    else
+    {
+        candidate_general_case_for_each_indices(unpacked_state, dynamic_assignment_sets, vertex_mask, std::forward<Callback>(callback));
     }
 }
 
@@ -331,6 +625,12 @@ template<typename Derived_>
 const typename SatisficingBindingGenerator<Derived_>::EventHandler& SatisficingBindingGenerator<Derived_>::get_event_handler() const
 {
     return m_event_handler;
+}
+
+template<typename Derived_>
+void SatisficingBindingGenerator<Derived_>::set_event_handler(EventHandler event_handler)
+{
+    m_event_handler = std::move(event_handler);
 }
 
 template<typename Derived_>

@@ -19,6 +19,7 @@
 #define MIMIR_SEARCH_ALGORITHMS_BRFS_HPP_
 
 #include "mimir/formalism/declarations.hpp"
+#include "mimir/search/algorithms/search_control.hpp"
 #include "mimir/search/algorithms/utils.hpp"
 #include "mimir/search/declarations.hpp"
 #include "mimir/search/state.hpp"
@@ -35,14 +36,70 @@ struct Options
     EventHandler event_handler = nullptr;
     GoalStrategy goal_strategy = nullptr;
     PruningStrategy pruning_strategy = nullptr;
+    LayerOrderingStrategy layer_ordering_strategy = nullptr;
+    uint32_t max_next_layer_states = std::numeric_limits<uint32_t>::max();
+    uint32_t beam_width = std::numeric_limits<uint32_t>::max();
+    BeamNoveltyMode beam_novelty_mode = BeamNoveltyMode::ALL_TESTED;
+    bool relaxed_survivors_only_beam = false;
+    bool randomize_equal_score_ties = false;
+    uint64_t equal_score_tie_seed = 0;
+    uint32_t parallel_beam_num_threads = 1;
+    uint32_t parallel_beam_chunk_size = 1024;
+    bool iw1_precheck_add_effect_novelty = false;
+    bool iw1_atom_first_mode = false;
+    double iw1_atom_first_ratio = 1.0;
+    bool iw1_incremental_first_applicability = false;
+    bool iw1_incremental_first_applicability_debug_crosscheck = false;
     bool stop_if_goal = true;
+    uint32_t max_depth = std::numeric_limits<uint32_t>::max();
     uint32_t max_num_states = std::numeric_limits<uint32_t>::max();
     uint32_t max_time_in_ms = std::numeric_limits<uint32_t>::max();
+
+    /// @brief States the search must not enter, as indices in the search context's OWN state
+    /// repository.
+    ///
+    /// This exists for callers that execute the returned plan inside a longer episode which has
+    /// already visited states of its own. An executor that merely *replays* a plan and vetoes it
+    /// on reaching a visited state learns only that the plan this search happened to return
+    /// crosses the closed set -- never that no other route exists. Blocking the states during the
+    /// search makes the second question the one the search answers, so an exhausted search means
+    /// "no plan avoiding these states" instead of "the first plan found was unusable".
+    ///
+    /// A blocked successor is dropped exactly like a pruned one: never enqueued, never goal
+    /// tested, never a plan's parent. The *start* state is deliberately exempt -- a caller
+    /// standing on a state it has already visited is the normal case, and blocking it would make
+    /// every such search fail immediately.
+    ///
+    /// ATTENTION: the same repository caveat as `start_state`. Indices are assigned per
+    /// repository, so a set built against a different `SearchContext` -- even one over the same
+    /// `Problem` -- names unrelated states and silently prunes the wrong ones. Empty (the default)
+    /// means "block nothing" and costs one null check per generated successor.
+    IndexSet blocked_states = {};
+
+    /// @brief Optional coordination with searches running alongside this one. Null means "run
+    /// alone", and costs one predictable branch per node pop.
+    ///
+    /// When set, this search stops promptly on `cancel`, counts its expansions into
+    /// `total_expansions`, and -- because the goal is tested when a node is *popped* -- publishes
+    /// each fully expanded g-layer into `completed_depth`. Finishing layer d proves no plan of
+    /// length <= d exists in the space this search explores, which is what turns a plan somebody
+    /// else found into a *certified* shortest one. It also stops itself once its own progress has
+    /// certified the current incumbent, since there is nothing left to prove.
+    ///
+    /// Only honored on the plain queued path. The beam, ordered-layer and deferred-novelty paths
+    /// reject it rather than ignoring it: their layer bookkeeping does not carry the meaning the
+    /// certificate needs.
+    SearchControl* control = nullptr;
 
     Options() = default;
 };
 
 extern SearchResult find_solution(const SearchContext& context, const Options& options = Options());
+
+/// @brief Overload that reorders each search layer's candidate transitions by landmark score before
+/// novelty pruning decides admission (see `LandmarkTransitionOrderingStrategy`). Only a small subset of
+/// `Options` is supported alongside a landmark ordering; see brfs.cpp for the rejected combinations.
+extern SearchResult find_solution(const SearchContext& context, const Options& options, const LandmarkTransitionOrderingStrategy& ordering);
 
 }
 

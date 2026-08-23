@@ -1,4 +1,4 @@
-find_package(Python 3.8 REQUIRED
+find_package(Python 3.12 REQUIRED
   COMPONENTS Interpreter Development.Module
   OPTIONAL_COMPONENTS Development.SABIModule)
 
@@ -11,7 +11,7 @@ endif()
 
 
 nanobind_add_module(pymimir
-    FREE_THREADED  # automatically ignored by nanobind if python version is not ft
+    FREE_THREADED  # opt-in for free-threading
     NB_DOMAIN pymimir_abi_domain
     advanced/main.cpp
     advanced/common/bindings.cpp

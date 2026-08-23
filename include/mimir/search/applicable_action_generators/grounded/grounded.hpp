@@ -71,6 +71,7 @@ public:
     /// @brief Create a grounded applicable action generator for the given state.
     /// @param state is the state.
     /// @return a generator to yield the applicable actions for the given state.
+    bool supports_parallel_beam() const override;
     mimir::generator<formalism::GroundAction> create_applicable_action_generator(const State& state) override;
 
     void on_finish_search_layer() override;

@@ -43,6 +43,27 @@ public:
 
     static DefaultEventHandler create(bool quiet = true);
 };
+
+class NullEventHandlerImpl final : public IEventHandler
+{
+private:
+    Statistics m_statistics;
+
+public:
+    void on_valid_base_binding(const formalism::ObjectList& binding) override {}
+    void on_valid_derived_binding(const formalism::ObjectList& binding) override {}
+
+    void on_invalid_base_binding(const formalism::ObjectList& binding) override {}
+    void on_invalid_derived_binding(const formalism::ObjectList& binding) override {}
+
+    void on_end_search() override {}
+
+    void on_finish_search_layer() override {}
+
+    const Statistics& get_statistics() const override { return m_statistics; }
+
+    static EventHandler create() { return std::make_shared<NullEventHandlerImpl>(); }
+};
 }
 
 #endif

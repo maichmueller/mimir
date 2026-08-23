@@ -1,0 +1,23 @@
+diff --git a/include/valla/indexed_hash_set.hpp b/include/valla/indexed_hash_set.hpp
+index 9867b89..42a7595 100644
+--- a/include/valla/indexed_hash_set.hpp
++++ b/include/valla/indexed_hash_set.hpp
+@@ -120,7 +120,17 @@ public:
+     {
+         assert(m_uniqueness.size() != std::numeric_limits<I>::max() && "IndexedHashSet: Index overflow! The maximum number of slots reached.");
+ 
+-        // Lock the stripe associated with the slot, which allows running the following code in parallel for different slots, with low false positive rate.
++        // Fast path: after a subtree has been interned once, virtually every subsequent
++        // insert() for it is a read hit. `m_uniqueness` is a gtl::parallel_flat_hash_set
++        // that locks its own submaps, and `m_slots` is a tbb::concurrent_vector whose
++        // indices are stable, so a lookup needs no stripe lock. Taking the stripe lock
++        // before the find made every read hit write to one of only 64 shared cache lines,
++        // which serializes readers even when there is nothing to insert.
++        if (auto it = m_uniqueness.find(slot); it != m_uniqueness.end())
++            return *it;
++
++        // Slow path: take the stripe lock and re-check, so that two threads racing to
++        // insert the same slot cannot produce two different indices for it.
+         std::lock_guard<std::mutex> lk(stripes[stripe_of(slot)]);
+ 
+         if (auto it = m_uniqueness.find(slot); it != m_uniqueness.end())

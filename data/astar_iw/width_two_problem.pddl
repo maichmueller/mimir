@@ -1,0 +1,5 @@
+(define (problem astar-iw-width-two)
+  (:domain astar-iw-test)
+  (:init (seed))
+  (:goal (goal))
+)

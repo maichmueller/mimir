@@ -109,6 +109,12 @@ void bind_module_definitions(nb::module_& m)
         .def("__hash__", [](const ParameterImpl& self) { return std::hash<Parameter> {}(&self); })
         .def("get_index", &ParameterImpl::get_index, nb::rv_policy::copy)
         .def("get_variable", &ParameterImpl::get_variable, nb::rv_policy::reference_internal)
+        // A parameter's name is its variable's name. Exposed here too so a caller can read the name
+        // off a typed and an untyped parameter list the same way.
+        .def(
+            "get_name",
+            [](const ParameterImpl& self) -> const std::string& { return self.get_variable()->get_name(); },
+            nb::rv_policy::copy)
         .def("get_bases", &ParameterImpl::get_bases, nb::rv_policy::copy);
     nb::bind_vector<ParameterList>(m, "ParameterList");
 
@@ -384,7 +390,9 @@ void bind_module_definitions(nb::module_& m)
         .def("get_parameters", &ConjunctiveEffectImpl::get_parameters, nb::rv_policy::copy)
         .def("get_literals", &ConjunctiveEffectImpl::get_literals, nb::rv_policy::copy)
         .def("get_fluent_numeric_effects", &ConjunctiveEffectImpl::get_fluent_numeric_effects, nb::rv_policy::reference_internal)
-        .def("get_auxiliary_numeric_effect", &ConjunctiveEffectImpl::get_auxiliary_numeric_effect, nb::rv_policy::copy);
+        // Optional over an interned NumericEffect pointer; see the note on
+        // DomainImpl::get_auxiliary_function_skeleton below.
+        .def("get_auxiliary_numeric_effect", &ConjunctiveEffectImpl::get_auxiliary_numeric_effect, nb::rv_policy::reference_internal);
 
     /* ConditionalEffect */
     nb::class_<ConditionalEffectImpl>(m, "ConditionalEffect")  //
@@ -624,7 +632,11 @@ void bind_module_definitions(nb::module_& m)
             },
             nb::keep_alive<0, 1>())
         .def("get_fluent_numeric_effects", nb::overload_cast<>(&GroundConjunctiveEffectImpl::get_fluent_numeric_effects, nb::const_), nb::rv_policy::reference_internal)
-        .def("get_auxiliary_numeric_effect", nb::overload_cast<>(&GroundConjunctiveEffectImpl::get_auxiliary_numeric_effect, nb::const_), nb::rv_policy::copy);
+        // Optional over an interned GroundNumericEffect pointer; see the note on
+        // DomainImpl::get_auxiliary_function_skeleton below.
+        .def("get_auxiliary_numeric_effect",
+             nb::overload_cast<>(&GroundConjunctiveEffectImpl::get_auxiliary_numeric_effect, nb::const_),
+             nb::rv_policy::reference_internal);
 
     /* GroundConditionalEffect */
     nb::class_<GroundConditionalEffectImpl>(m, "GroundConditionalEffect")
@@ -730,7 +742,10 @@ void bind_module_definitions(nb::module_& m)
         .def("get_derived_predicates", &DomainImpl::get_predicates<DerivedTag>, nb::rv_policy::copy)
         .def("get_static_functions", &DomainImpl::get_function_skeletons<StaticTag>, nb::rv_policy::copy)
         .def("get_fluent_functions", &DomainImpl::get_function_skeletons<FluentTag>, nb::rv_policy::copy)
-        .def("get_auxiliary_function", &DomainImpl::get_auxiliary_function_skeleton, nb::rv_policy::copy)
+        // Returns std::optional<FunctionSkeleton<AuxiliaryTag>>, i.e. an optional over a
+        // repository-interned pointer. `copy` would make nanobind take ownership and free an
+        // object the domain owns.
+        .def("get_auxiliary_function", &DomainImpl::get_auxiliary_function_skeleton, nb::rv_policy::reference_internal)
         .def("get_actions", &DomainImpl::get_actions, nb::rv_policy::copy)
         .def("get_requirements", &DomainImpl::get_requirements, nb::rv_policy::reference_internal)
         .def("get_types", &DomainImpl::get_types, nb::rv_policy::copy)
@@ -760,6 +775,32 @@ void bind_module_definitions(nb::module_& m)
         .def("__str__", [](const ProblemImpl& self) { return mimir::to_string(self); })
         .def("get_index", &ProblemImpl::get_index, nb::rv_policy::copy)
         .def("get_repositories", &ProblemImpl::get_repositories, nb::rv_policy::reference_internal)
+        // The inverse of `GroundAction.get_index()`, so a caller holding an action index -- from a
+        // captured search tree, say -- can get back to the action without having retained it.
+        // Returned by reference: the action is interned and owned by the problem's repository, so
+        // nanobind's default policy would hand ownership of a borrowed pointer to Python.
+        .def(
+            "get_ground_action",
+            [](const ProblemImpl& self, Index action_index)
+            {
+                const auto& ground_action_repository =
+                    boost::hana::at_key(self.get_repositories().get_hana_repositories(), boost::hana::type<GroundActionImpl> {});
+                if (action_index >= ground_action_repository.size())
+                {
+                    throw nb::index_error("ground action index out of range");
+                }
+                return ground_action_repository.at(action_index);
+            },
+            "action_index"_a,
+            nb::rv_policy::reference)
+        .def(
+            "get_num_ground_actions",
+            [](const ProblemImpl& self)
+            {
+                const auto& ground_action_repository =
+                    boost::hana::at_key(self.get_repositories().get_hana_repositories(), boost::hana::type<GroundActionImpl> {});
+                return ground_action_repository.size();
+            })
         .def("get_filepath", &ProblemImpl::get_filepath, nb::rv_policy::copy)
         .def("get_name", &ProblemImpl::get_name, nb::rv_policy::copy)
         .def("get_domain", &ProblemImpl::get_domain, nb::rv_policy::copy)

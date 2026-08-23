@@ -3,61 +3,132 @@ import unittest
 
 from pathlib import Path
 from pymimir import *  # type: ignore
+import pymimir.advanced.search as advanced_search
 from typing import Union
 
 
-DATA_DIR = (Path(__file__).parent.parent.parent).absolute() / 'data'
+DATA_DIR = (Path(__file__).parent.parent.parent).absolute() / "data"
+
+
+def _make_problem(domain_name: str, mode: str = "lifted") -> Problem:
+    domain_path = DATA_DIR / domain_name / "domain.pddl"
+    problem_path = DATA_DIR / domain_name / "test_problem.pddl"
+    domain = Domain(domain_path)
+    return Problem(domain, problem_path, mode=mode)
 
 
 class TestDomain(unittest.TestCase):
     def test_name(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
         domain = Domain(domain_path)
         actual_name = domain.get_name()
-        expected_name = 'blocksworld'
+        expected_name = "blocksworld"
         assert actual_name == expected_name
 
     def test_requirements(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
         domain = Domain(domain_path)
         actual_requirements = domain.get_requirements()
-        expected_requirements = [':strips']
+        expected_requirements = [":strips"]
         assert len(actual_requirements) == len(expected_requirements)
         for requirement in actual_requirements:
             assert requirement in expected_requirements
 
+    def test_types(self):
+        domain_path = DATA_DIR / "miconic" / "domain.pddl"
+        domain = Domain(domain_path)
+        actual_types = {
+            type_.get_name(): [base.get_name() for base in type_.get_bases()]
+            for type_ in domain.get_types()
+        }
+        assert "passenger" in actual_types
+        assert "floor" in actual_types
+        assert actual_types["passenger"] == ["object"]
+        assert actual_types["floor"] == ["object"]
+
     def test_predicates(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
         domain = Domain(domain_path)
         actual_predicates = domain.get_predicates()
-        expected_predicates = [('number', 1), ('object', 1), ('on', 2), ('clear', 1), ('holding', 1), ('on-table', 1), ('arm-empty', 0)]
+        expected_predicates = [
+            ("number", 1),
+            ("object", 1),
+            ("on", 2),
+            ("clear", 1),
+            ("holding", 1),
+            ("on-table", 1),
+            ("arm-empty", 0),
+        ]
         assert len(actual_predicates) == len(expected_predicates)
         for predicate in actual_predicates:
             assert predicate.get_index() is not None
             assert (predicate.get_name(), predicate.get_arity()) in expected_predicates
 
+    def test_predicate_typed_parameters(self):
+        domain_path = DATA_DIR / "miconic" / "domain.pddl"
+        domain = Domain(domain_path)
+        predicate = domain.get_predicate("origin")
+        actual_parameters = predicate.get_parameters()
+        typed_parameters = predicate.get_typed_parameters()
+        assert len(actual_parameters) == 2
+        assert len(typed_parameters) == 2
+        assert all(isinstance(parameter, Variable) for parameter in actual_parameters)
+        assert all(isinstance(parameter, Parameter) for parameter in typed_parameters)
+        assert [parameter.get_name() for parameter in typed_parameters] == [
+            parameter.get_name() for parameter in actual_parameters
+        ]
+        assert [
+            [base.get_name() for base in parameter.get_bases()]
+            for parameter in typed_parameters
+        ] == [["passenger"], ["floor"]]
+
     def test_actions(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
         domain = Domain(domain_path)
         actual_actions = domain.get_actions()
-        expected_actions = [('pickup', 1), ('putdown', 1), ('stack', 2), ('unstack', 2)]
+        expected_actions = [("pickup", 1), ("putdown", 1), ("stack", 2), ("unstack", 2)]
         assert len(actual_actions) == len(expected_actions)
         for action in actual_actions:
             assert action.get_index() is not None
             assert (action.get_name(), action.get_arity()) in expected_actions
 
     def test_constants(self):
-        domain_path = DATA_DIR / 'woodworking' / 'domain.pddl'
+        domain_path = DATA_DIR / "woodworking" / "domain.pddl"
         domain = Domain(domain_path)
         actual_constants = domain.get_constants()
-        expected_constants = ['verysmooth', 'smooth', 'rough', 'varnished', 'glazed', 'untreated', 'colourfragments', 'natural', 'small', 'medium', 'large']
+        expected_constants = [
+            "verysmooth",
+            "smooth",
+            "rough",
+            "varnished",
+            "glazed",
+            "untreated",
+            "colourfragments",
+            "natural",
+            "small",
+            "medium",
+            "large",
+        ]
         assert len(actual_constants) == len(expected_constants)
         for constant in actual_constants:
             assert constant.get_index() is not None
             assert constant.get_name() in expected_constants
 
+    def test_numeric_function_typed_parameters(self):
+        domain_path = DATA_DIR / "woodworking" / "domain.pddl"
+        domain = Domain(domain_path)
+        function = next(
+            function
+            for function in domain.get_numeric_functions()
+            if function.get_name() == "spray-varnish-cost"
+        )
+        typed_parameters = function.get_typed_parameters()
+        assert len(typed_parameters) == 1
+        assert isinstance(typed_parameters[0], Parameter)
+        assert [base.get_name() for base in typed_parameters[0].get_bases()] == ["part"]
+
     def test_str_repr_hash(self):
-        domain_path = DATA_DIR / 'woodworking' / 'domain.pddl'
+        domain_path = DATA_DIR / "woodworking" / "domain.pddl"
         domain = Domain(domain_path)
         assert str(domain) is not None
         assert repr(domain) is not None
@@ -76,39 +147,53 @@ class TestDomain(unittest.TestCase):
         actual_name = domain.get_name()
         expected_name = "test-domain"
         assert actual_name == expected_name
-        actual_action = domain.get_action('a')
-        assert actual_action.get_name() == 'a'
+        actual_action = domain.get_action("a")
+        assert actual_action.get_name() == "a"
         assert actual_action is not None
 
 
 class TestProblem(unittest.TestCase):
     def test_name(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         actual_name = problem.get_name()
-        expected_name = 'blocksworld-300'
+        expected_name = "blocksworld-300"
         assert problem.get_index() is not None
         assert actual_name == expected_name
 
     def test_mode(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
-        problem = Problem(domain, problem_path, mode='lifted')
+        problem = Problem(domain, problem_path, mode="lifted")
         actual_mode = problem.get_mode()
-        expected_mode = 'lifted'
+        expected_mode = "lifted"
         assert actual_mode == expected_mode
 
     def test_lifted_symmetry_pruning(self):
-        domain_path = DATA_DIR / 'gripper' / 'domain.pddl'
-        problem_path = DATA_DIR / 'gripper' / 'test_problem4.pddl'
+        domain_path = DATA_DIR / "gripper" / "domain.pddl"
+        problem_path = DATA_DIR / "gripper" / "test_problem4.pddl"
         domain = Domain(domain_path)
-        problem = Problem(domain, problem_path, 'lifted_symmetry_pruning')
+        problem = Problem(domain, problem_path, "lifted_symmetry_pruning")
         initial_state = problem.get_initial_state()
         applicable_actions = initial_state.generate_applicable_actions()
-        assert len(applicable_actions) == 3  # Only three actions should be applicable due to symmetry pruning.
+        assert (
+            len(applicable_actions) == 3
+        )  # Only three actions should be applicable due to symmetry pruning.
+
+    def test_object_bases(self):
+        domain_path = DATA_DIR / "miconic" / "domain.pddl"
+        problem_path = DATA_DIR / "miconic" / "test_problem.pddl"
+        domain = Domain(domain_path)
+        problem = Problem(domain, problem_path)
+        actual_object_bases = {
+            obj.get_name(): [base.get_name() for base in obj.get_bases()]
+            for obj in problem.get_objects()
+        }
+        assert actual_object_bases["p0"] == ["passenger"]
+        assert actual_object_bases["f0"] == ["floor"]
 
     # def test_requirements(self):
     #     domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
@@ -122,89 +207,137 @@ class TestProblem(unittest.TestCase):
     #         assert requirement in expected_requirements
 
     def test_objects(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         actual_objects = problem.get_objects()
-        expected_objects = ['b1', 'b2', 'b3']
+        expected_objects = ["b1", "b2", "b3"]
         assert len(actual_objects) == len(expected_objects)
         for obj in actual_objects:
             assert obj.get_index() is not None
             assert obj.get_name() in expected_objects
 
     def test_initial_atoms(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         actual_initial_atoms = problem.get_initial_atoms()
-        expected_initial_atoms = ['(object b1)', '(object b2)', '(object b3)', '(arm-empty)', '(clear b2)', '(on-table b2)', '(clear b1)', '(on b1 b3)', '(on-table b3)']
+        expected_initial_atoms = [
+            "(object b1)",
+            "(object b2)",
+            "(object b3)",
+            "(arm-empty)",
+            "(clear b2)",
+            "(on-table b2)",
+            "(clear b1)",
+            "(on b1 b3)",
+            "(on-table b3)",
+        ]
         assert len(actual_initial_atoms) == len(expected_initial_atoms)
         for initial_atom in actual_initial_atoms:
             assert initial_atom.get_index() is not None
             assert str(initial_atom) in expected_initial_atoms
 
     def test_new_atom_and_literal(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
-        predicate = domain.get_predicate('on')
-        variables = problem.new_variable_list(['?v1', '?v2'])
+        predicate = domain.get_predicate("on")
+        variables = problem.new_variable_list(["?v1", "?v2"])
         actual_new_atom = problem.new_atom(predicate, [variables[0], variables[1]])
-        expected_new_atom = '(on ?v1 ?v2)'
+        expected_new_atom = "(on ?v1 ?v2)"
         assert actual_new_atom.get_index() is not None
         assert str(actual_new_atom) == expected_new_atom
         actual_new_literal = problem.new_literal(actual_new_atom, False)
-        expected_new_literal = '(not (on ?v1 ?v2))'
+        expected_new_literal = "(not (on ?v1 ?v2))"
         assert actual_new_literal.get_index() is not None
         assert str(actual_new_literal) == expected_new_literal
 
     def test_new_ground_atom_and_ground_literal(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
-        predicate = domain.get_predicate('on')
-        objects = [problem.get_object('b1'), problem.get_object('b2')]
-        actual_new_ground_atom = problem.new_ground_atom(predicate, [objects[0], objects[1]])
-        expected_new_ground_atom = '(on b1 b2)'
+        predicate = domain.get_predicate("on")
+        objects = [problem.get_object("b1"), problem.get_object("b2")]
+        actual_new_ground_atom = problem.new_ground_atom(
+            predicate, [objects[0], objects[1]]
+        )
+        expected_new_ground_atom = "(on b1 b2)"
         assert actual_new_ground_atom.get_index() is not None
         assert str(actual_new_ground_atom) == expected_new_ground_atom
-        actual_new_ground_literal = problem.new_ground_literal(actual_new_ground_atom, False)
-        expected_new_ground_literal = '(not (on b1 b2))'
+        actual_new_ground_literal = problem.new_ground_literal(
+            actual_new_ground_atom, False
+        )
+        expected_new_ground_literal = "(not (on b1 b2))"
         assert actual_new_ground_literal.get_index() is not None
         assert str(actual_new_ground_literal) == expected_new_ground_literal
 
     def test_new_ground_action(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
-        action = domain.get_action('stack')
-        objects = [problem.get_object('b1'), problem.get_object('b2')]
+        action = domain.get_action("stack")
+        objects = [problem.get_object("b1"), problem.get_object("b2")]
         new_ground_action = problem.new_ground_action(action, objects)
         assert new_ground_action.get_index() is not None
         assert not new_ground_action.is_applicable(problem.get_initial_state())
-        assert str(new_ground_action) == '(stack b1 b2)'
+        assert str(new_ground_action) == "(stack b1 b2)"
 
     def test_goal_condition(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         actual_goal_condition = problem.get_goal_condition()
-        expected_goal_condition = ['(clear b2)', '(on b2 b3)', '(on-table b3)', '(clear b1)', '(on-table b1)']
+        expected_goal_condition = [
+            "(clear b2)",
+            "(on b2 b3)",
+            "(on-table b3)",
+            "(clear b1)",
+            "(on-table b1)",
+        ]
         assert len(actual_goal_condition) == len(expected_goal_condition)
         for goal_literal in actual_goal_condition:
             assert isinstance(goal_literal, GroundLiteral)
             assert goal_literal.get_polarity() is True
             assert str(goal_literal.get_atom()) in expected_goal_condition
 
+    def test_multi_goal_strategy(self):
+        domain_path = DATA_DIR / "delivery" / "domain.pddl"
+        problem_path = DATA_DIR / "delivery" / "test_problem.pddl"
+        domain = Domain(domain_path)
+        problem = Problem(domain, problem_path, mode="lifted")
+
+        default_goal = problem.get_goal_condition()
+        static_initial_atom = problem.get_initial_atoms(
+            ignore_fluent=True, ignore_derived=True
+        )[0]
+        fluent_initial_atom = problem.get_initial_atoms(
+            ignore_static=True, ignore_derived=True
+        )[0]
+        custom_goal = problem.new_ground_conjunctive_condition(
+            [
+                problem.new_ground_literal(static_initial_atom, True),
+                problem.new_ground_literal(fluent_initial_atom, True),
+            ]
+        )
+
+        multi_goal_strategy = new_multi_goal_strategy(problem, [default_goal, custom_goal])
+
+        initial_state = problem.get_initial_state()
+        assert not default_goal.holds(initial_state)
+        assert custom_goal.holds(initial_state)
+        assert multi_goal_strategy.test_static_goal()
+        assert multi_goal_strategy.test_dynamic_goal(initial_state._advanced_state)
+
     def test_numeric_goal_condition(self):
-        domain_path = DATA_DIR / 'refuel-adl' / 'domain.pddl'
-        problem_path = DATA_DIR / 'refuel-adl' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "refuel-adl" / "domain.pddl"
+        problem_path = DATA_DIR / "refuel-adl" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         derived_goal_predicates = problem.get_derived_goal_predicates()
@@ -213,8 +346,8 @@ class TestProblem(unittest.TestCase):
         assert len(derived_goal_predicates) == len(derived_problem_predicates)
 
     def test_str_repr_hash(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         assert str(problem) is not None
@@ -248,48 +381,85 @@ class TestProblem(unittest.TestCase):
 
 
 class TestAction(unittest.TestCase):
-    def test_precondition(self):
-        domain_path = DATA_DIR / 'miconic-fulladl' / 'domain.pddl'
+    def test_typed_parameters(self):
+        domain_path = DATA_DIR / "miconic" / "domain.pddl"
         domain = Domain(domain_path)
-        action = domain.get_action('up')
-        assert action.get_name() == 'up'
+        action = domain.get_action("board")
+        action_parameters = action.get_typed_parameters()
+        precondition_parameters = action.get_precondition().get_typed_parameters()
+        effect_parameters = (
+            action.get_conditional_effect()[0].get_effect().get_typed_parameters()
+        )
+        expected_bases = [["floor"], ["passenger"]]
+        assert [
+            [base.get_name() for base in parameter.get_bases()]
+            for parameter in action_parameters
+        ] == expected_bases
+        assert [
+            [base.get_name() for base in parameter.get_bases()]
+            for parameter in precondition_parameters
+        ] == expected_bases
+        assert [
+            [base.get_name() for base in parameter.get_bases()]
+            for parameter in effect_parameters
+        ] == expected_bases
+
+    def test_precondition(self):
+        domain_path = DATA_DIR / "miconic-fulladl" / "domain.pddl"
+        domain = Domain(domain_path)
+        action = domain.get_action("up")
+        assert action.get_name() == "up"
         actual_precondition = action.get_precondition()
         actual_parameters = actual_precondition.get_parameters()
-        expected_parameters = ['?f1_0_0', '?f2_0_1']
+        expected_parameters = ["?f1_0_0", "?f2_0_1"]
         assert len(actual_parameters) == len(expected_parameters)
         for parameter in actual_parameters:
             assert parameter.get_index() is not None
             assert parameter.get_name() in expected_parameters
         actual_all_literals = actual_precondition.get_literals()
-        expected_all_literals = ['(object ?f1_0_0)', '(object ?f2_0_1)', '(floor ?f1_0_0)', '(floor ?f2_0_1)', '(above ?f1_0_0 ?f2_0_1)', '(lift-at ?f1_0_0)', '(not (axiom_8))']
+        expected_all_literals = [
+            "(object ?f1_0_0)",
+            "(object ?f2_0_1)",
+            "(floor ?f1_0_0)",
+            "(floor ?f2_0_1)",
+            "(above ?f1_0_0 ?f2_0_1)",
+            "(lift-at ?f1_0_0)",
+            "(not (axiom_8))",
+        ]
         assert len(actual_all_literals) == len(expected_all_literals)
         for literal in actual_all_literals:
             assert literal.get_index() is not None
             assert str(literal) in expected_all_literals
         actual_static_literals = actual_precondition.get_literals(False, True, True)
-        expected_static_literals  = ['(object ?f1_0_0)', '(object ?f2_0_1)', '(floor ?f1_0_0)', '(floor ?f2_0_1)', '(above ?f1_0_0 ?f2_0_1)']
+        expected_static_literals = [
+            "(object ?f1_0_0)",
+            "(object ?f2_0_1)",
+            "(floor ?f1_0_0)",
+            "(floor ?f2_0_1)",
+            "(above ?f1_0_0 ?f2_0_1)",
+        ]
         assert len(actual_static_literals) == len(expected_static_literals)
         for literal in actual_static_literals:
             assert literal.get_index() is not None
             assert str(literal) in expected_static_literals
         actual_fluent_literals = actual_precondition.get_literals(True, False, True)
-        expected_fluent_literals  = ['(lift-at ?f1_0_0)']
+        expected_fluent_literals = ["(lift-at ?f1_0_0)"]
         assert len(actual_fluent_literals) == len(expected_fluent_literals)
         for literal in actual_fluent_literals:
             assert literal.get_index() is not None
             assert str(literal) in expected_fluent_literals
         actual_derived_literals = actual_precondition.get_literals(True, True, False)
-        expected_derived_literals  = ['(not (axiom_8))']
+        expected_derived_literals = ["(not (axiom_8))"]
         assert len(actual_derived_literals) == len(expected_derived_literals)
         for literal in actual_derived_literals:
             assert literal.get_index() is not None
             assert str(literal) in expected_derived_literals
 
     def test_unconditional_effect(self):
-        domain_path = DATA_DIR / 'miconic-fulladl' / 'domain.pddl'
+        domain_path = DATA_DIR / "miconic-fulladl" / "domain.pddl"
         domain = Domain(domain_path)
-        action = domain.get_action('up')
-        assert action.get_name() == 'up'
+        action = domain.get_action("up")
+        assert action.get_name() == "up"
         actual_conditional_effect = action.get_conditional_effect()
         assert len(actual_conditional_effect) == 1
         actual_condition = actual_conditional_effect[0].get_condition()
@@ -298,23 +468,23 @@ class TestAction(unittest.TestCase):
         assert len(actual_condition.get_nullary_ground_literals()) == 0
         actual_effect = actual_conditional_effect[0].get_effect()
         actual_parameters = actual_effect.get_parameters()
-        expected_parameters = ['?f1_0_0', '?f2_0_1']
+        expected_parameters = ["?f1_0_0", "?f2_0_1"]
         assert len(actual_parameters) == len(expected_parameters)
         for parameter in actual_parameters:
             assert parameter.get_index() is not None
             assert parameter.get_name() in expected_parameters
         actual_literals = actual_effect.get_literals()
-        expected_literals = ['(lift-at ?f2_0_1)', '(not (lift-at ?f1_0_0))']
+        expected_literals = ["(lift-at ?f2_0_1)", "(not (lift-at ?f1_0_0))"]
         assert len(actual_literals) == len(expected_literals)
         for literal in actual_literals:
             assert literal.get_index() is not None
             assert str(literal) in expected_literals
 
     def test_conditional_effect(self):
-        domain_path = DATA_DIR / 'miconic-fulladl' / 'domain.pddl'
+        domain_path = DATA_DIR / "miconic-fulladl" / "domain.pddl"
         domain = Domain(domain_path)
-        action = domain.get_action('stop')
-        assert action.get_name() == 'stop'
+        action = domain.get_action("stop")
+        assert action.get_name() == "stop"
         actual_conditional_effect = action.get_conditional_effect()
         assert len(actual_conditional_effect) == 2
         # First conditional effect
@@ -329,12 +499,12 @@ class TestAction(unittest.TestCase):
         assert len(actual_second_condition.get_nullary_ground_literals()) == 0
 
     def test_new_conjunctive_condition(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
-        variables = problem.new_variable_list(['?a', '?b', '?c'])
-        predicate_on = domain.get_predicate('on')
+        variables = problem.new_variable_list(["?a", "?b", "?c"])
+        predicate_on = domain.get_predicate("on")
         atom_on_ab = problem.new_atom(predicate_on, [variables[0], variables[1]])
         atom_on_bc = problem.new_atom(predicate_on, [variables[1], variables[2]])
         literal_on_ab = problem.new_literal(atom_on_ab, True)
@@ -351,9 +521,9 @@ class TestAction(unittest.TestCase):
             assert literal in literals
 
     def test_str_repr_hash(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
         domain = Domain(domain_path)
-        action = domain.get_action('pickup')
+        action = domain.get_action("pickup")
         assert str(action) is not None
         assert repr(action) is not None
         assert hash(action) is not None
@@ -361,24 +531,30 @@ class TestAction(unittest.TestCase):
 
 class TestState(unittest.TestCase):
     def test_get_initial_state(self):
-        domain_path = DATA_DIR / 'miconic-fulladl' / 'domain.pddl'
-        problem_path = DATA_DIR / 'miconic-fulladl' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "miconic-fulladl" / "domain.pddl"
+        problem_path = DATA_DIR / "miconic-fulladl" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
         assert initial_state.get_index() is not None
 
     def test_get_atoms(self):
-        domain_path = DATA_DIR / 'miconic-fulladl' / 'domain.pddl'
-        problem_path = DATA_DIR / 'miconic-fulladl' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "miconic-fulladl" / "domain.pddl"
+        problem_path = DATA_DIR / "miconic-fulladl" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
         assert initial_state.get_index() is not None
         initial_atoms = initial_state.get_atoms()
-        initial_static_atoms = initial_state.get_atoms(ignore_fluent=True, ignore_derived=True)
-        initial_fluent_atoms = initial_state.get_atoms(ignore_static=True, ignore_derived=True)
-        initial_derived_atoms = initial_state.get_atoms(ignore_static=True, ignore_fluent=True)
+        initial_static_atoms = initial_state.get_atoms(
+            ignore_fluent=True, ignore_derived=True
+        )
+        initial_fluent_atoms = initial_state.get_atoms(
+            ignore_static=True, ignore_derived=True
+        )
+        initial_derived_atoms = initial_state.get_atoms(
+            ignore_static=True, ignore_fluent=True
+        )
         assert len(initial_atoms) == 34
         assert len(initial_static_atoms) == 28
         assert len(initial_fluent_atoms) == 1
@@ -388,16 +564,16 @@ class TestState(unittest.TestCase):
             assert isinstance(atom, GroundAtom)
 
     def test_contains(self):
-        domain_path = DATA_DIR / 'miconic-fulladl' / 'domain.pddl'
-        problem_path = DATA_DIR / 'miconic-fulladl' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "miconic-fulladl" / "domain.pddl"
+        problem_path = DATA_DIR / "miconic-fulladl" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
         assert initial_state.contains_all(initial_state.get_atoms())
 
     def test_literal_holds(self):
-        domain_path = DATA_DIR / 'miconic-fulladl' / 'domain.pddl'
-        problem_path = DATA_DIR / 'miconic-fulladl' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "miconic-fulladl" / "domain.pddl"
+        problem_path = DATA_DIR / "miconic-fulladl" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
@@ -407,8 +583,8 @@ class TestState(unittest.TestCase):
             assert action.get_precondition().holds(initial_state)
 
     def test_generate_applicable_actions(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
@@ -416,12 +592,14 @@ class TestState(unittest.TestCase):
         assert len(actions) > 0
         for index, action in enumerate(actions):
             assert action.get_precondition().holds(initial_state)
-            successor_state =  action.apply(initial_state)
-            assert successor_state.get_index() == (index + 1)  # Index 0 is the initial state
+            successor_state = action.apply(initial_state)
+            assert successor_state.get_index() == (
+                index + 1
+            )  # Index 0 is the initial state
 
     def test_str_repr_hash(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
@@ -432,54 +610,66 @@ class TestState(unittest.TestCase):
 
 class TestGroundConjunctiveCondition(unittest.TestCase):
     def test_holds(self):
-        domain_path = DATA_DIR / 'miconic-fulladl' / 'domain.pddl'
-        problem_path = DATA_DIR / 'miconic-fulladl' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "miconic-fulladl" / "domain.pddl"
+        problem_path = DATA_DIR / "miconic-fulladl" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
         assert not problem.get_goal_condition().holds(initial_state)
 
     def test_grounder(self):
-        domain_path = DATA_DIR / 'gripper' / 'domain.pddl'
-        problem_path = DATA_DIR / 'gripper' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "gripper" / "domain.pddl"
+        problem_path = DATA_DIR / "gripper" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
-        pickup_condition = domain.get_action('pick').get_precondition()
+        pickup_condition = domain.get_action("pick").get_precondition()
         all_groundings = pickup_condition.ground(initial_state)
         single_grounding = pickup_condition.ground(initial_state, 1)
         assert len(all_groundings) == 4
         assert len(single_grounding) == 1
 
     def test_grounder_blacklist(self):
-        domain_path = DATA_DIR / 'gripper' / 'domain.pddl'
-        problem_path = DATA_DIR / 'gripper' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "gripper" / "domain.pddl"
+        problem_path = DATA_DIR / "gripper" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
-        pickup_condition = domain.get_action('pick').get_precondition()
-        blacklist = [domain.get_predicate('ball')]
+        pickup_condition = domain.get_action("pick").get_precondition()
+        blacklist = [domain.get_predicate("ball")]
         all_groundings = pickup_condition.ground(initial_state, blacklist=blacklist)
         assert len(all_groundings) == 4
         assert len(all_groundings[0]) == 8
 
     def test_lift(self):
-        domain_path = DATA_DIR / 'gripper' / 'domain.pddl'
-        problem_path = DATA_DIR / 'gripper' / 'test_problem2.pddl'
+        domain_path = DATA_DIR / "gripper" / "domain.pddl"
+        problem_path = DATA_DIR / "gripper" / "test_problem2.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         grounded_goal = problem.get_goal_condition()
         lifted_goal = grounded_goal.lift()
         assert len(lifted_goal.get_parameters()) == 3
         assert len(lifted_goal.get_literals()) == 2
-        assert lifted_goal.get_literals()[0].get_atom().get_terms()[0] == lifted_goal.get_parameters()[0]
-        assert lifted_goal.get_literals()[0].get_atom().get_terms()[1] == lifted_goal.get_parameters()[1]
-        assert lifted_goal.get_literals()[1].get_atom().get_terms()[0] == lifted_goal.get_parameters()[2]
-        assert lifted_goal.get_literals()[1].get_atom().get_terms()[1] == lifted_goal.get_parameters()[1]
+        assert (
+            lifted_goal.get_literals()[0].get_atom().get_terms()[0]
+            == lifted_goal.get_parameters()[0]
+        )
+        assert (
+            lifted_goal.get_literals()[0].get_atom().get_terms()[1]
+            == lifted_goal.get_parameters()[1]
+        )
+        assert (
+            lifted_goal.get_literals()[1].get_atom().get_terms()[0]
+            == lifted_goal.get_parameters()[2]
+        )
+        assert (
+            lifted_goal.get_literals()[1].get_atom().get_terms()[1]
+            == lifted_goal.get_parameters()[1]
+        )
 
     def test_lift_inequalities(self):
-        domain_path = DATA_DIR / 'hiking' / 'domain.pddl'
-        problem_path = DATA_DIR / 'hiking' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "hiking" / "domain.pddl"
+        problem_path = DATA_DIR / "hiking" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         grounded_goal = problem.get_goal_condition()
@@ -491,20 +681,30 @@ class TestGroundConjunctiveCondition(unittest.TestCase):
         assert len(lifted_goal_without_inequalities.get_literals()) == 1
 
     def test_new_grounded_condition(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
-        ground_literals = [GroundLiteral.new(atom, True, problem) for atom in problem.get_initial_atoms(ignore_static=True, ignore_derived=True)]
+        ground_literals = [
+            GroundLiteral.new(atom, True, problem)
+            for atom in problem.get_initial_atoms(
+                ignore_static=True, ignore_derived=True
+            )
+        ]
         ground_condition = GroundConjunctiveCondition.new(ground_literals, problem)
         assert ground_condition.holds(problem.get_initial_state())
 
     def test_str_repr_hash(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
-        ground_literals = [GroundLiteral.new(atom, True, problem) for atom in problem.get_initial_atoms(ignore_static=True, ignore_derived=True)]
+        ground_literals = [
+            GroundLiteral.new(atom, True, problem)
+            for atom in problem.get_initial_atoms(
+                ignore_static=True, ignore_derived=True
+            )
+        ]
         ground_condition = GroundConjunctiveCondition.new(ground_literals, problem)
         assert str(ground_condition) is not None
         assert repr(ground_condition) is not None
@@ -513,39 +713,46 @@ class TestGroundConjunctiveCondition(unittest.TestCase):
 
 class TestSearchAlgorithms(unittest.TestCase):
     def test_custom_heuristic(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
-        problem = Problem(domain, problem_path, mode='lifted')
+        problem = Problem(domain, problem_path, mode="lifted")
         initial_state = problem.get_initial_state()
+
         class CustomHeuristic(Heuristic):
-            def compute_value(self, state: 'State', goal: 'Union[GroundConjunctiveCondition, None]' = None) -> 'float':
+            def compute_value(
+                self,
+                state: "State",
+                goal: "Union[GroundConjunctiveCondition, None]" = None,
+            ) -> "float":
                 return 0.0 if goal and goal.holds(state) else 1.0
-            def get_preferred_actions(self) -> 'set[GroundAction]':
+
+            def get_preferred_actions(self) -> "set[GroundAction]":
                 return set()
+
         heuristic = CustomHeuristic()
         result = astar_eager(problem, initial_state, heuristic)
-        assert result.status == 'solved'
+        assert result.status == "solved"
         assert result.solution is not None
         assert len(result.solution) == 4
         assert result.solution_cost == 4.0
 
     def test_astar_eager(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
         heuristic = BlindHeuristic(problem)
         result = astar_eager(problem, initial_state, heuristic)
-        assert result.status == 'solved'
+        assert result.status == "solved"
         assert result.solution is not None
         assert len(result.solution) == 4
         assert result.solution_cost == 4.0
 
     def test_astar_eager_events(self):
-        domain_path = DATA_DIR / 'childsnack' / 'domain.pddl'
-        problem_path = DATA_DIR / 'childsnack' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "childsnack" / "domain.pddl"
+        problem_path = DATA_DIR / "childsnack" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
@@ -555,14 +762,18 @@ class TestSearchAlgorithms(unittest.TestCase):
         finished_f_layers = []
         generated_states = []
         pruned_states = []
-        _ = astar_eager(problem,
-                        initial_state,
-                        heuristic,
-                        on_expand_state=lambda state: expanded_states.append(state),
-                        on_expand_goal_state=lambda state: expanded_goal_states.append(state),
-                        on_generate_state=lambda state, action, cost, new_state: generated_states.append((state, action, cost, new_state)),
-                        on_prune_state=lambda state: pruned_states.append(state),
-                        on_finish_f_layer=lambda f_value: finished_f_layers.append(f_value))
+        _ = astar_eager(
+            problem,
+            initial_state,
+            heuristic,
+            on_expand_state=lambda state: expanded_states.append(state),
+            on_expand_goal_state=lambda state: expanded_goal_states.append(state),
+            on_generate_state=lambda state, action, cost, new_state: generated_states.append(
+                (state, action, cost, new_state)
+            ),
+            on_prune_state=lambda state: pruned_states.append(state),
+            on_finish_f_layer=lambda f_value: finished_f_layers.append(f_value),
+        )
         assert len(expanded_goal_states) == 1
         assert len(expanded_states) == 6
         assert len(finished_f_layers) == 5
@@ -570,21 +781,21 @@ class TestSearchAlgorithms(unittest.TestCase):
         assert len(pruned_states) == 0
 
     def test_astar_lazy(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
         heuristic = BlindHeuristic(problem)
         result = astar_lazy(problem, initial_state, heuristic)
-        assert result.status == 'solved'
+        assert result.status == "solved"
         assert result.solution is not None
         assert len(result.solution) == 4
         assert result.solution_cost == 4.0
 
     def test_astar_lazy_events(self):
-        domain_path = DATA_DIR / 'childsnack' / 'domain.pddl'
-        problem_path = DATA_DIR / 'childsnack' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "childsnack" / "domain.pddl"
+        problem_path = DATA_DIR / "childsnack" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
@@ -594,14 +805,18 @@ class TestSearchAlgorithms(unittest.TestCase):
         finished_f_layers = []
         generated_states = []
         pruned_states = []
-        _ = astar_lazy(problem,
-                       initial_state,
-                       heuristic,
-                       on_expand_state=lambda state: expanded_states.append(state),
-                       on_expand_goal_state=lambda state: expanded_goal_states.append(state),
-                       on_generate_state=lambda state, action, cost, new_state: generated_states.append((state, action, cost, new_state)),
-                       on_prune_state=lambda state: pruned_states.append(state),
-                       on_finish_f_layer=lambda f_value: finished_f_layers.append(f_value))
+        _ = astar_lazy(
+            problem,
+            initial_state,
+            heuristic,
+            on_expand_state=lambda state: expanded_states.append(state),
+            on_expand_goal_state=lambda state: expanded_goal_states.append(state),
+            on_generate_state=lambda state, action, cost, new_state: generated_states.append(
+                (state, action, cost, new_state)
+            ),
+            on_prune_state=lambda state: pruned_states.append(state),
+            on_finish_f_layer=lambda f_value: finished_f_layers.append(f_value),
+        )
         assert len(expanded_goal_states) == 1
         assert len(expanded_states) == 6
         assert len(finished_f_layers) == 5
@@ -609,21 +824,21 @@ class TestSearchAlgorithms(unittest.TestCase):
         assert len(pruned_states) == 0
 
     def test_gbfs_eager(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
         heuristic = BlindHeuristic(problem)
         result = gbfs_eager(problem, initial_state, heuristic)
-        assert result.status == 'solved'
+        assert result.status == "solved"
         assert result.solution is not None
         assert len(result.solution) == 4
         assert result.solution_cost == 4.0
 
     def test_gbfs_eager_events(self):
-        domain_path = DATA_DIR / 'childsnack' / 'domain.pddl'
-        problem_path = DATA_DIR / 'childsnack' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "childsnack" / "domain.pddl"
+        problem_path = DATA_DIR / "childsnack" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
@@ -633,14 +848,18 @@ class TestSearchAlgorithms(unittest.TestCase):
         new_best_h_values = []
         generated_states = []
         pruned_states = []
-        _ = gbfs_eager(problem,
-                       initial_state,
-                       heuristic,
-                       on_expand_state=lambda state: expanded_states.append(state),
-                       on_expand_goal_state=lambda state: expanded_goal_states.append(state),
-                       on_generate_state=lambda state, action, cost, new_state: generated_states.append((state, action, cost, new_state)),
-                       on_prune_state=lambda state: pruned_states.append(state),
-                       on_new_best_h_value=lambda f_value: new_best_h_values.append(f_value))
+        _ = gbfs_eager(
+            problem,
+            initial_state,
+            heuristic,
+            on_expand_state=lambda state: expanded_states.append(state),
+            on_expand_goal_state=lambda state: expanded_goal_states.append(state),
+            on_generate_state=lambda state, action, cost, new_state: generated_states.append(
+                (state, action, cost, new_state)
+            ),
+            on_prune_state=lambda state: pruned_states.append(state),
+            on_new_best_h_value=lambda f_value: new_best_h_values.append(f_value),
+        )
         assert len(expanded_goal_states) == 1
         assert len(expanded_states) == 6
         assert len(new_best_h_values) == 0
@@ -648,21 +867,21 @@ class TestSearchAlgorithms(unittest.TestCase):
         assert len(pruned_states) == 0
 
     def test_gbfs_lazy(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
         heuristic = BlindHeuristic(problem)
         result = gbfs_lazy(problem, initial_state, heuristic)
-        assert result.status == 'solved'
+        assert result.status == "solved"
         assert result.solution is not None
         assert len(result.solution) == 4
         assert result.solution_cost == 4.0
 
     def test_gbfs_lazy_events(self):
-        domain_path = DATA_DIR / 'childsnack' / 'domain.pddl'
-        problem_path = DATA_DIR / 'childsnack' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "childsnack" / "domain.pddl"
+        problem_path = DATA_DIR / "childsnack" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
@@ -672,14 +891,18 @@ class TestSearchAlgorithms(unittest.TestCase):
         new_best_h_values = []
         generated_states = []
         pruned_states = []
-        _ = gbfs_lazy(problem,
-                      initial_state,
-                      heuristic,
-                      on_expand_state=lambda state: expanded_states.append(state),
-                      on_expand_goal_state=lambda state: expanded_goal_states.append(state),
-                      on_generate_state=lambda state, action, cost, new_state: generated_states.append((state, action, cost, new_state)),
-                      on_prune_state=lambda state: pruned_states.append(state),
-                      on_new_best_h_value=lambda f_value: new_best_h_values.append(f_value))
+        _ = gbfs_lazy(
+            problem,
+            initial_state,
+            heuristic,
+            on_expand_state=lambda state: expanded_states.append(state),
+            on_expand_goal_state=lambda state: expanded_goal_states.append(state),
+            on_generate_state=lambda state, action, cost, new_state: generated_states.append(
+                (state, action, cost, new_state)
+            ),
+            on_prune_state=lambda state: pruned_states.append(state),
+            on_new_best_h_value=lambda f_value: new_best_h_values.append(f_value),
+        )
         assert len(expanded_goal_states) == 1
         assert len(expanded_states) == 6
         assert len(new_best_h_values) == 0
@@ -687,8 +910,8 @@ class TestSearchAlgorithms(unittest.TestCase):
         assert len(pruned_states) == 0
 
     def test_set_add_heuristic(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         heuristic = SetAddHeuristic(problem)
@@ -697,8 +920,8 @@ class TestSearchAlgorithms(unittest.TestCase):
         assert len(heuristic.get_preferred_actions()) == 0
 
     def test_max_heuristic(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         heuristic = MaxHeuristic(problem)
@@ -707,8 +930,8 @@ class TestSearchAlgorithms(unittest.TestCase):
         assert len(heuristic.get_preferred_actions()) == 0
 
     def test_add_heuristic(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         heuristic = AddHeuristic(problem)
@@ -717,8 +940,8 @@ class TestSearchAlgorithms(unittest.TestCase):
         assert len(heuristic.get_preferred_actions()) == 0
 
     def test_perfect_heuristic(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         heuristic = PerfectHeuristic(problem)
@@ -727,8 +950,8 @@ class TestSearchAlgorithms(unittest.TestCase):
         assert len(heuristic.get_preferred_actions()) == 0
 
     def test_ff_heuristic(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         heuristic = FFHeuristic(problem)
@@ -737,15 +960,15 @@ class TestSearchAlgorithms(unittest.TestCase):
         assert len(heuristic.get_preferred_actions()) == 2
 
     def test_ff_heuristic_with_different_goal(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         heuristic = FFHeuristic(problem)
         initial_state = problem.get_initial_state()
-        predicate_on = domain.get_predicate('on')
-        obj_b1 = problem.get_object('b1')
-        obj_b2 = problem.get_object('b2')
+        predicate_on = domain.get_predicate("on")
+        obj_b1 = problem.get_object("b1")
+        obj_b2 = problem.get_object("b2")
         atom_on_b1_b2 = problem.new_ground_atom(predicate_on, [obj_b1, obj_b2])
         literal_on_b1_b2 = problem.new_ground_literal(atom_on_b1_b2, True)
         different_goal = GroundConjunctiveCondition.new([literal_on_b1_b2], problem)
@@ -753,8 +976,8 @@ class TestSearchAlgorithms(unittest.TestCase):
         assert len(heuristic.get_preferred_actions()) == 1
 
     def test_h2_heuristic(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         heuristic = H2Heuristic(problem)
@@ -763,15 +986,15 @@ class TestSearchAlgorithms(unittest.TestCase):
         assert len(heuristic.get_preferred_actions()) == 0
 
     def test_h2_heuristic_with_different_goal(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         heuristic = H2Heuristic(problem)
         initial_state = problem.get_initial_state()
-        predicate_on = domain.get_predicate('on')
-        obj_b1 = problem.get_object('b1')
-        obj_b2 = problem.get_object('b2')
+        predicate_on = domain.get_predicate("on")
+        obj_b1 = problem.get_object("b1")
+        obj_b2 = problem.get_object("b2")
         atom_on_b1_b2 = problem.new_ground_atom(predicate_on, [obj_b1, obj_b2])
         literal_on_b1_b2 = problem.new_ground_literal(atom_on_b1_b2, True)
         different_goal = GroundConjunctiveCondition.new([literal_on_b1_b2], problem)
@@ -779,21 +1002,21 @@ class TestSearchAlgorithms(unittest.TestCase):
         assert len(heuristic.get_preferred_actions()) == 0
 
     def test_brfs(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
         result = brfs(problem, initial_state, 1)
-        assert result.status == 'solved'
+        assert result.status == "solved"
         assert result.solution is not None
         assert len(result.solution) == 4
         assert result.solution_cost == 4.0
         assert result.goal_state is not None
 
     def test_brfs_events(self):
-        domain_path = DATA_DIR / 'childsnack' / 'domain.pddl'
-        problem_path = DATA_DIR / 'childsnack' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "childsnack" / "domain.pddl"
+        problem_path = DATA_DIR / "childsnack" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
@@ -802,14 +1025,22 @@ class TestSearchAlgorithms(unittest.TestCase):
         generated_states = []
         generated_new_states = []
         pruned_states = []
-        _ = brfs(problem,
-               initial_state,
-               1,
-               on_expand_state=lambda state: expanded_states.append(state),
-               on_expand_goal_state=lambda state: expanded_goal_states.append(state),
-               on_generate_state=lambda state, action, cost, successor_state: generated_states.append((state, action, cost, successor_state)),
-               on_generate_new_state=lambda state, action, cost, successor_state: generated_new_states.append((state, action, cost, successor_state)),
-               on_prune_state=lambda state, action, cost, successor_state: pruned_states.append((state, action, cost, successor_state)))
+        _ = brfs(
+            problem,
+            initial_state,
+            1,
+            on_expand_state=lambda state: expanded_states.append(state),
+            on_expand_goal_state=lambda state: expanded_goal_states.append(state),
+            on_generate_state=lambda state, action, cost, successor_state: generated_states.append(
+                (state, action, cost, successor_state)
+            ),
+            on_generate_new_state=lambda state, action, cost, successor_state: generated_new_states.append(
+                (state, action, cost, successor_state)
+            ),
+            on_prune_state=lambda state, action, cost, successor_state: pruned_states.append(
+                (state, action, cost, successor_state)
+            ),
+        )
         assert len(expanded_states) == 6
         assert len(expanded_goal_states) == 1
         assert len(generated_states) == 16
@@ -817,20 +1048,20 @@ class TestSearchAlgorithms(unittest.TestCase):
         assert len(pruned_states) == 10
 
     def test_iw(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
         result = iw(problem, initial_state, 1)
-        assert result.status == 'failed'
+        assert result.status == "failed"
         assert result.solution is None
         assert result.solution_cost is None
         assert result.goal_state is None
 
     def test_iw_events(self):
-        domain_path = DATA_DIR / 'childsnack' / 'domain.pddl'
-        problem_path = DATA_DIR / 'childsnack' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "childsnack" / "domain.pddl"
+        problem_path = DATA_DIR / "childsnack" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
@@ -839,25 +1070,35 @@ class TestSearchAlgorithms(unittest.TestCase):
         generated_states = []
         generated_new_states = []
         pruned_states = []
-        _ = iw(problem,
-               initial_state,
-               1,
-               on_expand_state=lambda state: expanded_states.append(state),
-               on_expand_goal_state=lambda state: expanded_goal_states.append(state),
-               on_generate_state=lambda state, action, cost, successor_state: generated_states.append((state, action, cost, successor_state)),
-               on_generate_new_state=lambda state, action, cost, successor_state: generated_new_states.append((state, action, cost, successor_state)),
-               on_prune_state=lambda state, action, cost, successor_state: pruned_states.append((state, action, cost, successor_state)))
-        assert len(expanded_states) == 7
+        _ = iw(
+            problem,
+            initial_state,
+            1,
+            on_expand_state=lambda state: expanded_states.append(state),
+            on_expand_goal_state=lambda state: expanded_goal_states.append(state),
+            on_generate_state=lambda state, action, cost, successor_state: generated_states.append(
+                (state, action, cost, successor_state)
+            ),
+            on_generate_new_state=lambda state, action, cost, successor_state: generated_new_states.append(
+                (state, action, cost, successor_state)
+            ),
+            on_prune_state=lambda state, action, cost, successor_state: pruned_states.append(
+                (state, action, cost, successor_state)
+            ),
+        )
+        assert len(expanded_states) == 4
         assert len(expanded_goal_states) == 0
-        assert len(generated_states) == 20
-        assert len(generated_new_states) == 5
-        assert len(pruned_states) == 15
+        assert len(generated_states) == 11
+        assert len(generated_new_states) == 3
+        assert len(pruned_states) == 8
+        # Every generated transition is classified exactly once.
+        assert len(generated_states) == len(generated_new_states) + len(pruned_states)
 
     def test_str_repr_hash(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
-        problem = Problem(domain, problem_path, mode='grounded')
+        problem = Problem(domain, problem_path, mode="grounded")
         heuristic = FFHeuristic(problem)
         assert str(heuristic) is not None
         assert repr(heuristic) is not None
@@ -866,8 +1107,8 @@ class TestSearchAlgorithms(unittest.TestCase):
 
 class TestStateSpaceSampler(unittest.TestCase):
     def test_sample_state(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         sampler = StateSpaceSampler.new(problem)
@@ -887,8 +1128,8 @@ class TestStateSpaceSampler(unittest.TestCase):
         assert len(labeled_states) == 10
 
     def test_forward_transitions(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         sampler = StateSpaceSampler.new(problem)
@@ -910,8 +1151,8 @@ class TestStateSpaceSampler(unittest.TestCase):
             assert action.apply(state) == successor_state
 
     def test_backward_transitions(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         sampler = StateSpaceSampler.new(problem)
@@ -933,8 +1174,8 @@ class TestStateSpaceSampler(unittest.TestCase):
             assert action.apply(predecessor_state) == state
 
     def test_sample_dead_end_state(self):
-        domain_path = DATA_DIR / 'spanner' / 'domain.pddl'
-        problem_path = DATA_DIR / 'spanner' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "spanner" / "domain.pddl"
+        problem_path = DATA_DIR / "spanner" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         sampler = StateSpaceSampler.new(problem)
@@ -951,8 +1192,8 @@ class TestStateSpaceSampler(unittest.TestCase):
         assert len(dead_end_states) == 10
 
     def test_str_repr_hash(self):
-        domain_path = DATA_DIR / 'blocks_4' / 'domain.pddl'
-        problem_path = DATA_DIR / 'blocks_4' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
+        problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         sampler = StateSpaceSampler.new(problem)
@@ -962,8 +1203,8 @@ class TestStateSpaceSampler(unittest.TestCase):
         assert hash(sampler) is not None
 
     def test_get_state(self):
-        domain_path = DATA_DIR / 'spanner' / 'domain.pddl'
-        problem_path = DATA_DIR / 'spanner' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "spanner" / "domain.pddl"
+        problem_path = DATA_DIR / "spanner" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         sampler = StateSpaceSampler.new(problem)
@@ -977,33 +1218,43 @@ class TestStateSpaceSampler(unittest.TestCase):
 
 class TestNumericFluents(unittest.TestCase):
     def test_get_numeric_conditions(self):
-        domain_path = DATA_DIR / 'refuel-adl' / 'domain.pddl'
-        problem_path = DATA_DIR / 'refuel-adl' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "refuel-adl" / "domain.pddl"
+        problem_path = DATA_DIR / "refuel-adl" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
-        action = next(x for x in initial_state.generate_applicable_actions() if x.get_action().get_name() == 'drive-vehicle')
+        action = next(
+            x
+            for x in initial_state.generate_applicable_actions()
+            if x.get_action().get_name() == "drive-vehicle"
+        )
         precondition = action.get_precondition()
         numerics = precondition.get_numerics()
         assert len(numerics) == 1
         numeric = numerics[0]
-        assert numeric.get_comparator() == '>'
+        assert numeric.get_comparator() == ">"
         assert numeric.get_left_expression().is_function_term()
-        assert numeric.get_left_expression().get_function_term().get_numeric_function().get_name() == 'fuel-level'
+        assert (
+            numeric.get_left_expression()
+            .get_function_term()
+            .get_numeric_function()
+            .get_name()
+            == "fuel-level"
+        )
         assert numeric.get_right_expression().is_number_term()
         assert numeric.get_right_expression().get_number_term() == 0.0
 
     def test_get_ground_numeric_conditions(self):
-        domain_path = DATA_DIR / 'refuel-adl' / 'domain.pddl'
+        domain_path = DATA_DIR / "refuel-adl" / "domain.pddl"
         domain = Domain(domain_path)
-        action = domain.get_action('fuel-vehicle')
+        action = domain.get_action("fuel-vehicle")
         precondition = action.get_precondition()
         numeric_conditions = precondition.get_numeric_conditions()
         assert len(numeric_conditions) == 1
 
     def test_get_function_values(self):
-        domain_path = DATA_DIR / 'refuel-adl' / 'domain.pddl'
-        problem_path = DATA_DIR / 'refuel-adl' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "refuel-adl" / "domain.pddl"
+        problem_path = DATA_DIR / "refuel-adl" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
@@ -1012,36 +1263,436 @@ class TestNumericFluents(unittest.TestCase):
         assert sum(x for _, _, x in numeric_values) == 6.0
 
     def test_get_function_effect(self):
-        domain_path = DATA_DIR / 'refuel-adl' / 'domain.pddl'
+        domain_path = DATA_DIR / "refuel-adl" / "domain.pddl"
         domain = Domain(domain_path)
-        action = domain.get_action('fuel-vehicle')
+        action = domain.get_action("fuel-vehicle")
         effects = action.get_conditional_effect()
         assert len(effects) == 1
         effect = effects[0]
         function_updates = effect.get_effect().get_functions()
         assert len(function_updates) == 1
-        assert function_updates[0][0] == 'increase'
-        assert function_updates[0][1].get_numeric_function().get_name() == 'fuel-level'
+        assert function_updates[0][0] == "increase"
+        assert function_updates[0][1].get_numeric_function().get_name() == "fuel-level"
         assert function_updates[0][2].is_number_term()
         assert function_updates[0][2].get_number_term() == 1.0
 
     def test_get_ground_function_effect(self):
-        domain_path = DATA_DIR / 'refuel-adl' / 'domain.pddl'
-        problem_path = DATA_DIR / 'refuel-adl' / 'test_problem.pddl'
+        domain_path = DATA_DIR / "refuel-adl" / "domain.pddl"
+        problem_path = DATA_DIR / "refuel-adl" / "test_problem.pddl"
         domain = Domain(domain_path)
         problem = Problem(domain, problem_path)
         initial_state = problem.get_initial_state()
-        action = next(x for x in initial_state.generate_applicable_actions() if x.get_action().get_name() == 'fuel-vehicle')
+        action = next(
+            x
+            for x in initial_state.generate_applicable_actions()
+            if x.get_action().get_name() == "fuel-vehicle"
+        )
         effects = action.get_conditional_effect()
         assert len(effects) == 1
         effect = effects[0]
         function_updates = effect.get_effect().get_functions()
         assert len(function_updates) == 1
-        assert function_updates[0][0] == 'increase'
-        assert function_updates[0][1].get_numeric_function().get_name() == 'fuel-level'
+        assert function_updates[0][0] == "increase"
+        assert function_updates[0][1].get_numeric_function().get_name() == "fuel-level"
         assert function_updates[0][2].is_number_term()
         assert function_updates[0][2].get_number_term() == 1.0
 
 
-if __name__ == '__main__':
+class TestBeamWrappers(unittest.TestCase):
+    def test_iw_max_depth(self):
+        problem = _make_problem("delivery", mode="grounded")
+        start_state = problem.get_initial_state()
+
+        shallow_result = iw(problem, start_state, 2, max_depth=3)
+        assert shallow_result.status == "failed"
+        assert shallow_result.solution is None
+
+        exact_result = iw(problem, start_state, 2, max_depth=4)
+        assert exact_result.status == "solved"
+        assert exact_result.solution is not None
+        assert len(exact_result.solution) == 4
+
+
+    def test_abstracted_iw_max_depth(self):
+        problem = _make_problem("assembly", mode="grounded")
+        start_state = problem.get_initial_state()
+
+        shallow_result = abstracted_iw(problem, start_state, width=1, base_abstracted=True, preserve_goal_atoms=False, max_depth=0)
+        assert shallow_result.status == "exhausted"
+        assert shallow_result.solution is None
+
+        exact_result = abstracted_iw(problem, start_state, width=1, base_abstracted=True, preserve_goal_atoms=False, max_depth=1)
+        assert exact_result.status == "solved"
+        assert exact_result.solution is not None
+        assert len(exact_result.solution) == 1
+
+    def test_abstracted_iw_projective_alias_parity(self):
+        problem = _make_problem("assembly", mode="grounded")
+        start_state = problem.get_initial_state()
+
+        projective_result = projective_iw(problem, start_state, typed_projection=False, keep_goal_nonunary_atoms=False, max_depth=1)
+        abstracted_result = abstracted_iw(problem, start_state, width=1, base_abstracted=True, preserve_goal_atoms=False, max_depth=1)
+
+        assert projective_result.status == abstracted_result.status
+        assert projective_result.solution is not None
+        assert abstracted_result.solution is not None
+        assert [str(action) for action in projective_result.solution] == [str(action) for action in abstracted_result.solution]
+
+    def test_projective_iw_max_depth(self):
+        problem = _make_problem("assembly", mode="grounded")
+        start_state = problem.get_initial_state()
+
+        shallow_result = projective_iw(problem, start_state, max_depth=0)
+        assert shallow_result.status == "exhausted"
+        assert shallow_result.solution is None
+
+        exact_result = projective_iw(problem, start_state, max_depth=1)
+        assert exact_result.status == "solved"
+        assert exact_result.solution is not None
+        assert len(exact_result.solution) == 1
+
+    def test_advanced_width_option_bindings_expose_incremental_iw1_fields(self):
+        brfs_options = advanced_search.BrFSOptions()
+        brfs_options.iw1_incremental_first_applicability = True
+        brfs_options.iw1_incremental_first_applicability_debug_crosscheck = True
+        assert brfs_options.iw1_incremental_first_applicability is True
+        assert brfs_options.iw1_incremental_first_applicability_debug_crosscheck is True
+
+        iw_options = advanced_search.IWOptions()
+        iw_options.iw1_incremental_first_applicability = True
+        iw_options.iw1_incremental_first_applicability_debug_crosscheck = True
+        assert iw_options.iw1_incremental_first_applicability is True
+        assert iw_options.iw1_incremental_first_applicability_debug_crosscheck is True
+
+    def test_projective_iw_incremental_add_effect_precheck_all_tested(self):
+        domain_path = DATA_DIR / "iw1_incremental" / "domain.pddl"
+        problem_path = DATA_DIR / "iw1_incremental" / "positive_problem.pddl"
+        domain = Domain(domain_path)
+        problem = Problem(domain, problem_path)
+        start_state = problem.get_initial_state()
+        layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(
+            problem._advanced_problem
+        )
+
+        result = projective_iw(
+            problem,
+            start_state,
+            typed_projection=True,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="all_tested",
+            iw1_precheck_add_effect_novelty=True,
+            iw1_incremental_first_applicability=True,
+        )
+
+        assert result.status == "solved"
+        assert result.solution is not None
+        assert len(result.solution) == 2
+
+    def test_abstracted_iw_incremental_add_effect_precheck_all_tested(self):
+        domain_path = DATA_DIR / "iw1_incremental" / "domain.pddl"
+        problem_path = DATA_DIR / "iw1_incremental" / "positive_problem.pddl"
+        domain = Domain(domain_path)
+        problem = Problem(domain, problem_path)
+        start_state = problem.get_initial_state()
+        layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(
+            problem._advanced_problem
+        )
+
+        result = abstracted_iw(
+            problem,
+            start_state,
+            width=1,
+            base_abstracted=False,
+            preserve_goal_atoms=False,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="all_tested",
+            iw1_precheck_add_effect_novelty=True,
+            iw1_incremental_first_applicability=True,
+        )
+
+        assert result.status == "solved"
+        assert result.solution is not None
+        assert len(result.solution) == 2
+
+    def test_iw_parallel_beam(self):
+        problem = _make_problem("delivery", mode="grounded")
+        start_state = problem.get_initial_state()
+        layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(
+            problem._advanced_problem
+        )
+
+        result = iw(
+            problem,
+            start_state,
+            2,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=4,
+            beam_novelty_mode="survivors_only",
+            num_threads=2,
+        )
+
+        assert result.status == "solved"
+        assert result.solution is not None
+        assert len(result.solution) == 4
+
+    def test_projective_iw_parallel_beam_requires_beam_width(self):
+        problem = _make_problem("delivery", mode="grounded")
+        start_state = problem.get_initial_state()
+        layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(
+            problem._advanced_problem
+        )
+
+        with self.assertRaises(Exception):
+            projective_iw(
+                problem,
+                start_state,
+                layer_ordering_strategy=layer_ordering_strategy,
+                num_threads=2,
+            )
+
+    def test_brfs_parallel_beam_num_threads_covers_state_space(self):
+        problem = _make_problem("blocks_4", mode="grounded")
+        start_state = problem.get_initial_state()
+        sampler = StateSpaceSampler.new(problem)
+        assert sampler is not None
+
+        expected_state_indices = {state.get_index() for state in sampler.get_states()}
+        expanded_states: list[State] = []
+        expanded_state_indices: set[int] = set()
+
+        def on_expand_state(state: State) -> None:
+            expanded_states.append(state)
+            expanded_state_indices.add(state.get_index())
+
+        result = brfs(
+            problem,
+            start_state,
+            layer_ordering_strategy=advanced_search.GoalCountLayerOrderingStrategy(
+                problem._advanced_problem
+            ),
+            beam_width=sampler.num_states(),
+            beam_novelty_mode="survivors_only",
+            num_threads=2,
+            stop_if_goal=False,
+            on_expand_state=on_expand_state,
+        )
+
+        assert result.status == "exhausted"
+        assert expanded_state_indices == expected_state_indices
+        assert len(expanded_states) == len(expanded_state_indices)
+
+        for state in expanded_states:
+            expected_transitions = {
+                (action.get_index(), successor_state.get_index())
+                for action, successor_state in sampler.get_forward_transitions(state)
+            }
+            actual_transitions = {
+                (action.get_index(), action.apply(state).get_index())
+                for action in state.generate_applicable_actions()
+            }
+            assert actual_transitions == expected_transitions
+
+    def test_iw_parallel_beam_lifted_kpkc(self):
+        for domain_name in ["delivery", "philosophers"]:
+            problem = _make_problem(domain_name, mode="lifted")
+            start_state = problem.get_initial_state()
+            layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(
+                problem._advanced_problem
+            )
+
+            serial_result = iw(
+                problem,
+                start_state,
+                3,
+                layer_ordering_strategy=layer_ordering_strategy,
+                beam_width=64,
+                beam_novelty_mode="survivors_only",
+            )
+            parallel_result = iw(
+                problem,
+                start_state,
+                3,
+                layer_ordering_strategy=layer_ordering_strategy,
+                beam_width=64,
+                beam_novelty_mode="survivors_only",
+                num_threads=2,
+                chunk_size=64,
+            )
+
+            assert parallel_result.status == serial_result.status
+            assert (parallel_result.solution is None) == (
+                serial_result.solution is None
+            )
+            if serial_result.solution is not None:
+                assert len(parallel_result.solution) == len(serial_result.solution)
+
+    def test_iw_parallel_beam_lifted_symmetry_pruning(self):
+        problem = _make_problem("delivery", mode="lifted_symmetry_pruning")
+        start_state = problem.get_initial_state()
+        layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(
+            problem._advanced_problem
+        )
+
+        serial_result = iw(
+            problem,
+            start_state,
+            3,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="all_tested",
+        )
+        parallel_result = iw(
+            problem,
+            start_state,
+            3,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="all_tested",
+            num_threads=2,
+            chunk_size=64,
+        )
+
+        assert parallel_result.status == serial_result.status
+        assert (parallel_result.solution is None) == (serial_result.solution is None)
+        if serial_result.solution is not None:
+            assert len(parallel_result.solution) == len(serial_result.solution)
+
+    def test_projective_iw_parallel_beam_lifted_delivery_does_not_throw(self):
+        problem = _make_problem("delivery", mode="lifted")
+        start_state = problem.get_initial_state()
+        layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(
+            problem._advanced_problem
+        )
+
+        result = projective_iw(
+            problem,
+            start_state,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="survivors_only",
+            num_threads=2,
+            chunk_size=64,
+        )
+
+        assert result.status in ["solved", "exhausted"]
+
+    def test_projective_iw_parallel_beam_lifted_philosophers_does_not_throw(self):
+        problem = _make_problem("philosophers", mode="lifted")
+        start_state = problem.get_initial_state()
+        layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(
+            problem._advanced_problem
+        )
+
+        result = projective_iw(
+            problem,
+            start_state,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="all_tested",
+            num_threads=2,
+            chunk_size=64,
+        )
+
+        assert result.status in ["solved", "exhausted"]
+
+    def test_iw_relaxed_survivors_only_beam_lifted_delivery_does_not_throw(self):
+        problem = _make_problem("delivery", mode="lifted")
+        start_state = problem.get_initial_state()
+        layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(
+            problem._advanced_problem
+        )
+
+        result = iw(
+            problem,
+            start_state,
+            3,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="survivors_only",
+            num_threads=2,
+            chunk_size=64,
+            relaxed_survivors_only_beam=True,
+        )
+
+        assert result.status in ["solved", "exhausted"]
+
+    def test_projective_iw_relaxed_survivors_only_beam_lifted_delivery_does_not_throw(
+        self,
+    ):
+        problem = _make_problem("delivery", mode="lifted")
+        start_state = problem.get_initial_state()
+        layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(
+            problem._advanced_problem
+        )
+
+        result = projective_iw(
+            problem,
+            start_state,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="survivors_only",
+            num_threads=2,
+            chunk_size=64,
+            relaxed_survivors_only_beam=True,
+        )
+
+        assert result.status in ["solved", "exhausted"]
+
+    def test_release_parallel_memory_keeps_lifted_parallel_search_usable(self):
+        problem = _make_problem("delivery", mode="lifted")
+        start_state = problem.get_initial_state()
+        layer_ordering_strategy = advanced_search.GoalCountLayerOrderingStrategy(
+            problem._advanced_problem
+        )
+
+        first_result = iw(
+            problem,
+            start_state,
+            3,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="survivors_only",
+            num_threads=4,
+            chunk_size=64,
+        )
+
+        problem.release_parallel_memory()
+
+        second_result = iw(
+            problem,
+            start_state,
+            3,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="survivors_only",
+            num_threads=4,
+            chunk_size=64,
+        )
+
+        problem.release_parallel_memory(clear_shared_caches=True)
+
+        third_result = iw(
+            problem,
+            start_state,
+            3,
+            layer_ordering_strategy=layer_ordering_strategy,
+            beam_width=64,
+            beam_novelty_mode="survivors_only",
+            num_threads=4,
+            chunk_size=64,
+        )
+
+        assert first_result.status == second_result.status
+        assert (first_result.solution is None) == (second_result.solution is None)
+        if first_result.solution is not None:
+            assert len(first_result.solution) == len(second_result.solution)
+        assert first_result.status == third_result.status
+        assert (first_result.solution is None) == (third_result.solution is None)
+        if first_result.solution is not None:
+            assert len(first_result.solution) == len(third_result.solution)
+
+
+if __name__ == "__main__":
     unittest.main()

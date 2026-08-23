@@ -49,3 +49,23 @@ def test_astar_search_2():
 
     assert result.status == search.SearchStatus.SOLVED
     assert len(result.plan) == 4
+
+
+def test_astar_iw_advanced_bindings():
+    domain_filepath = str(ROOT_DIR / "data" / "gripper" / "domain.pddl")
+    problem_filepath = str(ROOT_DIR / "data" / "gripper" / "test_problem.pddl")
+    search_context = search.SearchContext.create(domain_filepath, problem_filepath, search.SearchContextOptions())
+    heuristic = search.BlindHeuristic.create(search_context.get_problem())
+
+    for mode in (
+        search.AStarIWNoveltyFeatureMode.CLASSICAL,
+        search.AStarIWNoveltyFeatureMode.ABSTRACTED,
+        search.AStarIWNoveltyFeatureMode.BASE_ABSTRACTED,
+    ):
+        options = search.AStarIWOptions()
+        options.width = 2
+        options.novelty_feature_mode = mode
+        options.heuristic_weight = 1.0
+        result = search.find_solution_astar_iw(search_context, heuristic, options)
+        assert result.status == search.SearchStatus.SOLVED
+        assert result.plan is not None

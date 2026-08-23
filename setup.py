@@ -11,7 +11,11 @@ from setuptools import setup, find_packages, Extension
 from setuptools.command.build_ext import build_ext
 
 
-__version__ = "0.13.60"
+# Single source of truth for the pymimir wheel version and for MIMIR_VERSION_INFO.
+# Bumping rules live in docs/VERSIONING.md -- in short, a new binding-visible feature bumps
+# the MINOR component, so downstream can gate on `pymimir>=X.Y` instead of probing with
+# `hasattr`. 0.14.2: packaging/CI overhaul (Python >= 3.12 incl. free-threaded wheels).
+__version__ = "0.14.2"
 HERE = Path(__file__).resolve().parent
 
 
@@ -41,6 +45,9 @@ class CMakeBuild(build_ext):
         # Create the temporary build directory, if it does not already exist
         os.makedirs(temp_directory, exist_ok=True)
 
+        # CI can point PYMIMIR_DEPENDENCY_PREFIX at a cached dependency install.
+        # The effective prefix is scoped by the platform/libc tag so caches for
+        # different wheel variants never collide within one shared directory.
         dependency_prefix = os.environ.get("PYMIMIR_DEPENDENCY_PREFIX")
         if dependency_prefix:
             dependency_prefix = Path(dependency_prefix)
@@ -65,13 +72,11 @@ class CMakeBuild(build_ext):
         )
 
         subprocess.run(
-            ["cmake", "--build", f"{str(temp_directory / 'dependencies' / 'build')}", f"-j{multiprocessing.cpu_count()}"],
-            check=True
+            ["cmake", "--build", f"{str(temp_directory / 'dependencies' / 'build')}", f"-j{multiprocessing.cpu_count()}"]
         )
 
         subprocess.run(
-            ["cmake", "--install", f"{str(temp_directory / 'dependencies' / 'build')}"],
-            check=True
+            ["cmake", "--install", f"{str(temp_directory / 'dependencies' / 'build')}"]
         )
 
         shutil.rmtree(f"{str(temp_directory / 'dependencies' / 'build')}")
@@ -108,14 +113,6 @@ class CMakeBuild(build_ext):
 
         subprocess.run(install_cmd, check=True)
 
-        # Remove unwanted directories.
-        unwanted_dirs = ["include", "lib", "lib64"]
-        for unwanted_dir in unwanted_dirs:
-            dir_path = output_directory / unwanted_dir
-            if os.path.exists(dir_path):
-                shutil.rmtree(dir_path)
-                print(f"Removed {dir_path} from the wheel.")
-
 
 # The information here can also be placed in setup.cfg - better separation of
 # logic and declaration, and simpler if you include description/version in a file.
@@ -124,10 +121,17 @@ setup(
     version=__version__,
     author="Simon Stahlberg, Dominik Drexler",
     author_email="simon.stahlberg@gmail.com, dominik.drexler@liu.se",
-    url="https://github.com/simon-stahlberg/mimir",
+    url="https://github.com/maichmueller/mimir",
     description="Mimir planning library",
     long_description="",
-    install_requires=["cmake>=3.21"],
+    python_requires=">=3.12",
+    classifiers=[
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
+        "Programming Language :: Python :: Implementation :: CPython",
+    ],
+    install_requires=[],
     packages=find_packages(where="python/src"),
     package_dir={"": "python/src"},
     ext_modules=[CMakeExtension("pymimir")],

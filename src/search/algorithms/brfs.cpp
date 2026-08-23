@@ -17,57 +17,147 @@
 
 #include "mimir/search/algorithms/brfs.hpp"
 
-#include "mimir/common/segmented_vector.hpp"
+#include "brfs/internal.hpp"
+#include "brfs/incremental_iw1.hpp"
+#include "brfs/transition_ordered_layer.hpp"
+
 #include "mimir/common/timers.hpp"
-#include "mimir/formalism/problem.hpp"
+#include "mimir/formalism/domain.hpp"
+#include "mimir/formalism/effects.hpp"
 #include "mimir/search/algorithms/brfs/event_handlers.hpp"
 #include "mimir/search/algorithms/brfs/event_handlers/interface.hpp"
+#include "mimir/search/algorithms/iw/pruning_strategy.hpp"
 #include "mimir/search/algorithms/strategies/goal_strategy.hpp"
+#include "mimir/search/algorithms/strategies/layer_ordering_strategy.hpp"
 #include "mimir/search/algorithms/strategies/pruning_strategy.hpp"
+#include "mimir/search/algorithms/strategies/transition_ordering_strategy.hpp"
 #include "mimir/search/applicable_action_generators/interface.hpp"
 #include "mimir/search/axiom_evaluators/interface.hpp"
-#include "mimir/search/plan.hpp"
+#include "mimir/search/axiom_evaluators/lifted/exhaustive.hpp"
 #include "mimir/search/search_context.hpp"
-#include "mimir/search/search_node.hpp"
 #include "mimir/search/search_space.hpp"
 #include "mimir/search/state_repository.hpp"
 
+#include <algorithm>
 #include <deque>
+#include <exception>
+#include <stdexcept>
 
 using namespace mimir::formalism;
 
 namespace mimir::search::brfs
 {
-
-/**
- * BrFS search node
- */
-
-struct SearchNode
+namespace
 {
-    DiscreteCost g_value;
-    Index parent_state;
-    SearchNodeStatus status;
-};
-
-using SearchNodeVector = SegmentedVector<SearchNode>;
-
-static SearchNode& get_or_create_search_node(size_t state_index, SearchNodeVector& search_nodes)
+bool is_empty_conjunctive_condition(ConjunctiveCondition condition)
 {
-    static constexpr auto default_node = SearchNode { DiscreteCost(0), std::numeric_limits<Index>::max(), SearchNodeStatus::NEW };
-
-    while (state_index >= search_nodes.size())
-    {
-        search_nodes.push_back(default_node);
-    }
-    return search_nodes[state_index];
+    return condition->get_literals<StaticTag>().empty() && condition->get_literals<FluentTag>().empty() && condition->get_literals<DerivedTag>().empty()
+           && condition->get_numeric_constraints().empty();
 }
 
-/**
- * BrFS
- */
+bool supports_iw1_incremental_first_applicability(const ProblemImpl& problem)
+{
+    if (!problem.get_problem_and_domain_axioms().empty())
+    {
+        return false;
+    }
 
-SearchResult find_solution(const SearchContext& context, const Options& options)
+    for (const auto action : problem.get_domain()->get_actions())
+    {
+        const auto condition = action->get_conjunctive_condition();
+        if (!condition->get_literals<DerivedTag>().empty() || !condition->get_numeric_constraints().empty())
+        {
+            return false;
+        }
+
+        for (const auto& conditional_effect : action->get_conditional_effects())
+        {
+            if (!is_empty_conjunctive_condition(conditional_effect->get_conjunctive_condition()))
+            {
+                return false;
+            }
+
+            const auto conjunctive_effect = conditional_effect->get_conjunctive_effect();
+            if (!conjunctive_effect->get_fluent_numeric_effects().empty() || conjunctive_effect->get_auxiliary_numeric_effect().has_value())
+            {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+/// @brief Whether incremental first-applicability is sound for this pruning strategy.
+///
+/// The optimization tests every ground action at most once across the entire search. What makes
+/// that sound is an invariant of ATOM-level novelty: every atom true in a generated state has been
+/// marked (the initial state marks all of its atoms, and every transition marks the ones it adds),
+/// so re-applying an already-tested action can never add an unmarked atom and can never be novel.
+///
+/// The invariant is a property of the feature family, not of the queries a strategy happens to
+/// expose, and it fails for landmark-restricted novelty: there the feature is a pair
+/// `(landmark coordinate, free tuple)`, and the same action applied at a state with different
+/// coordinates can expose a pair no earlier application could have marked. `supports_atom_novelty_query`
+/// is exactly the right question to ask -- it is true precisely for the width-1 atom-level
+/// strategies -- so this is deliberately NOT relaxed to the transition-level capability, which the
+/// landmark strategy does provide.
+bool supports_iw1_incremental_first_applicability(const PruningStrategy& pruning_strategy)
+{
+    return pruning_strategy->supports_atom_novelty_query();
+}
+}
+
+SearchEndGuard::SearchEndGuard(EventHandler event_handler, SearchContext context, const SearchNodeVector& search_nodes) :
+    m_event_handler(std::move(event_handler)),
+    m_context(std::move(context)),
+    m_search_nodes(&search_nodes),
+    m_finished(false)
+{
+}
+
+SearchEndGuard::~SearchEndGuard() noexcept(false)
+{
+    if (std::uncaught_exceptions() > 0)
+    {
+        /* Already unwinding. A second exception thrown from here would terminate the process, and
+           the failure that started the unwinding is the one worth surfacing. */
+        try
+        {
+            finish();
+        }
+        catch (...)
+        {
+        }
+        return;
+    }
+
+    finish();
+}
+
+void SearchEndGuard::finish()
+{
+    if (m_finished)
+    {
+        return;
+    }
+    m_finished = true;
+
+    const auto& problem = *m_context->get_problem();
+    auto& state_repository = *m_context->get_state_repository();
+    const auto& ground_action_repository = boost::hana::at_key(problem.get_repositories().get_hana_repositories(), boost::hana::type<GroundActionImpl> {});
+    const auto& ground_axiom_repository = boost::hana::at_key(problem.get_repositories().get_hana_repositories(), boost::hana::type<GroundAxiomImpl> {});
+
+    m_event_handler->on_end_search(state_repository.get_reached_fluent_ground_atoms_bitset().count(),
+                                   state_repository.get_reached_derived_ground_atoms_bitset().count(),
+                                   state_repository.get_state_count(),
+                                   m_search_nodes->size(),
+                                   ground_action_repository.size(),
+                                   ground_axiom_repository.size());
+}
+
+template<TransitionOrderingStrategy Ordering = QueuedTransitionOrderingStrategy>
+SearchResult find_solution_impl(const SearchContext& context, const Options& options, const Ordering& ordering = {})
 {
     const auto& problem = *context->get_problem();
     auto& applicable_action_generator = *context->get_applicable_action_generator();
@@ -79,29 +169,204 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
     const auto event_handler = (options.event_handler) ? options.event_handler : DefaultEventHandlerImpl::create(context->get_problem());
     const auto goal_strategy = (options.goal_strategy) ? options.goal_strategy : ProblemGoalStrategyImpl::create(context->get_problem());
     const auto pruning_strategy = (options.pruning_strategy) ? options.pruning_strategy : DuplicatePruningStrategyImpl::create();
+    // Null when nothing is blocked, which is the overwhelmingly common case and keeps the check
+    // in `handle_surviving_action` to a single predictable branch. Never applied to `start_state`:
+    // see the option's documentation.
+    const auto* const blocked_states = options.blocked_states.empty() ? nullptr : &options.blocked_states;
+    const auto layer_ordering_strategy = options.layer_ordering_strategy;
+    const auto max_next_layer_states = options.max_next_layer_states;
+    const auto use_next_layer_limit = (max_next_layer_states < std::numeric_limits<uint32_t>::max());
+    const auto beam_width = options.beam_width;
+    const auto use_beam = (beam_width < std::numeric_limits<uint32_t>::max());
+    const auto beam_novelty_mode = options.beam_novelty_mode;
+    const auto relaxed_survivors_only_beam = options.relaxed_survivors_only_beam;
+    const auto parallel_beam_num_threads = options.parallel_beam_num_threads;
+    const auto parallel_beam_chunk_size = options.parallel_beam_chunk_size;
+    const auto iw1_precheck_add_effect_novelty = options.iw1_precheck_add_effect_novelty;
+    const auto iw1_atom_first_mode = options.iw1_atom_first_mode;
+    const auto iw1_atom_first_ratio = options.iw1_atom_first_ratio;
+    const auto iw1_incremental_first_applicability = options.iw1_incremental_first_applicability;
+    const auto iw1_incremental_first_applicability_debug_crosscheck = options.iw1_incremental_first_applicability_debug_crosscheck;
+    const auto max_depth = options.max_depth;
+    const auto use_max_depth = (max_depth < std::numeric_limits<uint32_t>::max());
+
+    if (use_next_layer_limit && (max_next_layer_states == 0))
+    {
+        throw std::invalid_argument("BrFS::Options.max_next_layer_states must be positive.");
+    }
+
+    if (use_beam && (beam_width == 0))
+    {
+        throw std::invalid_argument("BrFS::Options.beam_width must be positive.");
+    }
+
+    if (use_next_layer_limit && use_beam)
+    {
+        throw std::invalid_argument("BrFS::Options.max_next_layer_states and BrFS::Options.beam_width are mutually exclusive.");
+    }
+
+    if (use_next_layer_limit && !layer_ordering_strategy)
+    {
+        throw std::invalid_argument("BrFS::Options.max_next_layer_states requires a layer_ordering_strategy.");
+    }
+
+    if (use_beam && !layer_ordering_strategy)
+    {
+        throw std::invalid_argument("BrFS::Options.beam_width requires a layer_ordering_strategy.");
+    }
+
+    if (use_beam && !layer_ordering_strategy->supports_eager_scoring())
+    {
+        throw std::invalid_argument("BrFS::Options.beam_width requires a layer_ordering_strategy with eager scoring support.");
+    }
+
+    if (use_beam && !pruning_strategy->supports_beam_novelty_mode(beam_novelty_mode))
+    {
+        throw std::invalid_argument("The selected pruning_strategy does not support the requested beam novelty mode.");
+    }
+
+    if (relaxed_survivors_only_beam)
+    {
+        if (!use_beam)
+        {
+            throw std::invalid_argument("BrFS::Options.relaxed_survivors_only_beam requires BrFS::Options.beam_width.");
+        }
+        if (beam_novelty_mode != BeamNoveltyMode::SURVIVORS_ONLY)
+        {
+            throw std::invalid_argument("BrFS::Options.relaxed_survivors_only_beam requires BeamNoveltyMode::SURVIVORS_ONLY.");
+        }
+        if (parallel_beam_num_threads <= 1)
+        {
+            throw std::invalid_argument("BrFS::Options.relaxed_survivors_only_beam requires BrFS::Options.parallel_beam_num_threads > 1.");
+        }
+        if (!layer_ordering_strategy->supports_staged_scoring())
+        {
+            throw std::invalid_argument("BrFS::Options.relaxed_survivors_only_beam requires a layer_ordering_strategy with staged scoring support.");
+        }
+        if (!pruning_strategy->supports_relaxed_staged_beam_pruning(beam_novelty_mode))
+        {
+            throw std::invalid_argument("The selected pruning_strategy does not support relaxed staged beam pruning.");
+        }
+    }
+
+    if (parallel_beam_chunk_size == 0)
+    {
+        throw std::invalid_argument("BrFS::Options.parallel_beam_chunk_size must be positive.");
+    }
+
+    /* Reject rather than silently ignore. `SearchControl::completed_depth` is a claim about proof:
+       "every node at this depth was popped and tested against the goal". Only the plain queued loop
+       below expands a layer exhaustively -- a beam or a capped next layer drops candidates, and the
+       deferred-novelty path admits transitions on a different schedule -- so publishing a completed
+       depth from those would certify a plan that was never actually ruled out. */
+    if (options.control)
+    {
+        if (use_beam || use_next_layer_limit || layer_ordering_strategy || Ordering::requires_deferred_novelty)
+        {
+            throw std::invalid_argument("BrFS::Options.control is only supported on the plain queued search path. A beam, a next-layer cap, a layer "
+                                        "ordering strategy or a deferred-novelty ordering does not expand each g-layer exhaustively, so it cannot "
+                                        "publish a sound completed depth.");
+        }
+    }
+
+    if ((iw1_precheck_add_effect_novelty || iw1_atom_first_mode) && (iw1_atom_first_ratio <= 0.0))
+    {
+        throw std::invalid_argument("BrFS::Options.iw1_atom_first_ratio must be positive.");
+    }
+
+    if (iw1_incremental_first_applicability_debug_crosscheck && !iw1_incremental_first_applicability)
+    {
+        throw std::invalid_argument(
+            "BrFS::Options.iw1_incremental_first_applicability_debug_crosscheck requires BrFS::Options.iw1_incremental_first_applicability.");
+    }
+
+    if (iw1_incremental_first_applicability)
+    {
+        if (use_next_layer_limit)
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.iw1_incremental_first_applicability currently supports only plain BrFS and beam search, but not ordered-layer search.");
+        }
+        if (use_beam && (beam_novelty_mode != BeamNoveltyMode::ALL_TESTED))
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.iw1_incremental_first_applicability currently supports beam search only with BeamNoveltyMode::ALL_TESTED.");
+        }
+        if (!use_beam && layer_ordering_strategy)
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.iw1_incremental_first_applicability currently supports plain BrFS without layer ordering, or beam search with BeamNoveltyMode::ALL_TESTED.");
+        }
+        if (relaxed_survivors_only_beam)
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.iw1_incremental_first_applicability does not support relaxed SURVIVORS_ONLY beam search.");
+        }
+        if (iw1_atom_first_mode)
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.iw1_incremental_first_applicability cannot currently be combined with IW(1) atom-first mode.");
+        }
+        if (!supports_iw1_incremental_first_applicability(problem))
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.iw1_incremental_first_applicability requires deterministic STRIPS-style fluent actions without numeric features, derived preconditions, or axioms.");
+        }
+        if (!supports_iw1_incremental_first_applicability(pruning_strategy))
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.iw1_incremental_first_applicability requires a width-1 novelty pruning strategy.");
+        }
+        if (!applicable_action_generator.supports_partial_binding_completion())
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.iw1_incremental_first_applicability requires an applicable-action generator with partial-binding completion support.");
+        }
+    }
+
+    if (parallel_beam_num_threads > 1)
+    {
+        if (!use_beam)
+        {
+            throw std::invalid_argument("BrFS::Options.parallel_beam_num_threads requires BrFS::Options.beam_width.");
+        }
+
+        if (!state_repository.get_axiom_evaluator()->supports_parallel_staged_successor_evaluation())
+        {
+            if (std::dynamic_pointer_cast<ExhaustiveLiftedAxiomEvaluatorImpl>(state_repository.get_axiom_evaluator()))
+            {
+                throw std::invalid_argument(
+                    "BrFS::Options.parallel_beam_num_threads does not support lifted exhaustive search contexts. Use grounded or lifted KPKC search contexts.");
+            }
+
+            throw std::invalid_argument("BrFS::Options.parallel_beam_num_threads is currently supported only for grounded search contexts and lifted KPKC search contexts.");
+        }
+
+        state_repository.get_axiom_evaluator()->prepare_parallel_staged_successor_evaluation();
+    }
 
     auto result = SearchResult();
     auto search_nodes = SearchNodeVector();
-    auto queue = std::deque<PackedState>();
 
     auto& start_search_node = get_or_create_search_node(start_state.get_index(), search_nodes);
     start_search_node.status = SearchNodeStatus::OPEN;
     start_search_node.g_value = 0;
+    start_search_node.incoming_action = kInvalidGroundActionIndex;
 
     event_handler->on_start_search(start_state);
 
+    /* Every path out of here from now on owes the handler its end-of-search report, including the
+       ones that give up before a single node is expanded. */
+    auto end_guard = SearchEndGuard(event_handler, context, search_nodes);
+
     if (!goal_strategy->test_static_goal())
     {
+        end_guard.finish();
         event_handler->on_unsolvable();
 
         result.status = SearchStatus::UNSOLVABLE;
         return result;
     }
-
-    const auto& ground_action_repository = boost::hana::at_key(problem.get_repositories().get_hana_repositories(), boost::hana::type<GroundActionImpl> {});
-    const auto& ground_axiom_repository = boost::hana::at_key(problem.get_repositories().get_hana_repositories(), boost::hana::type<GroundAxiomImpl> {});
-
-    auto applicable_actions = GroundActionList {};
 
     if (pruning_strategy->test_prune_initial_state(start_state))
     {
@@ -109,94 +374,113 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
         return result;
     }
 
-    queue.emplace_back(start_state.get_packed_state());
-
     auto g_value = DiscreteCost(0);
+    auto iw1_action_precheck = IW1ActionPrecheckController(options, pruning_strategy, context->get_problem(), start_state);
+    const auto emit_novel_witness_events =
+        event_handler->supports_novel_witness_events() && pruning_strategy->supports_transition_novel_witness_query();
+    auto novel_witness_atom_indices = iw::AtomIndexList {};
 
     event_handler->on_finish_g_layer(g_value);
 
     auto stopwatch = StopWatch(options.max_time_in_ms);
     stopwatch.start();
 
-    while (!queue.empty())
+    if constexpr (!Ordering::requires_deferred_novelty)
     {
-        if (stopwatch.has_finished())
+    if (!layer_ordering_strategy)
+    {
+        auto iw1_incremental_action_discovery = IW1IncrementalActionDiscoveryController(context, options);
+        auto iw1_incremental_statistics_reporter = IW1IncrementalStatisticsReporter { event_handler, &iw1_incremental_action_discovery };
+        auto queue = std::deque<PackedState>();
+        auto candidate_actions = std::vector<GroundAction> {};
+        queue.emplace_back(start_state.get_packed_state());
+
+        const auto collect_full_applicable_actions = [&](const State& state) -> std::span<const GroundAction>
         {
-            result.status = SearchStatus::OUT_OF_TIME;
-            return result;
-        }
-
-        const auto state = state_repository.get_state(*queue.front());
-        queue.pop_front();
-
-        auto& search_node = get_or_create_search_node(state.get_index(), search_nodes);
-
-        /* Close state. */
-
-        if (search_node.status == SearchNodeStatus::CLOSED || search_node.status == SearchNodeStatus::DEAD_END)
-        {
-            continue;
-        }
-
-        if (search_node.g_value > g_value)
-        {
-            applicable_action_generator.on_finish_search_layer();
-            state_repository.get_axiom_evaluator()->on_finish_search_layer();
-            event_handler->on_finish_g_layer(g_value);
-            g_value = search_node.g_value;
-        }
-
-        if (goal_strategy->test_dynamic_goal(state))
-        {
-            event_handler->on_expand_goal_state(state);
-
-            if (options.stop_if_goal)
+            candidate_actions.clear();
+            for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
             {
-                event_handler->on_end_search(state_repository.get_reached_fluent_ground_atoms_bitset().count(),
-                                             state_repository.get_reached_derived_ground_atoms_bitset().count(),
-                                             state_repository.get_state_count(),
-                                             search_nodes.size(),
-                                             ground_action_repository.size(),
-                                             ground_axiom_repository.size());
-
-                applicable_action_generator.on_end_search();
-                state_repository.get_axiom_evaluator()->on_end_search();
-
-                result.goal_state = state;
-                result.plan = extract_total_ordered_plan(start_state, start_g_value, search_node, state.get_index(), search_nodes, context);
-                result.status = SearchStatus::SOLVED;
-
-                event_handler->on_solved(result.plan.value());
-
-                return result;
+                candidate_actions.push_back(action);
+                if (iw1_incremental_action_discovery.is_enabled() && (state.get_index() == start_state.get_index()))
+                {
+                    iw1_incremental_action_discovery.on_root_action_fully_enumerated();
+                }
             }
-        }
+            return candidate_actions;
+        };
 
-        /* Expand the successors of the state. */
-
-        event_handler->on_expand_state(state);
-
-        /* Ensure that the state is closed */
-
-        search_node.status = SearchNodeStatus::CLOSED;
-
-        for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
+        const auto filter_candidate_actions = [&](const State& state,
+                                                  const std::span<const GroundAction>& raw_actions,
+                                                  bool is_incremental_non_root) -> std::span<const GroundAction>
         {
-            /* Open state. */
+            if (!iw1_action_precheck.is_enabled())
+            {
+                return raw_actions;
+            }
+
+            const auto filtered_actions = iw1_action_precheck.filter_actions(state, raw_actions, state_repository);
+            if (is_incremental_non_root && iw1_incremental_first_applicability_debug_crosscheck)
+            {
+                run_incremental_precheck_filtered_crosscheck(context,
+                                                             options,
+                                                             start_state,
+                                                             state,
+                                                             pruning_strategy,
+                                                             state_repository,
+                                                             iw1_incremental_action_discovery,
+                                                             filtered_actions);
+            }
+            return filtered_actions;
+        };
+
+        const auto handle_surviving_action = [&](const State& state, SearchNode& search_node, GroundAction action) -> bool
+        {
+            if (iw1_incremental_action_discovery.is_enabled())
+            {
+                iw1_incremental_action_discovery.mark_action_tested(action);
+            }
+
             const auto [successor_state, successor_state_metric_value] = state_repository.get_or_create_successor_state(state, action, search_node.g_value);
             auto& successor_search_node = get_or_create_search_node(successor_state.get_index(), search_nodes);
             auto action_cost = successor_state_metric_value - search_node.g_value;
 
+            // Deliberately BEFORE `test_prune_successor_state`, which is what both tests and
+            // *marks* novelty. The semantics are "run this search on the state space with the
+            // blocked states removed": in that induced subgraph a blocked state does not exist,
+            // so it must not claim a tuple's first-witness slot. Marking it would shadow states
+            // that ARE allowed and share the tuple -- pruning away the alternative route because
+            // of a state we refuse to enter, which is the opposite of what the caller asked for.
+            //
+            // The price is honest and worth naming: pruning is weaker (more expansions), and the
+            // width guarantee now applies to the induced subgraph, whose width can exceed the
+            // full graph's. So an exhausted search under a non-empty blocked set does NOT prove
+            // the goal is out of reach at this width -- see the option's documentation.
+            //
+            // Tested here rather than in a pruning strategy because `iw::Options` composes its
+            // own strategy per arity and this must hold for every one of them, plus plain BrFS.
+            if (blocked_states && blocked_states->contains(successor_state.get_index()))
+            {
+                event_handler->on_generate_state(state, action, action_cost, successor_state);
+                event_handler->on_generate_state_not_in_search_tree(state, action, action_cost, successor_state);
+                return true;
+            }
+
+            if (emit_novel_witness_events)
+            {
+                pruning_strategy->compute_transition_novel_fluent_atom_indices_read_only(state, successor_state, novel_witness_atom_indices);
+                event_handler->on_generate_state_with_novel_witness(state, action, action_cost, successor_state, novel_witness_atom_indices);
+            }
             event_handler->on_generate_state(state, action, action_cost, successor_state);
             if (pruning_strategy->test_prune_successor_state(state, successor_state, (successor_search_node.status == SearchNodeStatus::NEW)))
             {
                 event_handler->on_generate_state_not_in_search_tree(state, action, action_cost, successor_state);
-                continue;
+                return true;
             }
             event_handler->on_generate_state_in_search_tree(state, action, action_cost, successor_state);
 
             successor_search_node.status = SearchNodeStatus::OPEN;
             successor_search_node.parent_state = state.get_index();
+            successor_search_node.incoming_action = action->get_index();
             successor_search_node.g_value = search_node.g_value + 1;
 
             queue.emplace_back(successor_state.get_packed_state());
@@ -204,20 +488,275 @@ SearchResult find_solution(const SearchContext& context, const Options& options)
             if (search_nodes.size() >= options.max_num_states)
             {
                 result.status = SearchStatus::OUT_OF_STATES;
+                return false;
+            }
+
+            return true;
+        };
+
+        while (!queue.empty())
+        {
+            if (stopwatch.has_finished())
+            {
+                result.status = SearchStatus::OUT_OF_TIME;
                 return result;
+            }
+
+            if (options.control && options.control->is_canceled())
+            {
+                result.status = SearchStatus::CANCELED;
+                return result;
+            }
+
+            const auto state = state_repository.get_state(*queue.front());
+            queue.pop_front();
+
+            auto& search_node = get_or_create_search_node(state.get_index(), search_nodes);
+
+            if (search_node.status == SearchNodeStatus::CLOSED || search_node.status == SearchNodeStatus::DEAD_END)
+            {
+                continue;
+            }
+
+            if (search_node.g_value > g_value)
+            {
+                applicable_action_generator.on_finish_search_layer();
+                state_repository.get_axiom_evaluator()->on_finish_search_layer();
+                event_handler->on_finish_g_layer(g_value);
+
+                /* Popping a node of the next layer means every node of layer `g_value` has been
+                   popped, and the goal is tested on pop -- so no plan of length <= g_value exists
+                   in this search space. */
+                if (options.control)
+                {
+                    options.control->publish_completed_depth(g_value);
+
+                    /* Once that lower bound reaches a plan somebody else already has, this search
+                       has nothing left to prove: any plan it could still find is at least as long. */
+                    if (options.control->is_incumbent_certified(options.control->get_incumbent_length()))
+                    {
+                        result.status = SearchStatus::CANCELED;
+                        return result;
+                    }
+                }
+
+                g_value = search_node.g_value;
+            }
+
+            if (goal_strategy->test_dynamic_goal(state))
+            {
+                event_handler->on_expand_goal_state(state);
+
+                if (options.stop_if_goal)
+                {
+                    end_guard.finish();
+
+                    applicable_action_generator.on_end_search();
+                    state_repository.get_axiom_evaluator()->on_end_search();
+
+                    result.goal_state = state;
+                    result.plan = extract_total_ordered_plan(start_state, start_g_value, search_node, state.get_index(), search_nodes, context);
+                    result.status = SearchStatus::SOLVED;
+
+                    event_handler->on_solved(result.plan.value());
+
+                    return result;
+                }
+            }
+
+            event_handler->on_expand_state(state);
+            search_node.status = SearchNodeStatus::CLOSED;
+
+            if (options.control)
+            {
+                options.control->add_expansions(1);
+            }
+
+            if (pruning_strategy->consume_skip_state_expansion(state))
+            {
+                continue;
+            }
+
+            if (use_max_depth && (search_node.g_value >= max_depth))
+            {
+                continue;
+            }
+
+            if (iw1_incremental_action_discovery.is_enabled())
+            {
+                const auto is_incremental_non_root = (state.get_index() != start_state.get_index());
+                const auto raw_actions = is_incremental_non_root ? iw1_incremental_action_discovery.get_actions_to_expand(state, search_node) :
+                                                                   collect_full_applicable_actions(state);
+                const auto filtered_actions = filter_candidate_actions(state, raw_actions, is_incremental_non_root);
+                for (const auto& action : filtered_actions)
+                {
+                    if (!handle_surviving_action(state, search_node, action))
+                    {
+                        return result;
+                    }
+                }
+                continue;
+            }
+
+            if (iw1_action_precheck.is_enabled())
+            {
+                if (iw1_action_precheck.supports_online_filtering())
+                {
+                    for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
+                    {
+                        if (!iw1_action_precheck.test_action(state, action, state_repository))
+                        {
+                            continue;
+                        }
+
+                        if (!handle_surviving_action(state, search_node, action))
+                        {
+                            return result;
+                        }
+                    }
+                }
+                else
+                {
+                    auto applicable_actions = std::vector<GroundAction> {};
+                    for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
+                    {
+                        applicable_actions.push_back(action);
+                    }
+                    const auto filtered_actions = iw1_action_precheck.filter_actions(state, applicable_actions, state_repository);
+                    for (const auto& action : filtered_actions)
+                    {
+                        if (!handle_surviving_action(state, search_node, action))
+                        {
+                            return result;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                for (const auto& action : applicable_action_generator.create_applicable_action_generator(state))
+                {
+                    if (!handle_surviving_action(state, search_node, action))
+                    {
+                        return result;
+                    }
+                }
             }
         }
     }
+    else if (use_beam)
+    {
+        return find_solution_with_beam(context,
+                                       options,
+                                       start_state,
+                                       start_g_value,
+                                       event_handler,
+                                       goal_strategy,
+                                       pruning_strategy,
+                                       layer_ordering_strategy,
+                                       search_nodes,
+                                       g_value,
+                                       stopwatch,
+                                       end_guard);
+    }
+    else
+    {
+        return find_solution_with_ordered_layer(context,
+                                                options,
+                                                start_state,
+                                                start_g_value,
+                                                event_handler,
+                                                goal_strategy,
+                                                pruning_strategy,
+                                                layer_ordering_strategy,
+                                                search_nodes,
+                                                g_value,
+                                                stopwatch,
+                                                end_guard);
+    }
 
-    event_handler->on_end_search(state_repository.get_reached_fluent_ground_atoms_bitset().count(),
-                                 state_repository.get_reached_derived_ground_atoms_bitset().count(),
-                                 state_repository.get_state_count(),
-                                 search_nodes.size(),
-                                 ground_action_repository.size(),
-                                 ground_axiom_repository.size());
+    /* The queue ran dry with no plan, so this search's space contains none at all. That must retract
+       the lower bound rather than raise it: `completed_depth` only ever meant "no plan of length <=
+       d *in the space I searched*", and a space that turns out to contain no plan whatsoever says
+       nothing about a plan somebody else found in a differently pruned space. Publishing the final
+       layer here instead would hand out a huge bound that certifies -- and cancels -- exactly the
+       workers that are finding what this search could not. */
+    if (options.control)
+    {
+        options.control->invalidate_lower_bound();
+    }
+
+    end_guard.finish();
     event_handler->on_exhausted();
 
     result.status = SearchStatus::EXHAUSTED;
     return result;
+    }
+    else
+    {
+        // The deferred transition-ordering admission loop (find_solution_with_transition_ordering)
+        // always enumerates full applicable-action lists and does not integrate the IW1 action
+        // precheck/incremental-first-applicability controllers, beam search, max_next_layer_states
+        // ordered-layer generation, or an ILayerOrderingStrategy. Reject rather than silently ignore.
+        if (use_beam)
+        {
+            throw std::invalid_argument("BrFS::Options.beam_width is not supported together with a deferred-novelty transition ordering strategy.");
+        }
+
+        if (use_next_layer_limit)
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.max_next_layer_states is not supported together with a deferred-novelty transition ordering strategy.");
+        }
+
+        if (parallel_beam_num_threads > 1)
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.parallel_beam_num_threads > 1 is not supported together with a deferred-novelty transition ordering strategy.");
+        }
+
+        if (iw1_incremental_first_applicability)
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.iw1_incremental_first_applicability is not supported together with a deferred-novelty transition ordering strategy.");
+        }
+
+        if (iw1_atom_first_mode)
+        {
+            throw std::invalid_argument("BrFS::Options.iw1_atom_first_mode is not supported together with a deferred-novelty transition ordering strategy.");
+        }
+
+        if (iw1_precheck_add_effect_novelty)
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.iw1_precheck_add_effect_novelty is not supported together with a deferred-novelty transition ordering strategy.");
+        }
+
+        if (layer_ordering_strategy)
+        {
+            throw std::invalid_argument(
+                "BrFS::Options.layer_ordering_strategy is not supported together with a deferred-novelty transition ordering strategy.");
+        }
+
+        return find_solution_with_transition_ordering(context,
+                                                       options,
+                                                       ordering,
+                                                       start_state,
+                                                       start_g_value,
+                                                       event_handler,
+                                                       goal_strategy,
+                                                       pruning_strategy,
+                                                       search_nodes,
+                                                       g_value,
+                                                       stopwatch,
+                                                       end_guard);
+    }
+}
+
+SearchResult find_solution(const SearchContext& context, const Options& options) { return find_solution_impl(context, options); }
+
+SearchResult find_solution(const SearchContext& context, const Options& options, const LandmarkTransitionOrderingStrategy& ordering)
+{
+    return find_solution_impl(context, options, ordering);
 }
 }

@@ -24,6 +24,8 @@
 #include "mimir/search/declarations.hpp"
 #include "mimir/search/satisficing_binding_generators/axiom.hpp"
 
+#include <mutex>
+
 namespace mimir::search
 {
 
@@ -55,10 +57,15 @@ public:
     KPKCLiftedAxiomEvaluatorImpl(KPKCLiftedAxiomEvaluatorImpl&& other) = delete;
     KPKCLiftedAxiomEvaluatorImpl& operator=(KPKCLiftedAxiomEvaluatorImpl&& other) = delete;
 
+    bool supports_parallel_staged_successor_evaluation() const override;
+    ParallelAxiomWorkerContext create_parallel_worker_context() const override;
+    void prepare_parallel_staged_successor_evaluation() override;
     void generate_and_apply_axioms(UnpackedStateImpl& unpacked_state) override;
+    void generate_and_apply_axioms_parallel(UnpackedStateImpl& unpacked_state, IParallelAxiomWorkerContext& worker_context) const override;
 
     void on_finish_search_layer() override;
     void on_end_search() override;
+    void release_parallel_memory(bool clear_shared_caches = false) override;
 
     /**
      * Getters.
@@ -75,6 +82,10 @@ private:
     AxiomSatisficingBindingGeneratorList m_condition_grounders;
 
     formalism::DynamicAssignmentSets m_dynamic_assignment_sets;
+
+    struct ParallelGroundLookupTables;
+    mutable std::mutex m_parallel_lookup_tables_mutex;
+    mutable std::shared_ptr<const ParallelGroundLookupTables> m_parallel_lookup_tables;
 };
 
 }  // namespace mimir

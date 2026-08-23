@@ -36,6 +36,9 @@ using namespace mimir::formalism;
 namespace mimir::search
 {
 
+StateRepositoryImpl::StagedSuccessorScratch::StagedSuccessorScratch() = default;
+StateRepositoryImpl::StagedSuccessorScratch::~StagedSuccessorScratch() = default;
+
 ContinuousCost compute_state_metric_value(const State& state)
 {
     if (state.get_problem().get_auxiliary_function_value().has_value())
@@ -52,17 +55,54 @@ ContinuousCost compute_state_metric_value(const State& state)
 
 StateRepositoryImpl::StateRepositoryImpl(AxiomEvaluator axiom_evaluator) :
     m_axiom_evaluator(std::move(axiom_evaluator)),
+    m_owned_interning_tables(nullptr),
+    m_index_tree_table(m_axiom_evaluator->get_problem()->get_index_tree_table()),
+    m_double_leaf_table(m_axiom_evaluator->get_problem()->get_double_leaf_table()),
     m_states(),
+    m_packed_states_by_index(),
+    m_fluent_atom_slots(),
     m_reached_fluent_atoms(),
     m_reached_derived_atoms(),
+    m_track_first_achievers(false),
+    m_first_achiever_by_atom(),
+    m_track_co_occurrence(false),
+    m_co_occurrence_by_atom(),
     m_applied_positive_effect_atoms(),
     m_applied_negative_effect_atoms(),
+    m_dense_fluent_atoms_scratch(),
+    m_index_list(),
+    m_unpacked_state_pool()
+{
+}
+
+StateRepositoryImpl::StateRepositoryImpl(AxiomEvaluator axiom_evaluator, PrivateInterningTables) :
+    m_axiom_evaluator(std::move(axiom_evaluator)),
+    m_owned_interning_tables(std::make_unique<OwnedInterningTables>()),
+    m_index_tree_table(m_owned_interning_tables->index_tree),
+    m_double_leaf_table(m_owned_interning_tables->double_leaf),
+    m_states(),
+    m_packed_states_by_index(),
+    m_fluent_atom_slots(),
+    m_reached_fluent_atoms(),
+    m_reached_derived_atoms(),
+    m_track_first_achievers(false),
+    m_first_achiever_by_atom(),
+    m_track_co_occurrence(false),
+    m_co_occurrence_by_atom(),
+    m_applied_positive_effect_atoms(),
+    m_applied_negative_effect_atoms(),
+    m_dense_fluent_atoms_scratch(),
     m_index_list(),
     m_unpacked_state_pool()
 {
 }
 
 StateRepository StateRepositoryImpl::create(AxiomEvaluator axiom_evaluator) { return std::make_shared<StateRepositoryImpl>(axiom_evaluator); }
+
+StateRepository StateRepositoryImpl::create(AxiomEvaluator axiom_evaluator, PrivateInterningTables tag)
+{
+    return std::make_shared<StateRepositoryImpl>(std::move(axiom_evaluator), tag);
+}
 
 std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_initial_state()
 {
@@ -75,6 +115,69 @@ static void update_reached_fluent_atoms(const FlatBitset& state_fluent_atoms, Fl
     ref_reached_fluent_atoms |= state_fluent_atoms;
 }
 
+void StateRepositoryImpl::record_first_achievers(const FlatBitset& state_fluent_atoms)
+{
+    if (!m_track_first_achievers)
+    {
+        return;
+    }
+
+    /* Called at every `update_reached_fluent_atoms` site, i.e. immediately BEFORE the state
+       is emplaced, so the index it is about to receive is the current map size. Two of the
+       three sites run only for states already known to be new; the third
+       (`get_or_create_state`) runs before its own lookup, but that is harmless: if the state
+       already exists then every atom it holds was unioned into `m_reached_fluent_atoms` when
+       it was first created, so the loop below records nothing. */
+    const auto state_index = static_cast<Index>(m_states.size());
+    for (const auto atom_index : state_fluent_atoms)
+    {
+        if (m_reached_fluent_atoms.get(atom_index))
+        {
+            continue;  ///< some earlier state already achieved it
+        }
+        if (atom_index >= m_first_achiever_by_atom.size())
+        {
+            m_first_achiever_by_atom.resize(atom_index + 1, MAX_INDEX);
+        }
+        m_first_achiever_by_atom[atom_index] = state_index;
+    }
+}
+
+void StateRepositoryImpl::enable_first_achiever_tracking()
+{
+    m_track_first_achievers = true;
+}
+
+const std::vector<Index>& StateRepositoryImpl::get_first_achiever_state_by_atom() const { return m_first_achiever_by_atom; }
+
+void StateRepositoryImpl::record_co_occurrence(const FlatBitset& state_fluent_atoms)
+{
+    if (!m_track_co_occurrence)
+    {
+        return;
+    }
+
+    /* Every atom in this state co-occurs with every other atom in it, so one union per set bit
+       records the whole clique. Storing the clique as a row per atom rather than materializing
+       the pairs keeps this linear in the state's size instead of quadratic, and leaves the
+       result in the form callers intersect across rollouts anyway. */
+    for (const auto atom_index : state_fluent_atoms)
+    {
+        if (atom_index >= m_co_occurrence_by_atom.size())
+        {
+            m_co_occurrence_by_atom.resize(atom_index + 1);
+        }
+        m_co_occurrence_by_atom[atom_index] |= state_fluent_atoms;
+    }
+}
+
+void StateRepositoryImpl::enable_co_occurrence_tracking()
+{
+    m_track_co_occurrence = true;
+}
+
+const std::vector<FlatBitset>& StateRepositoryImpl::get_co_occurrence_by_atom() const { return m_co_occurrence_by_atom; }
+
 static void update_reached_derived_atoms(const FlatBitset& state_derived_atoms, FlatBitset& ref_reached_derived_atoms)
 {
     ref_reached_derived_atoms |= state_derived_atoms;
@@ -83,9 +186,22 @@ static void update_reached_derived_atoms(const FlatBitset& state_derived_atoms, 
 std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_state(const GroundAtomList<FluentTag>& atoms,
                                                                           const FlatDoubleList& fluent_numeric_variables)
 {
+    /* The dense overload below is the implementation. This one only translates its argument
+       into the same bits that overload would set anyway. The scratch bitset is dedicated
+       rather than reusing an effect-application buffer, which axiom evaluation may touch. */
+    m_dense_fluent_atoms_scratch.unset_all();
+    for (const auto& atom : atoms)
+    {
+        m_dense_fluent_atoms_scratch.set(atom->get_index());
+    }
+    return get_or_create_state(m_dense_fluent_atoms_scratch, fluent_numeric_variables);
+}
+
+std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_state(const FlatBitset& fluent_atoms, const FlatDoubleList& fluent_numeric_variables)
+{
     auto& problem = *m_axiom_evaluator->get_problem();
-    auto& index_tree_table = problem.get_index_tree_table();
-    auto& double_leaf_table = problem.get_double_leaf_table();
+    auto& index_tree_table = m_index_tree_table;
+    auto& double_leaf_table = m_double_leaf_table;
 
     /* Dense state */
     auto unpacked_state = m_unpacked_state_pool.get_or_allocate(problem);
@@ -109,16 +225,16 @@ std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_state(const 
     state_numeric_variables = valla::insert_sequence(m_index_list, index_tree_table);
 
     /* 2.2. Propositional state */
-    for (const auto& atom : atoms)
-    {
-        dense_fluent_atoms.set(atom->get_index());
-    }
+    dense_fluent_atoms |= fluent_atoms;
 
     state_fluent_atoms_slot = valla::insert_sequence(dense_fluent_atoms, index_tree_table);
 
+    record_first_achievers(dense_fluent_atoms);
+    record_co_occurrence(dense_fluent_atoms);
+
     update_reached_fluent_atoms(dense_fluent_atoms, m_reached_fluent_atoms);
 
-    // Test whether there exists an extended state for the given non extended state
+    // Test whether there exists an extended state for the given non extended state.
     auto it = m_states.find(PackedStateImpl(state_fluent_atoms_slot, state_derived_atoms_slot, state_numeric_variables));
     if (it != m_states.end())
     {
@@ -148,6 +264,7 @@ std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_state(const 
 
     // Cache and return the extended state.
     auto result = m_states.emplace(PackedStateImpl(state_fluent_atoms_slot, state_derived_atoms_slot, state_numeric_variables), m_states.size());
+    m_packed_states_by_index.push_back(&result.first->first);
     auto state = State(result.first->second, &result.first->first, std::move(unpacked_state), shared_from_this());
 
     return { state, compute_state_metric_value(state) };
@@ -195,7 +312,9 @@ static void apply_numeric_effect(const std::pair<loki::AssignOperatorEnum, Conti
     }
 }
 
-static void collect_applied_fluent_numeric_effects(const GroundNumericEffectList<FluentTag>& numeric_effects,
+/// @brief Returns whether any fluent numeric variable was changed, i.e. whether the resulting
+/// numeric state can differ from the input one.
+static bool collect_applied_fluent_numeric_effects(const GroundNumericEffectList<FluentTag>& numeric_effects,
                                                    const FlatDoubleList& static_numeric_variables,
                                                    const FlatDoubleList& fluent_numeric_variables,
                                                    FlatDoubleList& ref_numeric_variables)
@@ -213,6 +332,7 @@ static void collect_applied_fluent_numeric_effects(const GroundNumericEffectList
 
         apply_numeric_effect(assign_operator_and_value, ref_numeric_variables[index]);
     }
+    return !numeric_effects.empty();
 }
 
 static void collect_applied_auxiliary_numeric_effects(const GroundNumericEffect<AuxiliaryTag>& numeric_effect,
@@ -226,9 +346,11 @@ static void collect_applied_auxiliary_numeric_effects(const GroundNumericEffect<
     apply_numeric_effect(assign_operator_and_value, ref_successor_state_metric_score);
 }
 
-static void apply_action_effects(GroundAction action,
+/// @brief Returns whether any fluent numeric variable was changed, i.e. whether the resulting
+/// numeric state can differ from the input one. Auxiliary numeric effects do not count.
+static bool apply_action_effects(GroundAction action,
                                  const ProblemImpl& problem,
-                                 State state,
+                                 const State& state,
                                  const UnpackedStateImpl& unpacked_state,
                                  FlatBitset& ref_dense_fluent_atoms,
                                  FlatBitset& ref_negative_applied_effects,
@@ -239,16 +361,19 @@ static void apply_action_effects(GroundAction action,
     const auto& const_fluent_numeric_variables = state.get_numeric_variables();
     const auto& const_static_numeric_variables = problem.get_initial_function_to_value<StaticTag>();
 
+    auto applied_fluent_numeric_effects = false;
+
     for (const auto& conditional_effect : action->get_conditional_effects())
     {
         if (is_applicable(conditional_effect, unpacked_state))
         {
             insert_into_bitset(conditional_effect->get_conjunctive_effect()->get_propositional_effects<NegativeTag>(), ref_negative_applied_effects);
             insert_into_bitset(conditional_effect->get_conjunctive_effect()->get_propositional_effects<PositiveTag>(), ref_positive_applied_effects);
-            collect_applied_fluent_numeric_effects(conditional_effect->get_conjunctive_effect()->get_fluent_numeric_effects(),
-                                                   const_static_numeric_variables,
-                                                   const_fluent_numeric_variables,
-                                                   ref_fluent_numeric_variables);
+            applied_fluent_numeric_effects |=
+                collect_applied_fluent_numeric_effects(conditional_effect->get_conjunctive_effect()->get_fluent_numeric_effects(),
+                                                       const_static_numeric_variables,
+                                                       const_fluent_numeric_variables,
+                                                       ref_fluent_numeric_variables);
             if (conditional_effect->get_conjunctive_effect()->get_auxiliary_numeric_effect().has_value())
             {
                 collect_applied_auxiliary_numeric_effects(conditional_effect->get_conjunctive_effect()->get_auxiliary_numeric_effect().value(),
@@ -271,13 +396,17 @@ static void apply_action_effects(GroundAction action,
                 evaluate(problem.get_optimization_metric().value()->get_function_expression(), const_static_numeric_variables, ref_fluent_numeric_variables) :
                 ref_successor_state_metric_score + 1;
     }
+
+    return applied_fluent_numeric_effects;
 }
 
 std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_successor_state(const State& state, GroundAction action, ContinuousCost state_metric_value)
 {
+    ++m_num_successor_state_constructions;
+
     auto& problem = *m_axiom_evaluator->get_problem();
-    auto& index_tree_table = problem.get_index_tree_table();
-    auto& double_leaf_table = problem.get_double_leaf_table();
+    auto& index_tree_table = m_index_tree_table;
+    auto& double_leaf_table = m_double_leaf_table;
 
     /* Dense state*/
     auto unpacked_state = m_unpacked_state_pool.get_or_allocate(problem);
@@ -299,25 +428,40 @@ std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_successor_st
 
     /* 2. Apply action effects to construct non-extended state. */
 
-    apply_action_effects(action,
-                         problem,
-                         state,
-                         *unpacked_state,
-                         dense_fluent_atoms,
-                         m_applied_negative_effect_atoms,
-                         m_applied_positive_effect_atoms,
-                         dense_fluent_numeric_variables,
-                         successor_state_metric_value);
+    const auto applied_fluent_numeric_effects = apply_action_effects(action,
+                                                                     problem,
+                                                                     state,
+                                                                     *unpacked_state,
+                                                                     dense_fluent_atoms,
+                                                                     m_applied_negative_effect_atoms,
+                                                                     m_applied_positive_effect_atoms,
+                                                                     dense_fluent_numeric_variables,
+                                                                     successor_state_metric_value);
 
     state_fluent_atoms_slot = valla::insert_sequence(dense_fluent_atoms, index_tree_table);
 
+    /* Every atom of `state` was recorded reached when `state` was created, so any atom here
+       that is reached for the first time must lie in the applied positive effects -- scanning
+       those instead of the whole successor skips one membership test per carried-over atom. */
+    record_first_achievers(m_applied_positive_effect_atoms);
+    record_co_occurrence(dense_fluent_atoms);
+
     update_reached_fluent_atoms(dense_fluent_atoms, m_reached_fluent_atoms);
 
-    m_index_list.clear();
-    valla::encode_as_unsigned_integrals(dense_fluent_numeric_variables, double_leaf_table, std::back_inserter(m_index_list));
-    state_numeric_variables = valla::insert_sequence(m_index_list, index_tree_table);
+    if (applied_fluent_numeric_effects)
+    {
+        m_index_list.clear();
+        valla::encode_as_unsigned_integrals(dense_fluent_numeric_variables, double_leaf_table, std::back_inserter(m_index_list));
+        state_numeric_variables = valla::insert_sequence(m_index_list, index_tree_table);
+    }
+    else
+    {
+        /* No fluent numeric effect fired, so the successor's numeric variables equal `state`'s
+           and interning them again would return `state`'s slot -- reuse it directly. */
+        state_numeric_variables = state.get_packed_state()->get_numeric_variables();
+    }
 
-    // Check if non-extended state exists in cache
+    // Check if non-extended state exists in cache.
     auto it = m_states.find(PackedStateImpl(state_fluent_atoms_slot, state_derived_atoms_slot, state_numeric_variables));
     if (it != m_states.end())
     {
@@ -348,9 +492,295 @@ std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_successor_st
 
     // Cache and return the extended state.
     auto result = m_states.emplace(PackedStateImpl(state_fluent_atoms_slot, state_derived_atoms_slot, state_numeric_variables), m_states.size());
+    m_packed_states_by_index.push_back(&result.first->first);
     auto successor_state = State(result.first->second, &result.first->first, std::move(unpacked_state), shared_from_this());
 
     return { successor_state, successor_state_metric_value };
+}
+
+void StateRepositoryImpl::collect_action_add_effect_fluent_atom_indices(const State& state,
+                                                                        GroundAction action,
+                                                                        iw::AtomIndexList& out_add_fluent_atom_indices)
+{
+    auto ignored_del_fluent_atom_indices = iw::AtomIndexList {};
+    collect_action_change_effect_fluent_atom_indices(state, action, out_add_fluent_atom_indices, ignored_del_fluent_atom_indices);
+}
+
+void StateRepositoryImpl::collect_action_change_effect_fluent_atom_indices(const State& state,
+                                                                           GroundAction action,
+                                                                           iw::AtomIndexList& out_add_fluent_atom_indices,
+                                                                           iw::AtomIndexList& out_del_fluent_atom_indices)
+{
+    m_applied_positive_effect_atoms.unset_all();
+    m_applied_negative_effect_atoms.unset_all();
+    const auto& unpacked_state = state.get_unpacked_state();
+    for (const auto& conditional_effect : action->get_conditional_effects())
+    {
+        if (is_applicable(conditional_effect, unpacked_state))
+        {
+            insert_into_bitset(conditional_effect->get_conjunctive_effect()->get_propositional_effects<PositiveTag>(), m_applied_positive_effect_atoms);
+            insert_into_bitset(conditional_effect->get_conjunctive_effect()->get_propositional_effects<NegativeTag>(), m_applied_negative_effect_atoms);
+        }
+    }
+
+    out_add_fluent_atom_indices.clear();
+    out_del_fluent_atom_indices.clear();
+    const auto& state_fluent_atoms = state.get_atoms<FluentTag>();
+    for (const auto atom_index : m_applied_positive_effect_atoms)
+    {
+        if (!state_fluent_atoms.get(atom_index))
+        {
+            out_add_fluent_atom_indices.push_back(atom_index);
+        }
+    }
+    for (const auto atom_index : m_applied_negative_effect_atoms)
+    {
+        /* `apply_action_effects` subtracts the negatives and then unions the positives, so an atom
+           in both applied sets survives into the successor. Classifying it as deleted here would
+           make `(atoms(s) \ del) | add` drop an atom the real successor keeps -- and a novelty
+           precheck reasoning over that reconstruction would prune admissible transitions. */
+        if (state_fluent_atoms.get(atom_index) && !m_applied_positive_effect_atoms.get(atom_index))
+        {
+            out_del_fluent_atom_indices.push_back(atom_index);
+        }
+    }
+}
+
+const StateRepositoryImpl::UnconditionalFluentEffectAtoms& StateRepositoryImpl::get_unconditional_fluent_effect_atoms(GroundAction action)
+{
+    const auto action_index = action->get_index();
+    if (action_index >= m_unconditional_fluent_effect_atoms.size())
+    {
+        m_unconditional_fluent_effect_atoms.resize(action_index + 1);
+    }
+    auto& slot = m_unconditional_fluent_effect_atoms[action_index];
+    if (slot.has_value())
+    {
+        return *slot;
+    }
+
+    auto entry = UnconditionalFluentEffectAtoms {};
+    entry.state_independent = true;
+
+    m_applied_positive_effect_atoms.unset_all();
+    m_applied_negative_effect_atoms.unset_all();
+
+    for (const auto& conditional_effect : action->get_conditional_effects())
+    {
+        const auto& conjunctive_effect = conditional_effect->get_conjunctive_effect();
+        const auto& positive_effects = conjunctive_effect->get_propositional_effects<PositiveTag>();
+        const auto& negative_effects = conjunctive_effect->get_propositional_effects<NegativeTag>();
+        if (positive_effects.empty() && negative_effects.empty())
+        {
+            /* Cannot change a fluent atom, so its condition is irrelevant to the fluent
+               reconstruction even when it is state-dependent. */
+            continue;
+        }
+
+        const auto& condition = conditional_effect->get_conjunctive_condition();
+        const auto is_unconditional =
+            (condition->get_num_preconditions<StaticTag, FluentTag, DerivedTag>() == 0) && condition->get_numeric_constraints().empty();
+        if (!is_unconditional)
+        {
+            entry.state_independent = false;
+            break;
+        }
+
+        insert_into_bitset(positive_effects, m_applied_positive_effect_atoms);
+        insert_into_bitset(negative_effects, m_applied_negative_effect_atoms);
+    }
+
+    if (entry.state_independent)
+    {
+        for (const auto atom_index : m_applied_positive_effect_atoms)
+        {
+            entry.add.push_back(atom_index);
+        }
+        /* Resolve the positive-wins overlap once, statically, so no caller has to. */
+        for (const auto atom_index : m_applied_negative_effect_atoms)
+        {
+            if (!m_applied_positive_effect_atoms.get(atom_index))
+            {
+                entry.del.push_back(atom_index);
+            }
+        }
+    }
+
+    slot = std::move(entry);
+    return *slot;
+}
+
+StateRepositoryImpl::StagedSuccessorState
+StateRepositoryImpl::compute_staged_successor_state(const State& state,
+                                                    GroundAction action,
+                                                    ContinuousCost state_metric_value,
+                                                    StagedSuccessorScratch& scratch) const
+{
+    ++m_num_successor_state_constructions;
+
+    const auto& problem = *m_axiom_evaluator->get_problem();
+
+    // Parallel beam workers evaluate successors in dense worker-local storage so they
+    // can novelty-test and score states without mutating the shared repository cache.
+    auto unpacked_state = scratch.unpacked_state_pool.get_or_allocate(problem);
+    auto& dense_fluent_atoms = unpacked_state->get_atoms<FluentTag>();
+    dense_fluent_atoms = state.get_unpacked_state().get_atoms<FluentTag>();
+    auto& dense_derived_atoms = unpacked_state->get_atoms<DerivedTag>();
+    dense_derived_atoms = state.get_unpacked_state().get_atoms<DerivedTag>();
+    auto& dense_fluent_numeric_variables = unpacked_state->get_numeric_variables();
+    dense_fluent_numeric_variables = state.get_unpacked_state().get_numeric_variables();
+
+    scratch.applied_negative_effect_atoms.unset_all();
+    scratch.applied_positive_effect_atoms.unset_all();
+
+    auto successor_state_metric_value = state_metric_value;
+
+    apply_action_effects(action,
+                         problem,
+                         state,
+                         *unpacked_state,
+                         dense_fluent_atoms,
+                         scratch.applied_negative_effect_atoms,
+                         scratch.applied_positive_effect_atoms,
+                         dense_fluent_numeric_variables,
+                         successor_state_metric_value);
+
+    if (!m_axiom_evaluator->get_problem()->get_problem_and_domain_axioms().empty())
+    {
+        dense_derived_atoms.unset_all();
+        if (m_axiom_evaluator->supports_parallel_staged_successor_evaluation())
+        {
+            if (!scratch.axiom_worker_context)
+            {
+                scratch.axiom_worker_context = m_axiom_evaluator->create_parallel_worker_context();
+            }
+            assert(scratch.axiom_worker_context);
+            m_axiom_evaluator->generate_and_apply_axioms_parallel(*unpacked_state, *scratch.axiom_worker_context);
+        }
+        else
+        {
+            m_axiom_evaluator->generate_and_apply_axioms(*unpacked_state);
+        }
+    }
+
+    auto successor_state = StagedSuccessorState();
+    successor_state.fluent_atoms = dense_fluent_atoms;
+    successor_state.derived_atoms = dense_derived_atoms;
+    successor_state.fluent_atom_indices.clear();
+    for (const auto index : dense_fluent_atoms)
+    {
+        successor_state.fluent_atom_indices.push_back(index);
+    }
+    successor_state.derived_atom_indices.clear();
+    for (const auto index : dense_derived_atoms)
+    {
+        successor_state.derived_atom_indices.push_back(index);
+    }
+    successor_state.fluent_numeric_variables = dense_fluent_numeric_variables;
+    successor_state.metric_value = successor_state_metric_value;
+    return successor_state;
+}
+
+StateRepositoryImpl::StagedSuccessorHandle
+StateRepositoryImpl::get_or_create_staged_successor_handle(const StagedSuccessorState& successor_state, StagedSuccessorInternTimings* timings)
+{
+    ++m_num_successor_state_constructions;
+
+    auto& index_tree_table = m_index_tree_table;
+    auto& double_leaf_table = m_double_leaf_table;
+
+    // The main thread materializes worker-computed successors in generation order so
+    // state indices, duplicate pruning, and beam admission follow the serial semantics.
+    const auto fluent_slot_start = std::chrono::steady_clock::now();
+    auto state_fluent_atoms_slot = valla::Slot<Index>();
+    if (const auto it = m_fluent_atom_slots.find(successor_state.fluent_atom_indices); it != m_fluent_atom_slots.end())
+    {
+        state_fluent_atoms_slot = it->second;
+    }
+    else
+    {
+        state_fluent_atoms_slot = valla::insert_sequence(successor_state.fluent_atom_indices, index_tree_table);
+        m_fluent_atom_slots.emplace(successor_state.fluent_atom_indices, state_fluent_atoms_slot);
+    }
+    if (timings)
+    {
+        timings->fluent_slot_time += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - fluent_slot_start);
+    }
+
+    m_index_list.clear();
+    const auto numeric_slot_start = std::chrono::steady_clock::now();
+    valla::encode_as_unsigned_integrals(successor_state.fluent_numeric_variables, double_leaf_table, std::back_inserter(m_index_list));
+    auto state_numeric_variables = valla::insert_sequence(m_index_list, index_tree_table);
+    if (timings)
+    {
+        timings->numeric_slot_time += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - numeric_slot_start);
+    }
+
+    const auto derived_slot_start = std::chrono::steady_clock::now();
+    auto state_derived_atoms_slot = valla::insert_sequence(successor_state.derived_atom_indices, index_tree_table);
+    if (timings)
+    {
+        timings->derived_slot_time += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - derived_slot_start);
+    }
+
+    auto packed_state = PackedStateImpl(state_fluent_atoms_slot, state_derived_atoms_slot, state_numeric_variables);
+    const auto state_lookup_start = std::chrono::steady_clock::now();
+    auto it = m_states.find(packed_state);
+    if (timings)
+    {
+        timings->state_lookup_time += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - state_lookup_start);
+    }
+
+    if (it != m_states.end())
+    {
+        return StagedSuccessorHandle { it->second, &it->first };
+    }
+
+    const auto reached_atom_update_start = std::chrono::steady_clock::now();
+    record_first_achievers(successor_state.fluent_atoms);
+    record_co_occurrence(successor_state.fluent_atoms);
+    update_reached_fluent_atoms(successor_state.fluent_atoms, m_reached_fluent_atoms);
+    update_reached_derived_atoms(successor_state.derived_atoms, m_reached_derived_atoms);
+    if (timings)
+    {
+        timings->reached_atom_update_time +=
+            std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - reached_atom_update_start);
+    }
+
+    const auto state_emplace_start = std::chrono::steady_clock::now();
+    auto result = m_states.emplace(std::move(packed_state), m_states.size());
+    m_packed_states_by_index.push_back(&result.first->first);
+    if (timings)
+    {
+        timings->state_lookup_time += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - state_emplace_start);
+    }
+    return StagedSuccessorHandle { result.first->second, &result.first->first };
+}
+
+State StateRepositoryImpl::materialize_staged_successor_state(const StagedSuccessorState& successor_state, const StagedSuccessorHandle& successor_handle)
+{
+    ++m_num_successor_state_constructions;
+
+    const auto& problem = *m_axiom_evaluator->get_problem();
+    auto unpacked_state = m_unpacked_state_pool.get_or_allocate(problem);
+    unpacked_state->get_atoms<FluentTag>() = successor_state.fluent_atoms;
+    unpacked_state->get_atoms<DerivedTag>() = successor_state.derived_atoms;
+    unpacked_state->get_numeric_variables() = successor_state.fluent_numeric_variables;
+    return State(successor_handle.state_index, successor_handle.packed_state, std::move(unpacked_state), shared_from_this());
+}
+
+State StateRepositoryImpl::make_temporary_staged_successor_state(const StagedSuccessorState& successor_state,
+                                                                 const StagedSuccessorHandle& successor_handle,
+                                                                 StagedSuccessorScratch& scratch)
+{
+    ++m_num_successor_state_constructions;
+
+    const auto& problem = *m_axiom_evaluator->get_problem();
+    auto unpacked_state = scratch.unpacked_state_pool.get_or_allocate(problem);
+    unpacked_state->get_atoms<FluentTag>() = successor_state.fluent_atoms;
+    unpacked_state->get_atoms<DerivedTag>() = successor_state.derived_atoms;
+    unpacked_state->get_numeric_variables() = successor_state.fluent_numeric_variables;
+    return State(successor_handle.state_index, successor_handle.packed_state, std::move(unpacked_state), shared_from_this());
 }
 
 State StateRepositoryImpl::get_state(const PackedStateImpl& state)
@@ -364,7 +794,7 @@ State StateRepositoryImpl::get_state(const PackedStateImpl& state)
 
     dense_fluent_atoms.unset_all();
     m_index_list.clear();
-    valla::read_sequence(state.get_atoms<FluentTag>(), problem.get_index_tree_table(), std::back_inserter(m_index_list));
+    valla::read_sequence(state.get_atoms<FluentTag>(), m_index_tree_table, std::back_inserter(m_index_list));
     for (const auto index : m_index_list)
     {
         dense_fluent_atoms.set(index);
@@ -372,21 +802,23 @@ State StateRepositoryImpl::get_state(const PackedStateImpl& state)
 
     dense_derived_atoms.unset_all();
     m_index_list.clear();
-    valla::read_sequence(state.get_atoms<DerivedTag>(), problem.get_index_tree_table(), std::back_inserter(m_index_list));
+    valla::read_sequence(state.get_atoms<DerivedTag>(), m_index_tree_table, std::back_inserter(m_index_list));
     for (const auto index : m_index_list)
     {
         dense_derived_atoms.set(index);
     }
 
     m_index_list.clear();
-    valla::read_sequence(state.get_numeric_variables(), problem.get_index_tree_table(), std::back_inserter(m_index_list));
+    valla::read_sequence(state.get_numeric_variables(), m_index_tree_table, std::back_inserter(m_index_list));
     dense_fluent_numeric_variables.clear();
-    valla::decode_from_unsigned_integrals(m_index_list, problem.get_double_leaf_table(), std::back_inserter(dense_fluent_numeric_variables));
+    valla::decode_from_unsigned_integrals(m_index_list, m_double_leaf_table, std::back_inserter(dense_fluent_numeric_variables));
 
     return State(m_states.at(state), &state, std::move(unpacked_state), shared_from_this());
 }
 
 Index StateRepositoryImpl::get_state_index(const PackedStateImpl& state) { return m_states.at(state); }
+
+PackedState StateRepositoryImpl::get_packed_state(Index state_index) const { return m_packed_states_by_index.at(state_index); }
 
 const Problem& StateRepositoryImpl::get_problem() const { return m_axiom_evaluator->get_problem(); }
 

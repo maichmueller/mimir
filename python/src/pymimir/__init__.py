@@ -15,9 +15,12 @@ from .wrapper_formalism import (
     GroundLiteral,
     Literal,
     Object,
+    Parameter,
     Predicate,
     Problem,
+    new_multi_goal_strategy,
     State,
+    Type,
     Variable,
 )
 
@@ -33,7 +36,11 @@ from .wrapper_heuristics import (
 )
 
 from .wrapper_search import (
+    ArityObservation,
+    IWObservation,
     SearchResult,
+    SearchTree,
+    compute_transition_aggregates,
 )
 
 from .wrapper_search_astar import (
@@ -52,6 +59,10 @@ from .wrapper_search_gbfs import (
 
 from .wrapper_search_width import (
     iw,
+    iw_parallel,
+    IWRolloutResult,
+    projective_iw,
+    abstracted_iw,
 )
 
 from .wrapper_datasets import (
@@ -60,6 +71,13 @@ from .wrapper_datasets import (
 )
 
 from pathlib import Path
+
+from importlib.metadata import PackageNotFoundError, version as _package_version
+
+try:
+    __version__ = _package_version("pymimir")
+except PackageNotFoundError:  # e.g. running from a source tree without installation
+    __version__ = "unknown"
 
 
 def _package_root() -> Path:

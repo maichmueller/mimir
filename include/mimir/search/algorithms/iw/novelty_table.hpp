@@ -22,7 +22,12 @@
 #include "mimir/search/algorithms/iw/tuple_index_mapper.hpp"
 #include "mimir/search/declarations.hpp"
 
+#include <absl/container/flat_hash_map.h>
 #include <concepts>
+#include <cstdint>
+#include <optional>
+#include <variant>
+#include <vector>
 
 namespace mimir::search::iw
 {
@@ -35,7 +40,23 @@ class DynamicNoveltyTable
 private:
     TupleIndexMapper m_tuple_index_mapper;
 
-    std::vector<bool> m_table;
+    /// Flat word-addressed bit table: same memory footprint as the vector<bool> it
+    /// replaced, but each probe is a direct load/shift/test instead of a proxy reference.
+    /// `size()` reports the logical number of bits, which may be smaller than the capacity.
+    struct BitTable
+    {
+        std::vector<uint64_t> words;
+        size_t num_bits = 0;
+
+        BitTable() = default;
+        explicit BitTable(size_t num_entries) : words((num_entries + 63) / 64, 0), num_bits(num_entries) {}
+
+        size_t size() const { return num_bits; }
+        bool test(TupleIndex tuple_index) const { return (words[tuple_index >> 6] >> (tuple_index & 63)) & uint64_t(1); }
+        void set(TupleIndex tuple_index) { words[tuple_index >> 6] |= uint64_t(1) << (tuple_index & 63); }
+    };
+
+    BitTable m_table;
 
     void resize_to_fit(AtomIndex atom_index);
     void resize_to_fit(const State& state);
@@ -49,14 +70,101 @@ public:
     DynamicNoveltyTable(size_t arity, size_t num_atoms);
 
     void compute_novel_tuples(const State& state, std::vector<AtomIndexList>& out_novel_tuples);
+    void compute_novel_tuples(const State& state, const State& succ_state, std::vector<AtomIndexList>& out_novel_tuples);
+    void compute_novel_tuples(const State& state, const AtomIndexList& succ_state_atom_indices, std::vector<AtomIndexList>& out_novel_tuples);
 
     void insert_tuples(const std::vector<AtomIndexList>& tuples);
 
+    bool test_novelty(const State& state);
+    bool test_novelty(const State& state, const State& succ_state);
+    bool test_novelty(const State& state, const AtomIndexList& succ_state_atom_indices);
+    bool test_novelty_read_only(const State& state) const;
+    bool test_novelty_read_only(const State& state, const State& succ_state) const;
+    bool test_novelty_read_only(const State& state, const AtomIndexList& succ_state_atom_indices) const;
+    bool test_atom_novelty_read_only(AtomIndex atom_index) const;
     bool test_novelty_and_update_table(const State& state);
 
     bool test_novelty_and_update_table(const State& state, const State& succ_state);
+    bool test_novelty_and_update_table(const State& state, const AtomIndexList& succ_state_atom_indices);
 
     void reset();
+
+    const TupleIndexMapper& get_tuple_index_mapper() const;
+};
+
+/// @brief Stores the smallest path cost at which each fluent tuple was generated.
+///
+/// This table has the same tuple semantics and dynamic atom-capacity behavior as
+/// `DynamicNoveltyTable`, but supports decreasing tuple labels. It is used by
+/// best-first width searches whose generation order is not monotone in depth.
+class MinimumGNoveltyTable
+{
+private:
+    /// The per-tuple label is stored as a rank into `m_g_values` rather than as the cost
+    /// itself. A width search visits very few distinct g values, so a rank fits in a byte
+    /// almost always, and this table is the hottest randomly-accessed structure in the
+    /// search: one `ContinuousCost` per tuple would be eight times the cache footprint of
+    /// `DynamicNoveltyTable`'s bit per tuple, on a table that grows as num_atoms^arity.
+    /// The rank width is promoted on demand, so arbitrary cost values remain exact.
+    using Ranks8 = std::vector<uint8_t>;
+    using Ranks16 = std::vector<uint16_t>;
+    using Ranks32 = std::vector<uint32_t>;
+    using Ranks = std::variant<Ranks8, Ranks16, Ranks32>;
+
+    TupleIndexMapper m_tuple_index_mapper;
+    Ranks m_minimum_g_ranks;
+    /// Rank -> cost. Tiny and cache resident; indexed only for tuples already labelled.
+    std::vector<ContinuousCost> m_g_values;
+    absl::flat_hash_map<ContinuousCost, uint32_t> m_g_value_to_rank;
+    /// Set once some already-finite label is lowered again. While this stays false every
+    /// state that ever passed the novelty test still owns a tuple at its own g value.
+    bool m_lowered_existing_label = false;
+
+    StateTupleIndexGenerator m_state_tuple_index_generator;
+    StatePairTupleIndexGenerator m_state_pair_tuple_index_generator;
+
+    /// @brief Index of `g_value` in `m_g_values`, inserting it (and widening the rank type
+    /// if the new rank no longer fits) when it is seen for the first time.
+    uint32_t get_or_create_rank(ContinuousCost g_value);
+    /// @brief Rank of `g_value`, or `std::nullopt` when it has never been recorded.
+    std::optional<uint32_t> find_rank(ContinuousCost g_value) const;
+    void widen_ranks_to_fit(uint32_t rank);
+
+    void resize_to_fit(AtomIndex atom_index);
+    void resize_to_fit(const State& state);
+
+    template<typename Generator, typename... Args>
+    bool update_from(Generator& generator, ContinuousCost g_value, Args&&... args);
+
+public:
+    explicit MinimumGNoveltyTable(size_t arity);
+    MinimumGNoveltyTable(size_t arity, size_t num_atoms);
+    MinimumGNoveltyTable(const MinimumGNoveltyTable&) = delete;
+    MinimumGNoveltyTable& operator=(const MinimumGNoveltyTable&) = delete;
+    MinimumGNoveltyTable(MinimumGNoveltyTable&&) = delete;
+    MinimumGNoveltyTable& operator=(MinimumGNoveltyTable&&) = delete;
+
+    /// @brief Lower the labels of all tuples in `state` to `g_value` where possible.
+    /// @return true iff at least one tuple label was lowered.
+    bool test_novelty_and_update_table(const State& state, ContinuousCost g_value);
+
+    /// @brief Lower labels of successor tuples containing at least one added atom.
+    /// @return true iff at least one tuple label was lowered.
+    bool test_novelty_and_update_table(const State& state, const State& succ_state, ContinuousCost g_value);
+
+    /// @brief Whether the transition's tuples would lower any label, without writing anything.
+    ///
+    /// Lets a caller find out that a successor is not novel before paying for whatever else it
+    /// would need to know to insert it. Stops at the first improvable tuple, so it is cheap
+    /// exactly when the answer is yes.
+    bool test_would_improve(const State& state, const State& succ_state, ContinuousCost g_value);
+
+    /// @brief Test whether `state` contains a tuple whose current minimum label equals `g_value`.
+    bool test_novelty_at_g_read_only(const State& state, ContinuousCost g_value);
+
+    /// @brief Whether any already-labelled tuple was ever lowered again. False means no
+    /// state can have had its label stolen, so the stale-novelty test cannot fail.
+    bool has_lowered_existing_label() const { return m_lowered_existing_label; }
 
     const TupleIndexMapper& get_tuple_index_mapper() const;
 };

@@ -102,6 +102,9 @@ NB_MAKE_OPAQUE(mm::formalism::ParameterList);
 NB_MAKE_OPAQUE(mm::formalism::TermList);
 // Search
 NB_MAKE_OPAQUE(mm::search::StateList);
+// A rejected-transition log holds one record per generated transition, so it is bound as an
+// opaque sequence rather than converted to a Python list on every access.
+NB_MAKE_OPAQUE(mm::search::brfs::TransitionObservationList);
 // Languages
 NB_MAKE_OPAQUE(mm::languages::dl::ConstructorList<mm::languages::dl::ConceptTag>);
 NB_MAKE_OPAQUE(mm::languages::dl::ConstructorList<mm::languages::dl::RoleTag>);

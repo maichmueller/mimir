@@ -1,0 +1,133 @@
+name: Release
+
+# Builds the sdist and wheels (CPython 3.12-3.14 + free-threaded 3.14t) for
+# linux x86_64 and macOS arm64 and attaches them to a GitHub Release.
+# Triggered by pushing a `v*` tag; workflow_dispatch builds artifacts only.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  build_sdist:
+    name: Build sdist
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Build sdist
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build --sdist
+
+      - name: Upload sdist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  build_wheels:
+    name: Build wheels (${{ matrix.os }}, ${{ matrix.python-tag }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            python-tag: cp312
+          - os: ubuntu-latest
+            platform: linux
+            python-tag: cp313
+          - os: ubuntu-latest
+            platform: linux
+            python-tag: cp314
+          - os: ubuntu-latest
+            platform: linux
+            python-tag: cp314t
+          - os: macos-latest
+            platform: macos
+            python-tag: cp312
+          - os: macos-latest
+            platform: macos
+            python-tag: cp313
+          - os: macos-latest
+            platform: macos
+            python-tag: cp314
+          - os: macos-latest
+            platform: macos
+            python-tag: cp314t
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12" # Host interpreter only; cibuildwheel controls build interpreters
+
+      # macOS wheels build on the host runner, so the compiled dependency install
+      # can be cached across releases. Linux wheels build inside the manylinux
+      # container where this path does not apply.
+      - name: Cache built dependencies (macOS)
+        if: matrix.platform == 'macos'
+        uses: actions/cache@v4
+        with:
+          path: build/temp*/dependencies/installs
+          key: ${{ runner.os }}-wheels-${{ matrix.python-tag }}-${{ hashFiles('setup.py', 'CMakeLists.txt', 'dependencies/**/CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-wheels-${{ matrix.python-tag }}-
+
+      - name: Build wheels
+        env:
+          CIBW_BUILD: "${{ matrix.python-tag }}-*"
+          CIBW_PLATFORM: "${{ matrix.platform }}"
+          CIBW_ARCHS: ${{ matrix.platform == 'linux' && 'x86_64' || 'arm64' }}
+          CIBW_BUILD_VERBOSITY: "1"
+          # Smoke-test every built wheel against its own interpreter.
+          CIBW_TEST_COMMAND: "python -c \"import sys, pymimir; assert pymimir.__version__; print('ok', sys.version)\""
+        run: |
+          python -m pip install --upgrade pip "cibuildwheel==4.2.0"
+          cibuildwheel --output-dir wheelhouse
+
+      - name: Upload wheel artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.platform }}-${{ matrix.python-tag }}
+          path: wheelhouse/*.whl
+          if-no-files-found: error
+
+  github_release:
+    name: Publish GitHub release
+    needs: [build_sdist, build_wheels]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/* \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "pymimir ${GITHUB_REF_NAME#v}" \
+            --generate-notes

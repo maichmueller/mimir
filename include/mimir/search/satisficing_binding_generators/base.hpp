@@ -27,6 +27,7 @@
 #include "mimir/search/state_unpacked.hpp"
 
 #include <boost/dynamic_bitset/dynamic_bitset.hpp>
+#include <utility>
 
 namespace mimir::search
 {
@@ -57,6 +58,38 @@ public:
                                                                      const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
                                                                      const std::optional<boost::dynamic_bitset<>>& vertex_mask);
 
+    mimir::generator<formalism::ObjectList> create_candidate_binding_generator(const State& state,
+                                                                               const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                                                               const std::optional<boost::dynamic_bitset<>>& vertex_mask);
+
+    mimir::generator<formalism::ObjectList> create_candidate_binding_generator(const UnpackedStateImpl& unpacked_state,
+                                                                               const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                                                               const std::optional<boost::dynamic_bitset<>>& vertex_mask);
+
+    template<typename Callback>
+    void for_each_candidate_binding(const State& state,
+                                    const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                    const std::optional<boost::dynamic_bitset<>>& vertex_mask,
+                                    Callback&& callback);
+
+    template<typename Callback>
+    void for_each_candidate_binding(const UnpackedStateImpl& unpacked_state,
+                                    const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                    const std::optional<boost::dynamic_bitset<>>& vertex_mask,
+                                    Callback&& callback);
+
+    template<typename Callback>
+    void for_each_candidate_binding_indices(const State& state,
+                                            const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                            const std::optional<boost::dynamic_bitset<>>& vertex_mask,
+                                            Callback&& callback);
+
+    template<typename Callback>
+    void for_each_candidate_binding_indices(const UnpackedStateImpl& unpacked_state,
+                                            const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                            const std::optional<boost::dynamic_bitset<>>& vertex_mask,
+                                            Callback&& callback);
+
     mimir::generator<std::pair<formalism::ObjectList,
                                std::tuple<formalism::GroundLiteralList<formalism::StaticTag>,
                                           formalism::GroundLiteralList<formalism::FluentTag>,
@@ -76,6 +109,7 @@ public:
     const formalism::ConjunctiveCondition& get_conjunctive_condition() const;
     const formalism::Problem& get_problem() const;
     const EventHandler& get_event_handler() const;
+    void set_event_handler(EventHandler event_handler);
     const formalism::StaticConsistencyGraph& get_static_consistency_graph() const;
 
 protected:
@@ -87,6 +121,7 @@ protected:
 
     /* Memory for reuse */
     std::vector<boost::dynamic_bitset<>> m_full_consistency_graph;
+    std::vector<std::pair<Index, Index>> m_touched_consistency_edges;
 
     /// @brief Helper to cast to Derived_.
     constexpr const auto& self() const { return static_cast<const Derived_&>(*this); }
@@ -105,14 +140,51 @@ protected:
     bool is_valid_binding(const UnpackedStateImpl& unpacked_state, const formalism::ObjectList& binding);
 
     mimir::generator<formalism::ObjectList> nullary_case(const UnpackedStateImpl& unpacked_state);
+    mimir::generator<formalism::ObjectList> candidate_nullary_case(const UnpackedStateImpl& unpacked_state);
 
     mimir::generator<formalism::ObjectList> unary_case(const UnpackedStateImpl& unpacked_state,
                                                        const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
                                                        const std::optional<boost::dynamic_bitset<>>& vertex_mask);
+    mimir::generator<formalism::ObjectList> candidate_unary_case(const UnpackedStateImpl& unpacked_state,
+                                                                 const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                                                 const std::optional<boost::dynamic_bitset<>>& vertex_mask);
 
     mimir::generator<formalism::ObjectList> general_case(const UnpackedStateImpl& unpacked_state,
                                                          const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
                                                          const std::optional<boost::dynamic_bitset<>>& vertex_mask);
+    mimir::generator<formalism::ObjectList> candidate_general_case(const UnpackedStateImpl& unpacked_state,
+                                                                   const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                                                   const std::optional<boost::dynamic_bitset<>>& vertex_mask);
+
+    template<typename Callback>
+    void candidate_nullary_case_for_each(const UnpackedStateImpl& unpacked_state, Callback&& callback);
+
+    template<typename Callback>
+    void candidate_unary_case_for_each(const UnpackedStateImpl& unpacked_state,
+                                       const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                       const std::optional<boost::dynamic_bitset<>>& vertex_mask,
+                                       Callback&& callback);
+
+    template<typename Callback>
+    void candidate_general_case_for_each(const UnpackedStateImpl& unpacked_state,
+                                         const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                         const std::optional<boost::dynamic_bitset<>>& vertex_mask,
+                                         Callback&& callback);
+
+    template<typename Callback>
+    void candidate_nullary_case_for_each_indices(const UnpackedStateImpl& unpacked_state, Callback&& callback);
+
+    template<typename Callback>
+    void candidate_unary_case_for_each_indices(const UnpackedStateImpl& unpacked_state,
+                                               const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                               const std::optional<boost::dynamic_bitset<>>& vertex_mask,
+                                               Callback&& callback);
+
+    template<typename Callback>
+    void candidate_general_case_for_each_indices(const UnpackedStateImpl& unpacked_state,
+                                                 const formalism::DynamicAssignmentSets& dynamic_assignment_sets,
+                                                 const std::optional<boost::dynamic_bitset<>>& vertex_mask,
+                                                 Callback&& callback);
 };
 
 }

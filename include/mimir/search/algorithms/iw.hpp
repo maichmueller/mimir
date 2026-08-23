@@ -19,22 +19,122 @@
 #define MIMIR_SEARCH_ALGORITHMS_IW_HPP_
 
 #include "mimir/search/algorithms/brfs.hpp"
+#include "mimir/search/algorithms/iw/landmark_novelty_table.hpp"
 #include "mimir/search/state.hpp"
 
 namespace mimir::search::iw
 {
 struct Options
 {
+    /// @brief Where to start, defaulting to the search context's initial state.
+    ///
+    /// ATTENTION: the state is looked up in the search context's OWN state repository. A `State`
+    /// obtained from a different context -- including one over the same `Problem` -- is not a valid
+    /// key there, and the failure surfaces as an `IndexError` thrown from inside the search rather
+    /// than at the call site. Re-create the start state through this context's repository (see
+    /// `StateRepositoryImpl::get_or_create_state`) before handing it over.
     std::optional<State> start_state = std::nullopt;
     EventHandler iw_event_handler = nullptr;
     brfs::EventHandler brfs_event_handler = nullptr;
     GoalStrategy goal_strategy = nullptr;
+    LayerOrderingStrategy layer_ordering_strategy = nullptr;
+    uint32_t max_next_layer_states = std::numeric_limits<uint32_t>::max();
+    uint32_t beam_width = std::numeric_limits<uint32_t>::max();
+    BeamNoveltyMode beam_novelty_mode = BeamNoveltyMode::ALL_TESTED;
+    bool relaxed_survivors_only_beam = false;
+    bool randomize_equal_score_ties = false;
+    uint64_t equal_score_tie_seed = 0;
+    uint32_t parallel_beam_num_threads = 1;
+    uint32_t parallel_beam_chunk_size = 1024;
+    bool iw1_precheck_add_effect_novelty = false;
+    bool iw1_atom_first_mode = false;
+    double iw1_atom_first_ratio = 1.0;
+    bool iw1_incremental_first_applicability = false;
+    bool iw1_incremental_first_applicability_debug_crosscheck = false;
+    uint32_t max_depth = std::numeric_limits<uint32_t>::max();
     size_t max_arity = MAX_ARITY - 1;
+
+    /// @brief When set, the search becomes LIW rather than IW: it escalates through
+    /// `0, LIW(1), LIW(2), ...` up to `max_arity`, where LIW(k) tracks pairs of a landmark atom
+    /// true in the state and a free atom tuple of size at most `k`.
+    ///
+    /// LIW(k) prunes less than IW(k) and more than IW(k+1) while its table stays linear in the
+    /// number of landmarks, so `max_arity` still counts the *free* coordinates -- LIW(1) tuples
+    /// have size two. This is a variant ladder in its own right, not a refinement inserted into
+    /// IW's: an arity-k rung is either IW(k) or LIW(k), never both, so `max_arity` keeps its
+    /// meaning and one pass still corresponds to one width. See `LandmarkNoveltyTable` for the
+    /// feature family and its guarantees, and `LandmarkNoveltyPruningStrategyImpl` for the
+    /// pruning rule. The arity-0 pass is unaffected.
+    ///
+    /// An empty landmark graph degrades this to exactly plain IW, expansion for expansion.
+    ///
+    /// This is incompatible with the `iw1_*` accelerators, which all reason about atom-level
+    /// novelty; combining them is rejected rather than silently ignored.
+    landmarks::FactLandmarkGraph landmark_novelty_graph = nullptr;
+
+    /// @brief Storage budget for the landmark novelty tables; ignored without
+    /// `landmark_novelty_graph`. See `iw::LandmarkNoveltyTableOptions`.
+    LandmarkNoveltyTableOptions landmark_novelty_table_options = {};
+
+    /// @brief Also rank the graph's *disjunctive* landmarks, whose members then share one novelty
+    /// row. Ignored without `landmark_novelty_graph`, and a no-op on a graph built without
+    /// `landmarks::FactLandmarkGeneratorOptions::max_disjunctive_landmark_size`.
+    ///
+    /// This is what makes LIW more than IW on a problem whose landmark set is only its goal facts:
+    /// with no coordinate changing between the start state and the goal, the landmark half of every
+    /// feature is constant and LIW(k) prunes exactly like IW(k). Ranking the intermediate atoms a
+    /// disjunctive landmark names gives the coordinate something to move on, which is what turns a
+    /// width-2 conjunction into the width-1 feature `(rank of one conjunct, the other conjunct)`.
+    ///
+    /// Off by default, and separate from the manager-facing use of the same sets, so the two can be
+    /// measured apart.
+    bool landmark_novelty_disjunctive = false;
+
+    /// @brief Atoms that must keep a private novelty row instead of sharing their disjunctive
+    /// landmark's. Ignored unless `landmark_novelty_disjunctive` is set.
+    ///
+    /// Per search, not per problem, because the atom that belongs here is the one the search is
+    /// *for*. Sharing a row means a sibling's exploration can prune the branch that reaches this
+    /// atom, and when the atom is the goal that is the one branch the search must not lose. Note
+    /// the goal state itself is safe without this whenever the goal is a single atom -- it carries
+    /// a free atom no earlier state had, so it is novel under every rank -- but the states leading
+    /// to it are not, and no goal test can protect those.
+    IndexSet landmark_novelty_unshared_atoms = {};
+
+    /// @brief Wall-clock budget for the whole search, spanning every arity pass. Each pass is given
+    /// what is left of it, so raising `max_arity` cannot silently multiply the time spent.
+    uint32_t max_time_in_ms = std::numeric_limits<uint32_t>::max();
+
+    /// @brief Cap on the search nodes of a *single* arity pass, mirroring `max_depth`. Passes do not
+    /// share a node budget: each one restarts from the start state with its own search tree.
+    uint32_t max_num_states = std::numeric_limits<uint32_t>::max();
+
+    /// @brief States the search must not enter; see `brfs::Options::blocked_states` for the
+    /// contract and the repository caveat.
+    ///
+    /// Forwarded unchanged to every arity pass, the arity-0 warm-up included: a caller's closed
+    /// set describes where it stands in its own episode, not the width being tried, so a pass
+    /// that ignored it could return precisely the plan the ladder exists to avoid.
+    ///
+    /// With a non-empty set an exhausted ladder no longer proves the goal is unreachable at
+    /// `max_arity` -- only that it is unreachable *without re-entering a blocked state*. Callers
+    /// that turn an empty plan into a reachability verdict must account for that.
+    IndexSet blocked_states = {};
+
+    /// @brief Optional coordination with searches running alongside this one; see
+    /// `brfs::Options::control`. Forwarded to every arity pass, so an IW(1) run used as a
+    /// portfolio's certifier publishes its completed depths through it.
+    SearchControl* control = nullptr;
 
     Options() = default;
 };
 
 extern SearchResult find_solution(const SearchContext& context, const Options& options = Options());
+
+/// @brief Overload that applies a deferred-novelty transition ordering strategy (see
+/// `LandmarkTransitionOrderingStrategy`) to the width-1 BrFS pass only; arity 0 and arity > 1 passes
+/// stay on the default queued path (see iw.cpp).
+extern SearchResult find_solution(const SearchContext& context, const Options& options, const LandmarkTransitionOrderingStrategy& ordering);
 }
 
 #endif

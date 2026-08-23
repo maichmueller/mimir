@@ -96,6 +96,7 @@ public:
     const formalism::Problem& get_problem() const;
     const ApplicableActionGenerator get_applicable_action_generator() const;
     const StateRepository get_state_repository() const;
+    void release_parallel_memory(bool clear_shared_caches = false) const;
 };
 }
 
