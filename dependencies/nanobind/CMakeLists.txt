@@ -6,7 +6,7 @@ include(ExternalProject)
 message(STATUS "Dependency \"nanobind\"...")
 
 # Attempt to find the installed library
-find_package(Python 3.8
+find_package(Python 3.12
   REQUIRED COMPONENTS Interpreter Development.Module
   OPTIONAL_COMPONENTS Development.SABIModule)
 
@@ -27,7 +27,7 @@ if (NOT nanobind_FOUND)
     ExternalProject_Add(
             nanobind
             GIT_REPOSITORY https://github.com/wjakob/nanobind.git
-            GIT_TAG v2.7.0
+            GIT_TAG v2.15.0
             PREFIX ${CMAKE_BINARY_DIR}/nanobind
             CMAKE_ARGS ${CMAKE_ARGS}
     )

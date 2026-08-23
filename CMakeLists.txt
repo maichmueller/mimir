@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 if(NOT DEFINED MIMIR_VERSION_INFO)
-    set(MIMIR_VERSION_INFO "0.11.1")
+    set(MIMIR_VERSION_INFO "0.14.2")
 endif()
 project(mimir VERSION ${MIMIR_VERSION_INFO})
 

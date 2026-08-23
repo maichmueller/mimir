@@ -1,17 +1,17 @@
 [build-system]
 requires = [
-    "setuptools>=42",
-    "nanobind",
-    "wheel",
+    "setuptools>=64",
+    "nanobind>=2.15,<3",
     "cmake>=3.21",
     "ninja",
-    "typing_extensions",
-    "clingo"
 ]
 build-backend = "setuptools.build_meta"
 
 [tool.cibuildwheel]
 container-engine = "docker"
+# Python >= 3.12 only. Free-threaded CPython ships as cp314t; cp313t was
+# dropped from cibuildwheel 4.x, so 3.13t users must build from source.
+build = "cp312-* cp313-* cp314-* cp314t-*"
 
 [tool.cibuildwheel.linux]
 repair-wheel-command = "auditwheel repair -w {dest_dir} {wheel}"

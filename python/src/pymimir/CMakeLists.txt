@@ -1,4 +1,4 @@
-find_package(Python 3.8 REQUIRED
+find_package(Python 3.12 REQUIRED
   COMPONENTS Interpreter Development.Module
   OPTIONAL_COMPONENTS Development.SABIModule)
 
