@@ -72,6 +72,13 @@ from .wrapper_datasets import (
 
 from pathlib import Path
 
+from importlib.metadata import PackageNotFoundError, version as _package_version
+
+try:
+    __version__ = _package_version("pymimir")
+except PackageNotFoundError:  # e.g. running from a source tree without installation
+    __version__ = "unknown"
+
 
 def _package_root() -> Path:
     return Path(__file__).resolve().parent
