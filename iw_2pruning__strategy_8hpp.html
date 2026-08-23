@@ -79,11 +79,19 @@ $(function() {
   <div class="headertitle"><div class="title">pruning_strategy.hpp File Reference</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &quot;<a class="el" href="novelty__table_8hpp_source.html">mimir/search/algorithms/iw/novelty_table.hpp</a>&quot;</code><br />
+<div class="textblock"><code>#include &quot;mimir/search/algorithms/iw/landmark_novelty_table.hpp&quot;</code><br />
+<code>#include &quot;<a class="el" href="novelty__table_8hpp_source.html">mimir/search/algorithms/iw/novelty_table.hpp</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="tuple__index__mapper_8hpp_source.html">mimir/search/algorithms/iw/tuple_index_mapper.hpp</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="strategies_2pruning__strategy_8hpp_source.html">mimir/search/algorithms/strategies/pruning_strategy.hpp</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="search_2declarations_8hpp_source.html">mimir/search/declarations.hpp</a>&quot;</code><br />
+<code>#include &quot;mimir/search/state.hpp&quot;</code><br />
+<code>#include &lt;absl/container/flat_hash_map.h&gt;</code><br />
+<code>#include &lt;absl/container/flat_hash_set.h&gt;</code><br />
+<code>#include &lt;cstdint&gt;</code><br />
 <code>#include &lt;memory&gt;</code><br />
+<code>#include &lt;functional&gt;</code><br />
+<code>#include &lt;optional&gt;</code><br />
+<code>#include &lt;tuple&gt;</code><br />
 <code>#include &lt;unordered_set&gt;</code><br />
 </div>
 <p><a href="iw_2pruning__strategy_8hpp_source.html">Go to the source code of this file.</a></p>
@@ -94,6 +102,12 @@ Classes</h2></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1iw_1_1LandmarkNoveltyPruningStrategyImpl.html">mimir::search::iw::LandmarkNoveltyPruningStrategyImpl</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight"><code><a class="el" href="classmimir_1_1search_1_1iw_1_1LandmarkNoveltyPruningStrategyImpl.html" title="LandmarkNoveltyPruningStrategyImpl prunes with landmark-restricted novelty: a state is admitted when ...">LandmarkNoveltyPruningStrategyImpl</a></code> prunes with landmark-restricted novelty: a state is admitted when it exposes an unseen pair <code>(l, t)</code> of a landmark atom <code>l</code> true in it and a free atom tuple <code>t</code> of size at most <code>arity</code>. This is LIW(arity), which sits strictly between IW(arity) and IW(arity+1); see <code>LandmarkNoveltyTable</code> for the feature family and its guarantees.  <a href="classmimir_1_1search_1_1iw_1_1LandmarkNoveltyPruningStrategyImpl.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Abstracted IW(k), optionally <em>landmark-restricted</em>: abstracted LIW(k).  <a href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="namespaces" name="namespaces"></a>
 Namespaces</h2></td></tr>
@@ -102,6 +116,8 @@ Namespaces</h2></td></tr>
 <tr class="memitem:namespacemimir_1_1search"><td class="memItemLeft" align="right" valign="top">namespace &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemimir_1_1search.html">mimir::search</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:namespacemimir_1_1search_1_1iw"><td class="memItemLeft" align="right" valign="top">namespace &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemimir_1_1search_1_1iw.html">mimir::search::iw</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:namespacemimir_1_1search_1_1iw_1_1astar__iw__friend"><td class="memItemLeft" align="right" valign="top">namespace &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemimir_1_1search_1_1iw_1_1astar__iw__friend.html">mimir::search::iw::astar_iw_friend</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 </div><!-- contents -->

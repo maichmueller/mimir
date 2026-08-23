@@ -17,8 +17,11 @@ var searchData=
   ['iinversenode_14',['IInverseNode',['../classmimir_1_1search_1_1match__tree_1_1IInverseNode.html',1,'mimir::search::match_tree']]],
   ['increasenumericaleffectimpl_15',['IncreaseNumericalEffectImpl',['../classmimir_1_1languages_1_1general__policies_1_1IncreaseNumericalEffectImpl.html',1,'mimir::languages::general_policies']]],
   ['inode_16',['INode',['../classmimir_1_1search_1_1match__tree_1_1INode.html',1,'mimir::search::match_tree']]],
-  ['ipruningstrategy_17',['IPruningStrategy',['../classmimir_1_1search_1_1IPruningStrategy.html',1,'mimir::search']]],
-  ['irefinementpruningfunction_18',['IRefinementPruningFunction',['../classmimir_1_1languages_1_1dl_1_1IRefinementPruningFunction.html',1,'mimir::languages::dl']]],
-  ['isomorphismtypecompressionfunction_19',['IsomorphismTypeCompressionFunction',['../structmimir_1_1graphs_1_1kfwl_1_1IsomorphismTypeCompressionFunction.html',1,'mimir::graphs::kfwl']]],
-  ['ivisitor_20',['IVisitor',['../classmimir_1_1languages_1_1dl_1_1cnf__grammar_1_1IVisitor.html',1,'mimir::languages::dl::cnf_grammar::IVisitor'],['../classmimir_1_1languages_1_1dl_1_1grammar_1_1IVisitor.html',1,'mimir::languages::dl::grammar::IVisitor'],['../classmimir_1_1languages_1_1dl_1_1IVisitor.html',1,'mimir::languages::dl::IVisitor'],['../classmimir_1_1languages_1_1general__policies_1_1IVisitor.html',1,'mimir::languages::general_policies::IVisitor']]]
+  ['iparallelapplicableactiongeneratorworkercontext_17',['IParallelApplicableActionGeneratorWorkerContext',['../classmimir_1_1search_1_1IParallelApplicableActionGeneratorWorkerContext.html',1,'mimir::search']]],
+  ['iparallelaxiomworkercontext_18',['IParallelAxiomWorkerContext',['../classmimir_1_1search_1_1IParallelAxiomWorkerContext.html',1,'mimir::search']]],
+  ['ipruningstrategy_19',['IPruningStrategy',['../classmimir_1_1search_1_1IPruningStrategy.html',1,'mimir::search']]],
+  ['irefinementpruningfunction_20',['IRefinementPruningFunction',['../classmimir_1_1languages_1_1dl_1_1IRefinementPruningFunction.html',1,'mimir::languages::dl']]],
+  ['isomorphismtypecompressionfunction_21',['IsomorphismTypeCompressionFunction',['../structmimir_1_1graphs_1_1kfwl_1_1IsomorphismTypeCompressionFunction.html',1,'mimir::graphs::kfwl']]],
+  ['ivisitor_22',['IVisitor',['../classmimir_1_1languages_1_1dl_1_1cnf__grammar_1_1IVisitor.html',1,'mimir::languages::dl::cnf_grammar::IVisitor'],['../classmimir_1_1languages_1_1dl_1_1grammar_1_1IVisitor.html',1,'mimir::languages::dl::grammar::IVisitor'],['../classmimir_1_1languages_1_1dl_1_1IVisitor.html',1,'mimir::languages::dl::IVisitor'],['../classmimir_1_1languages_1_1general__policies_1_1IVisitor.html',1,'mimir::languages::general_policies::IVisitor']]],
+  ['iw1incrementalfirstapplicabilitystatistics_23',['IW1IncrementalFirstApplicabilityStatistics',['../classmimir_1_1search_1_1brfs_1_1IW1IncrementalFirstApplicabilityStatistics.html',1,'mimir::search::brfs']]]
 ];

@@ -94,6 +94,8 @@ Functions</h2></td></tr>
 <tr class="memitem:a1f892ceae4bd20b37ce1db55023fac6c"><td class="memItemLeft" align="right" valign="top">mimir::generator&lt; const std::vector&lt; uint32_t &gt; &amp; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemimir.html#a1f892ceae4bd20b37ce1db55023fac6c">create_k_clique_in_k_partite_graph_generator</a> (const std::vector&lt; boost::dynamic_bitset&lt;&gt; &gt; &amp;adjacency_matrix, const std::vector&lt; std::vector&lt; uint32_t &gt; &gt; &amp;partitions)</td></tr>
 <tr class="memdesc:a1f892ceae4bd20b37ce1db55023fac6c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Thread-safe k-clique in k-partite graph enumerator.  <br /></td></tr>
 <tr class="separator:a1f892ceae4bd20b37ce1db55023fac6c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aade393b8414e0f135c33a71e8844eaae"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemimir.html#aade393b8414e0f135c33a71e8844eaae">for_each_k_clique_in_k_partite_graph</a> (const std::vector&lt; boost::dynamic_bitset&lt;&gt; &gt; &amp;adjacency_matrix, const std::vector&lt; std::vector&lt; uint32_t &gt; &gt; &amp;partitions, const std::function&lt; void(const std::vector&lt; uint32_t &gt; &amp;)&gt; &amp;callback)</td></tr>
+<tr class="separator:aade393b8414e0f135c33a71e8844eaae"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aae18cfc4120bb456526dea9bbc025d91"><td class="memItemLeft" align="right" valign="top">template&lt;&gt; </td></tr>
 <tr class="memitem:aae18cfc4120bb456526dea9bbc025d91"><td class="memTemplItemLeft" align="right" valign="top">std::ostream &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacemimir.html#aae18cfc4120bb456526dea9bbc025d91">print</a> (std::ostream &amp;out, const std::tuple&lt; const <a class="el" href="classmimir_1_1formalism_1_1StaticConsistencyGraph.html">formalism::StaticConsistencyGraph</a> &amp;, const <a class="el" href="classmimir_1_1formalism_1_1ProblemImpl.html">formalism::ProblemImpl</a> &amp; &gt; &amp;data)</td></tr>
 <tr class="separator:aae18cfc4120bb456526dea9bbc025d91"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -136,6 +138,40 @@ Functions</h2></td></tr>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>a generator to enumerate all k-cliques. </dd></dl>
+
+</div>
+</div>
+<a id="aade393b8414e0f135c33a71e8844eaae" name="aade393b8414e0f135c33a71e8844eaae"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aade393b8414e0f135c33a71e8844eaae">&#9670;&#160;</a></span>for_each_k_clique_in_k_partite_graph()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void mimir::for_each_k_clique_in_k_partite_graph </td>
+          <td>(</td>
+          <td class="paramtype">const std::vector&lt; boost::dynamic_bitset&lt;&gt; &gt; &amp;&#160;</td>
+          <td class="paramname"><em>adjacency_matrix</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::vector&lt; std::vector&lt; uint32_t &gt; &gt; &amp;&#160;</td>
+          <td class="paramname"><em>partitions</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::function&lt; void(const std::vector&lt; uint32_t &gt; &amp;)&gt; &amp;&#160;</td>
+          <td class="paramname"><em>callback</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
 
 </div>
 </div>

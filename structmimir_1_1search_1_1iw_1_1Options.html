@@ -91,6 +91,7 @@ Public Member Functions</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:a2ba119d72a8dc8ac68074b82805e04ca"><td class="memItemLeft" align="right" valign="top">std::optional&lt; State &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#a2ba119d72a8dc8ac68074b82805e04ca">start_state</a> = std::nullopt</td></tr>
+<tr class="memdesc:a2ba119d72a8dc8ac68074b82805e04ca"><td class="mdescLeft">&#160;</td><td class="mdescRight">Where to start, defaulting to the search context's initial state.  <br /></td></tr>
 <tr class="separator:a2ba119d72a8dc8ac68074b82805e04ca"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abb62b2e5282de239e48b998ab6dfa554"><td class="memItemLeft" align="right" valign="top"><a class="el" href="namespacemimir_1_1search_1_1iw.html#a0cfc7c8bc925d39521afb70a6f286e78">EventHandler</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#abb62b2e5282de239e48b998ab6dfa554">iw_event_handler</a> = nullptr</td></tr>
 <tr class="separator:abb62b2e5282de239e48b998ab6dfa554"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -98,8 +99,62 @@ Public Attributes</h2></td></tr>
 <tr class="separator:aa55eb389d5c7c10efba246563e6f4c47"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af461a1ab9977ea54a331268ac4159c1b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="namespacemimir_1_1search.html#a9bb7ef83efbfd45dfdff36bbdd659cfe">GoalStrategy</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#af461a1ab9977ea54a331268ac4159c1b">goal_strategy</a> = nullptr</td></tr>
 <tr class="separator:af461a1ab9977ea54a331268ac4159c1b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa1431dbf357bc3e9b35ea726eb4f2f35"><td class="memItemLeft" align="right" valign="top"><a class="el" href="namespacemimir_1_1search.html#a3655847fa666641515b4c3e805a22b48">LayerOrderingStrategy</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#aa1431dbf357bc3e9b35ea726eb4f2f35">layer_ordering_strategy</a> = nullptr</td></tr>
+<tr class="separator:aa1431dbf357bc3e9b35ea726eb4f2f35"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9a3710dba15f50851b2268cc51fb0117"><td class="memItemLeft" align="right" valign="top">uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#a9a3710dba15f50851b2268cc51fb0117">max_next_layer_states</a> = std::numeric_limits&lt;uint32_t&gt;::max()</td></tr>
+<tr class="separator:a9a3710dba15f50851b2268cc51fb0117"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a65f939fed472f4e041f15d2fbefef31d"><td class="memItemLeft" align="right" valign="top">uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#a65f939fed472f4e041f15d2fbefef31d">beam_width</a> = std::numeric_limits&lt;uint32_t&gt;::max()</td></tr>
+<tr class="separator:a65f939fed472f4e041f15d2fbefef31d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a078affbd58e6649033d9d8d7022680a3"><td class="memItemLeft" align="right" valign="top"><a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#a078affbd58e6649033d9d8d7022680a3">beam_novelty_mode</a> = <a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57ca1e5b422de246e48404bcfd9dc90e19d4">BeamNoveltyMode::ALL_TESTED</a></td></tr>
+<tr class="separator:a078affbd58e6649033d9d8d7022680a3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac93e8fa2ddd46a48c81d4991119510e0"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#ac93e8fa2ddd46a48c81d4991119510e0">relaxed_survivors_only_beam</a> = false</td></tr>
+<tr class="separator:ac93e8fa2ddd46a48c81d4991119510e0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5ab698a167fdd6a05ab7414e13483b2f"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#a5ab698a167fdd6a05ab7414e13483b2f">randomize_equal_score_ties</a> = false</td></tr>
+<tr class="separator:a5ab698a167fdd6a05ab7414e13483b2f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5b2204bf8cd3f6ebaa13ada1b2a81e82"><td class="memItemLeft" align="right" valign="top">uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#a5b2204bf8cd3f6ebaa13ada1b2a81e82">equal_score_tie_seed</a> = 0</td></tr>
+<tr class="separator:a5b2204bf8cd3f6ebaa13ada1b2a81e82"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1496a75542bbc0ecabc6496bf613ef60"><td class="memItemLeft" align="right" valign="top">uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#a1496a75542bbc0ecabc6496bf613ef60">parallel_beam_num_threads</a> = 1</td></tr>
+<tr class="separator:a1496a75542bbc0ecabc6496bf613ef60"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1e824ac0ccef3035fe15f28a6c8868f6"><td class="memItemLeft" align="right" valign="top">uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#a1e824ac0ccef3035fe15f28a6c8868f6">parallel_beam_chunk_size</a> = 1024</td></tr>
+<tr class="separator:a1e824ac0ccef3035fe15f28a6c8868f6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2ca85ab8baea265504b1bbd807c0335a"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#a2ca85ab8baea265504b1bbd807c0335a">iw1_precheck_add_effect_novelty</a> = false</td></tr>
+<tr class="separator:a2ca85ab8baea265504b1bbd807c0335a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a18eb9954a0c84226f0d34977b737aae5"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#a18eb9954a0c84226f0d34977b737aae5">iw1_atom_first_mode</a> = false</td></tr>
+<tr class="separator:a18eb9954a0c84226f0d34977b737aae5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a829409670e876344056b25703686db18"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#a829409670e876344056b25703686db18">iw1_atom_first_ratio</a> = 1.0</td></tr>
+<tr class="separator:a829409670e876344056b25703686db18"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aed09e19fb64e1e06260445b49241483f"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#aed09e19fb64e1e06260445b49241483f">iw1_incremental_first_applicability</a> = false</td></tr>
+<tr class="separator:aed09e19fb64e1e06260445b49241483f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a19af186da7a67e9e7b6389d3b19bc998"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#a19af186da7a67e9e7b6389d3b19bc998">iw1_incremental_first_applicability_debug_crosscheck</a> = false</td></tr>
+<tr class="separator:a19af186da7a67e9e7b6389d3b19bc998"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a03e69b9962a1fa614a7bdf9850e3640b"><td class="memItemLeft" align="right" valign="top">uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#a03e69b9962a1fa614a7bdf9850e3640b">max_depth</a> = std::numeric_limits&lt;uint32_t&gt;::max()</td></tr>
+<tr class="separator:a03e69b9962a1fa614a7bdf9850e3640b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a41eaefce7d4dd5fde637cc4b36f21aee"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#a41eaefce7d4dd5fde637cc4b36f21aee">max_arity</a> = <a class="el" href="namespacemimir_1_1search_1_1iw.html#a2993fe0a3cf9225e388f3bb8a0a998d5">MAX_ARITY</a> - 1</td></tr>
 <tr class="separator:a41eaefce7d4dd5fde637cc4b36f21aee"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a30e5d01f47475389fb20dff8c31ddc71"><td class="memItemLeft" align="right" valign="top"><a class="el" href="namespacemimir_1_1search_1_1landmarks.html#ae245e836c71077a6ede2fdf0f302bfa6">landmarks::FactLandmarkGraph</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#a30e5d01f47475389fb20dff8c31ddc71">landmark_novelty_graph</a> = nullptr</td></tr>
+<tr class="memdesc:a30e5d01f47475389fb20dff8c31ddc71"><td class="mdescLeft">&#160;</td><td class="mdescRight">When set, the search becomes LIW rather than IW: it escalates through <code>0, LIW(1), LIW(2), ...</code> up to <code>max_arity</code>, where LIW(k) tracks pairs of a landmark atom true in the state and a free atom tuple of size at most <code>k</code>.  <br /></td></tr>
+<tr class="separator:a30e5d01f47475389fb20dff8c31ddc71"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:addd5068963402a7a8a5c105eceea7e33"><td class="memItemLeft" align="right" valign="top">LandmarkNoveltyTableOptions&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#addd5068963402a7a8a5c105eceea7e33">landmark_novelty_table_options</a> = {}</td></tr>
+<tr class="memdesc:addd5068963402a7a8a5c105eceea7e33"><td class="mdescLeft">&#160;</td><td class="mdescRight">Storage budget for the landmark novelty tables; ignored without <code>landmark_novelty_graph</code>. See <code>iw::LandmarkNoveltyTableOptions</code>.  <br /></td></tr>
+<tr class="separator:addd5068963402a7a8a5c105eceea7e33"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5b19b8c2373b77b6065fe76973093964"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#a5b19b8c2373b77b6065fe76973093964">landmark_novelty_disjunctive</a> = false</td></tr>
+<tr class="memdesc:a5b19b8c2373b77b6065fe76973093964"><td class="mdescLeft">&#160;</td><td class="mdescRight">Also rank the graph's <em>disjunctive</em> landmarks, whose members then share one novelty row. Ignored without <code>landmark_novelty_graph</code>, and a no-op on a graph built without <code>landmarks::FactLandmarkGeneratorOptions::max_disjunctive_landmark_size</code>.  <br /></td></tr>
+<tr class="separator:a5b19b8c2373b77b6065fe76973093964"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3ac2bfdb6170ac88ee93c4d58fad008f"><td class="memItemLeft" align="right" valign="top">IndexSet&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#a3ac2bfdb6170ac88ee93c4d58fad008f">landmark_novelty_unshared_atoms</a> = {}</td></tr>
+<tr class="memdesc:a3ac2bfdb6170ac88ee93c4d58fad008f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Atoms that must keep a private novelty row instead of sharing their disjunctive landmark's. Ignored unless <code>landmark_novelty_disjunctive</code> is set.  <br /></td></tr>
+<tr class="separator:a3ac2bfdb6170ac88ee93c4d58fad008f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2c8e5e73d5e942060f85c6d3c9a65b4e"><td class="memItemLeft" align="right" valign="top">uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#a2c8e5e73d5e942060f85c6d3c9a65b4e">max_time_in_ms</a> = std::numeric_limits&lt;uint32_t&gt;::max()</td></tr>
+<tr class="memdesc:a2c8e5e73d5e942060f85c6d3c9a65b4e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Wall-clock budget for the whole search, spanning every arity pass. Each pass is given what is left of it, so raising <code>max_arity</code> cannot silently multiply the time spent.  <br /></td></tr>
+<tr class="separator:a2c8e5e73d5e942060f85c6d3c9a65b4e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aff379e73e32216cfbf335d6c0a728676"><td class="memItemLeft" align="right" valign="top">uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#aff379e73e32216cfbf335d6c0a728676">max_num_states</a> = std::numeric_limits&lt;uint32_t&gt;::max()</td></tr>
+<tr class="memdesc:aff379e73e32216cfbf335d6c0a728676"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cap on the search nodes of a <em>single</em> arity pass, mirroring <code>max_depth</code>. Passes do not share a node budget: each one restarts from the start state with its own search tree.  <br /></td></tr>
+<tr class="separator:aff379e73e32216cfbf335d6c0a728676"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ade6b305ee7535f9c4a858ddd000a92a5"><td class="memItemLeft" align="right" valign="top">IndexSet&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#ade6b305ee7535f9c4a858ddd000a92a5">blocked_states</a> = {}</td></tr>
+<tr class="memdesc:ade6b305ee7535f9c4a858ddd000a92a5"><td class="mdescLeft">&#160;</td><td class="mdescRight">States the search must not enter; see <code><a class="el" href="structmimir_1_1search_1_1brfs_1_1Options.html#a63d521aac54b1d751380a9ae6590770b" title="States the search must not enter, as indices in the search context&#39;s OWN state repository.">brfs::Options::blocked_states</a></code> for the contract and the repository caveat.  <br /></td></tr>
+<tr class="separator:ade6b305ee7535f9c4a858ddd000a92a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab44cf192c533b36f16462855c0072715"><td class="memItemLeft" align="right" valign="top">SearchControl *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#ab44cf192c533b36f16462855c0072715">control</a> = nullptr</td></tr>
+<tr class="memdesc:ab44cf192c533b36f16462855c0072715"><td class="mdescLeft">&#160;</td><td class="mdescRight">Optional coordination with searches running alongside this one; see <code><a class="el" href="structmimir_1_1search_1_1brfs_1_1Options.html#ae024bc89476305758f6baca4bcc6d4f6" title="Optional coordination with searches running alongside this one. Null means &quot;run alone&quot;,...">brfs::Options::control</a></code>. Forwarded to every arity pass, so an IW(1) run used as a portfolio's certifier publishes its completed depths through it.  <br /></td></tr>
+<tr class="separator:ab44cf192c533b36f16462855c0072715"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a0ce8fe757df334b038459060712bc0a4" name="a0ce8fe757df334b038459060712bc0a4"></a>
@@ -128,6 +183,52 @@ Public Attributes</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Member Data Documentation</h2>
+<a id="a078affbd58e6649033d9d8d7022680a3" name="a078affbd58e6649033d9d8d7022680a3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a078affbd58e6649033d9d8d7022680a3">&#9670;&#160;</a></span>beam_novelty_mode</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a> mimir::search::iw::Options::beam_novelty_mode = <a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57ca1e5b422de246e48404bcfd9dc90e19d4">BeamNoveltyMode::ALL_TESTED</a></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a65f939fed472f4e041f15d2fbefef31d" name="a65f939fed472f4e041f15d2fbefef31d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a65f939fed472f4e041f15d2fbefef31d">&#9670;&#160;</a></span>beam_width</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint32_t mimir::search::iw::Options::beam_width = std::numeric_limits&lt;uint32_t&gt;::max()</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ade6b305ee7535f9c4a858ddd000a92a5" name="ade6b305ee7535f9c4a858ddd000a92a5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ade6b305ee7535f9c4a858ddd000a92a5">&#9670;&#160;</a></span>blocked_states</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">IndexSet mimir::search::iw::Options::blocked_states = {}</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>States the search must not enter; see <code><a class="el" href="structmimir_1_1search_1_1brfs_1_1Options.html#a63d521aac54b1d751380a9ae6590770b" title="States the search must not enter, as indices in the search context&#39;s OWN state repository.">brfs::Options::blocked_states</a></code> for the contract and the repository caveat. </p>
+<p>Forwarded unchanged to every arity pass, the arity-0 warm-up included: a caller's closed set describes where it stands in its own episode, not the width being tried, so a pass that ignored it could return precisely the plan the ladder exists to avoid.</p>
+<p>With a non-empty set an exhausted ladder no longer proves the goal is unreachable at <code>max_arity</code> &ndash; only that it is unreachable <em>without re-entering a blocked state</em>. Callers that turn an empty plan into a reachability verdict must account for that. </p>
+
+</div>
+</div>
 <a id="aa55eb389d5c7c10efba246563e6f4c47" name="aa55eb389d5c7c10efba246563e6f4c47"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aa55eb389d5c7c10efba246563e6f4c47">&#9670;&#160;</a></span>brfs_event_handler</h2>
 
@@ -136,6 +237,36 @@ Public Attributes</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname"><a class="el" href="namespacemimir_1_1search_1_1brfs.html#aec84ed22d7437b783307c6977246a864">brfs::EventHandler</a> mimir::search::iw::Options::brfs_event_handler = nullptr</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ab44cf192c533b36f16462855c0072715" name="ab44cf192c533b36f16462855c0072715"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab44cf192c533b36f16462855c0072715">&#9670;&#160;</a></span>control</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">SearchControl* mimir::search::iw::Options::control = nullptr</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Optional coordination with searches running alongside this one; see <code><a class="el" href="structmimir_1_1search_1_1brfs_1_1Options.html#ae024bc89476305758f6baca4bcc6d4f6" title="Optional coordination with searches running alongside this one. Null means &quot;run alone&quot;,...">brfs::Options::control</a></code>. Forwarded to every arity pass, so an IW(1) run used as a portfolio's certifier publishes its completed depths through it. </p>
+
+</div>
+</div>
+<a id="a5b2204bf8cd3f6ebaa13ada1b2a81e82" name="a5b2204bf8cd3f6ebaa13ada1b2a81e82"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5b2204bf8cd3f6ebaa13ada1b2a81e82">&#9670;&#160;</a></span>equal_score_tie_seed</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint64_t mimir::search::iw::Options::equal_score_tie_seed = 0</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -156,6 +287,76 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="a18eb9954a0c84226f0d34977b737aae5" name="a18eb9954a0c84226f0d34977b737aae5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a18eb9954a0c84226f0d34977b737aae5">&#9670;&#160;</a></span>iw1_atom_first_mode</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool mimir::search::iw::Options::iw1_atom_first_mode = false</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a829409670e876344056b25703686db18" name="a829409670e876344056b25703686db18"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a829409670e876344056b25703686db18">&#9670;&#160;</a></span>iw1_atom_first_ratio</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double mimir::search::iw::Options::iw1_atom_first_ratio = 1.0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aed09e19fb64e1e06260445b49241483f" name="aed09e19fb64e1e06260445b49241483f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aed09e19fb64e1e06260445b49241483f">&#9670;&#160;</a></span>iw1_incremental_first_applicability</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool mimir::search::iw::Options::iw1_incremental_first_applicability = false</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a19af186da7a67e9e7b6389d3b19bc998" name="a19af186da7a67e9e7b6389d3b19bc998"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a19af186da7a67e9e7b6389d3b19bc998">&#9670;&#160;</a></span>iw1_incremental_first_applicability_debug_crosscheck</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool mimir::search::iw::Options::iw1_incremental_first_applicability_debug_crosscheck = false</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a2ca85ab8baea265504b1bbd807c0335a" name="a2ca85ab8baea265504b1bbd807c0335a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2ca85ab8baea265504b1bbd807c0335a">&#9670;&#160;</a></span>iw1_precheck_add_effect_novelty</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool mimir::search::iw::Options::iw1_precheck_add_effect_novelty = false</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="abb62b2e5282de239e48b998ab6dfa554" name="abb62b2e5282de239e48b998ab6dfa554"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#abb62b2e5282de239e48b998ab6dfa554">&#9670;&#160;</a></span>iw_event_handler</h2>
 
@@ -164,6 +365,90 @@ Public Attributes</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname"><a class="el" href="namespacemimir_1_1search_1_1iw.html#a0cfc7c8bc925d39521afb70a6f286e78">EventHandler</a> mimir::search::iw::Options::iw_event_handler = nullptr</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a5b19b8c2373b77b6065fe76973093964" name="a5b19b8c2373b77b6065fe76973093964"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5b19b8c2373b77b6065fe76973093964">&#9670;&#160;</a></span>landmark_novelty_disjunctive</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool mimir::search::iw::Options::landmark_novelty_disjunctive = false</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Also rank the graph's <em>disjunctive</em> landmarks, whose members then share one novelty row. Ignored without <code>landmark_novelty_graph</code>, and a no-op on a graph built without <code>landmarks::FactLandmarkGeneratorOptions::max_disjunctive_landmark_size</code>. </p>
+<p>This is what makes LIW more than IW on a problem whose landmark set is only its goal facts: with no coordinate changing between the start state and the goal, the landmark half of every feature is constant and LIW(k) prunes exactly like IW(k). Ranking the intermediate atoms a disjunctive landmark names gives the coordinate something to move on, which is what turns a width-2 conjunction into the width-1 feature <code>(rank of one conjunct, the other conjunct)</code>.</p>
+<p>Off by default, and separate from the manager-facing use of the same sets, so the two can be measured apart. </p>
+
+</div>
+</div>
+<a id="a30e5d01f47475389fb20dff8c31ddc71" name="a30e5d01f47475389fb20dff8c31ddc71"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a30e5d01f47475389fb20dff8c31ddc71">&#9670;&#160;</a></span>landmark_novelty_graph</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="namespacemimir_1_1search_1_1landmarks.html#ae245e836c71077a6ede2fdf0f302bfa6">landmarks::FactLandmarkGraph</a> mimir::search::iw::Options::landmark_novelty_graph = nullptr</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>When set, the search becomes LIW rather than IW: it escalates through <code>0, LIW(1), LIW(2), ...</code> up to <code>max_arity</code>, where LIW(k) tracks pairs of a landmark atom true in the state and a free atom tuple of size at most <code>k</code>. </p>
+<p>LIW(k) prunes less than IW(k) and more than IW(k+1) while its table stays linear in the number of landmarks, so <code>max_arity</code> still counts the <em>free</em> coordinates &ndash; LIW(1) tuples have size two. This is a variant ladder in its own right, not a refinement inserted into IW's: an arity-k rung is either IW(k) or LIW(k), never both, so <code>max_arity</code> keeps its meaning and one pass still corresponds to one width. See <code>LandmarkNoveltyTable</code> for the feature family and its guarantees, and <code><a class="el" href="classmimir_1_1search_1_1iw_1_1LandmarkNoveltyPruningStrategyImpl.html" title="LandmarkNoveltyPruningStrategyImpl prunes with landmark-restricted novelty: a state is admitted when ...">LandmarkNoveltyPruningStrategyImpl</a></code> for the pruning rule. The arity-0 pass is unaffected.</p>
+<p>An empty landmark graph degrades this to exactly plain IW, expansion for expansion.</p>
+<p>This is incompatible with the <code>iw1_*</code> accelerators, which all reason about atom-level novelty; combining them is rejected rather than silently ignored. </p>
+
+</div>
+</div>
+<a id="addd5068963402a7a8a5c105eceea7e33" name="addd5068963402a7a8a5c105eceea7e33"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#addd5068963402a7a8a5c105eceea7e33">&#9670;&#160;</a></span>landmark_novelty_table_options</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">LandmarkNoveltyTableOptions mimir::search::iw::Options::landmark_novelty_table_options = {}</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Storage budget for the landmark novelty tables; ignored without <code>landmark_novelty_graph</code>. See <code>iw::LandmarkNoveltyTableOptions</code>. </p>
+
+</div>
+</div>
+<a id="a3ac2bfdb6170ac88ee93c4d58fad008f" name="a3ac2bfdb6170ac88ee93c4d58fad008f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3ac2bfdb6170ac88ee93c4d58fad008f">&#9670;&#160;</a></span>landmark_novelty_unshared_atoms</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">IndexSet mimir::search::iw::Options::landmark_novelty_unshared_atoms = {}</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Atoms that must keep a private novelty row instead of sharing their disjunctive landmark's. Ignored unless <code>landmark_novelty_disjunctive</code> is set. </p>
+<p>Per search, not per problem, because the atom that belongs here is the one the search is <em>for</em>. Sharing a row means a sibling's exploration can prune the branch that reaches this atom, and when the atom is the goal that is the one branch the search must not lose. Note the goal state itself is safe without this whenever the goal is a single atom &ndash; it carries a free atom no earlier state had, so it is novel under every rank &ndash; but the states leading to it are not, and no goal test can protect those. </p>
+
+</div>
+</div>
+<a id="aa1431dbf357bc3e9b35ea726eb4f2f35" name="aa1431dbf357bc3e9b35ea726eb4f2f35"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa1431dbf357bc3e9b35ea726eb4f2f35">&#9670;&#160;</a></span>layer_ordering_strategy</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="namespacemimir_1_1search.html#a3655847fa666641515b4c3e805a22b48">LayerOrderingStrategy</a> mimir::search::iw::Options::layer_ordering_strategy = nullptr</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -184,6 +469,122 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="a03e69b9962a1fa614a7bdf9850e3640b" name="a03e69b9962a1fa614a7bdf9850e3640b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a03e69b9962a1fa614a7bdf9850e3640b">&#9670;&#160;</a></span>max_depth</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint32_t mimir::search::iw::Options::max_depth = std::numeric_limits&lt;uint32_t&gt;::max()</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a9a3710dba15f50851b2268cc51fb0117" name="a9a3710dba15f50851b2268cc51fb0117"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9a3710dba15f50851b2268cc51fb0117">&#9670;&#160;</a></span>max_next_layer_states</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint32_t mimir::search::iw::Options::max_next_layer_states = std::numeric_limits&lt;uint32_t&gt;::max()</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aff379e73e32216cfbf335d6c0a728676" name="aff379e73e32216cfbf335d6c0a728676"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aff379e73e32216cfbf335d6c0a728676">&#9670;&#160;</a></span>max_num_states</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint32_t mimir::search::iw::Options::max_num_states = std::numeric_limits&lt;uint32_t&gt;::max()</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Cap on the search nodes of a <em>single</em> arity pass, mirroring <code>max_depth</code>. Passes do not share a node budget: each one restarts from the start state with its own search tree. </p>
+
+</div>
+</div>
+<a id="a2c8e5e73d5e942060f85c6d3c9a65b4e" name="a2c8e5e73d5e942060f85c6d3c9a65b4e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2c8e5e73d5e942060f85c6d3c9a65b4e">&#9670;&#160;</a></span>max_time_in_ms</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint32_t mimir::search::iw::Options::max_time_in_ms = std::numeric_limits&lt;uint32_t&gt;::max()</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Wall-clock budget for the whole search, spanning every arity pass. Each pass is given what is left of it, so raising <code>max_arity</code> cannot silently multiply the time spent. </p>
+
+</div>
+</div>
+<a id="a1e824ac0ccef3035fe15f28a6c8868f6" name="a1e824ac0ccef3035fe15f28a6c8868f6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1e824ac0ccef3035fe15f28a6c8868f6">&#9670;&#160;</a></span>parallel_beam_chunk_size</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint32_t mimir::search::iw::Options::parallel_beam_chunk_size = 1024</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a1496a75542bbc0ecabc6496bf613ef60" name="a1496a75542bbc0ecabc6496bf613ef60"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1496a75542bbc0ecabc6496bf613ef60">&#9670;&#160;</a></span>parallel_beam_num_threads</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint32_t mimir::search::iw::Options::parallel_beam_num_threads = 1</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a5ab698a167fdd6a05ab7414e13483b2f" name="a5ab698a167fdd6a05ab7414e13483b2f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5ab698a167fdd6a05ab7414e13483b2f">&#9670;&#160;</a></span>randomize_equal_score_ties</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool mimir::search::iw::Options::randomize_equal_score_ties = false</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ac93e8fa2ddd46a48c81d4991119510e0" name="ac93e8fa2ddd46a48c81d4991119510e0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac93e8fa2ddd46a48c81d4991119510e0">&#9670;&#160;</a></span>relaxed_survivors_only_beam</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool mimir::search::iw::Options::relaxed_survivors_only_beam = false</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a2ba119d72a8dc8ac68074b82805e04ca" name="a2ba119d72a8dc8ac68074b82805e04ca"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a2ba119d72a8dc8ac68074b82805e04ca">&#9670;&#160;</a></span>start_state</h2>
 
@@ -195,6 +596,9 @@ Public Attributes</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Where to start, defaulting to the search context's initial state. </p>
+<p>ATTENTION: the state is looked up in the search context's OWN state repository. A <code>State</code> obtained from a different context &ndash; including one over the same <code>Problem</code> &ndash; is not a valid key there, and the failure surfaces as an <code>IndexError</code> thrown from inside the search rather than at the call site. Re-create the start state through this context's repository (see <code>StateRepositoryImpl::get_or_create_state</code>) before handing it over. </p>
 
 </div>
 </div>

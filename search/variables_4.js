@@ -1,7 +1,9 @@
 var searchData=
 [
-  ['first_5findex_0',['first_index',['../structmimir_1_1formalism_1_1EdgeAssignment.html#a6095e293d4b9009ad651b9b901fb20ec',1,'mimir::formalism::EdgeAssignment']]],
-  ['first_5fobject_1',['first_object',['../structmimir_1_1formalism_1_1EdgeAssignment.html#af94e8120ecf1b1c0123f0855b6a668f5',1,'mimir::formalism::EdgeAssignment']]],
-  ['fluent_5ffunction_5fskeleton_5fassignment_5fsets_2',['fluent_function_skeleton_assignment_sets',['../structmimir_1_1formalism_1_1DynamicAssignmentSets.html#a922df646d48aacad55aa107060375174',1,'mimir::formalism::DynamicAssignmentSets']]],
-  ['fluent_5fpredicate_5fassignment_5fsets_3',['fluent_predicate_assignment_sets',['../structmimir_1_1formalism_1_1DynamicAssignmentSets.html#a680504eceef05384f91227ddfafc60dc',1,'mimir::formalism::DynamicAssignmentSets']]]
+  ['enable_5fdominance_5fpruning_0',['enable_dominance_pruning',['../structmimir_1_1datasets_1_1tuple__graph_1_1Options.html#a6c75bd9a180ccbeb649754d9e9f84318',1,'mimir::datasets::tuple_graph::Options']]],
+  ['enable_5fdump_5fdot_5ffile_1',['enable_dump_dot_file',['../structmimir_1_1search_1_1match__tree_1_1Options.html#a0ab05bce8b6f1f738911a493ea70ec40',1,'mimir::search::match_tree::Options']]],
+  ['equal_5fnumerical_5fcondition_2',['equal_numerical_condition',['../namespacemimir_1_1languages_1_1general__policies_1_1keywords.html#a9ae671f063502b4feebb72f85655f7be',1,'mimir::languages::general_policies::keywords']]],
+  ['equal_5fscore_5ftie_5fseed_3',['equal_score_tie_seed',['../structmimir_1_1search_1_1brfs_1_1Options.html#aa2cf98ce62d702a5fc41abf5ebb65094',1,'mimir::search::brfs::Options::equal_score_tie_seed()'],['../structmimir_1_1search_1_1iw_1_1Options.html#a5b2204bf8cd3f6ebaa13ada1b2a81e82',1,'mimir::search::iw::Options::equal_score_tie_seed()']]],
+  ['event_5fhandler_4',['event_handler',['../structmimir_1_1search_1_1astar__lazy_1_1Options.html#abc396200ad15c3209c582c9f1ecad098',1,'mimir::search::astar_lazy::Options::event_handler()'],['../structmimir_1_1search_1_1astar__eager_1_1Options.html#af926dc34fc28f49fcbeb589bb2d4afb2',1,'mimir::search::astar_eager::Options::event_handler()'],['../structmimir_1_1search_1_1brfs_1_1Options.html#a53330da9314cce0860446690056492ec',1,'mimir::search::brfs::Options::event_handler()'],['../structmimir_1_1search_1_1gbfs__lazy_1_1Options.html#acae438654539af4d61b51c0e5e558ecd',1,'mimir::search::gbfs_lazy::Options::event_handler()'],['../structmimir_1_1search_1_1gbfs__eager_1_1Options.html#aef7f9813b7b8c034ef49ed10f9453a05',1,'mimir::search::gbfs_eager::Options::event_handler()']]],
+  ['exploration_5fstrategy_5',['exploration_strategy',['../structmimir_1_1search_1_1gbfs__lazy_1_1Options.html#a71afb50520e8e273236d7a6b83a324bd',1,'mimir::search::gbfs_lazy::Options']]]
 ];

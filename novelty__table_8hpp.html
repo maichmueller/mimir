@@ -82,7 +82,12 @@ $(function() {
 <div class="textblock"><code>#include &quot;<a class="el" href="tuple__index__generators_8hpp_source.html">mimir/search/algorithms/iw/tuple_index_generators.hpp</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="tuple__index__mapper_8hpp_source.html">mimir/search/algorithms/iw/tuple_index_mapper.hpp</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="search_2declarations_8hpp_source.html">mimir/search/declarations.hpp</a>&quot;</code><br />
+<code>#include &lt;absl/container/flat_hash_map.h&gt;</code><br />
 <code>#include &lt;concepts&gt;</code><br />
+<code>#include &lt;cstdint&gt;</code><br />
+<code>#include &lt;optional&gt;</code><br />
+<code>#include &lt;variant&gt;</code><br />
+<code>#include &lt;vector&gt;</code><br />
 </div>
 <p><a href="novelty__table_8hpp_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
@@ -90,6 +95,9 @@ $(function() {
 Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1iw_1_1DynamicNoveltyTable.html">mimir::search::iw::DynamicNoveltyTable</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight"><code><a class="el" href="classmimir_1_1search_1_1iw_1_1DynamicNoveltyTable.html" title="DynamicNoveltyTable encapsulates a table to test novelty of tuples of atoms of size at most arity....">DynamicNoveltyTable</a></code> encapsulates a table to test novelty of tuples of atoms of size at most arity. It automatically resizes when the atoms do not fit into the table anymore. When the table resizes, tuple indices are remapped to take into account the higher number of atoms.  <a href="classmimir_1_1search_1_1iw_1_1DynamicNoveltyTable.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1iw_1_1MinimumGNoveltyTable.html">mimir::search::iw::MinimumGNoveltyTable</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stores the smallest path cost at which each fluent tuple was generated.  <a href="classmimir_1_1search_1_1iw_1_1MinimumGNoveltyTable.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="namespaces" name="namespaces"></a>

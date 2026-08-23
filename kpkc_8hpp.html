@@ -81,6 +81,7 @@ $(function() {
 <div class="contents">
 <div class="textblock"><code>#include &quot;mimir/algorithms/generator.hpp&quot;</code><br />
 <code>#include &lt;boost/dynamic_bitset.hpp&gt;</code><br />
+<code>#include &lt;functional&gt;</code><br />
 <code>#include &lt;optional&gt;</code><br />
 <code>#include &lt;vector&gt;</code><br />
 </div>
@@ -96,6 +97,8 @@ Functions</h2></td></tr>
 <tr class="memitem:a1f892ceae4bd20b37ce1db55023fac6c"><td class="memItemLeft" align="right" valign="top">mimir::generator&lt; const std::vector&lt; uint32_t &gt; &amp; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemimir.html#a1f892ceae4bd20b37ce1db55023fac6c">mimir::create_k_clique_in_k_partite_graph_generator</a> (const std::vector&lt; boost::dynamic_bitset&lt;&gt; &gt; &amp;adjacency_matrix, const std::vector&lt; std::vector&lt; uint32_t &gt; &gt; &amp;partitions)</td></tr>
 <tr class="memdesc:a1f892ceae4bd20b37ce1db55023fac6c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Thread-safe k-clique in k-partite graph enumerator.  <br /></td></tr>
 <tr class="separator:a1f892ceae4bd20b37ce1db55023fac6c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aade393b8414e0f135c33a71e8844eaae"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemimir.html#aade393b8414e0f135c33a71e8844eaae">mimir::for_each_k_clique_in_k_partite_graph</a> (const std::vector&lt; boost::dynamic_bitset&lt;&gt; &gt; &amp;adjacency_matrix, const std::vector&lt; std::vector&lt; uint32_t &gt; &gt; &amp;partitions, const std::function&lt; void(const std::vector&lt; uint32_t &gt; &amp;)&gt; &amp;callback)</td></tr>
+<tr class="separator:aade393b8414e0f135c33a71e8844eaae"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 </div><!-- contents -->
 <!-- start footer part -->

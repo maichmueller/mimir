@@ -86,14 +86,41 @@ $(function() {
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a1b28be2fb9f38be58c88e94e149d1514"><td class="memItemLeft" align="right" valign="top">virtual&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#a1b28be2fb9f38be58c88e94e149d1514">~IApplicableActionGenerator</a> ()=default</td></tr>
 <tr class="separator:a1b28be2fb9f38be58c88e94e149d1514"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a80357c050408eb140cf2cc3dbd587c38"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#a80357c050408eb140cf2cc3dbd587c38">supports_parallel_beam</a> () const</td></tr>
+<tr class="memdesc:a80357c050408eb140cf2cc3dbd587c38"><td class="mdescLeft">&#160;</td><td class="mdescRight">Return whether this generator can participate in the grounded-only parallel beam path without shared mutable search-layer state.  <br /></td></tr>
+<tr class="separator:a80357c050408eb140cf2cc3dbd587c38"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aaf4ad5912ad21fd790ddc84e16c83d4f"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#aaf4ad5912ad21fd790ddc84e16c83d4f">supports_parallel_applicable_action_generation</a> () const</td></tr>
+<tr class="memdesc:aaf4ad5912ad21fd790ddc84e16c83d4f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Return whether this generator can enumerate applicable actions from worker threads while keeping main-thread grounding and final action order deterministic.  <br /></td></tr>
+<tr class="separator:aaf4ad5912ad21fd790ddc84e16c83d4f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae0219470cce2c14dfec8fd79ad9b5dc8"><td class="memItemLeft" align="right" valign="top">virtual <a class="el" href="namespacemimir_1_1search.html#a7eb55f6eb2cfde7c35f9d386404fa522">ParallelApplicableActionGeneratorWorkerContext</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#ae0219470cce2c14dfec8fd79ad9b5dc8">create_parallel_worker_context</a> () const</td></tr>
+<tr class="memdesc:ae0219470cce2c14dfec8fd79ad9b5dc8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Create a worker-local context reused by a single parallel applicable-action worker thread.  <br /></td></tr>
+<tr class="separator:ae0219470cce2c14dfec8fd79ad9b5dc8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9940e682ebf25a1b0f14afaef494c2e1"><td class="memItemLeft" align="right" valign="top">virtual mimir::generator&lt; <a class="el" href="namespacemimir_1_1formalism.html#aa73d5d8148329ca337aa8114b0ca16dc">formalism::GroundAction</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#a9940e682ebf25a1b0f14afaef494c2e1">create_applicable_action_generator</a> (const State &amp;state)=0</td></tr>
 <tr class="memdesc:a9940e682ebf25a1b0f14afaef494c2e1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generate all applicable actions for a given state.  <br /></td></tr>
 <tr class="separator:a9940e682ebf25a1b0f14afaef494c2e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aad0b7bb2f3104f4912476ebb290e4b36"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#aad0b7bb2f3104f4912476ebb290e4b36">supports_partial_binding_completion</a> () const</td></tr>
+<tr class="memdesc:aad0b7bb2f3104f4912476ebb290e4b36"><td class="mdescLeft">&#160;</td><td class="mdescRight">Return whether this generator can complete a partially bound lifted action into fully applicable ground actions in the given state.  <br /></td></tr>
+<tr class="separator:aad0b7bb2f3104f4912476ebb290e4b36"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afdea7c3d7e6a82162e9cce7a37156104"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#afdea7c3d7e6a82162e9cce7a37156104">create_applicable_actions_from_partial_binding</a> (const State &amp;state, const <a class="el" href="structmimir_1_1search_1_1PartialGroundActionSeed.html">PartialGroundActionSeed</a> &amp;seed, std::vector&lt; <a class="el" href="namespacemimir_1_1formalism.html#aa73d5d8148329ca337aa8114b0ca16dc">formalism::GroundAction</a> &gt; &amp;out_actions)</td></tr>
+<tr class="memdesc:afdea7c3d7e6a82162e9cce7a37156104"><td class="mdescLeft">&#160;</td><td class="mdescRight">Complete a partially bound lifted action into applicable ground actions. Only valid if <a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#aad0b7bb2f3104f4912476ebb290e4b36" title="Return whether this generator can complete a partially bound lifted action into fully applicable grou...">supports_partial_binding_completion()</a> returns true.  <br /></td></tr>
+<tr class="separator:afdea7c3d7e6a82162e9cce7a37156104"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae2c574d5c807f5c64f15b90424224954"><td class="memItemLeft" align="right" valign="top">virtual std::vector&lt; <a class="el" href="namespacemimir_1_1formalism.html#aa73d5d8148329ca337aa8114b0ca16dc">formalism::GroundAction</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#ae2c574d5c807f5c64f15b90424224954">create_applicable_action_list_parallel</a> (const State &amp;state, BS::thread_pool &amp;thread_pool)</td></tr>
+<tr class="memdesc:ae2c574d5c807f5c64f15b90424224954"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deterministic parallel applicable-action enumeration. Only valid if <a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#aaf4ad5912ad21fd790ddc84e16c83d4f" title="Return whether this generator can enumerate applicable actions from worker threads while keeping main...">supports_parallel_applicable_action_generation()</a> returns true.  <br /></td></tr>
+<tr class="separator:ae2c574d5c807f5c64f15b90424224954"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7e8e234e0d23be36a14322280d40c12f"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#a7e8e234e0d23be36a14322280d40c12f">supports_parallel_relaxed_beam_successor_generation</a> () const</td></tr>
+<tr class="memdesc:a7e8e234e0d23be36a14322280d40c12f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Return whether this generator can directly produce worker-scored staged successor candidates for relaxed SURVIVORS_ONLY beam search.  <br /></td></tr>
+<tr class="separator:a7e8e234e0d23be36a14322280d40c12f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af696cb59e68d5e43bc55f443aae89379"><td class="memItemLeft" align="right" valign="top">virtual <a class="el" href="structmimir_1_1search_1_1ParallelRelaxedBeamSuccessorGenerationResult.html">ParallelRelaxedBeamSuccessorGenerationResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#af696cb59e68d5e43bc55f443aae89379">create_relaxed_parallel_beam_successor_candidates</a> (const State &amp;state, ContinuousCost state_metric_value, DiscreteCost successor_g_value, BS::thread_pool &amp;thread_pool, StateRepositoryImpl &amp;state_repository, const <a class="el" href="namespacemimir_1_1search.html#a4a361738fff5acc4d7091c245f79ccf1">PruningStrategy</a> &amp;pruning_strategy, <a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a> beam_novelty_mode, const <a class="el" href="namespacemimir_1_1search.html#a3655847fa666641515b4c3e805a22b48">LayerOrderingStrategy</a> &amp;layer_ordering_strategy, uint32_t beam_width, bool iw1_precheck_add_effect_novelty, bool randomize_equal_score_ties, uint64_t equal_score_tie_seed)</td></tr>
+<tr class="memdesc:af696cb59e68d5e43bc55f443aae89379"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generate relaxed-beam successor candidates in workers. The main thread only sees the reduced candidate set and materializes canonical states/actions afterward.  <br /></td></tr>
+<tr class="separator:af696cb59e68d5e43bc55f443aae89379"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab691c8e5596cea94ac9160657782ac20"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#ab691c8e5596cea94ac9160657782ac20">on_finish_search_layer</a> ()=0</td></tr>
 <tr class="memdesc:ab691c8e5596cea94ac9160657782ac20"><td class="mdescLeft">&#160;</td><td class="mdescRight">Accumulate event handler statistics during search.  <br /></td></tr>
 <tr class="separator:ab691c8e5596cea94ac9160657782ac20"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a684556830308101df7723d547eccd65d"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#a684556830308101df7723d547eccd65d">on_end_search</a> ()=0</td></tr>
 <tr class="separator:a684556830308101df7723d547eccd65d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac5b40f463154937a943ad26746216209"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#ac5b40f463154937a943ad26746216209">release_parallel_memory</a> (bool clear_shared_caches=false)</td></tr>
+<tr class="memdesc:ac5b40f463154937a943ad26746216209"><td class="mdescLeft">&#160;</td><td class="mdescRight">Release optional parallel worker memory retained across searches. If clear_shared_caches is true, also drop shared immutable parallel lookup tables so they will be rebuilt on the next parallel search.  <br /></td></tr>
+<tr class="separator:ac5b40f463154937a943ad26746216209"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a014a61f6babb4fd08aaa5a6e85d74337"><td class="memItemLeft" align="right" valign="top">virtual const <a class="el" href="namespacemimir_1_1formalism.html#a18a62fffd7784a50a9304da9b0a2a7d1">formalism::Problem</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#a014a61f6babb4fd08aaa5a6e85d74337">get_problem</a> () const =0</td></tr>
 <tr class="separator:a014a61f6babb4fd08aaa5a6e85d74337"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
@@ -151,6 +178,213 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Generate all applicable actions for a given state. </p>
+
+</div>
+</div>
+<a id="ae2c574d5c807f5c64f15b90424224954" name="ae2c574d5c807f5c64f15b90424224954"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae2c574d5c807f5c64f15b90424224954">&#9670;&#160;</a></span>create_applicable_action_list_parallel()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual std::vector&lt; <a class="el" href="namespacemimir_1_1formalism.html#aa73d5d8148329ca337aa8114b0ca16dc">formalism::GroundAction</a> &gt; mimir::search::IApplicableActionGenerator::create_applicable_action_list_parallel </td>
+          <td>(</td>
+          <td class="paramtype">const State &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">BS::thread_pool &amp;&#160;</td>
+          <td class="paramname"><em>thread_pool</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Deterministic parallel applicable-action enumeration. Only valid if <a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#aaf4ad5912ad21fd790ddc84e16c83d4f" title="Return whether this generator can enumerate applicable actions from worker threads while keeping main...">supports_parallel_applicable_action_generation()</a> returns true. </p>
+
+</div>
+</div>
+<a id="afdea7c3d7e6a82162e9cce7a37156104" name="afdea7c3d7e6a82162e9cce7a37156104"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#afdea7c3d7e6a82162e9cce7a37156104">&#9670;&#160;</a></span>create_applicable_actions_from_partial_binding()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void mimir::search::IApplicableActionGenerator::create_applicable_actions_from_partial_binding </td>
+          <td>(</td>
+          <td class="paramtype">const State &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structmimir_1_1search_1_1PartialGroundActionSeed.html">PartialGroundActionSeed</a> &amp;&#160;</td>
+          <td class="paramname"><em>seed</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::vector&lt; <a class="el" href="namespacemimir_1_1formalism.html#aa73d5d8148329ca337aa8114b0ca16dc">formalism::GroundAction</a> &gt; &amp;&#160;</td>
+          <td class="paramname"><em>out_actions</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Complete a partially bound lifted action into applicable ground actions. Only valid if <a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#aad0b7bb2f3104f4912476ebb290e4b36" title="Return whether this generator can complete a partially bound lifted action into fully applicable grou...">supports_partial_binding_completion()</a> returns true. </p>
+
+</div>
+</div>
+<a id="ae0219470cce2c14dfec8fd79ad9b5dc8" name="ae0219470cce2c14dfec8fd79ad9b5dc8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae0219470cce2c14dfec8fd79ad9b5dc8">&#9670;&#160;</a></span>create_parallel_worker_context()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual <a class="el" href="namespacemimir_1_1search.html#a7eb55f6eb2cfde7c35f9d386404fa522">ParallelApplicableActionGeneratorWorkerContext</a> mimir::search::IApplicableActionGenerator::create_parallel_worker_context </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Create a worker-local context reused by a single parallel applicable-action worker thread. </p>
+
+</div>
+</div>
+<a id="af696cb59e68d5e43bc55f443aae89379" name="af696cb59e68d5e43bc55f443aae89379"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af696cb59e68d5e43bc55f443aae89379">&#9670;&#160;</a></span>create_relaxed_parallel_beam_successor_candidates()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual <a class="el" href="structmimir_1_1search_1_1ParallelRelaxedBeamSuccessorGenerationResult.html">ParallelRelaxedBeamSuccessorGenerationResult</a> mimir::search::IApplicableActionGenerator::create_relaxed_parallel_beam_successor_candidates </td>
+          <td>(</td>
+          <td class="paramtype">const State &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">ContinuousCost&#160;</td>
+          <td class="paramname"><em>state_metric_value</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">DiscreteCost&#160;</td>
+          <td class="paramname"><em>successor_g_value</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">BS::thread_pool &amp;&#160;</td>
+          <td class="paramname"><em>thread_pool</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">StateRepositoryImpl &amp;&#160;</td>
+          <td class="paramname"><em>state_repository</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="namespacemimir_1_1search.html#a4a361738fff5acc4d7091c245f79ccf1">PruningStrategy</a> &amp;&#160;</td>
+          <td class="paramname"><em>pruning_strategy</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a>&#160;</td>
+          <td class="paramname"><em>beam_novelty_mode</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="namespacemimir_1_1search.html#a3655847fa666641515b4c3e805a22b48">LayerOrderingStrategy</a> &amp;&#160;</td>
+          <td class="paramname"><em>layer_ordering_strategy</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint32_t&#160;</td>
+          <td class="paramname"><em>beam_width</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>iw1_precheck_add_effect_novelty</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>randomize_equal_score_ties</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint64_t&#160;</td>
+          <td class="paramname"><em>equal_score_tie_seed</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Generate relaxed-beam successor candidates in workers. The main thread only sees the reduced candidate set and materializes canonical states/actions afterward. </p>
 
 </div>
 </div>
@@ -229,6 +463,142 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Accumulate event handler statistics during search. </p>
+
+</div>
+</div>
+<a id="ac5b40f463154937a943ad26746216209" name="ac5b40f463154937a943ad26746216209"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac5b40f463154937a943ad26746216209">&#9670;&#160;</a></span>release_parallel_memory()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void mimir::search::IApplicableActionGenerator::release_parallel_memory </td>
+          <td>(</td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>clear_shared_caches</em> = <code>false</code></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Release optional parallel worker memory retained across searches. If clear_shared_caches is true, also drop shared immutable parallel lookup tables so they will be rebuilt on the next parallel search. </p>
+
+</div>
+</div>
+<a id="aaf4ad5912ad21fd790ddc84e16c83d4f" name="aaf4ad5912ad21fd790ddc84e16c83d4f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aaf4ad5912ad21fd790ddc84e16c83d4f">&#9670;&#160;</a></span>supports_parallel_applicable_action_generation()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IApplicableActionGenerator::supports_parallel_applicable_action_generation </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Return whether this generator can enumerate applicable actions from worker threads while keeping main-thread grounding and final action order deterministic. </p>
+
+</div>
+</div>
+<a id="a80357c050408eb140cf2cc3dbd587c38" name="a80357c050408eb140cf2cc3dbd587c38"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a80357c050408eb140cf2cc3dbd587c38">&#9670;&#160;</a></span>supports_parallel_beam()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IApplicableActionGenerator::supports_parallel_beam </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Return whether this generator can participate in the grounded-only parallel beam path without shared mutable search-layer state. </p>
+
+</div>
+</div>
+<a id="a7e8e234e0d23be36a14322280d40c12f" name="a7e8e234e0d23be36a14322280d40c12f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7e8e234e0d23be36a14322280d40c12f">&#9670;&#160;</a></span>supports_parallel_relaxed_beam_successor_generation()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IApplicableActionGenerator::supports_parallel_relaxed_beam_successor_generation </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Return whether this generator can directly produce worker-scored staged successor candidates for relaxed SURVIVORS_ONLY beam search. </p>
+
+</div>
+</div>
+<a id="aad0b7bb2f3104f4912476ebb290e4b36" name="aad0b7bb2f3104f4912476ebb290e4b36"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aad0b7bb2f3104f4912476ebb290e4b36">&#9670;&#160;</a></span>supports_partial_binding_completion()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IApplicableActionGenerator::supports_partial_binding_completion </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Return whether this generator can complete a partially bound lifted action into fully applicable ground actions in the given state. </p>
 
 </div>
 </div>

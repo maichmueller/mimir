@@ -1,17 +1,7 @@
 var searchData=
 [
-  ['rank_0',['rank',['../structmimir_1_1formalism_1_1EmptyAssignment.html#a02512a63df9f12f5444a24de64d2ba07',1,'mimir::formalism::EmptyAssignment']]],
-  ['remove_5fif_5funsolvable_1',['remove_if_unsolvable',['../structmimir_1_1datasets_1_1state__space_1_1Options.html#a1836807ad9918e541ea129c08dc1a873',1,'mimir::datasets::state_space::Options']]],
-  ['role_5fatomic_5fgoal_2',['role_atomic_goal',['../namespacemimir_1_1languages_1_1dl_1_1keywords.html#a3a6d848c8f69931139a189368a8c356e',1,'mimir::languages::dl::keywords']]],
-  ['role_5fatomic_5fstate_3',['role_atomic_state',['../namespacemimir_1_1languages_1_1dl_1_1keywords.html#a6036abc260bc731081ee9ba8e1769996',1,'mimir::languages::dl::keywords']]],
-  ['role_5fcomplement_4',['role_complement',['../namespacemimir_1_1languages_1_1dl_1_1keywords.html#aaee3cbc743bcec3a3f3550b03f8fc8c3',1,'mimir::languages::dl::keywords']]],
-  ['role_5fcomposition_5',['role_composition',['../namespacemimir_1_1languages_1_1dl_1_1keywords.html#a769f6b8972f912e7b2bf5d008795d8a0',1,'mimir::languages::dl::keywords']]],
-  ['role_5fidentity_6',['role_identity',['../namespacemimir_1_1languages_1_1dl_1_1keywords.html#ad5cf84976503f90d24e9cb6475ffaf06',1,'mimir::languages::dl::keywords']]],
-  ['role_5fintersection_7',['role_intersection',['../namespacemimir_1_1languages_1_1dl_1_1keywords.html#ad0459bf9d6c3773fcc050c9260ff467e',1,'mimir::languages::dl::keywords']]],
-  ['role_5finverse_8',['role_inverse',['../namespacemimir_1_1languages_1_1dl_1_1keywords.html#a67330c77968fd8cefaba10f4eec1b8c4',1,'mimir::languages::dl::keywords']]],
-  ['role_5freflexive_5ftransitive_5fclosure_9',['role_reflexive_transitive_closure',['../namespacemimir_1_1languages_1_1dl_1_1keywords.html#acb5d1c3f7a1ecb9fb83548d515635653',1,'mimir::languages::dl::keywords']]],
-  ['role_5frestriction_10',['role_restriction',['../namespacemimir_1_1languages_1_1dl_1_1keywords.html#a2b9a691ec4954a6b996e452ff5dd6e69',1,'mimir::languages::dl::keywords']]],
-  ['role_5ftransitive_5fclosure_11',['role_transitive_closure',['../namespacemimir_1_1languages_1_1dl_1_1keywords.html#ac980c4ebc992a6cd6f7e01f6359cb45f',1,'mimir::languages::dl::keywords']]],
-  ['role_5funion_12',['role_union',['../namespacemimir_1_1languages_1_1dl_1_1keywords.html#a8535744996811ea042f306f71c26473c',1,'mimir::languages::dl::keywords']]],
-  ['role_5funiversal_13',['role_universal',['../namespacemimir_1_1languages_1_1dl_1_1keywords.html#ae5f2da1f53198645ce5a5ac9cba2314b',1,'mimir::languages::dl::keywords']]]
+  ['object_0',['object',['../structmimir_1_1formalism_1_1VertexAssignment.html#a602bd09114b70150e8c289f70aa8f7e2',1,'mimir::formalism::VertexAssignment']]],
+  ['openlist_5fweights_1',['openlist_weights',['../structmimir_1_1search_1_1astar__lazy_1_1Options.html#a317edf6995c17ff22cb8fd743526456e',1,'mimir::search::astar_lazy::Options::openlist_weights()'],['../structmimir_1_1search_1_1gbfs__lazy_1_1Options.html#a546674f3250d8d2d19ef8a2334aa2cd4',1,'mimir::search::gbfs_lazy::Options::openlist_weights()']]],
+  ['optimization_5fdirection_2',['optimization_direction',['../structmimir_1_1search_1_1match__tree_1_1Options.html#ace70aedf0d97f4e3a63c61dd61d8f5d8',1,'mimir::search::match_tree::Options']]],
+  ['output_5fdot_5ffile_3',['output_dot_file',['../structmimir_1_1search_1_1match__tree_1_1Options.html#a31509aa1b133ec8de7cb842fb77f849e',1,'mimir::search::match_tree::Options']]]
 ];

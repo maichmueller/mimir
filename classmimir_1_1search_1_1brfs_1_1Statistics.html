@@ -80,23 +80,36 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 
+<p>Counters collected by <code><a class="el" href="classmimir_1_1search_1_1brfs_1_1EventHandlerBase.html">EventHandlerBase</a></code> over one BrFS run.  
+ <a href="classmimir_1_1search_1_1brfs_1_1Statistics.html#details">More...</a></p>
+
 <p><code>#include &lt;<a class="el" href="algorithms_2brfs_2event__handlers_2statistics_8hpp_source.html">statistics.hpp</a>&gt;</code></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:afac58e73c60057650241d650c394925d"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#afac58e73c60057650241d650c394925d">Statistics</a> ()</td></tr>
 <tr class="separator:afac58e73c60057650241d650c394925d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4909b182875ea8a823aa91fcffb6a843"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a4909b182875ea8a823aa91fcffb6a843">on_finish_g_layer</a> ()</td></tr>
-<tr class="memdesc:a4909b182875ea8a823aa91fcffb6a843"><td class="mdescLeft">&#160;</td><td class="mdescRight">Store information for the layer.  <br /></td></tr>
-<tr class="separator:a4909b182875ea8a823aa91fcffb6a843"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a984babcfdbe7670808757d95e6388fee"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a984babcfdbe7670808757d95e6388fee">on_finish_g_layer</a> (int64_t g_value)</td></tr>
+<tr class="memdesc:a984babcfdbe7670808757d95e6388fee"><td class="mdescLeft">&#160;</td><td class="mdescRight">Store the running totals for the layer that just finished, together with the g-value that layer reported. The totals are cumulative, so a single layer's own counts are the difference between consecutive entries.  <br /></td></tr>
+<tr class="separator:a984babcfdbe7670808757d95e6388fee"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0fbbe6995c89f629db226644992289b3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a0fbbe6995c89f629db226644992289b3">increment_num_generated</a> ()</td></tr>
 <tr class="separator:a0fbbe6995c89f629db226644992289b3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab1b1bc7c2acd5bcf8d8e8ff926d32dd1"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#ab1b1bc7c2acd5bcf8d8e8ff926d32dd1">increment_num_generated_in_search_tree</a> ()</td></tr>
+<tr class="separator:ab1b1bc7c2acd5bcf8d8e8ff926d32dd1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af307823c79e7b4f8a10eb7e0b8a5dce8"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#af307823c79e7b4f8a10eb7e0b8a5dce8">increment_num_generated_not_in_search_tree</a> ()</td></tr>
+<tr class="separator:af307823c79e7b4f8a10eb7e0b8a5dce8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2c84739b7cfcae5e79a92f12700df4f4"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a2c84739b7cfcae5e79a92f12700df4f4">increment_num_expanded</a> ()</td></tr>
 <tr class="separator:a2c84739b7cfcae5e79a92f12700df4f4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae9ab7824bada1dd67175b8cc94188810"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#ae9ab7824bada1dd67175b8cc94188810">increment_num_expanded_goal_states</a> ()</td></tr>
+<tr class="separator:ae9ab7824bada1dd67175b8cc94188810"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a05e3bdb12e8050e4be0b121b6674e949"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a05e3bdb12e8050e4be0b121b6674e949">increment_num_deadends</a> ()</td></tr>
 <tr class="separator:a05e3bdb12e8050e4be0b121b6674e949"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abea71becc62881187b1c19f229089681"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#abea71becc62881187b1c19f229089681">increment_num_pruned</a> ()</td></tr>
 <tr class="separator:abea71becc62881187b1c19f229089681"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8a07c6e3b8a9979db82430b99e2619e8"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a8a07c6e3b8a9979db82430b99e2619e8">record_parallel_beam_chunk</a> (size_t chunk_size, std::chrono::nanoseconds worker_compute_time, std::chrono::nanoseconds main_thread_merge_time, std::chrono::nanoseconds main_thread_intern_time, std::chrono::nanoseconds fluent_slot_time, std::chrono::nanoseconds numeric_slot_time, std::chrono::nanoseconds derived_slot_time, std::chrono::nanoseconds state_lookup_time, std::chrono::nanoseconds reached_atom_update_time)</td></tr>
+<tr class="separator:a8a07c6e3b8a9979db82430b99e2619e8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6930b3825dcd5d63f6df8dbb6d9fd409"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a6930b3825dcd5d63f6df8dbb6d9fd409">record_parallel_beam_pipeline</a> (size_t ready_queue_high_water, size_t in_flight_chunks_high_water, std::chrono::nanoseconds consumer_stall_time, std::chrono::nanoseconds producer_stall_time)</td></tr>
+<tr class="separator:a6930b3825dcd5d63f6df8dbb6d9fd409"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6747270661c47dfd4e6bf8c16fcf2421"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a6747270661c47dfd4e6bf8c16fcf2421">set_search_start_time_point</a> (std::chrono::time_point&lt; std::chrono::high_resolution_clock &gt; time_point)</td></tr>
 <tr class="separator:a6747270661c47dfd4e6bf8c16fcf2421"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6ec2e6f5aa8167a55f7b5cbd3d926bbe"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a6ec2e6f5aa8167a55f7b5cbd3d926bbe">set_search_end_time_point</a> (std::chrono::time_point&lt; std::chrono::high_resolution_clock &gt; time_point)</td></tr>
@@ -113,14 +126,54 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a3945ea0610d337a3a10c1c8537d37740"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a27a5e47adc8ca70d6397b4d35d03f2a9"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a27a5e47adc8ca70d6397b4d35d03f2a9">set_num_axioms</a> (uint64_t num_axioms)</td></tr>
 <tr class="separator:a27a5e47adc8ca70d6397b4d35d03f2a9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a31aabeb24c79f722ea388bdeb8535374"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a31aabeb24c79f722ea388bdeb8535374">set_iw1_incremental_first_applicability_statistics</a> (const <a class="el" href="classmimir_1_1search_1_1brfs_1_1IW1IncrementalFirstApplicabilityStatistics.html">IW1IncrementalFirstApplicabilityStatistics</a> &amp;statistics)</td></tr>
+<tr class="separator:a31aabeb24c79f722ea388bdeb8535374"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a82b0877cb847bb75aca7f9425bbdfe03"><td class="memItemLeft" align="right" valign="top">uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a82b0877cb847bb75aca7f9425bbdfe03">get_num_generated</a> () const</td></tr>
 <tr class="separator:a82b0877cb847bb75aca7f9425bbdfe03"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abd0a0140dfbeb51277666e6f38019539"><td class="memItemLeft" align="right" valign="top">uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#abd0a0140dfbeb51277666e6f38019539">get_num_generated_in_search_tree</a> () const</td></tr>
+<tr class="separator:abd0a0140dfbeb51277666e6f38019539"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a77c29b5364733b214ec18ca399b94bd8"><td class="memItemLeft" align="right" valign="top">uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a77c29b5364733b214ec18ca399b94bd8">get_num_generated_not_in_search_tree</a> () const</td></tr>
+<tr class="separator:a77c29b5364733b214ec18ca399b94bd8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae62cc8ffb6d6ba3fe065bd090ae30cb1"><td class="memItemLeft" align="right" valign="top">uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#ae62cc8ffb6d6ba3fe065bd090ae30cb1">get_num_expanded</a> () const</td></tr>
 <tr class="separator:ae62cc8ffb6d6ba3fe065bd090ae30cb1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a50af1e4f9b7eb72990663b85bf3b5829"><td class="memItemLeft" align="right" valign="top">uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a50af1e4f9b7eb72990663b85bf3b5829">get_num_expanded_goal_states</a> () const</td></tr>
+<tr class="separator:a50af1e4f9b7eb72990663b85bf3b5829"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:add622bc3563801a4c58f0ec3fc2b97af"><td class="memItemLeft" align="right" valign="top">uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#add622bc3563801a4c58f0ec3fc2b97af">get_num_deadends</a> () const</td></tr>
 <tr class="separator:add622bc3563801a4c58f0ec3fc2b97af"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a48ed65c56a50c9a91a4896833dea922d"><td class="memItemLeft" align="right" valign="top">uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a48ed65c56a50c9a91a4896833dea922d">get_num_pruned</a> () const</td></tr>
 <tr class="separator:a48ed65c56a50c9a91a4896833dea922d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a960f8a2f63f349b26f0a164c5848ef8d"><td class="memItemLeft" align="right" valign="top">uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a960f8a2f63f349b26f0a164c5848ef8d">get_num_parallel_beam_chunk_flushes</a> () const</td></tr>
+<tr class="separator:a960f8a2f63f349b26f0a164c5848ef8d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae3befe36a802c0056806eb71cbe4d47b"><td class="memItemLeft" align="right" valign="top">uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#ae3befe36a802c0056806eb71cbe4d47b">get_num_parallel_beam_chunk_tasks_total</a> () const</td></tr>
+<tr class="separator:ae3befe36a802c0056806eb71cbe4d47b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa88abc3b93ca39cf7281f1ed6d81668c"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#aa88abc3b93ca39cf7281f1ed6d81668c">get_average_parallel_beam_chunk_size</a> () const</td></tr>
+<tr class="separator:aa88abc3b93ca39cf7281f1ed6d81668c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac2d7f3f14350ef3aa8d1e121a0c2f2a5"><td class="memItemLeft" align="right" valign="top">uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#ac2d7f3f14350ef3aa8d1e121a0c2f2a5">get_max_parallel_beam_chunk_size</a> () const</td></tr>
+<tr class="separator:ac2d7f3f14350ef3aa8d1e121a0c2f2a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae958b4442b0c5099b2757ab17c7e34f1"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#ae958b4442b0c5099b2757ab17c7e34f1">get_parallel_beam_worker_compute_time_ms</a> () const</td></tr>
+<tr class="separator:ae958b4442b0c5099b2757ab17c7e34f1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a00d19458a6f04e448b1a501068eaa673"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a00d19458a6f04e448b1a501068eaa673">get_parallel_beam_main_thread_merge_time_ms</a> () const</td></tr>
+<tr class="separator:a00d19458a6f04e448b1a501068eaa673"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a26e5d3e195ced7d54c6f2bc9250fd58a"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a26e5d3e195ced7d54c6f2bc9250fd58a">get_parallel_beam_main_thread_intern_time_ms</a> () const</td></tr>
+<tr class="separator:a26e5d3e195ced7d54c6f2bc9250fd58a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad787eca0273d7c3165520d39dd8460eb"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#ad787eca0273d7c3165520d39dd8460eb">get_parallel_beam_fluent_slot_time_ms</a> () const</td></tr>
+<tr class="separator:ad787eca0273d7c3165520d39dd8460eb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a928db6e1a99d4d9c3998a5f18f96ebc4"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a928db6e1a99d4d9c3998a5f18f96ebc4">get_parallel_beam_numeric_slot_time_ms</a> () const</td></tr>
+<tr class="separator:a928db6e1a99d4d9c3998a5f18f96ebc4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a985e79444f4ef09c88ec8d8d41e6b367"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a985e79444f4ef09c88ec8d8d41e6b367">get_parallel_beam_derived_slot_time_ms</a> () const</td></tr>
+<tr class="separator:a985e79444f4ef09c88ec8d8d41e6b367"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7c38beb51c5faf75baeb3202a15df9b6"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a7c38beb51c5faf75baeb3202a15df9b6">get_parallel_beam_state_lookup_time_ms</a> () const</td></tr>
+<tr class="separator:a7c38beb51c5faf75baeb3202a15df9b6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af00ded6c61b1abdf7247929edf35c2e6"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#af00ded6c61b1abdf7247929edf35c2e6">get_parallel_beam_reached_atom_update_time_ms</a> () const</td></tr>
+<tr class="separator:af00ded6c61b1abdf7247929edf35c2e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a066a8f03ee6ebbc80a71bbc8e47fe486"><td class="memItemLeft" align="right" valign="top">uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a066a8f03ee6ebbc80a71bbc8e47fe486">get_parallel_beam_ready_queue_high_water</a> () const</td></tr>
+<tr class="separator:a066a8f03ee6ebbc80a71bbc8e47fe486"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af8dc437f07d00a3a178fe33f7065af11"><td class="memItemLeft" align="right" valign="top">uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#af8dc437f07d00a3a178fe33f7065af11">get_parallel_beam_in_flight_chunks_high_water</a> () const</td></tr>
+<tr class="separator:af8dc437f07d00a3a178fe33f7065af11"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7e04504c99d267e3887081f0342e4807"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a7e04504c99d267e3887081f0342e4807">get_parallel_beam_consumer_stall_time_ms</a> () const</td></tr>
+<tr class="separator:a7e04504c99d267e3887081f0342e4807"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0f7de5b6797ebe66b9966e57f66d2a2c"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a0f7de5b6797ebe66b9966e57f66d2a2c">get_parallel_beam_producer_stall_time_ms</a> () const</td></tr>
+<tr class="separator:a0f7de5b6797ebe66b9966e57f66d2a2c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad73e7f10fcbae1d37c59e3b2d75b0d89"><td class="memItemLeft" align="right" valign="top">std::chrono::milliseconds&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#ad73e7f10fcbae1d37c59e3b2d75b0d89">get_search_time_ms</a> () const</td></tr>
 <tr class="separator:ad73e7f10fcbae1d37c59e3b2d75b0d89"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a333b8322b3fa291a3f1b63c9564182f7"><td class="memItemLeft" align="right" valign="top">std::chrono::milliseconds&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a333b8322b3fa291a3f1b63c9564182f7">get_current_search_time_ms</a> () const</td></tr>
@@ -137,16 +190,31 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a623f9a4be459c4d686ecca330f93f1f0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aca826b8d9390b4eefc5d35733008e912"><td class="memItemLeft" align="right" valign="top">uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#aca826b8d9390b4eefc5d35733008e912">get_num_axioms</a> () const</td></tr>
 <tr class="separator:aca826b8d9390b4eefc5d35733008e912"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac080231d8177d9b2b5a7e1020314b800"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="classmimir_1_1search_1_1brfs_1_1IW1IncrementalFirstApplicabilityStatistics.html">IW1IncrementalFirstApplicabilityStatistics</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#ac080231d8177d9b2b5a7e1020314b800">get_iw1_incremental_first_applicability_statistics</a> () const</td></tr>
+<tr class="separator:ac080231d8177d9b2b5a7e1020314b800"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac6e86cce37696d029f4eee5b5a528c75"><td class="memItemLeft" align="right" valign="top">const std::vector&lt; uint64_t &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#ac6e86cce37696d029f4eee5b5a528c75">get_num_generated_until_g_value</a> () const</td></tr>
 <tr class="separator:ac6e86cce37696d029f4eee5b5a528c75"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a713ffdbbd8b0dd1120c0e88598e18aa7"><td class="memItemLeft" align="right" valign="top">const std::vector&lt; uint64_t &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a713ffdbbd8b0dd1120c0e88598e18aa7">get_num_generated_in_search_tree_until_g_value</a> () const</td></tr>
+<tr class="separator:a713ffdbbd8b0dd1120c0e88598e18aa7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab7c45595469e3c438979dce91318a251"><td class="memItemLeft" align="right" valign="top">const std::vector&lt; uint64_t &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#ab7c45595469e3c438979dce91318a251">get_num_generated_not_in_search_tree_until_g_value</a> () const</td></tr>
+<tr class="separator:ab7c45595469e3c438979dce91318a251"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a81c93e3967270f187a74cc05d9180b93"><td class="memItemLeft" align="right" valign="top">const std::vector&lt; uint64_t &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a81c93e3967270f187a74cc05d9180b93">get_num_expanded_until_g_value</a> () const</td></tr>
 <tr class="separator:a81c93e3967270f187a74cc05d9180b93"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a717688ac03e8e818c5c7ce24b2338d69"><td class="memItemLeft" align="right" valign="top">const std::vector&lt; uint64_t &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a717688ac03e8e818c5c7ce24b2338d69">get_num_expanded_goal_states_until_g_value</a> () const</td></tr>
+<tr class="separator:a717688ac03e8e818c5c7ce24b2338d69"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ada7c9dfd8f6e88ab7cf0602a265a4a69"><td class="memItemLeft" align="right" valign="top">const std::vector&lt; uint64_t &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#ada7c9dfd8f6e88ab7cf0602a265a4a69">get_num_deadends_until_g_value</a> () const</td></tr>
 <tr class="separator:ada7c9dfd8f6e88ab7cf0602a265a4a69"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6be4e5e4c2c5b515a77b675b6dd3ae81"><td class="memItemLeft" align="right" valign="top">const std::vector&lt; uint64_t &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#a6be4e5e4c2c5b515a77b675b6dd3ae81">get_num_pruned_until_g_value</a> () const</td></tr>
 <tr class="separator:a6be4e5e4c2c5b515a77b675b6dd3ae81"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aaa7233dada6bb3a0e65c938328a0d57b"><td class="memItemLeft" align="right" valign="top">const std::vector&lt; int64_t &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1brfs_1_1Statistics.html#aaa7233dada6bb3a0e65c938328a0d57b">get_finished_g_values</a> () const</td></tr>
+<tr class="memdesc:aaa7233dada6bb3a0e65c938328a0d57b"><td class="mdescLeft">&#160;</td><td class="mdescRight">The g-value reported by each finished layer, parallel to the <code>_until_g_value</code> vectors.  <br /></td></tr>
+<tr class="separator:aaa7233dada6bb3a0e65c938328a0d57b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Counters collected by <code><a class="el" href="classmimir_1_1search_1_1brfs_1_1EventHandlerBase.html">EventHandlerBase</a></code> over one BrFS run. </p>
+<p>The three transition counters partition one another by construction: <code>num_generated</code> counts every transition reported through <code>on_generate_state</code>, <code>num_generated_in_search_tree</code> those admitted through <code>on_generate_state_in_search_tree</code>, and <code>num_generated_not_in_search_tree</code> those rejected through <code>on_generate_state_not_in_search_tree</code>. For a search whose classification sequence ran to completion, <code>num_generated == num_generated_in_search_tree + num_generated_not_in_search_tree</code>. A search that stopped mid-layer (out of time, out of states, canceled) can leave transitions generated but not yet classified, so the identity holds only for terminal statuses that finished their layer.</p>
+<p><code>num_pruned</code> is a separate, currently unused counter and is <em>not</em> a synonym for <code>num_generated_not_in_search_tree</code>. </p>
+</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="afac58e73c60057650241d650c394925d" name="afac58e73c60057650241d650c394925d"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#afac58e73c60057650241d650c394925d">&#9670;&#160;</a></span>Statistics()</h2>
 
@@ -173,6 +241,31 @@ Public Member Functions</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
+<a id="aa88abc3b93ca39cf7281f1ed6d81668c" name="aa88abc3b93ca39cf7281f1ed6d81668c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa88abc3b93ca39cf7281f1ed6d81668c">&#9670;&#160;</a></span>get_average_parallel_beam_chunk_size()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double mimir::search::brfs::Statistics::get_average_parallel_beam_chunk_size </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a333b8322b3fa291a3f1b63c9564182f7" name="a333b8322b3fa291a3f1b63c9564182f7"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a333b8322b3fa291a3f1b63c9564182f7">&#9670;&#160;</a></span>get_current_search_time_ms()</h2>
 
@@ -184,6 +277,83 @@ Public Member Functions</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">std::chrono::milliseconds mimir::search::brfs::Statistics::get_current_search_time_ms </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aaa7233dada6bb3a0e65c938328a0d57b" name="aaa7233dada6bb3a0e65c938328a0d57b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aaa7233dada6bb3a0e65c938328a0d57b">&#9670;&#160;</a></span>get_finished_g_values()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">const std::vector&lt; int64_t &gt; &amp; mimir::search::brfs::Statistics::get_finished_g_values </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>The g-value reported by each finished layer, parallel to the <code>_until_g_value</code> vectors. </p>
+
+</div>
+</div>
+<a id="ac080231d8177d9b2b5a7e1020314b800" name="ac080231d8177d9b2b5a7e1020314b800"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac080231d8177d9b2b5a7e1020314b800">&#9670;&#160;</a></span>get_iw1_incremental_first_applicability_statistics()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">const <a class="el" href="classmimir_1_1search_1_1brfs_1_1IW1IncrementalFirstApplicabilityStatistics.html">IW1IncrementalFirstApplicabilityStatistics</a> &amp; mimir::search::brfs::Statistics::get_iw1_incremental_first_applicability_statistics </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ac2d7f3f14350ef3aa8d1e121a0c2f2a5" name="ac2d7f3f14350ef3aa8d1e121a0c2f2a5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac2d7f3f14350ef3aa8d1e121a0c2f2a5">&#9670;&#160;</a></span>get_max_parallel_beam_chunk_size()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint64_t mimir::search::brfs::Statistics::get_max_parallel_beam_chunk_size </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td> const</td>
@@ -323,6 +493,56 @@ Public Member Functions</h2></td></tr>
 
 </div>
 </div>
+<a id="a50af1e4f9b7eb72990663b85bf3b5829" name="a50af1e4f9b7eb72990663b85bf3b5829"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a50af1e4f9b7eb72990663b85bf3b5829">&#9670;&#160;</a></span>get_num_expanded_goal_states()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint64_t mimir::search::brfs::Statistics::get_num_expanded_goal_states </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a717688ac03e8e818c5c7ce24b2338d69" name="a717688ac03e8e818c5c7ce24b2338d69"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a717688ac03e8e818c5c7ce24b2338d69">&#9670;&#160;</a></span>get_num_expanded_goal_states_until_g_value()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">const std::vector&lt; uint64_t &gt; &amp; mimir::search::brfs::Statistics::get_num_expanded_goal_states_until_g_value </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a81c93e3967270f187a74cc05d9180b93" name="a81c93e3967270f187a74cc05d9180b93"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a81c93e3967270f187a74cc05d9180b93">&#9670;&#160;</a></span>get_num_expanded_until_g_value()</h2>
 
@@ -374,6 +594,106 @@ Public Member Functions</h2></td></tr>
 
 </div>
 </div>
+<a id="abd0a0140dfbeb51277666e6f38019539" name="abd0a0140dfbeb51277666e6f38019539"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abd0a0140dfbeb51277666e6f38019539">&#9670;&#160;</a></span>get_num_generated_in_search_tree()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint64_t mimir::search::brfs::Statistics::get_num_generated_in_search_tree </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a713ffdbbd8b0dd1120c0e88598e18aa7" name="a713ffdbbd8b0dd1120c0e88598e18aa7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a713ffdbbd8b0dd1120c0e88598e18aa7">&#9670;&#160;</a></span>get_num_generated_in_search_tree_until_g_value()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">const std::vector&lt; uint64_t &gt; &amp; mimir::search::brfs::Statistics::get_num_generated_in_search_tree_until_g_value </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a77c29b5364733b214ec18ca399b94bd8" name="a77c29b5364733b214ec18ca399b94bd8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a77c29b5364733b214ec18ca399b94bd8">&#9670;&#160;</a></span>get_num_generated_not_in_search_tree()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint64_t mimir::search::brfs::Statistics::get_num_generated_not_in_search_tree </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ab7c45595469e3c438979dce91318a251" name="ab7c45595469e3c438979dce91318a251"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab7c45595469e3c438979dce91318a251">&#9670;&#160;</a></span>get_num_generated_not_in_search_tree_until_g_value()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">const std::vector&lt; uint64_t &gt; &amp; mimir::search::brfs::Statistics::get_num_generated_not_in_search_tree_until_g_value </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="ac6e86cce37696d029f4eee5b5a528c75" name="ac6e86cce37696d029f4eee5b5a528c75"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ac6e86cce37696d029f4eee5b5a528c75">&#9670;&#160;</a></span>get_num_generated_until_g_value()</h2>
 
@@ -410,6 +730,56 @@ Public Member Functions</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">uint64_t mimir::search::brfs::Statistics::get_num_nodes </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a960f8a2f63f349b26f0a164c5848ef8d" name="a960f8a2f63f349b26f0a164c5848ef8d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a960f8a2f63f349b26f0a164c5848ef8d">&#9670;&#160;</a></span>get_num_parallel_beam_chunk_flushes()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint64_t mimir::search::brfs::Statistics::get_num_parallel_beam_chunk_flushes </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ae3befe36a802c0056806eb71cbe4d47b" name="ae3befe36a802c0056806eb71cbe4d47b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae3befe36a802c0056806eb71cbe4d47b">&#9670;&#160;</a></span>get_num_parallel_beam_chunk_tasks_total()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint64_t mimir::search::brfs::Statistics::get_num_parallel_beam_chunk_tasks_total </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td> const</td>
@@ -549,6 +919,306 @@ Public Member Functions</h2></td></tr>
 
 </div>
 </div>
+<a id="a7e04504c99d267e3887081f0342e4807" name="a7e04504c99d267e3887081f0342e4807"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7e04504c99d267e3887081f0342e4807">&#9670;&#160;</a></span>get_parallel_beam_consumer_stall_time_ms()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double mimir::search::brfs::Statistics::get_parallel_beam_consumer_stall_time_ms </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a985e79444f4ef09c88ec8d8d41e6b367" name="a985e79444f4ef09c88ec8d8d41e6b367"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a985e79444f4ef09c88ec8d8d41e6b367">&#9670;&#160;</a></span>get_parallel_beam_derived_slot_time_ms()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double mimir::search::brfs::Statistics::get_parallel_beam_derived_slot_time_ms </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ad787eca0273d7c3165520d39dd8460eb" name="ad787eca0273d7c3165520d39dd8460eb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad787eca0273d7c3165520d39dd8460eb">&#9670;&#160;</a></span>get_parallel_beam_fluent_slot_time_ms()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double mimir::search::brfs::Statistics::get_parallel_beam_fluent_slot_time_ms </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="af8dc437f07d00a3a178fe33f7065af11" name="af8dc437f07d00a3a178fe33f7065af11"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af8dc437f07d00a3a178fe33f7065af11">&#9670;&#160;</a></span>get_parallel_beam_in_flight_chunks_high_water()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint64_t mimir::search::brfs::Statistics::get_parallel_beam_in_flight_chunks_high_water </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a26e5d3e195ced7d54c6f2bc9250fd58a" name="a26e5d3e195ced7d54c6f2bc9250fd58a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a26e5d3e195ced7d54c6f2bc9250fd58a">&#9670;&#160;</a></span>get_parallel_beam_main_thread_intern_time_ms()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double mimir::search::brfs::Statistics::get_parallel_beam_main_thread_intern_time_ms </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a00d19458a6f04e448b1a501068eaa673" name="a00d19458a6f04e448b1a501068eaa673"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a00d19458a6f04e448b1a501068eaa673">&#9670;&#160;</a></span>get_parallel_beam_main_thread_merge_time_ms()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double mimir::search::brfs::Statistics::get_parallel_beam_main_thread_merge_time_ms </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a928db6e1a99d4d9c3998a5f18f96ebc4" name="a928db6e1a99d4d9c3998a5f18f96ebc4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a928db6e1a99d4d9c3998a5f18f96ebc4">&#9670;&#160;</a></span>get_parallel_beam_numeric_slot_time_ms()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double mimir::search::brfs::Statistics::get_parallel_beam_numeric_slot_time_ms </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a0f7de5b6797ebe66b9966e57f66d2a2c" name="a0f7de5b6797ebe66b9966e57f66d2a2c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0f7de5b6797ebe66b9966e57f66d2a2c">&#9670;&#160;</a></span>get_parallel_beam_producer_stall_time_ms()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double mimir::search::brfs::Statistics::get_parallel_beam_producer_stall_time_ms </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="af00ded6c61b1abdf7247929edf35c2e6" name="af00ded6c61b1abdf7247929edf35c2e6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af00ded6c61b1abdf7247929edf35c2e6">&#9670;&#160;</a></span>get_parallel_beam_reached_atom_update_time_ms()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double mimir::search::brfs::Statistics::get_parallel_beam_reached_atom_update_time_ms </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a066a8f03ee6ebbc80a71bbc8e47fe486" name="a066a8f03ee6ebbc80a71bbc8e47fe486"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a066a8f03ee6ebbc80a71bbc8e47fe486">&#9670;&#160;</a></span>get_parallel_beam_ready_queue_high_water()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint64_t mimir::search::brfs::Statistics::get_parallel_beam_ready_queue_high_water </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a7c38beb51c5faf75baeb3202a15df9b6" name="a7c38beb51c5faf75baeb3202a15df9b6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7c38beb51c5faf75baeb3202a15df9b6">&#9670;&#160;</a></span>get_parallel_beam_state_lookup_time_ms()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double mimir::search::brfs::Statistics::get_parallel_beam_state_lookup_time_ms </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ae958b4442b0c5099b2757ab17c7e34f1" name="ae958b4442b0c5099b2757ab17c7e34f1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae958b4442b0c5099b2757ab17c7e34f1">&#9670;&#160;</a></span>get_parallel_beam_worker_compute_time_ms()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double mimir::search::brfs::Statistics::get_parallel_beam_worker_compute_time_ms </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="ad73e7f10fcbae1d37c59e3b2d75b0d89" name="ad73e7f10fcbae1d37c59e3b2d75b0d89"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ad73e7f10fcbae1d37c59e3b2d75b0d89">&#9670;&#160;</a></span>get_search_time_ms()</h2>
 
@@ -624,6 +1294,31 @@ Public Member Functions</h2></td></tr>
 
 </div>
 </div>
+<a id="ae9ab7824bada1dd67175b8cc94188810" name="ae9ab7824bada1dd67175b8cc94188810"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae9ab7824bada1dd67175b8cc94188810">&#9670;&#160;</a></span>increment_num_expanded_goal_states()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void mimir::search::brfs::Statistics::increment_num_expanded_goal_states </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a0fbbe6995c89f629db226644992289b3" name="a0fbbe6995c89f629db226644992289b3"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a0fbbe6995c89f629db226644992289b3">&#9670;&#160;</a></span>increment_num_generated()</h2>
 
@@ -635,6 +1330,56 @@ Public Member Functions</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">void mimir::search::brfs::Statistics::increment_num_generated </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ab1b1bc7c2acd5bcf8d8e8ff926d32dd1" name="ab1b1bc7c2acd5bcf8d8e8ff926d32dd1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab1b1bc7c2acd5bcf8d8e8ff926d32dd1">&#9670;&#160;</a></span>increment_num_generated_in_search_tree()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void mimir::search::brfs::Statistics::increment_num_generated_in_search_tree </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="af307823c79e7b4f8a10eb7e0b8a5dce8" name="af307823c79e7b4f8a10eb7e0b8a5dce8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af307823c79e7b4f8a10eb7e0b8a5dce8">&#9670;&#160;</a></span>increment_num_generated_not_in_search_tree()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void mimir::search::brfs::Statistics::increment_num_generated_not_in_search_tree </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
@@ -674,8 +1419,8 @@ Public Member Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a4909b182875ea8a823aa91fcffb6a843" name="a4909b182875ea8a823aa91fcffb6a843"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a4909b182875ea8a823aa91fcffb6a843">&#9670;&#160;</a></span>on_finish_g_layer()</h2>
+<a id="a984babcfdbe7670808757d95e6388fee" name="a984babcfdbe7670808757d95e6388fee"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a984babcfdbe7670808757d95e6388fee">&#9670;&#160;</a></span>on_finish_g_layer()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -686,7 +1431,8 @@ Public Member Functions</h2></td></tr>
         <tr>
           <td class="memname">void mimir::search::brfs::Statistics::on_finish_g_layer </td>
           <td>(</td>
-          <td class="paramname"></td><td>)</td>
+          <td class="paramtype">int64_t&#160;</td>
+          <td class="paramname"><em>g_value</em></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -697,8 +1443,160 @@ Public Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Store information for the layer. </p>
+<p>Store the running totals for the layer that just finished, together with the g-value that layer reported. The totals are cumulative, so a single layer's own counts are the difference between consecutive entries. </p>
 <p>Setters </p>
+
+</div>
+</div>
+<a id="a8a07c6e3b8a9979db82430b99e2619e8" name="a8a07c6e3b8a9979db82430b99e2619e8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8a07c6e3b8a9979db82430b99e2619e8">&#9670;&#160;</a></span>record_parallel_beam_chunk()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void mimir::search::brfs::Statistics::record_parallel_beam_chunk </td>
+          <td>(</td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>chunk_size</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::chrono::nanoseconds&#160;</td>
+          <td class="paramname"><em>worker_compute_time</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::chrono::nanoseconds&#160;</td>
+          <td class="paramname"><em>main_thread_merge_time</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::chrono::nanoseconds&#160;</td>
+          <td class="paramname"><em>main_thread_intern_time</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::chrono::nanoseconds&#160;</td>
+          <td class="paramname"><em>fluent_slot_time</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::chrono::nanoseconds&#160;</td>
+          <td class="paramname"><em>numeric_slot_time</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::chrono::nanoseconds&#160;</td>
+          <td class="paramname"><em>derived_slot_time</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::chrono::nanoseconds&#160;</td>
+          <td class="paramname"><em>state_lookup_time</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::chrono::nanoseconds&#160;</td>
+          <td class="paramname"><em>reached_atom_update_time</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a6930b3825dcd5d63f6df8dbb6d9fd409" name="a6930b3825dcd5d63f6df8dbb6d9fd409"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6930b3825dcd5d63f6df8dbb6d9fd409">&#9670;&#160;</a></span>record_parallel_beam_pipeline()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void mimir::search::brfs::Statistics::record_parallel_beam_pipeline </td>
+          <td>(</td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>ready_queue_high_water</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>in_flight_chunks_high_water</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::chrono::nanoseconds&#160;</td>
+          <td class="paramname"><em>consumer_stall_time</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::chrono::nanoseconds&#160;</td>
+          <td class="paramname"><em>producer_stall_time</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a31aabeb24c79f722ea388bdeb8535374" name="a31aabeb24c79f722ea388bdeb8535374"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a31aabeb24c79f722ea388bdeb8535374">&#9670;&#160;</a></span>set_iw1_incremental_first_applicability_statistics()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void mimir::search::brfs::Statistics::set_iw1_incremental_first_applicability_statistics </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="classmimir_1_1search_1_1brfs_1_1IW1IncrementalFirstApplicabilityStatistics.html">IW1IncrementalFirstApplicabilityStatistics</a> &amp;&#160;</td>
+          <td class="paramname"><em>statistics</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
 
 </div>
 </div>

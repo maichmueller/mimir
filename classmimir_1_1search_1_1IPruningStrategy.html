@@ -90,10 +90,12 @@ Inheritance diagram for mimir::search::IPruningStrategy:</div>
  <div class="center">
   <img src="classmimir_1_1search_1_1IPruningStrategy.png" usemap="#mimir::search::IPruningStrategy_map" alt=""/>
   <map id="mimir::search::IPruningStrategy_map" name="mimir::search::IPruningStrategy_map">
-<area href="classmimir_1_1search_1_1DuplicatePruningStrategyImpl.html" title="DuplicatePruningStrategyImpl prunes a newly generated state if it was already generated before." alt="mimir::search::DuplicatePruningStrategyImpl" shape="rect" coords="0,56,321,80"/>
-<area href="classmimir_1_1search_1_1NoPruningStrategyImpl.html" title="NoPruningStrategyImpl never prunes a newly generated state." alt="mimir::search::NoPruningStrategyImpl" shape="rect" coords="331,56,652,80"/>
-<area href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html" alt="mimir::search::iw::ArityKNoveltyPruningStrategyImpl" shape="rect" coords="662,56,983,80"/>
-<area href="classmimir_1_1search_1_1iw_1_1ArityZeroNoveltyPruningStrategyImpl.html" alt="mimir::search::iw::ArityZeroNoveltyPruningStrategyImpl" shape="rect" coords="993,56,1314,80"/>
+<area href="classmimir_1_1search_1_1DuplicatePruningStrategyImpl.html" title="DuplicatePruningStrategyImpl prunes a newly generated state if it was already generated before." alt="mimir::search::DuplicatePruningStrategyImpl" shape="rect" coords="0,56,327,80"/>
+<area href="classmimir_1_1search_1_1NoPruningStrategyImpl.html" title="NoPruningStrategyImpl never prunes a newly generated state." alt="mimir::search::NoPruningStrategyImpl" shape="rect" coords="337,56,664,80"/>
+<area href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html" title="Abstracted IW(k), optionally landmark-restricted: abstracted LIW(k)." alt="mimir::search::iw::AbstractedNoveltyPruningStrategyImpl" shape="rect" coords="674,56,1001,80"/>
+<area href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html" alt="mimir::search::iw::ArityKNoveltyPruningStrategyImpl" shape="rect" coords="1011,56,1338,80"/>
+<area href="classmimir_1_1search_1_1iw_1_1ArityZeroNoveltyPruningStrategyImpl.html" alt="mimir::search::iw::ArityZeroNoveltyPruningStrategyImpl" shape="rect" coords="1348,56,1675,80"/>
+<area href="classmimir_1_1search_1_1iw_1_1LandmarkNoveltyPruningStrategyImpl.html" title="LandmarkNoveltyPruningStrategyImpl prunes with landmark-restricted novelty: a state is admitted when ..." alt="mimir::search::iw::LandmarkNoveltyPruningStrategyImpl" shape="rect" coords="1685,56,2012,80"/>
   </map>
 </div></div>
 <table class="memberdecls">
@@ -105,6 +107,46 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a8ff05096e0efd4e0b8917241f4e0adc7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab3dc529c495b28c2acdc892930ce592a"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IPruningStrategy.html#ab3dc529c495b28c2acdc892930ce592a">test_prune_successor_state</a> (const State &amp;state, const State &amp;succ_state, bool is_new_succ)=0</td></tr>
 <tr class="separator:ab3dc529c495b28c2acdc892930ce592a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae5b1ec0c2ea6783aaee1ab8e2b486f97"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IPruningStrategy.html#ae5b1ec0c2ea6783aaee1ab8e2b486f97">supports_action_add_effect_precheck</a> () const</td></tr>
+<tr class="separator:ae5b1ec0c2ea6783aaee1ab8e2b486f97"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a780bd78e634f6142a9d1c38f4ca009be"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IPruningStrategy.html#a780bd78e634f6142a9d1c38f4ca009be">should_bypass_action_add_effect_precheck</a> (const State &amp;state) const</td></tr>
+<tr class="separator:a780bd78e634f6142a9d1c38f4ca009be"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aabe4954f902f90ed45cc88c0839ed87f"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IPruningStrategy.html#aabe4954f902f90ed45cc88c0839ed87f">precheck_requires_delete_effects</a> () const</td></tr>
+<tr class="memdesc:aabe4954f902f90ed45cc88c0839ed87f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether the precheck needs the transition's DELETE effects as well as its adds.  <br /></td></tr>
+<tr class="separator:aabe4954f902f90ed45cc88c0839ed87f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab3590fbd5103dd557ced3debc1aea8d7"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IPruningStrategy.html#ab3590fbd5103dd557ced3debc1aea8d7">test_transition_novelty_from_add_effects</a> (const State &amp;state, const <a class="el" href="namespacemimir_1_1search_1_1iw.html#a9fcc54c6fd413c59b11d99105279654e">iw::AtomIndexList</a> &amp;add_fluent_atom_indices, const <a class="el" href="namespacemimir_1_1search_1_1iw.html#a9fcc54c6fd413c59b11d99105279654e">iw::AtomIndexList</a> &amp;del_fluent_atom_indices) const</td></tr>
+<tr class="memdesc:ab3590fbd5103dd557ced3debc1aea8d7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether the transition described by its atom-level delta could survive novelty pruning. May answer true for a transition that would in fact be pruned; must never answer false for one that would survive.  <br /></td></tr>
+<tr class="separator:ab3590fbd5103dd557ced3debc1aea8d7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa1cfc42db67800c6eda95ef64156b921"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IPruningStrategy.html#aa1cfc42db67800c6eda95ef64156b921">consume_skip_state_expansion</a> (const State &amp;state)</td></tr>
+<tr class="separator:aa1cfc42db67800c6eda95ef64156b921"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a93d1a899086a153402e38b7dcc91672e"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IPruningStrategy.html#a93d1a899086a153402e38b7dcc91672e">supports_atom_novelty_query</a> () const</td></tr>
+<tr class="separator:a93d1a899086a153402e38b7dcc91672e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a345fd9467dd013f086176033a958792d"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IPruningStrategy.html#a345fd9467dd013f086176033a958792d">test_atom_novelty_read_only</a> (Index atom_index) const</td></tr>
+<tr class="separator:a345fd9467dd013f086176033a958792d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6afd341c3720f3dc1c7efa81f2fd83c5"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IPruningStrategy.html#a6afd341c3720f3dc1c7efa81f2fd83c5">supports_transition_novel_witness_query</a> () const</td></tr>
+<tr class="separator:a6afd341c3720f3dc1c7efa81f2fd83c5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a77e03321c6dfff2827a72996baed93d0"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IPruningStrategy.html#a77e03321c6dfff2827a72996baed93d0">compute_transition_novel_fluent_atom_indices_read_only</a> (const State &amp;state, const State &amp;succ_state, <a class="el" href="namespacemimir_1_1search_1_1iw.html#a9fcc54c6fd413c59b11d99105279654e">iw::AtomIndexList</a> &amp;out_novel_fluent_atom_indices) const</td></tr>
+<tr class="separator:a77e03321c6dfff2827a72996baed93d0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad174bb57ed42c84d11365e0829b59f80"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IPruningStrategy.html#ad174bb57ed42c84d11365e0829b59f80">supports_beam_novelty_mode</a> (<a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a> beam_novelty_mode) const</td></tr>
+<tr class="separator:ad174bb57ed42c84d11365e0829b59f80"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a19aa0224a89b367e80f8e5df66657d4f"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IPruningStrategy.html#a19aa0224a89b367e80f8e5df66657d4f">test_prune_successor_state_for_beam_selection</a> (const State &amp;state, const State &amp;succ_state, bool is_new_succ, <a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a> beam_novelty_mode)</td></tr>
+<tr class="separator:a19aa0224a89b367e80f8e5df66657d4f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8b0d6b25bd0ec0db2ded9ed62a4f52ee"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IPruningStrategy.html#a8b0d6b25bd0ec0db2ded9ed62a4f52ee">supports_staged_beam_pruning</a> (<a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a> beam_novelty_mode) const</td></tr>
+<tr class="separator:a8b0d6b25bd0ec0db2ded9ed62a4f52ee"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4172ee077122529cdfed5e1ca6801d2b"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IPruningStrategy.html#a4172ee077122529cdfed5e1ca6801d2b">supports_relaxed_staged_beam_pruning</a> (<a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a> beam_novelty_mode) const</td></tr>
+<tr class="separator:a4172ee077122529cdfed5e1ca6801d2b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adcc54d95cd238444e1eb708cd84f5e11"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IPruningStrategy.html#adcc54d95cd238444e1eb708cd84f5e11">test_prune_staged_successor_state_for_beam_selection</a> (const State &amp;state, const FlatBitset &amp;succ_fluent_atoms, const FlatBitset &amp;succ_derived_atoms, const FlatDoubleList &amp;succ_numeric_variables, const <a class="el" href="namespacemimir_1_1search_1_1iw.html#a9fcc54c6fd413c59b11d99105279654e">iw::AtomIndexList</a> &amp;succ_fluent_atom_indices, bool is_new_succ, <a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a> beam_novelty_mode)</td></tr>
+<tr class="separator:adcc54d95cd238444e1eb708cd84f5e11"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae511569024b4a4280a406c547f1c66e5"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IPruningStrategy.html#ae511569024b4a4280a406c547f1c66e5">test_prune_staged_successor_state_for_relaxed_beam_selection</a> (const State &amp;state, const FlatBitset &amp;succ_fluent_atoms, const FlatBitset &amp;succ_derived_atoms, const FlatDoubleList &amp;succ_numeric_variables, const <a class="el" href="namespacemimir_1_1search_1_1iw.html#a9fcc54c6fd413c59b11d99105279654e">iw::AtomIndexList</a> &amp;succ_fluent_atom_indices, <a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a> beam_novelty_mode)</td></tr>
+<tr class="separator:ae511569024b4a4280a406c547f1c66e5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a254793a762de43655bcce9f428654199"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IPruningStrategy.html#a254793a762de43655bcce9f428654199">on_begin_beam_replay</a> (<a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a> beam_novelty_mode)</td></tr>
+<tr class="separator:a254793a762de43655bcce9f428654199"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac6513bdd6817db70793184b8ddfafb77"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IPruningStrategy.html#ac6513bdd6817db70793184b8ddfafb77">test_prune_successor_state_for_beam_replay</a> (const State &amp;state, const State &amp;succ_state, bool is_new_succ, <a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a> beam_novelty_mode)</td></tr>
+<tr class="separator:ac6513bdd6817db70793184b8ddfafb77"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8bd7d14279349d009590e3dc9d5c8436"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IPruningStrategy.html#a8bd7d14279349d009590e3dc9d5c8436">test_prune_staged_successor_state_for_beam_replay</a> (const State &amp;state, const FlatBitset &amp;succ_fluent_atoms, const FlatBitset &amp;succ_derived_atoms, const FlatDoubleList &amp;succ_numeric_variables, const <a class="el" href="namespacemimir_1_1search_1_1iw.html#a9fcc54c6fd413c59b11d99105279654e">iw::AtomIndexList</a> &amp;succ_fluent_atom_indices, bool is_new_succ, <a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a> beam_novelty_mode)</td></tr>
+<tr class="separator:a8bd7d14279349d009590e3dc9d5c8436"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abf9141fa8f34b18a14cb561a4aa8f117"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IPruningStrategy.html#abf9141fa8f34b18a14cb561a4aa8f117">on_end_beam_replay</a> (<a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a> beam_novelty_mode)</td></tr>
+<tr class="separator:abf9141fa8f34b18a14cb561a4aa8f117"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p><code><a class="el" href="classmimir_1_1search_1_1IPruningStrategy.html" title="IPruningStrategy encapsulates logic to test whether a newly generated state must be pruned or not.">IPruningStrategy</a></code> encapsulates logic to test whether a newly generated state must be pruned or not. </p>
@@ -135,6 +177,386 @@ Public Member Functions</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
+<a id="a77e03321c6dfff2827a72996baed93d0" name="a77e03321c6dfff2827a72996baed93d0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a77e03321c6dfff2827a72996baed93d0">&#9670;&#160;</a></span>compute_transition_novel_fluent_atom_indices_read_only()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void mimir::search::IPruningStrategy::compute_transition_novel_fluent_atom_indices_read_only </td>
+          <td>(</td>
+          <td class="paramtype">const State &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const State &amp;&#160;</td>
+          <td class="paramname"><em>succ_state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="namespacemimir_1_1search_1_1iw.html#a9fcc54c6fd413c59b11d99105279654e">iw::AtomIndexList</a> &amp;&#160;</td>
+          <td class="paramname"><em>out_novel_fluent_atom_indices</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#a6d7af19daed09d3e07848b516abdb5ea">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1LandmarkNoveltyPruningStrategyImpl.html#a06dedd5ce5d1b3298e69d5376af2dc81">mimir::search::iw::LandmarkNoveltyPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#ac8b43606dc37cac8a30e12ed670715fb">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a>.</p>
+
+</div>
+</div>
+<a id="aa1cfc42db67800c6eda95ef64156b921" name="aa1cfc42db67800c6eda95ef64156b921"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa1cfc42db67800c6eda95ef64156b921">&#9670;&#160;</a></span>consume_skip_state_expansion()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IPruningStrategy::consume_skip_state_expansion </td>
+          <td>(</td>
+          <td class="paramtype">const State &amp;&#160;</td>
+          <td class="paramname"><em>state</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#a0a596e18d4234dd7a2e503b57f1e6781">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#a5d30527bdb85ace451083cb8b267ac54">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a>.</p>
+
+</div>
+</div>
+<a id="a254793a762de43655bcce9f428654199" name="a254793a762de43655bcce9f428654199"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a254793a762de43655bcce9f428654199">&#9670;&#160;</a></span>on_begin_beam_replay()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void mimir::search::IPruningStrategy::on_begin_beam_replay </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a>&#160;</td>
+          <td class="paramname"><em>beam_novelty_mode</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#a524da23f851d13d1fa0c651c1d5debf8">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#aa045529eb294e0caa91ad4211f7c6921">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a>.</p>
+
+</div>
+</div>
+<a id="abf9141fa8f34b18a14cb561a4aa8f117" name="abf9141fa8f34b18a14cb561a4aa8f117"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abf9141fa8f34b18a14cb561a4aa8f117">&#9670;&#160;</a></span>on_end_beam_replay()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void mimir::search::IPruningStrategy::on_end_beam_replay </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a>&#160;</td>
+          <td class="paramname"><em>beam_novelty_mode</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#aa36d26ffa38b4f61e4dfb41ed1801c1c">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#abb3c182f5a00f7f7f7d272bb3ebddc3c">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a>.</p>
+
+</div>
+</div>
+<a id="aabe4954f902f90ed45cc88c0839ed87f" name="aabe4954f902f90ed45cc88c0839ed87f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aabe4954f902f90ed45cc88c0839ed87f">&#9670;&#160;</a></span>precheck_requires_delete_effects()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IPruningStrategy::precheck_requires_delete_effects </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Whether the precheck needs the transition's DELETE effects as well as its adds. </p>
+<p>Atom-level novelty does not: only an added atom can carry a new tuple, so what an action removes cannot make a transition novel. Landmark-restricted novelty does, because its feature is a pair <code>(landmark coordinate, free tuple)</code> and the coordinate set of the successor is <code>(coords(s) \ deleted landmarks) | added landmarks</code>. Without the deletes a caller cannot tell which coordinates the successor keeps, nor whether the <code>BOT</code> coordinate flips on because the last true landmark was removed.</p>
+<p>A strategy answering true also opts into the caller's cached-effect fast path: for actions whose fluent effects are all unconditional the caller passes the state-independent effect sets intersected against the state, without re-deriving them per state. </p>
+
+<p>Reimplemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1LandmarkNoveltyPruningStrategyImpl.html#a40ca30151268145ae70c0217b359aac6">mimir::search::iw::LandmarkNoveltyPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#a85d5813bbd61f639c3f7f7bf3848eb37">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a>.</p>
+
+</div>
+</div>
+<a id="a780bd78e634f6142a9d1c38f4ca009be" name="a780bd78e634f6142a9d1c38f4ca009be"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a780bd78e634f6142a9d1c38f4ca009be">&#9670;&#160;</a></span>should_bypass_action_add_effect_precheck()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IPruningStrategy::should_bypass_action_add_effect_precheck </td>
+          <td>(</td>
+          <td class="paramtype">const State &amp;&#160;</td>
+          <td class="paramname"><em>state</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#a4544578b244e50c856daf93951dcfa98">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#aeacb7ad22de82edb5359b16439cb44a8">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a>.</p>
+
+</div>
+</div>
+<a id="ae5b1ec0c2ea6783aaee1ab8e2b486f97" name="ae5b1ec0c2ea6783aaee1ab8e2b486f97"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae5b1ec0c2ea6783aaee1ab8e2b486f97">&#9670;&#160;</a></span>supports_action_add_effect_precheck()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IPruningStrategy::supports_action_add_effect_precheck </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#a28fa62ea984391f33b346da7c59cfbb0">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1LandmarkNoveltyPruningStrategyImpl.html#ab868c61caa4f59049b1e9b76b850b501">mimir::search::iw::LandmarkNoveltyPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#adb5018c0f050f819ea6c1fad18747dab">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a>.</p>
+
+</div>
+</div>
+<a id="a93d1a899086a153402e38b7dcc91672e" name="a93d1a899086a153402e38b7dcc91672e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a93d1a899086a153402e38b7dcc91672e">&#9670;&#160;</a></span>supports_atom_novelty_query()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IPruningStrategy::supports_atom_novelty_query </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#a7ef1c0821e7d8624667b1b86b8ab6f67">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#ae1c69faf0bd72765856f191c2b184dc3">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a>.</p>
+
+</div>
+</div>
+<a id="ad174bb57ed42c84d11365e0829b59f80" name="ad174bb57ed42c84d11365e0829b59f80"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad174bb57ed42c84d11365e0829b59f80">&#9670;&#160;</a></span>supports_beam_novelty_mode()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IPruningStrategy::supports_beam_novelty_mode </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a>&#160;</td>
+          <td class="paramname"><em>beam_novelty_mode</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityZeroNoveltyPruningStrategyImpl.html#a6a93a1ba05c22f84173d17d96e14b892">mimir::search::iw::ArityZeroNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#a9f0dc1c6ab47810f8fdef5b5a0cb09f7">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#af5f08027fe9fc50b0fb95c154b329bf7">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1NoPruningStrategyImpl.html#a5f98c6eccd11a452ee8a3dab7ea94e27">mimir::search::NoPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1DuplicatePruningStrategyImpl.html#ad24ad68816f1368a9a08631c009c4fcd">mimir::search::DuplicatePruningStrategyImpl</a>.</p>
+
+</div>
+</div>
+<a id="a4172ee077122529cdfed5e1ca6801d2b" name="a4172ee077122529cdfed5e1ca6801d2b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4172ee077122529cdfed5e1ca6801d2b">&#9670;&#160;</a></span>supports_relaxed_staged_beam_pruning()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IPruningStrategy::supports_relaxed_staged_beam_pruning </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a>&#160;</td>
+          <td class="paramname"><em>beam_novelty_mode</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityZeroNoveltyPruningStrategyImpl.html#afc7219adc893cb357e95c90a943f0ec5">mimir::search::iw::ArityZeroNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#a9a328471e98574e9391fc86fe4b83097">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#a1fc920b79c5ea3686f37ed52ff8174e6">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1NoPruningStrategyImpl.html#a32b9684f3dd3b0c0afb10b6f1fbbc800">mimir::search::NoPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1DuplicatePruningStrategyImpl.html#af8a1b005e3e5ab26c9293c7e167f1c7d">mimir::search::DuplicatePruningStrategyImpl</a>.</p>
+
+</div>
+</div>
+<a id="a8b0d6b25bd0ec0db2ded9ed62a4f52ee" name="a8b0d6b25bd0ec0db2ded9ed62a4f52ee"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8b0d6b25bd0ec0db2ded9ed62a4f52ee">&#9670;&#160;</a></span>supports_staged_beam_pruning()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IPruningStrategy::supports_staged_beam_pruning </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a>&#160;</td>
+          <td class="paramname"><em>beam_novelty_mode</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityZeroNoveltyPruningStrategyImpl.html#ad503a706836713da98907b08d9160b88">mimir::search::iw::ArityZeroNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#a909e4dcb151afc077c07c1fcf15d6057">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#a57290272a96b952ddb759fe98d8713bf">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1NoPruningStrategyImpl.html#a84787d8128c50249674d74e993c963d4">mimir::search::NoPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1DuplicatePruningStrategyImpl.html#a400a87ca26f4572a589a584d0e7e703e">mimir::search::DuplicatePruningStrategyImpl</a>.</p>
+
+</div>
+</div>
+<a id="a6afd341c3720f3dc1c7efa81f2fd83c5" name="a6afd341c3720f3dc1c7efa81f2fd83c5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6afd341c3720f3dc1c7efa81f2fd83c5">&#9670;&#160;</a></span>supports_transition_novel_witness_query()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IPruningStrategy::supports_transition_novel_witness_query </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#a325f179cdae3a2f5c909026c317b38c6">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1LandmarkNoveltyPruningStrategyImpl.html#a60778f4f214a23b273cbfb76b7779f39">mimir::search::iw::LandmarkNoveltyPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#a87ff33747cf9ee3cddcdac1c590be6c7">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a>.</p>
+
+</div>
+</div>
+<a id="a345fd9467dd013f086176033a958792d" name="a345fd9467dd013f086176033a958792d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a345fd9467dd013f086176033a958792d">&#9670;&#160;</a></span>test_atom_novelty_read_only()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IPruningStrategy::test_atom_novelty_read_only </td>
+          <td>(</td>
+          <td class="paramtype">Index&#160;</td>
+          <td class="paramname"><em>atom_index</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#a8b8a38892cc3503d529673d02aef569d">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#a3a01a21a3ae3eb5880c17a44387038c2">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a>.</p>
+
+</div>
+</div>
 <a id="a8ff05096e0efd4e0b8917241f4e0adc7" name="a8ff05096e0efd4e0b8917241f4e0adc7"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a8ff05096e0efd4e0b8917241f4e0adc7">&#9670;&#160;</a></span>test_prune_initial_state()</h2>
 
@@ -159,7 +581,205 @@ Public Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Implemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityZeroNoveltyPruningStrategyImpl.html#a6a5b632ac75222b42e26de800fd726eb">mimir::search::iw::ArityZeroNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#af1c6b10e7ca653a33d349a9d51366584">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1NoPruningStrategyImpl.html#a017265fac41422fd7ef61de4e45acd4c">mimir::search::NoPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1DuplicatePruningStrategyImpl.html#ae4439fa761242930a029b3e4ce951f0d">mimir::search::DuplicatePruningStrategyImpl</a>.</p>
+<p>Implemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityZeroNoveltyPruningStrategyImpl.html#a6a5b632ac75222b42e26de800fd726eb">mimir::search::iw::ArityZeroNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#af1c6b10e7ca653a33d349a9d51366584">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1LandmarkNoveltyPruningStrategyImpl.html#a81150a5c96ab69a3fa1bc8bd20ec1a67">mimir::search::iw::LandmarkNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#a5ffb09bc79167b7603c150decf231031">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1NoPruningStrategyImpl.html#a017265fac41422fd7ef61de4e45acd4c">mimir::search::NoPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1DuplicatePruningStrategyImpl.html#ae4439fa761242930a029b3e4ce951f0d">mimir::search::DuplicatePruningStrategyImpl</a>.</p>
+
+</div>
+</div>
+<a id="a8bd7d14279349d009590e3dc9d5c8436" name="a8bd7d14279349d009590e3dc9d5c8436"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8bd7d14279349d009590e3dc9d5c8436">&#9670;&#160;</a></span>test_prune_staged_successor_state_for_beam_replay()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IPruningStrategy::test_prune_staged_successor_state_for_beam_replay </td>
+          <td>(</td>
+          <td class="paramtype">const State &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const FlatBitset &amp;&#160;</td>
+          <td class="paramname"><em>succ_fluent_atoms</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const FlatBitset &amp;&#160;</td>
+          <td class="paramname"><em>succ_derived_atoms</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const FlatDoubleList &amp;&#160;</td>
+          <td class="paramname"><em>succ_numeric_variables</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="namespacemimir_1_1search_1_1iw.html#a9fcc54c6fd413c59b11d99105279654e">iw::AtomIndexList</a> &amp;&#160;</td>
+          <td class="paramname"><em>succ_fluent_atom_indices</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>is_new_succ</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a>&#160;</td>
+          <td class="paramname"><em>beam_novelty_mode</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityZeroNoveltyPruningStrategyImpl.html#a2a59db7794bcf439c8990d96b89d644d">mimir::search::iw::ArityZeroNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#a1f1904c74e8dd71ab3104e565a1414c2">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#ab05e3c43e2b870d6e58557d94c94517a">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1NoPruningStrategyImpl.html#a5a0855855ab406da699368678e67d54a">mimir::search::NoPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1DuplicatePruningStrategyImpl.html#a72e246cd0fd9d921ed10b52d95034c24">mimir::search::DuplicatePruningStrategyImpl</a>.</p>
+
+</div>
+</div>
+<a id="adcc54d95cd238444e1eb708cd84f5e11" name="adcc54d95cd238444e1eb708cd84f5e11"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#adcc54d95cd238444e1eb708cd84f5e11">&#9670;&#160;</a></span>test_prune_staged_successor_state_for_beam_selection()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IPruningStrategy::test_prune_staged_successor_state_for_beam_selection </td>
+          <td>(</td>
+          <td class="paramtype">const State &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const FlatBitset &amp;&#160;</td>
+          <td class="paramname"><em>succ_fluent_atoms</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const FlatBitset &amp;&#160;</td>
+          <td class="paramname"><em>succ_derived_atoms</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const FlatDoubleList &amp;&#160;</td>
+          <td class="paramname"><em>succ_numeric_variables</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="namespacemimir_1_1search_1_1iw.html#a9fcc54c6fd413c59b11d99105279654e">iw::AtomIndexList</a> &amp;&#160;</td>
+          <td class="paramname"><em>succ_fluent_atom_indices</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>is_new_succ</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a>&#160;</td>
+          <td class="paramname"><em>beam_novelty_mode</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityZeroNoveltyPruningStrategyImpl.html#aa802e3a6d2dce3caff0522d99e0b3cf6">mimir::search::iw::ArityZeroNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#aa4eb94d0ccd06eacbdde1e1987c6e034">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#a49af0e21930cde68551acf9b0db9c67e">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1NoPruningStrategyImpl.html#a37d41cd927d64337586fafbb80eac2b5">mimir::search::NoPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1DuplicatePruningStrategyImpl.html#ad4dab9baeec8c506810c7f1eca0dcb38">mimir::search::DuplicatePruningStrategyImpl</a>.</p>
+
+</div>
+</div>
+<a id="ae511569024b4a4280a406c547f1c66e5" name="ae511569024b4a4280a406c547f1c66e5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae511569024b4a4280a406c547f1c66e5">&#9670;&#160;</a></span>test_prune_staged_successor_state_for_relaxed_beam_selection()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IPruningStrategy::test_prune_staged_successor_state_for_relaxed_beam_selection </td>
+          <td>(</td>
+          <td class="paramtype">const State &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const FlatBitset &amp;&#160;</td>
+          <td class="paramname"><em>succ_fluent_atoms</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const FlatBitset &amp;&#160;</td>
+          <td class="paramname"><em>succ_derived_atoms</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const FlatDoubleList &amp;&#160;</td>
+          <td class="paramname"><em>succ_numeric_variables</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="namespacemimir_1_1search_1_1iw.html#a9fcc54c6fd413c59b11d99105279654e">iw::AtomIndexList</a> &amp;&#160;</td>
+          <td class="paramname"><em>succ_fluent_atom_indices</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a>&#160;</td>
+          <td class="paramname"><em>beam_novelty_mode</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityZeroNoveltyPruningStrategyImpl.html#a552d4022e9f618d2db7d80f9de814a29">mimir::search::iw::ArityZeroNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#a6c1f1b2fd4745b1fc35328ec9189fd22">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#a2dc72331694e0e602638789151be00a3">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1NoPruningStrategyImpl.html#a5546d9b59fbe1cacff651e52dff9c72b">mimir::search::NoPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1DuplicatePruningStrategyImpl.html#a24bf641b579c39b85153a7c08cf32cde">mimir::search::DuplicatePruningStrategyImpl</a>.</p>
 
 </div>
 </div>
@@ -203,7 +823,160 @@ Public Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Implemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityZeroNoveltyPruningStrategyImpl.html#a6f0dd55e9b8e82c82b6656851f31fa7b">mimir::search::iw::ArityZeroNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#ae970464a2f452560401b291c86962c79">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1NoPruningStrategyImpl.html#a9f0e8043a58f87ec584bf1749c8fb5e4">mimir::search::NoPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1DuplicatePruningStrategyImpl.html#a8a2451d4c0287ac13dc67d07b2d78e0a">mimir::search::DuplicatePruningStrategyImpl</a>.</p>
+<p>Implemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityZeroNoveltyPruningStrategyImpl.html#a6f0dd55e9b8e82c82b6656851f31fa7b">mimir::search::iw::ArityZeroNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#ae970464a2f452560401b291c86962c79">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1LandmarkNoveltyPruningStrategyImpl.html#a19795feae9d13aeda037ea2b9f3792ec">mimir::search::iw::LandmarkNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#a1d01f37dd01a0ad24364b7203aced5a3">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1NoPruningStrategyImpl.html#a9f0e8043a58f87ec584bf1749c8fb5e4">mimir::search::NoPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1DuplicatePruningStrategyImpl.html#a8a2451d4c0287ac13dc67d07b2d78e0a">mimir::search::DuplicatePruningStrategyImpl</a>.</p>
+
+</div>
+</div>
+<a id="ac6513bdd6817db70793184b8ddfafb77" name="ac6513bdd6817db70793184b8ddfafb77"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac6513bdd6817db70793184b8ddfafb77">&#9670;&#160;</a></span>test_prune_successor_state_for_beam_replay()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IPruningStrategy::test_prune_successor_state_for_beam_replay </td>
+          <td>(</td>
+          <td class="paramtype">const State &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const State &amp;&#160;</td>
+          <td class="paramname"><em>succ_state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>is_new_succ</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a>&#160;</td>
+          <td class="paramname"><em>beam_novelty_mode</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#a9d52edc7fc90bb7250742f6daf57b6af">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#ad3f9294d6e7800bed3319f2da00c3af8">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a>.</p>
+
+</div>
+</div>
+<a id="a19aa0224a89b367e80f8e5df66657d4f" name="a19aa0224a89b367e80f8e5df66657d4f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a19aa0224a89b367e80f8e5df66657d4f">&#9670;&#160;</a></span>test_prune_successor_state_for_beam_selection()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IPruningStrategy::test_prune_successor_state_for_beam_selection </td>
+          <td>(</td>
+          <td class="paramtype">const State &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const State &amp;&#160;</td>
+          <td class="paramname"><em>succ_state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>is_new_succ</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="namespacemimir_1_1search.html#a69b565fdd302caf0b8c8f7c1879ca57c">BeamNoveltyMode</a>&#160;</td>
+          <td class="paramname"><em>beam_novelty_mode</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Reimplemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityZeroNoveltyPruningStrategyImpl.html#a738ca6d9d56d524f77a33cb92c8b5686">mimir::search::iw::ArityZeroNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#a05a60c84356f8604b3eec887a7ae7df7">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#aa9ce4c8fc70ff50499b2c8be7c4f2e06">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a>.</p>
+
+</div>
+</div>
+<a id="ab3590fbd5103dd557ced3debc1aea8d7" name="ab3590fbd5103dd557ced3debc1aea8d7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab3590fbd5103dd557ced3debc1aea8d7">&#9670;&#160;</a></span>test_transition_novelty_from_add_effects()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IPruningStrategy::test_transition_novelty_from_add_effects </td>
+          <td>(</td>
+          <td class="paramtype">const State &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="namespacemimir_1_1search_1_1iw.html#a9fcc54c6fd413c59b11d99105279654e">iw::AtomIndexList</a> &amp;&#160;</td>
+          <td class="paramname"><em>add_fluent_atom_indices</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="namespacemimir_1_1search_1_1iw.html#a9fcc54c6fd413c59b11d99105279654e">iw::AtomIndexList</a> &amp;&#160;</td>
+          <td class="paramname"><em>del_fluent_atom_indices</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Whether the transition described by its atom-level delta could survive novelty pruning. May answer true for a transition that would in fact be pruned; must never answer false for one that would survive. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">add_fluent_atom_indices</td><td>the atoms that become true, i.e. already filtered against <code>state</code>, sorted ascending. </td></tr>
+    <tr><td class="paramname">del_fluent_atom_indices</td><td>the atoms that become false, likewise filtered and sorted. Empty and ignored unless <code>precheck_requires_delete_effects</code> holds. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+<p>Reimplemented in <a class="el" href="classmimir_1_1search_1_1iw_1_1ArityKNoveltyPruningStrategyImpl.html#a2ef4731af5c8b148326b8d1f10c4b680">mimir::search::iw::ArityKNoveltyPruningStrategyImpl</a>, <a class="el" href="classmimir_1_1search_1_1iw_1_1LandmarkNoveltyPruningStrategyImpl.html#a8e47606e8f8362aa06c37239c2308363">mimir::search::iw::LandmarkNoveltyPruningStrategyImpl</a>, and <a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#a9bd81ca77ae340ab1a4c3ded0ef46644">mimir::search::iw::AbstractedNoveltyPruningStrategyImpl</a>.</p>
 
 </div>
 </div>

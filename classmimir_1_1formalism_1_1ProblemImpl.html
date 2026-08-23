@@ -74,6 +74,7 @@ $(function() {
 </div><!-- top -->
 <div class="header">
   <div class="summary">
+<a href="#nested-classes">Classes</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="#friends">Friends</a> &#124;
@@ -94,6 +95,12 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a291cd565aa37a6df0249de063c06d63a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7faf87d1e4fd319c914a1d4f8ff64c3b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classmimir_1_1formalism_1_1ProblemImpl.html">ProblemImpl</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1formalism_1_1ProblemImpl.html#a7faf87d1e4fd319c914a1d4f8ff64c3b">operator=</a> (<a class="el" href="classmimir_1_1formalism_1_1ProblemImpl.html">ProblemImpl</a> &amp;&amp;other)=delete</td></tr>
 <tr class="separator:a7faf87d1e4fd319c914a1d4f8ff64c3b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae772acb8b3423afa404aa45e7510c7e6"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1formalism_1_1ProblemImpl.html#ae772acb8b3423afa404aa45e7510c7e6">is_grounding_overlay</a> () const</td></tr>
+<tr class="memdesc:ae772acb8b3423afa404aa45e7510c7e6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether this problem was created by <code>create_grounding_overlay</code>.  <br /></td></tr>
+<tr class="separator:ae772acb8b3423afa404aa45e7510c7e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6ceab78fcc7b118cb426a8681b9c9f4a"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="namespacemimir_1_1formalism.html#a18a62fffd7784a50a9304da9b0a2a7d1">Problem</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1formalism_1_1ProblemImpl.html#a6ceab78fcc7b118cb426a8681b9c9f4a">get_overlay_parent</a> () const</td></tr>
+<tr class="memdesc:a6ceab78fcc7b118cb426a8681b9c9f4a"><td class="mdescLeft">&#160;</td><td class="mdescRight">The problem this overlay grounds on top of, or null for an ordinary problem.  <br /></td></tr>
+<tr class="separator:a6ceab78fcc7b118cb426a8681b9c9f4a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa6d8418cd7aa96e542fa4245355cbd67"><td class="memItemLeft" align="right" valign="top">Index&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1formalism_1_1ProblemImpl.html#aa6d8418cd7aa96e542fa4245355cbd67">get_index</a> () const</td></tr>
 <tr class="separator:aa6d8418cd7aa96e542fa4245355cbd67"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab7a0ef256a29a57867b74410bcfbf645"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="classmimir_1_1formalism_1_1Repositories.html">Repositories</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1formalism_1_1ProblemImpl.html#ab7a0ef256a29a57867b74410bcfbf645">get_repositories</a> () const</td></tr>
@@ -253,6 +260,10 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a81a5df155ee80edc52678be935160326"><td class="memTemplParams" colspan="2">template&lt;IsStaticOrFluentOrDerivedTag P&gt; </td></tr>
 <tr class="memitem:a81a5df155ee80edc52678be935160326"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="namespacemimir_1_1formalism.html#a2676612f0dc35f8f7240770acf83eeba">Literal</a>&lt; P &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classmimir_1_1formalism_1_1ProblemImpl.html#a81a5df155ee80edc52678be935160326">get_or_create_literal</a> (bool polarity, <a class="el" href="namespacemimir_1_1formalism.html#a0bbeb941c9f2bcc5db5dda9e77d9ad3c">Atom</a>&lt; P &gt; atom)</td></tr>
 <tr class="separator:a81a5df155ee80edc52678be935160326"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0e71310c091d2f26ce1e65db04e71b13"><td class="memTemplParams" colspan="2">template&lt;IsStaticOrFluentOrDerivedTag P&gt; </td></tr>
+<tr class="memitem:a0e71310c091d2f26ce1e65db04e71b13"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="namespacemimir_1_1formalism.html#a25dbc32f90400bb34420aac94f20068d">GroundLiteral</a>&lt; P &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classmimir_1_1formalism_1_1ProblemImpl.html#a0e71310c091d2f26ce1e65db04e71b13">get_or_create_ground_literal</a> (bool polarity, <a class="el" href="namespacemimir_1_1formalism.html#a6138c3dd23d47ca2ba928221d30421d9">GroundAtom</a>&lt; P &gt; atom)</td></tr>
+<tr class="memdesc:a0e71310c091d2f26ce1e65db04e71b13"><td class="mdescLeft">&#160;</td><td class="mdescRight">Intern a ground literal over an already-interned ground atom. Needed to build a custom goal condition from atoms without reaching into the repositories.  <br /></td></tr>
+<tr class="separator:a0e71310c091d2f26ce1e65db04e71b13"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af94392f6e0c88fa78f8c19d13a3b49eb"><td class="memTemplParams" colspan="2">template&lt;IsStaticOrFluentOrAuxiliaryTag F&gt; </td></tr>
 <tr class="memitem:af94392f6e0c88fa78f8c19d13a3b49eb"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="namespacemimir_1_1formalism.html#a381e8ec7176b32c35162ba02492c23ad">Function</a>&lt; F &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classmimir_1_1formalism_1_1ProblemImpl.html#af94392f6e0c88fa78f8c19d13a3b49eb">get_or_create_function</a> (<a class="el" href="namespacemimir_1_1formalism.html#a9a2e8ccb07750186c27fbadc2a8ad4d3">FunctionSkeleton</a>&lt; F &gt; function_skeleton, <a class="el" href="namespacemimir_1_1formalism.html#af020fb353c583f3a1ebabd01f82e14fd">TermList</a> terms)</td></tr>
 <tr class="separator:af94392f6e0c88fa78f8c19d13a3b49eb"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -294,6 +305,9 @@ Static Public Member Functions</h2></td></tr>
 <tr class="separator:acc058d4afa11d2d0058df3debcad7d1e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a10571f10709177b1ea1819eeb4787fed"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="namespacemimir_1_1formalism.html#a18a62fffd7784a50a9304da9b0a2a7d1">Problem</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1formalism_1_1ProblemImpl.html#a10571f10709177b1ea1819eeb4787fed">create</a> (const std::string &amp;domain_content, const fs::path &amp;domain_filepath, const std::string &amp;problem_content, const fs::path &amp;problem_filepath, const loki::ParserOptions &amp;options=loki::ParserOptions())</td></tr>
 <tr class="separator:a10571f10709177b1ea1819eeb4787fed"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1265ca1f97a6e018c65b502fce525654"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="namespacemimir_1_1formalism.html#a18a62fffd7784a50a9304da9b0a2a7d1">Problem</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1formalism_1_1ProblemImpl.html#a1265ca1f97a6e018c65b502fce525654">create_grounding_overlay</a> (const <a class="el" href="namespacemimir_1_1formalism.html#a18a62fffd7784a50a9304da9b0a2a7d1">Problem</a> &amp;parent)</td></tr>
+<tr class="memdesc:a1265ca1f97a6e018c65b502fce525654"><td class="mdescLeft">&#160;</td><td class="mdescRight">Create a private grounding workspace over <code>parent</code>: an ordinary <code>Problem</code> that shares the parent's whole immutable description but grounds into repositories of its own.  <br /></td></tr>
+<tr class="separator:a1265ca1f97a6e018c65b502fce525654"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
 Friends</h2></td></tr>
@@ -447,6 +461,41 @@ Friends</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+
+</div>
+</div>
+<a id="a1265ca1f97a6e018c65b502fce525654" name="a1265ca1f97a6e018c65b502fce525654"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1265ca1f97a6e018c65b502fce525654">&#9670;&#160;</a></span>create_grounding_overlay()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">static <a class="el" href="namespacemimir_1_1formalism.html#a18a62fffd7784a50a9304da9b0a2a7d1">Problem</a> mimir::formalism::ProblemImpl::create_grounding_overlay </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="namespacemimir_1_1formalism.html#a18a62fffd7784a50a9304da9b0a2a7d1">Problem</a> &amp;&#160;</td>
+          <td class="paramname"><em>parent</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Create a private grounding workspace over <code>parent</code>: an ordinary <code>Problem</code> that shares the parent's whole immutable description but grounds into repositories of its own. </p>
+<p>This is what lets K lifted searches run over one parsed model. <code>ProblemImpl::ground(...)</code> &ndash; which lifted KPKC action generation and axiom evaluation call on every state &ndash; writes to the repositories, the flat index/double-list maps and the grounding tables, none of which is synchronized. An overlay gives a worker its own copies of all three while the parent supplies everything already interned, so nothing is reparsed and nothing is pre-grounded. The cost is O(size of the problem description), not O(size of the grounding).</p>
+<p>Identity rules that follow from that, and that callers must respect:</p><ul>
+<li>indices the overlay inherits (objects, predicates, initial and goal atoms) mean the same thing in parent and overlay, so ground-atom index sets are the portable way to move a state into or out of an overlay;</li>
+<li>indices the overlay <em>creates</em> are local to it. Sibling overlays hand the same index to different entities, so no <code>State</code>, <code>PackedState</code>, <code>GroundAction</code> or newly grounded atom index may be compared or moved across overlays;</li>
+<li>the parent must not grow while any overlay resolves an index, because an overlay's local indices are stamped as <code>parent-&gt;size() + local_offset</code>. Ground the winning plan into the parent only after every overlay search has finished.</li>
+</ul>
+<p>Requires the local loki patch for multi-level chaining (a problem's repositories are already a child of the domain's), and rejects overlays of overlays: an overlay is by construction a parent that grows during search. </p>
 
 </div>
 </div>
@@ -1530,6 +1579,38 @@ template&lt;IsStaticOrFluentOrDerivedTag P&gt; </div>
 
 </div>
 </div>
+<a id="a0e71310c091d2f26ce1e65db04e71b13" name="a0e71310c091d2f26ce1e65db04e71b13"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0e71310c091d2f26ce1e65db04e71b13">&#9670;&#160;</a></span>get_or_create_ground_literal()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;IsStaticOrFluentOrDerivedTag P&gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="namespacemimir_1_1formalism.html#a25dbc32f90400bb34420aac94f20068d">GroundLiteral</a>&lt; P &gt; mimir::formalism::ProblemImpl::get_or_create_ground_literal </td>
+          <td>(</td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>polarity</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="namespacemimir_1_1formalism.html#a6138c3dd23d47ca2ba928221d30421d9">GroundAtom</a>&lt; P &gt;&#160;</td>
+          <td class="paramname"><em>atom</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Intern a ground literal over an already-interned ground atom. Needed to build a custom goal condition from atoms without reaching into the repositories. </p>
+
+</div>
+</div>
 <a id="a064c04bf08d710742e0a591276a3ee08" name="a064c04bf08d710742e0a591276a3ee08"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a064c04bf08d710742e0a591276a3ee08">&#9670;&#160;</a></span>get_or_create_index_list()</h2>
 
@@ -1707,6 +1788,25 @@ template&lt;IsStaticOrFluentOrDerivedTag P&gt; </div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+</div>
+</div>
+<a id="a6ceab78fcc7b118cb426a8681b9c9f4a" name="a6ceab78fcc7b118cb426a8681b9c9f4a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6ceab78fcc7b118cb426a8681b9c9f4a">&#9670;&#160;</a></span>get_overlay_parent()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const <a class="el" href="namespacemimir_1_1formalism.html#a18a62fffd7784a50a9304da9b0a2a7d1">Problem</a> &amp; mimir::formalism::ProblemImpl::get_overlay_parent </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>The problem this overlay grounds on top of, or null for an ordinary problem. </p>
 
 </div>
 </div>
@@ -2244,6 +2344,25 @@ template&lt;IsFluentOrAuxiliaryTag F&gt; </div>
 
 <p>Return a tuple of const references to the members that uniquely identify an object. This enables the automatic generation of <code>loki::Hash</code> and <code>loki::EqualTo</code> specializations. </p>
 <dl class="section return"><dt>Returns</dt><dd>a tuple containing const references to the members defining the object's identity. </dd></dl>
+
+</div>
+</div>
+<a id="ae772acb8b3423afa404aa45e7510c7e6" name="ae772acb8b3423afa404aa45e7510c7e6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae772acb8b3423afa404aa45e7510c7e6">&#9670;&#160;</a></span>is_grounding_overlay()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool mimir::formalism::ProblemImpl::is_grounding_overlay </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Whether this problem was created by <code>create_grounding_overlay</code>. </p>
 
 </div>
 </div>

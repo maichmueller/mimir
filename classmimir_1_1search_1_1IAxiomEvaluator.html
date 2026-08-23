@@ -86,14 +86,32 @@ $(function() {
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a51cb2da9a7b2df472863527bd615f458"><td class="memItemLeft" align="right" valign="top">virtual&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IAxiomEvaluator.html#a51cb2da9a7b2df472863527bd615f458">~IAxiomEvaluator</a> ()=default</td></tr>
 <tr class="separator:a51cb2da9a7b2df472863527bd615f458"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2a61fc12e070ff801e5542e41f64cf7f"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IAxiomEvaluator.html#a2a61fc12e070ff801e5542e41f64cf7f">supports_parallel_beam</a> () const</td></tr>
+<tr class="memdesc:a2a61fc12e070ff801e5542e41f64cf7f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Legacy capability bit for the original grounded-only parallel beam path.  <br /></td></tr>
+<tr class="separator:a2a61fc12e070ff801e5542e41f64cf7f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7e7e08389253b34f06384a0c53cd9272"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IAxiomEvaluator.html#a7e7e08389253b34f06384a0c53cd9272">supports_parallel_staged_successor_evaluation</a> () const</td></tr>
+<tr class="memdesc:a7e7e08389253b34f06384a0c53cd9272"><td class="mdescLeft">&#160;</td><td class="mdescRight">Return whether this evaluator can evaluate staged successors from worker threads.  <br /></td></tr>
+<tr class="separator:a7e7e08389253b34f06384a0c53cd9272"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1c9834ef2edb80d0ace9bb1f92260936"><td class="memItemLeft" align="right" valign="top">virtual <a class="el" href="namespacemimir_1_1search.html#a899d92afdc6be7ee8aa4339f28d34627">ParallelAxiomWorkerContext</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IAxiomEvaluator.html#a1c9834ef2edb80d0ace9bb1f92260936">create_parallel_worker_context</a> () const</td></tr>
+<tr class="memdesc:a1c9834ef2edb80d0ace9bb1f92260936"><td class="mdescLeft">&#160;</td><td class="mdescRight">Create a worker-local context reused by a single staged-successor worker thread.  <br /></td></tr>
+<tr class="separator:a1c9834ef2edb80d0ace9bb1f92260936"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:affbde92b7da5e00c7b418bd3d18457eb"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IAxiomEvaluator.html#affbde92b7da5e00c7b418bd3d18457eb">prepare_parallel_staged_successor_evaluation</a> ()</td></tr>
+<tr class="memdesc:affbde92b7da5e00c7b418bd3d18457eb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prepare immutable data needed by worker-local staged-successor evaluation.  <br /></td></tr>
+<tr class="separator:affbde92b7da5e00c7b418bd3d18457eb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a01f5ac91e479affa9ebdc14c0f7d1550"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IAxiomEvaluator.html#a01f5ac91e479affa9ebdc14c0f7d1550">generate_and_apply_axioms</a> (UnpackedStateImpl &amp;unpacked_state)=0</td></tr>
 <tr class="memdesc:a01f5ac91e479affa9ebdc14c0f7d1550"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generate all applicable axioms for a given set of ground atoms by running fixed point computation.  <br /></td></tr>
 <tr class="separator:a01f5ac91e479affa9ebdc14c0f7d1550"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8afe8569f78746f40c650f198d680416"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IAxiomEvaluator.html#a8afe8569f78746f40c650f198d680416">generate_and_apply_axioms_parallel</a> (UnpackedStateImpl &amp;unpacked_state, <a class="el" href="classmimir_1_1search_1_1IParallelAxiomWorkerContext.html">IParallelAxiomWorkerContext</a> &amp;worker_context) const</td></tr>
+<tr class="memdesc:a8afe8569f78746f40c650f198d680416"><td class="mdescLeft">&#160;</td><td class="mdescRight">Worker-thread staged-successor axiom evaluation. Only valid if <a class="el" href="classmimir_1_1search_1_1IAxiomEvaluator.html#a7e7e08389253b34f06384a0c53cd9272" title="Return whether this evaluator can evaluate staged successors from worker threads.">supports_parallel_staged_successor_evaluation()</a> returns true.  <br /></td></tr>
+<tr class="separator:a8afe8569f78746f40c650f198d680416"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae5e45f9a9e1b1e6f0f2641d6a58fa4fe"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IAxiomEvaluator.html#ae5e45f9a9e1b1e6f0f2641d6a58fa4fe">on_finish_search_layer</a> ()=0</td></tr>
 <tr class="memdesc:ae5e45f9a9e1b1e6f0f2641d6a58fa4fe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Accumulate event handler statistics during search.  <br /></td></tr>
 <tr class="separator:ae5e45f9a9e1b1e6f0f2641d6a58fa4fe"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2b307e21bbc1cb1d81eb8d408be8a95e"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IAxiomEvaluator.html#a2b307e21bbc1cb1d81eb8d408be8a95e">on_end_search</a> ()=0</td></tr>
 <tr class="separator:a2b307e21bbc1cb1d81eb8d408be8a95e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af7c1a165df9669d51d072cbc92062c3d"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IAxiomEvaluator.html#af7c1a165df9669d51d072cbc92062c3d">release_parallel_memory</a> (bool clear_shared_caches=false)</td></tr>
+<tr class="memdesc:af7c1a165df9669d51d072cbc92062c3d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Release optional parallel worker memory retained across searches. If clear_shared_caches is true, also drop shared immutable parallel lookup tables so they will be rebuilt on the next parallel search.  <br /></td></tr>
+<tr class="separator:af7c1a165df9669d51d072cbc92062c3d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae3da26dae5470669c83b0b5b9388694b"><td class="memItemLeft" align="right" valign="top">virtual const <a class="el" href="namespacemimir_1_1formalism.html#a18a62fffd7784a50a9304da9b0a2a7d1">formalism::Problem</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IAxiomEvaluator.html#ae3da26dae5470669c83b0b5b9388694b">get_problem</a> () const =0</td></tr>
 <tr class="separator:ae3da26dae5470669c83b0b5b9388694b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
@@ -126,6 +144,33 @@ Public Member Functions</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
+<a id="a1c9834ef2edb80d0ace9bb1f92260936" name="a1c9834ef2edb80d0ace9bb1f92260936"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1c9834ef2edb80d0ace9bb1f92260936">&#9670;&#160;</a></span>create_parallel_worker_context()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual <a class="el" href="namespacemimir_1_1search.html#a899d92afdc6be7ee8aa4339f28d34627">ParallelAxiomWorkerContext</a> mimir::search::IAxiomEvaluator::create_parallel_worker_context </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Create a worker-local context reused by a single staged-successor worker thread. </p>
+
+</div>
+</div>
 <a id="a01f5ac91e479affa9ebdc14c0f7d1550" name="a01f5ac91e479affa9ebdc14c0f7d1550"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a01f5ac91e479affa9ebdc14c0f7d1550">&#9670;&#160;</a></span>generate_and_apply_axioms()</h2>
 
@@ -151,6 +196,44 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Generate all applicable axioms for a given set of ground atoms by running fixed point computation. </p>
+
+</div>
+</div>
+<a id="a8afe8569f78746f40c650f198d680416" name="a8afe8569f78746f40c650f198d680416"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8afe8569f78746f40c650f198d680416">&#9670;&#160;</a></span>generate_and_apply_axioms_parallel()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void mimir::search::IAxiomEvaluator::generate_and_apply_axioms_parallel </td>
+          <td>(</td>
+          <td class="paramtype">UnpackedStateImpl &amp;&#160;</td>
+          <td class="paramname"><em>unpacked_state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classmimir_1_1search_1_1IParallelAxiomWorkerContext.html">IParallelAxiomWorkerContext</a> &amp;&#160;</td>
+          <td class="paramname"><em>worker_context</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Worker-thread staged-successor axiom evaluation. Only valid if <a class="el" href="classmimir_1_1search_1_1IAxiomEvaluator.html#a7e7e08389253b34f06384a0c53cd9272" title="Return whether this evaluator can evaluate staged successors from worker threads.">supports_parallel_staged_successor_evaluation()</a> returns true. </p>
 
 </div>
 </div>
@@ -229,6 +312,115 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Accumulate event handler statistics during search. </p>
+
+</div>
+</div>
+<a id="affbde92b7da5e00c7b418bd3d18457eb" name="affbde92b7da5e00c7b418bd3d18457eb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#affbde92b7da5e00c7b418bd3d18457eb">&#9670;&#160;</a></span>prepare_parallel_staged_successor_evaluation()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void mimir::search::IAxiomEvaluator::prepare_parallel_staged_successor_evaluation </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Prepare immutable data needed by worker-local staged-successor evaluation. </p>
+
+</div>
+</div>
+<a id="af7c1a165df9669d51d072cbc92062c3d" name="af7c1a165df9669d51d072cbc92062c3d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af7c1a165df9669d51d072cbc92062c3d">&#9670;&#160;</a></span>release_parallel_memory()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void mimir::search::IAxiomEvaluator::release_parallel_memory </td>
+          <td>(</td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>clear_shared_caches</em> = <code>false</code></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Release optional parallel worker memory retained across searches. If clear_shared_caches is true, also drop shared immutable parallel lookup tables so they will be rebuilt on the next parallel search. </p>
+
+</div>
+</div>
+<a id="a2a61fc12e070ff801e5542e41f64cf7f" name="a2a61fc12e070ff801e5542e41f64cf7f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2a61fc12e070ff801e5542e41f64cf7f">&#9670;&#160;</a></span>supports_parallel_beam()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IAxiomEvaluator::supports_parallel_beam </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Legacy capability bit for the original grounded-only parallel beam path. </p>
+
+</div>
+</div>
+<a id="a7e7e08389253b34f06384a0c53cd9272" name="a7e7e08389253b34f06384a0c53cd9272"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7e7e08389253b34f06384a0c53cd9272">&#9670;&#160;</a></span>supports_parallel_staged_successor_evaluation()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IAxiomEvaluator::supports_parallel_staged_successor_evaluation </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Return whether this evaluator can evaluate staged successors from worker threads. </p>
 
 </div>
 </div>

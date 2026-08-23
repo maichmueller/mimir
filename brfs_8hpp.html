@@ -81,6 +81,7 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><code>#include &quot;<a class="el" href="formalism_2declarations_8hpp_source.html">mimir/formalism/declarations.hpp</a>&quot;</code><br />
+<code>#include &quot;mimir/search/algorithms/search_control.hpp&quot;</code><br />
 <code>#include &quot;<a class="el" href="search_2algorithms_2utils_8hpp_source.html">mimir/search/algorithms/utils.hpp</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="search_2declarations_8hpp_source.html">mimir/search/declarations.hpp</a>&quot;</code><br />
 <code>#include &quot;mimir/search/state.hpp&quot;</code><br />
@@ -108,6 +109,9 @@ Namespaces</h2></td></tr>
 Functions</h2></td></tr>
 <tr class="memitem:a92bd448aacc3ccab7679840ebef6bf36"><td class="memItemLeft" align="right" valign="top">SearchResult&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemimir_1_1search_1_1brfs.html#a92bd448aacc3ccab7679840ebef6bf36">mimir::search::brfs::find_solution</a> (const SearchContext &amp;context, const Options &amp;options=Options())</td></tr>
 <tr class="separator:a92bd448aacc3ccab7679840ebef6bf36"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a98a3ae77197a9fedccaecc090abd680e"><td class="memItemLeft" align="right" valign="top">SearchResult&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacemimir_1_1search_1_1brfs.html#a98a3ae77197a9fedccaecc090abd680e">mimir::search::brfs::find_solution</a> (const SearchContext &amp;context, const Options &amp;options, const LandmarkTransitionOrderingStrategy &amp;ordering)</td></tr>
+<tr class="memdesc:a98a3ae77197a9fedccaecc090abd680e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Overload that reorders each search layer's candidate transitions by landmark score before novelty pruning decides admission (see <code>LandmarkTransitionOrderingStrategy</code>). Only a small subset of <code><a class="el" href="structmimir_1_1search_1_1brfs_1_1Options.html">Options</a></code> is supported alongside a landmark ordering; see brfs.cpp for the rejected combinations.  <br /></td></tr>
+<tr class="separator:a98a3ae77197a9fedccaecc090abd680e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 </div><!-- contents -->
 <!-- start footer part -->
