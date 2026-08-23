@@ -312,7 +312,9 @@ static void apply_numeric_effect(const std::pair<loki::AssignOperatorEnum, Conti
     }
 }
 
-static void collect_applied_fluent_numeric_effects(const GroundNumericEffectList<FluentTag>& numeric_effects,
+/// @brief Returns whether any fluent numeric variable was changed, i.e. whether the resulting
+/// numeric state can differ from the input one.
+static bool collect_applied_fluent_numeric_effects(const GroundNumericEffectList<FluentTag>& numeric_effects,
                                                    const FlatDoubleList& static_numeric_variables,
                                                    const FlatDoubleList& fluent_numeric_variables,
                                                    FlatDoubleList& ref_numeric_variables)
@@ -330,6 +332,7 @@ static void collect_applied_fluent_numeric_effects(const GroundNumericEffectList
 
         apply_numeric_effect(assign_operator_and_value, ref_numeric_variables[index]);
     }
+    return !numeric_effects.empty();
 }
 
 static void collect_applied_auxiliary_numeric_effects(const GroundNumericEffect<AuxiliaryTag>& numeric_effect,
@@ -343,7 +346,9 @@ static void collect_applied_auxiliary_numeric_effects(const GroundNumericEffect<
     apply_numeric_effect(assign_operator_and_value, ref_successor_state_metric_score);
 }
 
-static void apply_action_effects(GroundAction action,
+/// @brief Returns whether any fluent numeric variable was changed, i.e. whether the resulting
+/// numeric state can differ from the input one. Auxiliary numeric effects do not count.
+static bool apply_action_effects(GroundAction action,
                                  const ProblemImpl& problem,
                                  const State& state,
                                  const UnpackedStateImpl& unpacked_state,
@@ -356,16 +361,19 @@ static void apply_action_effects(GroundAction action,
     const auto& const_fluent_numeric_variables = state.get_numeric_variables();
     const auto& const_static_numeric_variables = problem.get_initial_function_to_value<StaticTag>();
 
+    auto applied_fluent_numeric_effects = false;
+
     for (const auto& conditional_effect : action->get_conditional_effects())
     {
         if (is_applicable(conditional_effect, unpacked_state))
         {
             insert_into_bitset(conditional_effect->get_conjunctive_effect()->get_propositional_effects<NegativeTag>(), ref_negative_applied_effects);
             insert_into_bitset(conditional_effect->get_conjunctive_effect()->get_propositional_effects<PositiveTag>(), ref_positive_applied_effects);
-            collect_applied_fluent_numeric_effects(conditional_effect->get_conjunctive_effect()->get_fluent_numeric_effects(),
-                                                   const_static_numeric_variables,
-                                                   const_fluent_numeric_variables,
-                                                   ref_fluent_numeric_variables);
+            applied_fluent_numeric_effects |=
+                collect_applied_fluent_numeric_effects(conditional_effect->get_conjunctive_effect()->get_fluent_numeric_effects(),
+                                                       const_static_numeric_variables,
+                                                       const_fluent_numeric_variables,
+                                                       ref_fluent_numeric_variables);
             if (conditional_effect->get_conjunctive_effect()->get_auxiliary_numeric_effect().has_value())
             {
                 collect_applied_auxiliary_numeric_effects(conditional_effect->get_conjunctive_effect()->get_auxiliary_numeric_effect().value(),
@@ -388,6 +396,8 @@ static void apply_action_effects(GroundAction action,
                 evaluate(problem.get_optimization_metric().value()->get_function_expression(), const_static_numeric_variables, ref_fluent_numeric_variables) :
                 ref_successor_state_metric_score + 1;
     }
+
+    return applied_fluent_numeric_effects;
 }
 
 std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_successor_state(const State& state, GroundAction action, ContinuousCost state_metric_value)
@@ -418,26 +428,38 @@ std::pair<State, ContinuousCost> StateRepositoryImpl::get_or_create_successor_st
 
     /* 2. Apply action effects to construct non-extended state. */
 
-    apply_action_effects(action,
-                         problem,
-                         state,
-                         *unpacked_state,
-                         dense_fluent_atoms,
-                         m_applied_negative_effect_atoms,
-                         m_applied_positive_effect_atoms,
-                         dense_fluent_numeric_variables,
-                         successor_state_metric_value);
+    const auto applied_fluent_numeric_effects = apply_action_effects(action,
+                                                                     problem,
+                                                                     state,
+                                                                     *unpacked_state,
+                                                                     dense_fluent_atoms,
+                                                                     m_applied_negative_effect_atoms,
+                                                                     m_applied_positive_effect_atoms,
+                                                                     dense_fluent_numeric_variables,
+                                                                     successor_state_metric_value);
 
     state_fluent_atoms_slot = valla::insert_sequence(dense_fluent_atoms, index_tree_table);
 
-    record_first_achievers(dense_fluent_atoms);
+    /* Every atom of `state` was recorded reached when `state` was created, so any atom here
+       that is reached for the first time must lie in the applied positive effects -- scanning
+       those instead of the whole successor skips one membership test per carried-over atom. */
+    record_first_achievers(m_applied_positive_effect_atoms);
     record_co_occurrence(dense_fluent_atoms);
 
     update_reached_fluent_atoms(dense_fluent_atoms, m_reached_fluent_atoms);
 
-    m_index_list.clear();
-    valla::encode_as_unsigned_integrals(dense_fluent_numeric_variables, double_leaf_table, std::back_inserter(m_index_list));
-    state_numeric_variables = valla::insert_sequence(m_index_list, index_tree_table);
+    if (applied_fluent_numeric_effects)
+    {
+        m_index_list.clear();
+        valla::encode_as_unsigned_integrals(dense_fluent_numeric_variables, double_leaf_table, std::back_inserter(m_index_list));
+        state_numeric_variables = valla::insert_sequence(m_index_list, index_tree_table);
+    }
+    else
+    {
+        /* No fluent numeric effect fired, so the successor's numeric variables equal `state`'s
+           and interning them again would return `state`'s slot -- reuse it directly. */
+        state_numeric_variables = state.get_packed_state()->get_numeric_variables();
+    }
 
     // Check if non-extended state exists in cache.
     auto it = m_states.find(PackedStateImpl(state_fluent_atoms_slot, state_derived_atoms_slot, state_numeric_variables));
