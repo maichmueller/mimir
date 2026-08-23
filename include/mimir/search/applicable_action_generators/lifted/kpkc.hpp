@@ -27,9 +27,11 @@
 #include "mimir/search/satisficing_binding_generators/action.hpp"
 #include "mimir/search/search_context.hpp"
 
+#include <boost/dynamic_bitset.hpp>
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <vector>
 
 namespace mimir::search
@@ -140,6 +142,11 @@ private:
     ActionSatisficingBindingGeneratorList m_action_grounding_data;
 
     formalism::DynamicAssignmentSets m_dynamic_assignment_sets;
+    IndexSet m_symmetry_scratch_touched_orbits;
+    IndexList m_symmetry_scratch_count_touched_orbits;
+    boost::dynamic_bitset<> m_symmetry_scratch_reduced_objects;
+    IndexList m_symmetry_scratch_tmp_count_touched_orbits;
+    std::optional<boost::dynamic_bitset<>> m_symmetry_scratch_vertex_mask;
     GenerationStatistics m_generation_statistics;
     mutable std::mutex m_parallel_lookup_tables_mutex;
     mutable std::shared_ptr<const ParallelGroundLookupTables> m_parallel_lookup_tables;

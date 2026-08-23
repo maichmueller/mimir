@@ -1335,6 +1335,11 @@ KPKCLiftedApplicableActionGeneratorImpl::KPKCLiftedApplicableActionGeneratorImpl
     m_binding_event_handler(binding_event_handler ? binding_event_handler : satisficing_binding_generator::DefaultEventHandlerImpl::create()),
     m_action_grounding_data(),
     m_dynamic_assignment_sets(*m_problem),
+    m_symmetry_scratch_touched_orbits(),
+    m_symmetry_scratch_count_touched_orbits(),
+    m_symmetry_scratch_reduced_objects(),
+    m_symmetry_scratch_tmp_count_touched_orbits(),
+    m_symmetry_scratch_vertex_mask(),
     m_generation_statistics(),
     m_parallel_lookup_tables_mutex(),
     m_parallel_lookup_tables()
@@ -1630,8 +1635,9 @@ mimir::generator<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_a
 
             // --- Step 2: Compute number of times each orbits is touched by an action parameter. ---
 
-            auto touched_orbits = IndexSet {};
-            auto count_touched_orbits = IndexList(object_graph.get_num_vertices(), 0);
+            auto& touched_orbits = m_symmetry_scratch_touched_orbits;
+            auto& count_touched_orbits = m_symmetry_scratch_count_touched_orbits;
+            count_touched_orbits.assign(object_graph.get_num_vertices(), 0);
 
             // std::cout << "get_objects_by_parameter_index: " << to_string(condition_grounder.get_static_consistency_graph().get_objects_by_parameter_index())
             //           << std::endl;
@@ -1657,8 +1663,10 @@ mimir::generator<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_a
 
             const auto num_objects = m_problem->get_problem_and_domain_objects().size();
             const auto arity = condition_grounder.get_action()->get_arity();
-            auto reduced_objects = boost::dynamic_bitset<>(num_objects * arity);
-            auto tmp_count_touched_orbits = IndexList {};
+            auto& reduced_objects = m_symmetry_scratch_reduced_objects;
+            reduced_objects.clear();
+            reduced_objects.resize(num_objects * arity);
+            auto& tmp_count_touched_orbits = m_symmetry_scratch_tmp_count_touched_orbits;
 
             for (size_t i = 0; i < condition_grounder.get_action()->get_arity(); ++i)
             {
@@ -1682,8 +1690,13 @@ mimir::generator<GroundAction> KPKCLiftedApplicableActionGeneratorImpl::create_a
             //           << std::endl;
             // std::cout << "reduced_objects_by_parameter_index: " << to_string(reduced_objects_by_parameter_index) << std::endl << std::endl;
 
-            auto vertex_mask =
-                std::optional<boost::dynamic_bitset<>>(boost::dynamic_bitset<>(condition_grounder.get_static_consistency_graph().get_vertices().size(), false));
+            auto& vertex_mask = m_symmetry_scratch_vertex_mask;
+            if (!vertex_mask.has_value())
+            {
+                vertex_mask.emplace();
+            }
+            vertex_mask->clear();
+            vertex_mask->resize(condition_grounder.get_static_consistency_graph().get_vertices().size());
 
             for (const auto& vertex : condition_grounder.get_static_consistency_graph().get_vertices())
             {
