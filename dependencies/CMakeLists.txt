@@ -24,6 +24,9 @@ endif ()
 # Add subprojects
 ##############################################################
 
+# Pure C++ consumers (e.g. the unit-test workflows) can skip nanobind entirely.
+option(DEPENDENCIES_BUILD_NANOBIND "Build and install the nanobind dependency" ON)
+
 add_subdirectory(abseil)
 add_subdirectory(argparse)
 add_subdirectory(benchmark)
@@ -32,7 +35,9 @@ add_subdirectory(fmt)
 add_subdirectory(gtl)
 add_subdirectory(googletest)
 add_subdirectory(loki)
-add_subdirectory(nanobind)
+if(DEPENDENCIES_BUILD_NANOBIND)
+    add_subdirectory(nanobind)
+endif()
 add_subdirectory(nauty)
 add_subdirectory(oneTBB)
 add_subdirectory(valla)

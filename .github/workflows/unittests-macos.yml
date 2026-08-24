@@ -26,7 +26,7 @@ jobs:
     - name: Configure, Build, and Install Dependencies
       run: |
         cd dependencies
-        cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/dependencies/installs
+        cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/dependencies/installs -DDEPENDENCIES_BUILD_NANOBIND=OFF
         cmake --build build
         cmake --install build/
 
