@@ -2,7 +2,10 @@
 requires = [
     "setuptools>=64",
     "nanobind>=2.15,<3",
-    "cmake>=3.21",
+    # Pinned below 4.x: CMake 4.0 introduced a regression in ExternalProject's
+    # git-clone retry logic ("math cannot parse the expression: 1 + <project>")
+    # which makes transient clone failures fatal.
+    "cmake>=3.21,<4",
     "ninja",
 ]
 build-backend = "setuptools.build_meta"
