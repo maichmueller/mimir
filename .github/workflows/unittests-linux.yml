@@ -26,7 +26,17 @@ jobs:
     - name: Install CMake
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake
+        sudo apt-get install -y cmake gdb
+
+    # Restore must happen BEFORE the dependencies build so a hit actually
+    # saves build time; the post-job phase saves the fresh install.
+    - name: Cache built dependencies
+      uses: actions/cache@v4
+      with:
+        path: dependencies/installs
+        key: ${{ runner.os }}-unittests-deps-v2-${{ hashFiles('CMakeLists.txt', 'dependencies/**/CMakeLists.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-unittests-deps-v2-
 
     - name: Configure, Build, and Install Dependencies
       run: |
@@ -35,15 +45,6 @@ jobs:
         cmake --build build
         cmake --install build/
 
-
-    - name: Cache built dependencies
-      uses: actions/cache@v4
-      with:
-        path: dependencies/installs
-        key: ${{ runner.os }}-unittests-deps-${{ hashFiles('CMakeLists.txt', 'dependencies/**/CMakeLists.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-unittests-deps-
-
     # Debug
     - name: Debug, Configure, and Build Mimir
       run: |
@@ -51,8 +52,35 @@ jobs:
         cmake --build build_debug
 
     - name: Debug Test
+      id: debug_test
       working-directory: build_debug/tests/unit
-      run: GTEST_OUTPUT=xml:test-results/ GTEST_COLOR=1 ctest -V
+      continue-on-error: true
+      run: GTEST_OUTPUT=xml:test-results/ GTEST_COLOR=1 ctest -V --output-on-failure
+
+    # Temporary diagnostics for the SIGILL investigation.
+    - name: Diagnose crashes (temporary)
+      if: steps.debug_test.outcome == 'failure'
+      working-directory: build_debug/tests/unit
+      run: |
+        set +e
+        echo "=== CPU info ==="
+        lscpu | grep -E "Model name|Flags" | cut -c1-400
+        echo "=== Toolchain ==="
+        gcc --version | head -1
+        for t in datasets_knowledge_base_test datasets_object_graph_test graphs_algorithms_folklore_weisfeiler_leman_test languages_general_policies_general_policy_test search_brfs_test search_iw_test; do
+          if [ -x "./$t" ]; then
+            timeout 600 ./$t > /dev/null 2>&1
+            echo "$t direct-exit=$?"
+          fi
+        done
+        echo "=== gdb on search_iw_test ==="
+        timeout 900 gdb -batch -ex run -ex 'info program' -ex 'info registers rip' -ex 'x/3i $pc' -ex 'info symbol $pc' -ex 'bt 15' --args ./search_iw_test 2>&1 | tail -45 || true
+        echo "=== gdb on datasets_knowledge_base_test ==="
+        timeout 900 gdb -batch -ex run -ex 'info program' -ex 'info registers rip' -ex 'x/3i $pc' -ex 'info symbol $pc' -ex 'bt 15' --args ./datasets_knowledge_base_test 2>&1 | tail -35 || true
+
+    - name: Fail if Debug Test failed (temporary)
+      if: steps.debug_test.outcome == 'failure'
+      run: exit 1
 
     # Release
     - name: Release, Configure, and Build Mimir
