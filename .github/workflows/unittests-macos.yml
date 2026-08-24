@@ -23,21 +23,22 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install typing_extensions
 
+    # Restore must happen BEFORE the dependencies build so a hit actually
+    # saves build time; the post-job phase saves the fresh install.
+    - name: Cache built dependencies
+      uses: actions/cache@v4
+      with:
+        path: dependencies/installs
+        key: ${{ runner.os }}-unittests-deps-v2-${{ hashFiles('CMakeLists.txt', 'dependencies/**/CMakeLists.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-unittests-deps-v2-
+
     - name: Configure, Build, and Install Dependencies
       run: |
         cd dependencies
         cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/dependencies/installs -DDEPENDENCIES_BUILD_NANOBIND=OFF
         cmake --build build
         cmake --install build/
-
-
-    - name: Cache built dependencies
-      uses: actions/cache@v4
-      with:
-        path: dependencies/installs
-        key: ${{ runner.os }}-unittests-deps-${{ hashFiles('CMakeLists.txt', 'dependencies/**/CMakeLists.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-unittests-deps-
 
     # Debug
     - name: Debug, Configure, and Build Mimir
@@ -47,7 +48,7 @@ jobs:
 
     - name: Debug Test
       working-directory: build_debug/tests/unit
-      run: GTEST_OUTPUT=xml:test-results/ GTEST_COLOR=1 ctest -V
+      run: GTEST_OUTPUT=xml:test-results/ GTEST_COLOR=1 ctest -V --output-on-failure
 
     # Release
     - name: Release, Configure, and Build Mimir
