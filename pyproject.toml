@@ -1,7 +1,11 @@
 [build-system]
 requires = [
     "setuptools>=64",
-    "nanobind>=2.15,<3",
+    # nanobind 3.x: internals generation 22. ABI-critical and shared with every
+    # extension that joins NB_DOMAIN=pymimir_abi_domain (hierarchical._core,
+    # mifrost), so this pin and MIMIR_NANOBIND_VERSION in
+    # dependencies/nanobind/CMakeLists.txt must move together with those.
+    "nanobind>=3,<4",
     # Pinned below 4.x: CMake 4.0 introduced a regression in ExternalProject's
     # git-clone retry logic ("math cannot parse the expression: 1 + <project>")
     # which makes transient clone failures fatal.

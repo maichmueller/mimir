@@ -47,7 +47,7 @@ void reject_python_strategy(const GoalStrategy& strategy, const char* option_nam
 class IPyGoalStrategy : public IGoalStrategy
 {
 public:
-    NB_TRAMPOLINE(IGoalStrategy, 2);
+    NB_TRAMPOLINE(IGoalStrategy);
 
     /* Trampoline (need one for each virtual function) */
     bool test_static_goal() override { NB_OVERRIDE_PURE(test_static_goal); }
@@ -58,7 +58,7 @@ public:
 class IPyPruningStrategy : public IPruningStrategy
 {
 public:
-    NB_TRAMPOLINE(IPruningStrategy, 2);
+    NB_TRAMPOLINE(IPruningStrategy);
 
     /* Trampoline (need one for each virtual function) */
     bool test_prune_initial_state(const State& state) override { NB_OVERRIDE_PURE(test_prune_initial_state, state); }
@@ -72,7 +72,7 @@ public:
 class IPyLayerOrderingStrategy : public ILayerOrderingStrategy
 {
 public:
-    NB_TRAMPOLINE(ILayerOrderingStrategy, 4);
+    NB_TRAMPOLINE(ILayerOrderingStrategy);
 
     bool supports_eager_scoring() const override { NB_OVERRIDE(supports_eager_scoring); }
 
@@ -86,7 +86,7 @@ public:
 class IPyExplorationStrategy : public IExplorationStrategy
 {
 public:
-    NB_TRAMPOLINE(IExplorationStrategy, 1);
+    NB_TRAMPOLINE(IExplorationStrategy);
 
     /* Trampoline (need one for each virtual function) */
     bool on_generate_state(const State& state, GroundAction action, const State& succ_state) override
@@ -98,7 +98,7 @@ public:
 class IPyHeuristic : public IHeuristic
 {
 public:
-    NB_TRAMPOLINE(IHeuristic, 2);
+    NB_TRAMPOLINE(IHeuristic);
 
     /* Trampoline (need one for each virtual function) */
     ContinuousCost compute_heuristic(const State& state, formalism::GroundConjunctiveCondition goal = nullptr) override
@@ -112,7 +112,7 @@ public:
 class IPyAStarEagerEventHandler : public astar_eager::IEventHandler
 {
 public:
-    NB_TRAMPOLINE(astar_eager::IEventHandler, 14);
+    NB_TRAMPOLINE(astar_eager::IEventHandler);
 
     /* Trampoline (need one for each virtual function) */
     void on_expand_state(const State& state) override { NB_OVERRIDE_PURE(on_expand_state, state); }
@@ -156,7 +156,7 @@ public:
 class IPyAStarIWEventHandler : public astar_iw::IEventHandler
 {
 public:
-    NB_TRAMPOLINE(astar_iw::IEventHandler, 14);
+    NB_TRAMPOLINE(astar_iw::IEventHandler);
 
     void on_start_search(const State& state, ContinuousCost g_value, ContinuousCost f_value) override
     {
@@ -183,7 +183,7 @@ public:
 class IPyAStarLazyEventHandler : public astar_lazy::IEventHandler
 {
 public:
-    NB_TRAMPOLINE(astar_lazy::IEventHandler, 14);
+    NB_TRAMPOLINE(astar_lazy::IEventHandler);
 
     /* Trampoline (need one for each virtual function) */
     void on_expand_state(const State& state) override { NB_OVERRIDE_PURE(on_expand_state, state); }
@@ -227,7 +227,7 @@ public:
 class IPyBrFSEventHandler : public brfs::IEventHandler
 {
 public:
-    NB_TRAMPOLINE(brfs::IEventHandler, 14);
+    NB_TRAMPOLINE(brfs::IEventHandler);
 
     /* Trampoline (need one for each virtual function) */
     void on_expand_state(const State& state) override { NB_OVERRIDE_PURE(on_expand_state, state); }
@@ -276,7 +276,7 @@ public:
 class IPyGBFSEagerEventHandler : public gbfs_eager::IEventHandler
 {
 public:
-    NB_TRAMPOLINE(gbfs_eager::IEventHandler, 11);
+    NB_TRAMPOLINE(gbfs_eager::IEventHandler);
 
     /* Trampoline (need one for each virtual function) */
     void on_expand_state(const State& state) override { NB_OVERRIDE_PURE(on_expand_state, state); }
@@ -311,7 +311,7 @@ public:
 class IPyGBFSLazyEventHandler : public gbfs_lazy::IEventHandler
 {
 public:
-    NB_TRAMPOLINE(gbfs_lazy::IEventHandler, 11);
+    NB_TRAMPOLINE(gbfs_lazy::IEventHandler);
 
     /* Trampoline (need one for each virtual function) */
     void on_expand_state(const State& state) override { NB_OVERRIDE_PURE(on_expand_state, state); }

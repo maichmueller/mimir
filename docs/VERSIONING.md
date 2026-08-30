@@ -11,6 +11,25 @@ forwarded to CMake as `MIMIR_VERSION_INFO`.
 | `MINOR` | **Anything new becomes visible from Python**: a new class, function, enum value, option field, or keyword argument. Also: an existing binding gains capability a caller could branch on. |
 | `PATCH` | Nothing on the Python surface changed. Bug fixes, performance work, C++-only refactors, build changes. |
 
+### The one build change that is not a `PATCH`
+
+Moving nanobind to a new **internals generation** bumps `MINOR` at least, even
+though nothing on the Python surface moves.
+
+Every nanobind extension looks its shared C++ type registry up under a key
+derived from `NB_INTERNALS_VERSION`. Extensions that declare
+`NB_DOMAIN=pymimir_abi_domain` -- `hierarchical._core` and `mifrost` do -- join
+*this* wheel's registry. Two modules built against different generations get
+**separate** registries: nothing fails to build, nothing fails to import, and
+the first `pymimir` object handed across the boundary raises `TypeError`
+instead of converting.
+
+So a downstream does not merely *prefer* a matching wheel, it cannot function
+without one -- and `PATCH` gives it no way to say so. `pymimir>=0.14.3` would
+happily resolve to a wheel from either generation. The floor has to be
+expressible before anything is installed, which is the whole point of the rule
+above.
+
 The `MINOR` rule is the one that matters, and it is deliberately broad: a *new option field* counts.
 That is what lets a downstream project express a real floor.
 

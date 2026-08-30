@@ -15,12 +15,19 @@ find_package(Python 3.12
 # "some install is present".
 #
 # Every nanobind extension derives the key under which it looks up nanobind's
-# shared type registry from NB_INTERNALS_VERSION -- the builtins-dict entry
-# `__nb_internals_v<N>_<platform_abi>_<domain>__` -- and that counter is bumped
-# whenever nanobind's internal structs change layout (2.7.0 -> 16, 2.9.2 -> 16,
-# 2.12.0 -> 19, 2.13.0 -> 20, 2.15.0 -> 21). Two modules built against different
-# generations create *separate* registries and can no longer cast each other's
-# C++ types. Nothing reports this: the libraries link, the modules import, and
+# shared type registry from NB_INTERNALS_VERSION, a counter bumped whenever
+# nanobind's internal structs change layout (2.7.0 -> 16, 2.9.2 -> 16,
+# 2.12.0 -> 19, 2.13.0 -> 20, 2.15.0 -> 21, 3.0.0 -> 22). Two modules built
+# against different generations create *separate* registries and can no longer
+# cast each other's C++ types.
+#
+# Both the location and the spelling of that key changed in 3.x, so do not
+# grep for the 2.x form:
+#   2.x: builtins, `__nb_internals_v<N>_<platform_abi>_<domain>__`
+#   3.x: PyInterpreterState_GetDict(),
+#        `__nb_internals_<platform_abi>_a1_v<N>_<domain>__`  (version LAST).
+#
+# Nothing reports a mismatch: the libraries link, the modules import, and
 # the failure surfaces as a TypeError the first time an object crosses the
 # boundary -- which for pymimir means the first downstream extension that tries
 # to accept an `mm.State`.
@@ -28,7 +35,7 @@ find_package(Python 3.12
 # The unversioned `find_package` this replaced accepted whatever happened to sit
 # in the install prefix, so anyone who had built mimir before stayed silently
 # pinned to their old nanobind and the GIT_TAG below never ran.
-set(MIMIR_NANOBIND_VERSION "2.15.0" CACHE STRING
+set(MIMIR_NANOBIND_VERSION "3.0.1" CACHE STRING
     "Pinned nanobind version. ABI-critical -- see the comment above.")
 
 find_package(nanobind ${MIMIR_NANOBIND_VERSION} EXACT QUIET

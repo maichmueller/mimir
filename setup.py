@@ -16,7 +16,12 @@ from setuptools.command.build_ext import build_ext
 # the MINOR component, so downstream can gate on `pymimir>=X.Y` instead of probing with
 # `hasattr`. 0.14.2: packaging/CI overhaul (Python >= 3.12 incl. free-threaded wheels).
 # 0.14.3: source builds honour the pinned nanobind instead of reusing a stale prefix.
-__version__ = "0.14.3"
+# 0.15.0: nanobind 3 (internals generation 22). MINOR rather than PATCH despite
+#   being a build change -- see docs/VERSIONING.md: every extension sharing
+#   NB_DOMAIN=pymimir_abi_domain must be rebuilt against the same generation, and
+#   a downstream needs to express that as a resolvable floor rather than discover
+#   it as a TypeError at the first cross-module cast.
+__version__ = "0.15.0"
 HERE = Path(__file__).resolve().parent
 
 

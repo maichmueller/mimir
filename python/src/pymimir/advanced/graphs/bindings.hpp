@@ -4,15 +4,26 @@
 
 #include "../init_declarations.hpp"
 
+#include <type_traits>
+
 namespace mimir::graphs
 {
 
 struct with_gil_t
 {
     template<class F>
-    decltype(auto) operator()(F&& f) const
+    auto operator()(F&& f) const -> std::invoke_result_t<F>
     {
         nb::gil_scoped_acquire gil;
+        // nanobind 3: acquiring the GIL fails once the interpreter has begun
+        // finalizing, and touching the Python API after a failed acquire is
+        // undefined. Every callback below reaches into `obj_`, and PyProperty's
+        // comparison/hash/str can run from C++ destructors during shutdown --
+        // exactly when the acquire fails. Return a default rather than crash.
+        if (!gil.is_valid())
+        {
+            return std::invoke_result_t<F> {};
+        }
         return std::forward<F>(f)();
     }
 };

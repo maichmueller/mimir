@@ -14,7 +14,7 @@ namespace mimir::languages::dl
 class IPyRefinementPruningFunction : public IRefinementPruningFunction
 {
 public:
-    NB_TRAMPOLINE(IRefinementPruningFunction, 4);
+    NB_TRAMPOLINE(IRefinementPruningFunction);
 
     /* Trampoline (need one for each virtual function) */
     bool should_prune(Constructor<ConceptTag> constructor) override { NB_OVERRIDE_PURE(should_prune, constructor); }
