@@ -41,7 +41,13 @@ jobs:
     - name: Configure, Build, and Install Dependencies
       run: |
         cd dependencies
-        cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/dependencies/installs -DDEPENDENCIES_BUILD_NANOBIND=OFF
+        # CMAKE_PREFIX_PATH is required whenever the install prefix is a cache
+        # hit: each dependency's own find_package(<dep> ... PATHS ${CMAKE_INSTALL_PREFIX})
+        # then succeeds and its config runs find_dependency() for its transitive
+        # deps, which carry no such PATHS hint and resolve through CMAKE_PREFIX_PATH.
+        # Without it these steps only work on a cache miss, where every dependency is
+        # built from scratch and no config file is ever read back.
+        cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/dependencies/installs -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dependencies/installs -DDEPENDENCIES_BUILD_NANOBIND=OFF
         cmake --build build
         cmake --install build/
 
