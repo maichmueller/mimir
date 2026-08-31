@@ -1035,7 +1035,16 @@ void bind_module_definitions(nb::module_& m)
              "base_abstracted"_a = false,
              "preserve_goal_atoms"_a = true,
              "keep_depth_one_novel"_a = false,
-             "landmarks"_a = landmarks::FactLandmarkGraph(nullptr),
+             // `.none()` is load-bearing, not decoration. FactLandmarkGraph is a
+             // shared_ptr, so this default is a null one, and nanobind renders it
+             // to Python as `None`. Filling the default back in at call time then
+             // means casting `None` -> shared_ptr, which nanobind 3 refuses unless
+             // the argument declares it accepts None -- nanobind 2.x allowed it
+             // implicitly. Without this the whole overload fails to bind and even
+             // a call that never mentions `landmarks` dies with "incompatible
+             // function arguments". The bare-`nullptr` spelling used elsewhere in
+             // this file is unaffected: that operator= sets the none flag itself.
+             "landmarks"_a.none() = landmarks::FactLandmarkGraph(nullptr),
              "grouping"_a = iw::LandmarkGrouping())
         .def_static("create",
                     &iw::AbstractedNoveltyPruningStrategyImpl::create,
@@ -1044,7 +1053,8 @@ void bind_module_definitions(nb::module_& m)
                     "base_abstracted"_a = false,
                     "preserve_goal_atoms"_a = true,
                     "keep_depth_one_novel"_a = false,
-                    "landmarks"_a = landmarks::FactLandmarkGraph(nullptr),
+                    // Same null-shared_ptr default as the constructor above.
+                    "landmarks"_a.none() = landmarks::FactLandmarkGraph(nullptr),
                     "grouping"_a = iw::LandmarkGrouping())
         // Abstracted LIW(k) rather than abstracted IW(k), and how many landmark ranks it carries.
         .def_prop_ro("is_landmark_restricted", &iw::AbstractedNoveltyPruningStrategyImpl::is_landmark_restricted)
