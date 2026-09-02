@@ -34,6 +34,35 @@
 namespace mimir::search::iw
 {
 
+/// @brief How disjunctive landmark members are assigned to novelty rows.
+enum class LandmarkGroupingMode
+{
+    /// Members of each disjunctive landmark share one novelty row.
+    SHARED,
+    /// Every disjunctive member gets its own singleton novelty row.
+    ALL_PRIVATE,
+};
+
+/// @brief How landmark atoms are grouped into ranks, i.e. which of them share a novelty row.
+///
+/// Default-constructed means one atom per rank, the pre-disjunctive behaviour and what every caller
+/// that does not care about disjunctive landmarks gets.
+struct LandmarkGrouping
+{
+    /// @brief Sets whose members share one rank, or whose members become singleton ranks in
+    /// `ALL_PRIVATE` mode; see `landmarks::FactLandmarkGraphImpl::get_disjunctive_landmarks`.
+    std::vector<AtomIndexList> disjunctive_landmarks = {};
+
+    /// @brief Atoms pulled out of every set above and given a private rank instead.
+    IndexSet unshared_atom_indices = {};
+
+    /// @brief Whether disjunctive members share rows or are all private.
+    LandmarkGroupingMode mode = LandmarkGroupingMode::SHARED;
+
+    bool is_trivial() const { return disjunctive_landmarks.empty(); }
+    bool is_all_private() const { return mode == LandmarkGroupingMode::ALL_PRIVATE; }
+};
+
 /// @brief The landmark coordinate of a landmark-restricted novelty feature.
 ///
 /// A state's coordinates are the ranks of the landmark *groups* it satisfies, or the single
@@ -76,7 +105,13 @@ public:
     /// here -- sharing its row lets a sibling's exploration prune the branch that reaches it, and
     /// the subgoal is precisely the branch the search must not lose. See
     /// `iw::Options::landmark_novelty_unshared_atoms`.
-    LandmarkCoordinates(AtomIndexList landmark_atom_indices, const std::vector<AtomIndexList>& disjunctive_landmarks, const IndexSet& unshared_atom_indices = {});
+    /// @param mode how disjunctive members are assigned to rows. In `ALL_PRIVATE` mode the
+    /// constructor directly builds singleton groups for the sorted unique union of fact landmarks
+    /// and disjunctive members. `unshared_atom_indices` must be empty in that mode.
+    LandmarkCoordinates(AtomIndexList landmark_atom_indices,
+                        const std::vector<AtomIndexList>& disjunctive_landmarks,
+                        const IndexSet& unshared_atom_indices = {},
+                        LandmarkGroupingMode mode = LandmarkGroupingMode::SHARED);
 
     /// @brief The ranks `atom_index` carries, empty when it is not a landmark atom.
     std::span<const uint32_t> get_ranks(AtomIndex atom_index) const;
@@ -85,6 +120,13 @@ public:
     ///
     /// A convenience for the bijective case; prefer `get_ranks` where an atom may carry several.
     uint32_t get_rank(AtomIndex atom_index) const;
+
+    /// @brief Whether every rank has exactly one carrier atom and every landmark atom carries at
+    /// most one rank.
+    ///
+    /// This is stronger than `!has_shared_ranks()`: malformed or manually assembled groupings can
+    /// contain overlapping singleton groups, in which case an atom still carries multiple ranks.
+    bool has_bijective_ranks() const { return m_has_bijective_ranks; }
 
     /// @brief Whether any rank has more than one carrier atom.
     ///
@@ -133,9 +175,9 @@ public:
     /// contribute its rank *list* rather than one rank.
     ///
     /// @param true_rank_carrier_counts `collect_rank_carrier_counts(L(state))`, and read only when
-    /// `has_shared_ranks()`. A shared rank goes off when its *last* true carrier is deleted, not
+    /// ranks are not bijective. A shared rank goes off when its *last* true carrier is deleted, not
     /// when any is, so the delete side has to count -- but per state, not per action, which is why
-    /// this is an argument rather than a scan. Without sharing it may be empty.
+    /// this is an argument rather than a scan. It may be empty for a bijective grouping.
     void collect_transition_from_delta(const AtomIndexList& true_landmark_atom_indices,
                                        const std::vector<uint32_t>& true_rank_carrier_counts,
                                        const AtomIndexList& add_atom_indices,
@@ -145,8 +187,9 @@ public:
 
     /// @brief Number of true carrier atoms per rank, sized to `get_num_ranks()`.
     ///
-    /// The per-state input of a delta query under sharing; see `collect_transition_from_delta`.
-    /// Leaves `out_counts` empty when `has_shared_ranks()` is false, since nothing reads it then.
+    /// The per-state input of a delta query for a non-bijective grouping; see
+    /// `collect_transition_from_delta`. Leaves `out_counts` empty for a bijective grouping, since
+    /// nothing reads it then.
     void collect_rank_carrier_counts(const AtomIndexList& true_landmark_atom_indices, std::vector<uint32_t>& out_counts) const;
 
     /// @brief Number of `uint64_t` words a rank bitmap needs.
@@ -169,7 +212,7 @@ public:
                                              std::vector<uint64_t>& out_kept_mask) const;
 
 private:
-    /// @brief Per-rank working storage for one shared-rank delta query.
+    /// @brief Per-rank working storage for one non-bijective delta query.
     ///
     /// Generation-stamped rather than cleared: an entry whose `generation` predates the current
     /// query reads as empty, so a query touches only the ranks its delta mentions and neither
@@ -196,6 +239,12 @@ private:
     AtomIndexList m_landmark_atom_indices;
     size_t m_num_groups = 0;
     bool m_has_shared_ranks = false;
+    bool m_has_bijective_ranks = true;
+
+    /* In the bijective case this is the compact hot-path representation: one direct atom -> rank
+       entry, with `NOT_A_LANDMARK` for gaps. The general CSR representation below is retained for
+       overlapping/shared groupings, where an atom may carry several ranks. */
+    std::vector<uint32_t> m_bijective_rank_by_atom;
 
     /* atom index -> its ranks, as a CSR pair: the ranks of `atom` are
        `m_ranks_flat[m_rank_offsets[atom] .. m_rank_offsets[atom + 1])`. One vector rather than a
@@ -205,13 +254,13 @@ private:
     std::vector<uint32_t> m_ranks_flat;
 
     /* Rank-set scratch for `collect_transition`, which has to compare the group sets of two states
-       and cannot do it atom-by-atom once atoms share ranks. Mutable for the same reason
-       `LandmarkNoveltyTable`'s scratch is: one table serves one search on one thread. */
+       and cannot do it atom-by-atom once the rank mapping is non-bijective. Mutable for the same
+       reason `LandmarkNoveltyTable`'s scratch is: one table serves one search on one thread. */
     mutable std::vector<uint64_t> m_scratch_state_mask;
     mutable std::vector<uint64_t> m_scratch_succ_mask;
 
-    /* Rank scratch for the delta queries under sharing; empty and untouched without it. The
-       generation counter belongs to the whole array, so invalidating it is one increment. */
+    /* Rank scratch for non-bijective delta queries; empty and untouched for the bijective fast path.
+       The generation counter belongs to the whole array, so invalidating it is one increment. */
     mutable std::vector<RankDeltaScratch> m_scratch_rank_delta;
     mutable std::vector<uint32_t> m_scratch_touched_ranks;
     mutable uint32_t m_scratch_generation = 0;
@@ -306,22 +355,6 @@ private:
     size_t m_num_tuples = 0;
     size_t m_row_words = 0;
     std::vector<uint64_t> m_words;
-};
-
-/// @brief How landmark atoms are grouped into ranks, i.e. which of them share a novelty row.
-///
-/// Default-constructed means one atom per rank, the pre-disjunctive behaviour and what every caller
-/// that does not care about disjunctive landmarks gets.
-struct LandmarkGrouping
-{
-    /// @brief Sets whose members share one rank; see
-    /// `landmarks::FactLandmarkGraphImpl::get_disjunctive_landmarks`.
-    std::vector<AtomIndexList> disjunctive_landmarks = {};
-
-    /// @brief Atoms pulled out of every set above and given a private rank instead.
-    IndexSet unshared_atom_indices = {};
-
-    bool is_trivial() const { return disjunctive_landmarks.empty(); }
 };
 
 /// @brief Which physical layout a dense `LandmarkNoveltyTable` uses. See `RankMajorBitTable` and
@@ -563,8 +596,14 @@ private:
     /// Keyed on the state index, which identifies a state within the repository that created it
     /// and never changes: states are immutable, so a hit cannot be stale.
     std::optional<Index> m_delta_query_state_index;
+    /// Which per-state forms have been filled for the current cached state. A tuple-major private
+    /// query needs only the rank mask; a rank-major/sparse query needs the atom list. The flags also
+    /// let a dense table that switches to sparse after a resize fill the newly needed form lazily.
+    bool m_delta_query_true_landmark_atoms_cached = false;
+    bool m_delta_query_true_landmark_mask_cached = false;
+    bool m_delta_query_rank_carrier_counts_cached = false;
     AtomIndexList m_delta_query_true_landmark_atoms;
-    /// Carriers per rank in `L(s)`; empty unless ranks are shared. See
+    /// Carriers per rank in `L(s)`; empty for the bijective/private path. See
     /// `LandmarkCoordinates::collect_rank_carrier_counts`.
     std::vector<uint32_t> m_delta_query_rank_carrier_counts;
     /// `L(s)` as a rank bitmap, for the layouts that query from bitmaps. Cached alongside the atom

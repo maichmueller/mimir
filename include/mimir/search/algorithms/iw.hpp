@@ -90,6 +90,16 @@ struct Options
     /// measured apart.
     bool landmark_novelty_disjunctive = false;
 
+    /// @brief Give every member of every ranked disjunctive landmark its own private novelty row.
+    ///
+    /// This is exactly equivalent to putting the union of all disjunctive member atom indices into
+    /// `landmark_novelty_unshared_atoms`, but is a first-class grouping mode and therefore avoids
+    /// requiring callers to reconstruct that union. Ignored unless both a landmark graph and
+    /// `landmark_novelty_disjunctive` are set. This changes only the landmark coordinate grouping;
+    /// the ladder remains LIW(k), so `max_arity = 1` is still LIW(1), not IW(2). It cannot be
+    /// combined with `landmark_novelty_unshared_atoms` when the mode is active.
+    bool landmark_novelty_all_private = false;
+
     /// @brief Atoms that must keep a private novelty row instead of sharing their disjunctive
     /// landmark's. Ignored unless `landmark_novelty_disjunctive` is set.
     ///

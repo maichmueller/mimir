@@ -590,18 +590,29 @@ PruningStrategy LandmarkNoveltyPruningStrategyImpl::create(const landmarks::Fact
 }
 
 LandmarkGrouping
-LandmarkNoveltyPruningStrategyImpl::make_grouping(const landmarks::FactLandmarkGraph& landmarks, bool disjunctive, const IndexSet& unshared_atom_indices)
+LandmarkNoveltyPruningStrategyImpl::make_grouping(const landmarks::FactLandmarkGraph& landmarks,
+                                                  bool disjunctive,
+                                                  const IndexSet& unshared_atom_indices,
+                                                  bool all_private)
 {
     auto grouping = LandmarkGrouping {};
     if (!disjunctive || !landmarks)
     {
         return grouping;  // one row per fact landmark, exactly as before disjunctive landmarks
     }
+    if (all_private && !unshared_atom_indices.empty())
+    {
+        throw std::invalid_argument("LandmarkNoveltyPruningStrategyImpl::make_grouping: all_private cannot be combined with unshared_atom_indices.");
+    }
     for (const auto& members : landmarks->get_disjunctive_landmarks())
     {
         grouping.disjunctive_landmarks.emplace_back(members.begin(), members.end());
     }
     grouping.unshared_atom_indices = unshared_atom_indices;
+    if (all_private)
+    {
+        grouping.mode = LandmarkGroupingMode::ALL_PRIVATE;
+    }
     return grouping;
 }
 
@@ -892,7 +903,10 @@ AbstractedNoveltyPruningStrategyImpl::AbstractedNoveltyPruningStrategyImpl(forma
            it -- same atoms, same grouping -- because the landmark half of the feature is the same
            question; only the tuple half is abstracted. */
         auto landmark_atom_indices = AtomIndexList(landmarks->get_landmark_atom_indices().begin(), landmarks->get_landmark_atom_indices().end());
-        m_landmark_coordinates.emplace(std::move(landmark_atom_indices), grouping.disjunctive_landmarks, grouping.unshared_atom_indices);
+        m_landmark_coordinates.emplace(std::move(landmark_atom_indices),
+                                       grouping.disjunctive_landmarks,
+                                       grouping.unshared_atom_indices,
+                                       grouping.mode);
         m_tables_by_rank.reserve(m_landmark_coordinates->get_num_ranks());
         for (size_t rank = 0; rank < m_landmark_coordinates->get_num_ranks(); ++rank)
         {

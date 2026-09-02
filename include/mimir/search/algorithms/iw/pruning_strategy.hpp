@@ -207,8 +207,11 @@ public:
                                   LandmarkGrouping grouping = {});
 
     /// @brief The grouping a graph and `iw::Options` imply: the graph's disjunctive landmarks when
-    /// `disjunctive` is set, minus `unshared_atom_indices`, and nothing otherwise.
-    static LandmarkGrouping make_grouping(const landmarks::FactLandmarkGraph& landmarks, bool disjunctive, const IndexSet& unshared_atom_indices);
+    /// `disjunctive` is set, with optional explicit all-private mode, and nothing otherwise.
+    static LandmarkGrouping make_grouping(const landmarks::FactLandmarkGraph& landmarks,
+                                          bool disjunctive,
+                                          const IndexSet& unshared_atom_indices,
+                                          bool all_private = false);
 
     bool test_prune_initial_state(const State& state) override;
     bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;

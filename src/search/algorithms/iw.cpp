@@ -137,8 +137,10 @@ SearchResult find_solution_impl(const SearchContext& context, const Options& opt
     /* Built once for the whole ladder: the grouping depends on the graph and the caller's subgoal,
        neither of which changes between arity passes, and every pass would otherwise re-copy the
        graph's disjunctive landmarks. */
-    const auto landmark_grouping =
-        LandmarkNoveltyPruningStrategyImpl::make_grouping(options.landmark_novelty_graph, options.landmark_novelty_disjunctive, options.landmark_novelty_unshared_atoms);
+    const auto landmark_grouping = LandmarkNoveltyPruningStrategyImpl::make_grouping(options.landmark_novelty_graph,
+                                                                                     options.landmark_novelty_disjunctive,
+                                                                                     options.landmark_novelty_unshared_atoms,
+                                                                                     options.landmark_novelty_all_private);
 
     iw_event_handler->on_start_search(start_state);
 

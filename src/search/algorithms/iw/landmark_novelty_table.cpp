@@ -148,9 +148,36 @@ LandmarkCoordinates::LandmarkCoordinates(AtomIndexList landmark_atom_indices)
 
 LandmarkCoordinates::LandmarkCoordinates(AtomIndexList landmark_atom_indices,
                                          const std::vector<AtomIndexList>& disjunctive_landmarks,
-                                         const IndexSet& unshared_atom_indices)
+                                         const IndexSet& unshared_atom_indices,
+                                         LandmarkGroupingMode mode)
 {
     auto groups = std::vector<AtomIndexList> {};
+
+    if (mode == LandmarkGroupingMode::ALL_PRIVATE)
+    {
+        if (!unshared_atom_indices.empty())
+        {
+            throw std::invalid_argument("LandmarkCoordinates: ALL_PRIVATE cannot be combined with unshared_atom_indices.");
+        }
+
+        /* ALL_PRIVATE is a construction mode, not an IndexSet expansion. Build the one private
+           landmark universe directly, so no disjunctive group or per-member IndexSet lookup
+           survives into the coordinate representation. */
+        auto private_atoms = normalize_landmark_atom_indices(std::move(landmark_atom_indices));
+        for (const auto& members : disjunctive_landmarks)
+        {
+            private_atoms.insert(private_atoms.end(), members.begin(), members.end());
+        }
+        private_atoms = normalize_landmark_atom_indices(std::move(private_atoms));
+
+        groups.reserve(private_atoms.size());
+        for (const auto atom_index : private_atoms)
+        {
+            groups.push_back(AtomIndexList { atom_index });
+        }
+        build(std::move(groups));
+        return;
+    }
 
     /* Un-sharing rewrites the groups rather than the ranks they produce, so an atom pulled out of
        every group it appeared in still gets a rank below: the point is a private row, not the
@@ -185,12 +212,24 @@ LandmarkCoordinates::LandmarkCoordinates(AtomIndexList landmark_atom_indices,
 
 void LandmarkCoordinates::build(std::vector<AtomIndexList> groups)
 {
+    m_landmark_atom_indices.clear();
     m_num_groups = groups.size();
+    m_has_shared_ranks = false;
+    m_has_bijective_ranks = true;
+    m_bijective_rank_by_atom.clear();
+    m_rank_offsets.clear();
+    m_ranks_flat.clear();
+    m_scratch_state_mask.clear();
+    m_scratch_succ_mask.clear();
+    m_scratch_rank_delta.clear();
+    m_scratch_touched_ranks.clear();
+    m_scratch_generation = 0;
 
     auto num_ranks_by_atom = std::vector<uint32_t> {};
     for (const auto& members : groups)
     {
         m_has_shared_ranks = m_has_shared_ranks || (members.size() > 1);
+        m_has_bijective_ranks = m_has_bijective_ranks && (members.size() == 1);
         for (const auto atom_index : members)
         {
             if (atom_index >= num_ranks_by_atom.size())
@@ -207,9 +246,39 @@ void LandmarkCoordinates::build(std::vector<AtomIndexList> groups)
         return;
     }
 
+    for (const auto num_ranks : num_ranks_by_atom)
+    {
+        m_has_bijective_ranks = m_has_bijective_ranks && (num_ranks <= 1);
+    }
+
+    for (size_t atom_index = 0; atom_index < num_ranks_by_atom.size(); ++atom_index)
+    {
+        if (num_ranks_by_atom[atom_index] != 0)
+        {
+            m_landmark_atom_indices.push_back(static_cast<AtomIndex>(atom_index));
+        }
+    }
+
+    if (m_has_bijective_ranks)
+    {
+        /* The singleton/private case is the common hot path. Keep one direct map instead of
+           building CSR offsets and a second rank array; action deltas can translate an atom to its
+           rank with one bounded load, while the non-bijective cases below retain the general CSR
+           representation. */
+        m_bijective_rank_by_atom.assign(num_ranks_by_atom.size(), NOT_A_LANDMARK);
+        for (size_t rank = 0; rank < groups.size(); ++rank)
+        {
+            if (!groups[rank].empty())
+            {
+                m_bijective_rank_by_atom[groups[rank].front()] = static_cast<uint32_t>(rank);
+            }
+        }
+        return;
+    }
+
     /* CSR: prefix-sum the per-atom counts into offsets, then fill using a copy of the offsets as
-       write cursors. The overwhelmingly common case is one rank per atom, where this degenerates to
-       the flat `atom -> rank` array it replaces plus one offset load. */
+       write cursors. This is retained for shared and overlapping groupings, where an atom can carry
+       several ranks. */
     m_rank_offsets.assign(num_ranks_by_atom.size() + 1, 0);
     for (size_t atom_index = 0; atom_index < num_ranks_by_atom.size(); ++atom_index)
     {
@@ -226,18 +295,10 @@ void LandmarkCoordinates::build(std::vector<AtomIndexList> groups)
         }
     }
 
-    for (size_t atom_index = 0; atom_index + 1 < m_rank_offsets.size(); ++atom_index)
+    if (!m_has_bijective_ranks)
     {
-        if (m_rank_offsets[atom_index] != m_rank_offsets[atom_index + 1])
-        {
-            m_landmark_atom_indices.push_back(static_cast<AtomIndex>(atom_index));
-        }
-    }
-
-    m_scratch_state_mask.assign(get_rank_mask_words(), uint64_t(0));
-    m_scratch_succ_mask.assign(get_rank_mask_words(), uint64_t(0));
-    if (m_has_shared_ranks)
-    {
+        m_scratch_state_mask.assign(get_rank_mask_words(), uint64_t(0));
+        m_scratch_succ_mask.assign(get_rank_mask_words(), uint64_t(0));
         m_scratch_rank_delta.assign(get_num_ranks(), RankDeltaScratch {});
     }
 }
@@ -265,6 +326,15 @@ LandmarkCoordinates::RankDeltaScratch& LandmarkCoordinates::touch_rank_scratch(u
 
 std::span<const uint32_t> LandmarkCoordinates::get_ranks(AtomIndex atom_index) const
 {
+    if (m_has_bijective_ranks)
+    {
+        if (size_t(atom_index) >= m_bijective_rank_by_atom.size() || m_bijective_rank_by_atom[atom_index] == NOT_A_LANDMARK)
+        {
+            return {};
+        }
+        return std::span<const uint32_t>(m_bijective_rank_by_atom.data() + atom_index, 1);
+    }
+
     if (size_t(atom_index) + 1 >= m_rank_offsets.size())
     {
         return {};
@@ -275,6 +345,11 @@ std::span<const uint32_t> LandmarkCoordinates::get_ranks(AtomIndex atom_index) c
 
 uint32_t LandmarkCoordinates::get_rank(AtomIndex atom_index) const
 {
+    if (m_has_bijective_ranks)
+    {
+        return (size_t(atom_index) < m_bijective_rank_by_atom.size()) ? m_bijective_rank_by_atom[atom_index] : NOT_A_LANDMARK;
+    }
+
     const auto ranks = get_ranks(atom_index);
     return ranks.empty() ? NOT_A_LANDMARK : ranks.front();
 }
@@ -284,18 +359,30 @@ void LandmarkCoordinates::collect(const State& state, std::vector<uint32_t>& out
     out_ranks.clear();
 
     const auto& fluent_atoms = state.get_atoms<FluentTag>();
-    for (const auto atom_index : m_landmark_atom_indices)
+    if (m_has_bijective_ranks)
     {
-        if (fluent_atoms.get(atom_index))
+        /* The direct map is both the representation and the proof of bijection, so the common
+           private path needs no CSR span construction or duplicate removal. */
+        for (const auto atom_index : m_landmark_atom_indices)
         {
-            const auto ranks = get_ranks(atom_index);
-            out_ranks.insert(out_ranks.end(), ranks.begin(), ranks.end());
+            if (fluent_atoms.get(atom_index))
+            {
+                out_ranks.push_back(m_bijective_rank_by_atom[atom_index]);
+            }
         }
     }
-
-    if (m_has_shared_ranks)
+    else
     {
-        /* Two true members of one group would otherwise contribute their shared rank twice. Marking
+        for (const auto atom_index : m_landmark_atom_indices)
+        {
+            if (fluent_atoms.get(atom_index))
+            {
+                const auto ranks = get_ranks(atom_index);
+                out_ranks.insert(out_ranks.end(), ranks.begin(), ranks.end());
+            }
+        }
+
+        /* Two true members of one group would otherwise contribute the shared rank twice. Marking
            it twice is harmless -- the second `set` reports "already marked" -- but each duplicate
            costs a full pass over the scratch tuples. */
         std::sort(out_ranks.begin(), out_ranks.end());
@@ -319,7 +406,7 @@ void LandmarkCoordinates::collect_transition(const State& state,
     const auto& fluent_atoms = state.get_atoms<FluentTag>();
     const auto& succ_fluent_atoms = succ_state.get_atoms<FluentTag>();
 
-    if (!m_has_shared_ranks)
+    if (m_has_bijective_ranks)
     {
         /* Bijective ranks: a rank is true exactly when its one atom is, so the split can be decided
            per atom without materializing either state's rank set. */
@@ -335,7 +422,7 @@ void LandmarkCoordinates::collect_transition(const State& state,
             if (in_succ)
             {
                 any_true_in_succ = true;
-                (in_state ? out_kept_ranks : out_flipped_ranks).push_back(get_ranks(atom_index).front());
+                (in_state ? out_kept_ranks : out_flipped_ranks).push_back(m_bijective_rank_by_atom[atom_index]);
             }
         }
 
@@ -348,9 +435,9 @@ void LandmarkCoordinates::collect_transition(const State& state,
         return;
     }
 
-    /* Shared ranks: a rank is true in a state when ANY of its carriers is, so the per-atom decision
-       above is wrong -- an atom can flip on while its rank was already held up by a sibling, which
-       makes that rank kept rather than flipped. Build both rank sets, then compare. */
+    /* Non-bijective ranks: a rank is true in a state when ANY of its carriers is, so the per-atom
+       decision above is wrong -- an atom can flip on while its rank was already held up by a
+       sibling, which makes that rank kept rather than flipped. Build both rank sets, then compare. */
     const auto num_words = get_rank_mask_words();
     m_scratch_state_mask.assign(num_words, uint64_t(0));
     m_scratch_succ_mask.assign(num_words, uint64_t(0));
@@ -417,7 +504,7 @@ void LandmarkCoordinates::collect_true_landmark_atoms(const State& state, AtomIn
 void LandmarkCoordinates::collect_rank_carrier_counts(const AtomIndexList& true_landmark_atom_indices, std::vector<uint32_t>& out_counts) const
 {
     out_counts.clear();
-    if (!m_has_shared_ranks)
+    if (m_has_bijective_ranks)
     {
         return;
     }
@@ -449,14 +536,14 @@ void LandmarkCoordinates::collect_transition_from_delta(const AtomIndexList& tru
         return;
     }
 
-    if (!m_has_shared_ranks)
+    if (m_has_bijective_ranks)
     {
         /* Only atoms the action touches can change a coordinate, so the added landmarks are the
            whole flipped set: a landmark in `add_atom_indices` was false in the predecessor by
            construction, and with bijective ranks so was its rank. */
         for (const auto atom_index : add_atom_indices)
         {
-            const auto rank = get_rank(atom_index);
+            const auto rank = (size_t(atom_index) < m_bijective_rank_by_atom.size()) ? m_bijective_rank_by_atom[atom_index] : NOT_A_LANDMARK;
             if (rank != NOT_A_LANDMARK)
             {
                 out_flipped_ranks.push_back(rank);
@@ -476,7 +563,7 @@ void LandmarkCoordinates::collect_transition_from_delta(const AtomIndexList& tru
                 ++it_del;
                 continue;
             }
-            out_kept_ranks.push_back(get_ranks(atom_index).front());
+            out_kept_ranks.push_back(m_bijective_rank_by_atom[atom_index]);
         }
     }
     else
@@ -577,13 +664,29 @@ void LandmarkCoordinates::collect_true_landmark_mask(const State& state, std::ve
     out_mask.assign(get_rank_mask_words(), uint64_t(0));
 
     const auto& fluent_atoms = state.get_atoms<FluentTag>();
-    for (const auto atom_index : m_landmark_atom_indices)
+    if (m_has_bijective_ranks)
     {
-        if (fluent_atoms.get(atom_index))
+        /* Keep the mode branch outside the landmark loop: this is computed once per predecessor
+           state and feeds every action-level delta precheck. */
+        for (const auto atom_index : m_landmark_atom_indices)
         {
-            for (const auto rank : get_ranks(atom_index))
+            if (fluent_atoms.get(atom_index))
             {
+                const auto rank = m_bijective_rank_by_atom[atom_index];
                 out_mask[rank >> 6] |= uint64_t(1) << (rank & 63);
+            }
+        }
+    }
+    else
+    {
+        for (const auto atom_index : m_landmark_atom_indices)
+        {
+            if (fluent_atoms.get(atom_index))
+            {
+                for (const auto rank : get_ranks(atom_index))
+                {
+                    out_mask[rank >> 6] |= uint64_t(1) << (rank & 63);
+                }
             }
         }
     }
@@ -610,11 +713,11 @@ void LandmarkCoordinates::collect_transition_masks_from_delta(const std::vector<
     /* The kept coordinates are `L(s)` minus what the action deletes, so the long input is copied
        rather than rebuilt: `del_atom_indices` is short and rarely holds a landmark at all. */
     out_kept_mask.assign(true_landmark_mask.begin(), true_landmark_mask.end());
-    if (!m_has_shared_ranks)
+    if (m_has_bijective_ranks)
     {
         for (const auto atom_index : del_atom_indices)
         {
-            const auto rank = get_rank(atom_index);
+            const auto rank = (size_t(atom_index) < m_bijective_rank_by_atom.size()) ? m_bijective_rank_by_atom[atom_index] : NOT_A_LANDMARK;
             if (rank != NOT_A_LANDMARK)
             {
                 out_kept_mask[rank >> 6] &= ~(uint64_t(1) << (rank & 63));
@@ -653,17 +756,40 @@ void LandmarkCoordinates::collect_transition_masks_from_delta(const std::vector<
        need not have been: under sharing a sibling may already hold it, which makes the rank kept
        rather than flipped. `true_landmark_mask` is exactly that test. */
     auto any_flipped = false;
-    for (const auto atom_index : add_atom_indices)
+    if (m_has_bijective_ranks)
     {
-        for (const auto rank : get_ranks(atom_index))
+        for (const auto atom_index : add_atom_indices)
         {
-            if (m_has_shared_ranks && ((true_landmark_mask[rank >> 6] >> (rank & 63)) & uint64_t(1)))
+            const auto rank = (size_t(atom_index) < m_bijective_rank_by_atom.size()) ? m_bijective_rank_by_atom[atom_index] : NOT_A_LANDMARK;
+            if (rank == NOT_A_LANDMARK)
             {
-                out_kept_mask[rank >> 6] |= uint64_t(1) << (rank & 63);
                 continue;
             }
-            out_flipped_mask[rank >> 6] |= uint64_t(1) << (rank & 63);
-            any_flipped = true;
+            if ((true_landmark_mask[rank >> 6] >> (rank & 63)) & uint64_t(1))
+            {
+                out_kept_mask[rank >> 6] |= uint64_t(1) << (rank & 63);
+            }
+            else
+            {
+                out_flipped_mask[rank >> 6] |= uint64_t(1) << (rank & 63);
+                any_flipped = true;
+            }
+        }
+    }
+    else
+    {
+        for (const auto atom_index : add_atom_indices)
+        {
+            for (const auto rank : get_ranks(atom_index))
+            {
+                if ((true_landmark_mask[rank >> 6] >> (rank & 63)) & uint64_t(1))
+                {
+                    out_kept_mask[rank >> 6] |= uint64_t(1) << (rank & 63);
+                    continue;
+                }
+                out_flipped_mask[rank >> 6] |= uint64_t(1) << (rank & 63);
+                any_flipped = true;
+            }
         }
     }
 
@@ -772,7 +898,7 @@ LandmarkNoveltyTable::LandmarkNoveltyTable(AtomIndexList landmark_atom_indices,
                                            size_t arity,
                                            size_t num_atoms,
                                            LandmarkNoveltyTableOptions options) :
-    m_coordinates(std::move(landmark_atom_indices), grouping.disjunctive_landmarks, grouping.unshared_atom_indices),
+    m_coordinates(std::move(landmark_atom_indices), grouping.disjunctive_landmarks, grouping.unshared_atom_indices, grouping.mode),
     m_options(options),
     m_tuple_index_mapper(arity, num_atoms),
     m_table(),
@@ -912,6 +1038,13 @@ void LandmarkNoveltyTable::resize_to_fit(AtomIndex atom_index)
         else
         {
             m_table = std::move(new_sparse);
+            /* A tuple-major table may have cached only the predecessor's rank mask. Once the
+               resize changes the query representation to sparse, force the next delta query to
+               repopulate the atom-list form. */
+            m_delta_query_state_index.reset();
+            m_delta_query_true_landmark_atoms_cached = false;
+            m_delta_query_true_landmark_mask_cached = false;
+            m_delta_query_rank_carrier_counts_cached = false;
         }
         return;
     }
@@ -1319,23 +1452,56 @@ bool LandmarkNoveltyTable::test_novelty_read_only(const State& state, const Stat
 
 void LandmarkNoveltyTable::refresh_delta_query_state(const State& state)
 {
-    if (m_delta_query_state_index.has_value() && (*m_delta_query_state_index == state.get_index()))
+    const auto same_state = m_delta_query_state_index.has_value() && (*m_delta_query_state_index == state.get_index());
+    if (same_state)
     {
+        /* The usual IW loop asks this once per applicable action. `resize_to_fit` invalidates the
+           state index exactly when a dense-to-sparse switch can make a previously cached form
+           insufficient. */
         return;
     }
 
-    resize_to_fit(state);
-    /* Both forms, not just the one the current layout wants: `test_novelty_read_only_from_delta`
-       resizes again for the added atoms after this cache is filled, and that resize can take the
-       table over budget and switch it from dense to sparse -- which changes which form the query
-       then reads. Both are `O(|L|)` and paid once per state, against a per-action query. */
-    m_coordinates.collect_true_landmark_atoms(state, m_delta_query_true_landmark_atoms);
-    m_coordinates.collect_true_landmark_mask(state, m_delta_query_true_landmark_mask);
-    /* Empty unless ranks are shared, in which case both delta forms need to know how many carriers
-       hold each rank up before they can say whether the action takes it off. Per state, like the
-       two above, precisely so the per-action query stays proportional to the delta. */
-    m_coordinates.collect_rank_carrier_counts(m_delta_query_true_landmark_atoms, m_delta_query_rank_carrier_counts);
-    m_delta_query_state_index = state.get_index();
+    if (!same_state)
+    {
+        resize_to_fit(state);
+        m_delta_query_state_index = state.get_index();
+        m_delta_query_true_landmark_atoms.clear();
+        m_delta_query_true_landmark_mask.clear();
+        m_delta_query_rank_carrier_counts.clear();
+        m_delta_query_true_landmark_atoms_cached = false;
+        m_delta_query_true_landmark_mask_cached = false;
+        m_delta_query_rank_carrier_counts_cached = false;
+    }
+
+    /* Cache only the representation the current table layout needs. ALL_PRIVATE is bijective, so
+       its tuple-major precheck needs just the rank bitmap; the atom list and carrier counts would
+       be dead per-state work. If a later high-index add switches the table to sparse, the next call
+       comes through this same function and fills the atom list then. Non-bijective groupings still
+       cache the carrier counts, and obtain the atom list as their input. */
+    if (uses_rank_masks())
+    {
+        if (!m_delta_query_true_landmark_mask_cached)
+        {
+            m_coordinates.collect_true_landmark_mask(state, m_delta_query_true_landmark_mask);
+            m_delta_query_true_landmark_mask_cached = true;
+        }
+    }
+    else if (!m_delta_query_true_landmark_atoms_cached)
+    {
+        m_coordinates.collect_true_landmark_atoms(state, m_delta_query_true_landmark_atoms);
+        m_delta_query_true_landmark_atoms_cached = true;
+    }
+
+    if (!m_coordinates.has_bijective_ranks() && !m_delta_query_rank_carrier_counts_cached)
+    {
+        if (!m_delta_query_true_landmark_atoms_cached)
+        {
+            m_coordinates.collect_true_landmark_atoms(state, m_delta_query_true_landmark_atoms);
+            m_delta_query_true_landmark_atoms_cached = true;
+        }
+        m_coordinates.collect_rank_carrier_counts(m_delta_query_true_landmark_atoms, m_delta_query_rank_carrier_counts);
+        m_delta_query_rank_carrier_counts_cached = true;
+    }
 }
 
 bool LandmarkNoveltyTable::test_novelty_read_only_from_delta_masked(const State& state,
@@ -1386,15 +1552,16 @@ bool LandmarkNoveltyTable::test_novelty_read_only_from_delta(const State& state,
                                                              const AtomIndexList& add_atom_indices,
                                                              const AtomIndexList& del_atom_indices)
 {
-    refresh_delta_query_state(state);
-
     if (!add_atom_indices.empty())
     {
         /* The successor's atoms are a subset of `atoms(state) | add`, so widening for the largest
-           added index covers every tuple this query can generate. A resize renumbers free tuple
-           indices but not landmark ranks, so the cached `L(state)` survives it. */
+           added index covers every tuple this query can generate. Do this before refreshing the
+           per-state representation: a dense-to-sparse switch changes whether the query needs the
+           cached rank mask or atom list. */
         resize_to_fit(add_atom_indices.back());
     }
+
+    refresh_delta_query_state(state);
 
     if (uses_rank_masks())
     {
