@@ -140,6 +140,9 @@ Public Attributes</h2></td></tr>
 <tr class="memitem:a5b19b8c2373b77b6065fe76973093964"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#a5b19b8c2373b77b6065fe76973093964">landmark_novelty_disjunctive</a> = false</td></tr>
 <tr class="memdesc:a5b19b8c2373b77b6065fe76973093964"><td class="mdescLeft">&#160;</td><td class="mdescRight">Also rank the graph's <em>disjunctive</em> landmarks, whose members then share one novelty row. Ignored without <code>landmark_novelty_graph</code>, and a no-op on a graph built without <code>landmarks::FactLandmarkGeneratorOptions::max_disjunctive_landmark_size</code>.  <br /></td></tr>
 <tr class="separator:a5b19b8c2373b77b6065fe76973093964"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3eb8b7b042a4b8b6771aead8f3cac57c"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#a3eb8b7b042a4b8b6771aead8f3cac57c">landmark_novelty_all_private</a> = false</td></tr>
+<tr class="memdesc:a3eb8b7b042a4b8b6771aead8f3cac57c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Give every member of every ranked disjunctive landmark its own private novelty row.  <br /></td></tr>
+<tr class="separator:a3eb8b7b042a4b8b6771aead8f3cac57c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3ac2bfdb6170ac88ee93c4d58fad008f"><td class="memItemLeft" align="right" valign="top">IndexSet&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structmimir_1_1search_1_1iw_1_1Options.html#a3ac2bfdb6170ac88ee93c4d58fad008f">landmark_novelty_unshared_atoms</a> = {}</td></tr>
 <tr class="memdesc:a3ac2bfdb6170ac88ee93c4d58fad008f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Atoms that must keep a private novelty row instead of sharing their disjunctive landmark's. Ignored unless <code>landmark_novelty_disjunctive</code> is set.  <br /></td></tr>
 <tr class="separator:a3ac2bfdb6170ac88ee93c4d58fad008f"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -368,6 +371,23 @@ Public Attributes</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+</div>
+</div>
+<a id="a3eb8b7b042a4b8b6771aead8f3cac57c" name="a3eb8b7b042a4b8b6771aead8f3cac57c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3eb8b7b042a4b8b6771aead8f3cac57c">&#9670;&#160;</a></span>landmark_novelty_all_private</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool mimir::search::iw::Options::landmark_novelty_all_private = false</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Give every member of every ranked disjunctive landmark its own private novelty row. </p>
+<p>This is exactly equivalent to putting the union of all disjunctive member atom indices into <code>landmark_novelty_unshared_atoms</code>, but is a first-class grouping mode and therefore avoids requiring callers to reconstruct that union. Ignored unless both a landmark graph and <code>landmark_novelty_disjunctive</code> are set. This changes only the landmark coordinate grouping; the ladder remains LIW(k), so <code>max_arity = 1</code> is still LIW(1), not IW(2). It cannot be combined with <code>landmark_novelty_unshared_atoms</code> when the mode is active. </p>
 
 </div>
 </div>

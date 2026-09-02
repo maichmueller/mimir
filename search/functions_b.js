@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['make_5fgrouping_0',['make_grouping',['../classmimir_1_1search_1_1iw_1_1LandmarkNoveltyPruningStrategyImpl.html#a5c02a1bcc2d8d32a960ae59e8f647a77',1,'mimir::search::iw::LandmarkNoveltyPruningStrategyImpl']]],
+  ['make_5fgrouping_0',['make_grouping',['../classmimir_1_1search_1_1iw_1_1LandmarkNoveltyPruningStrategyImpl.html#adaad5d6f914995bba0fd0d758361cd1a',1,'mimir::search::iw::LandmarkNoveltyPruningStrategyImpl']]],
   ['maxheuristicimpl_1',['MaxHeuristicImpl',['../classmimir_1_1search_1_1MaxHeuristicImpl.html#a44d4065695bc3dc172c1dfa849b65155',1,'mimir::search::MaxHeuristicImpl']]],
   ['minimumgnoveltytable_2',['MinimumGNoveltyTable',['../classmimir_1_1search_1_1iw_1_1MinimumGNoveltyTable.html#add06990c636e328eafdeea202f669d54',1,'mimir::search::iw::MinimumGNoveltyTable::MinimumGNoveltyTable(size_t arity)'],['../classmimir_1_1search_1_1iw_1_1MinimumGNoveltyTable.html#aedf17112444868a8e81efb423cfc5c06',1,'mimir::search::iw::MinimumGNoveltyTable::MinimumGNoveltyTable(size_t arity, size_t num_atoms)'],['../classmimir_1_1search_1_1iw_1_1MinimumGNoveltyTable.html#a32ffee40a0cc1ba2ffdb26f91b951a2e',1,'mimir::search::iw::MinimumGNoveltyTable::MinimumGNoveltyTable(const MinimumGNoveltyTable &amp;)=delete'],['../classmimir_1_1search_1_1iw_1_1MinimumGNoveltyTable.html#a91c717e5edbde8caa342ec180bc639b0',1,'mimir::search::iw::MinimumGNoveltyTable::MinimumGNoveltyTable(MinimumGNoveltyTable &amp;&amp;)=delete']]]
 ];
