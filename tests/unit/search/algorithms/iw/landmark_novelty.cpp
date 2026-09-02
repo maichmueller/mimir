@@ -109,7 +109,7 @@ enum class Novelty
     LANDMARK_WITHOUT_LANDMARKS,
 };
 
-RunResult run_iw(const Instance& instance, size_t max_arity, Novelty novelty, bool disjunctive = false, const IndexSet& unshared_atoms = {})
+RunResult run_iw(const Instance& instance, size_t max_arity, Novelty novelty, bool disjunctive = false, const IndexSet& unshared_atoms = {}, bool all_private = false)
 {
     auto event_handler = iw::DefaultEventHandlerImpl::create(instance.problem, true);
 
@@ -119,6 +119,7 @@ RunResult run_iw(const Instance& instance, size_t max_arity, Novelty novelty, bo
     options.max_num_states = 500000;
     options.landmark_novelty_disjunctive = disjunctive;
     options.landmark_novelty_unshared_atoms = unshared_atoms;
+    options.landmark_novelty_all_private = all_private;
     switch (novelty)
     {
         case Novelty::PLAIN:
@@ -349,6 +350,32 @@ TEST(MimirTests, SearchAlgorithmsIWUnsharedAtomsWeakenPruning)
 
         EXPECT_GE(fully_unshared.num_expanded, shared.num_expanded) << domain;
         EXPECT_EQ(fully_unshared.status, shared.status) << domain;
+    }
+}
+
+TEST(MimirTests, SearchAlgorithmsIWAllPrivateMatchesExplicitUnsharedUnion)
+{
+    for (const auto& [domain, instance_file] : width_gap_instances())
+    {
+        auto instance = Instance(domain, instance_file);
+        const auto& disjunctive = instance.disjunctive_landmarks->get_disjunctive_landmarks();
+        if (disjunctive.empty())
+        {
+            continue;
+        }
+
+        auto every_member = IndexSet {};
+        for (const auto& members : disjunctive)
+        {
+            every_member.insert(members.begin(), members.end());
+        }
+
+        const auto explicit_unshared = run_iw(instance, 1, Novelty::LANDMARK, true, every_member);
+        const auto all_private = run_iw(instance, 1, Novelty::LANDMARK, true, {}, true);
+
+        EXPECT_EQ(all_private.status, explicit_unshared.status) << domain;
+        EXPECT_EQ(all_private.plan_length, explicit_unshared.plan_length) << domain;
+        EXPECT_EQ(all_private.num_expanded, explicit_unshared.num_expanded) << domain;
     }
 }
 

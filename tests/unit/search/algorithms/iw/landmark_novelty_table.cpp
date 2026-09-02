@@ -955,6 +955,273 @@ TEST(MimirTests, SearchAlgorithmsLandmarkNoveltyUnsharedAtomKeepsPrivateRank)
     EXPECT_FALSE(coordinates.has_shared_ranks());
 }
 
+TEST(MimirTests, SearchAlgorithmsLandmarkNoveltyAllPrivateMatchesExplicitUnsharedUnion)
+{
+    auto fixture = Fixture {};
+    const auto landmark_atoms = landmark_atom_indices(fixture);
+    ASSERT_GE(landmark_atoms.size(), 4u);
+
+    /* The overlapping groups exercise the construction-time union as well as the ordinary
+       disjunctive representation. Every member is exempted in the reference grouping, exactly as
+       the legacy IW option required callers to do by hand. */
+    const auto disjunctive_landmarks = std::vector<iw::AtomIndexList> {
+        iw::AtomIndexList { landmark_atoms[0], landmark_atoms[1] },
+        iw::AtomIndexList { landmark_atoms[1], landmark_atoms[2] },
+        iw::AtomIndexList { landmark_atoms[0], landmark_atoms[2], landmark_atoms[3] },
+    };
+    auto explicit_unshared = iw::LandmarkGrouping {};
+    explicit_unshared.disjunctive_landmarks = disjunctive_landmarks;
+    auto every_member = IndexSet {};
+    for (const auto& members : disjunctive_landmarks)
+    {
+        every_member.insert(members.begin(), members.end());
+    }
+    explicit_unshared.unshared_atom_indices = every_member;
+
+    auto all_private = iw::LandmarkGrouping {};
+    all_private.disjunctive_landmarks = disjunctive_landmarks;
+    all_private.mode = iw::LandmarkGroupingMode::ALL_PRIVATE;
+
+    const auto remaining_landmarks = iw::AtomIndexList(landmark_atoms.begin() + 4, landmark_atoms.end());
+    auto expected_private_landmarks = remaining_landmarks;
+    for (const auto& members : disjunctive_landmarks)
+    {
+        expected_private_landmarks.insert(expected_private_landmarks.end(), members.begin(), members.end());
+    }
+    std::sort(expected_private_landmarks.begin(), expected_private_landmarks.end());
+    expected_private_landmarks.erase(std::unique(expected_private_landmarks.begin(), expected_private_landmarks.end()), expected_private_landmarks.end());
+    const auto transitions = collect_transitions(fixture, 400);
+    ASSERT_FALSE(transitions.empty());
+
+    for (const auto arity : { size_t(1), size_t(2) })
+    {
+        for (const auto layout : { iw::LandmarkDenseLayout::RANK_MAJOR, iw::LandmarkDenseLayout::TUPLE_MAJOR })
+        {
+            auto options = iw::LandmarkNoveltyTableOptions {};
+            options.force_dense = true;
+            options.dense_layout = layout;
+
+            auto explicit_table = iw::LandmarkNoveltyTable(remaining_landmarks, explicit_unshared, arity, num_fluent_atoms(fixture), options);
+            auto all_private_table = iw::LandmarkNoveltyTable(remaining_landmarks, all_private, arity, num_fluent_atoms(fixture), options);
+            ASSERT_EQ(explicit_table.get_dense_layout(), layout);
+            ASSERT_EQ(all_private_table.get_dense_layout(), layout);
+
+            const auto& coordinates = all_private_table.get_coordinates();
+            EXPECT_FALSE(coordinates.has_shared_ranks()) << "arity " << arity;
+            EXPECT_TRUE(coordinates.has_bijective_ranks()) << "arity " << arity;
+            EXPECT_EQ(coordinates.get_num_landmarks(), explicit_table.get_num_landmarks()) << "arity " << arity;
+            EXPECT_EQ(coordinates.get_num_ranks(), explicit_table.get_coordinates().get_num_ranks()) << "arity " << arity;
+            EXPECT_EQ(coordinates.get_landmark_atom_indices(), expected_private_landmarks) << "arity " << arity;
+            EXPECT_EQ(coordinates.get_bot_rank(), expected_private_landmarks.size()) << "arity " << arity;
+            for (size_t rank = 0; rank < expected_private_landmarks.size(); ++rank)
+            {
+                EXPECT_EQ(coordinates.get_rank(expected_private_landmarks[rank]), rank) << "arity " << arity;
+            }
+
+            /* The initial-state query and every subsequent query are compared before updating the
+               paired tables. This covers both the two-state and delta/precheck forms; the two
+               pinned dense layouts select the rank-list and rank-mask implementations separately. */
+            EXPECT_EQ(explicit_table.test_novelty_read_only(transitions.front().state), all_private_table.test_novelty_read_only(transitions.front().state))
+                << "arity " << arity;
+            EXPECT_EQ(explicit_table.test_novelty_and_update_table(transitions.front().state),
+                      all_private_table.test_novelty_and_update_table(transitions.front().state))
+                << "arity " << arity;
+
+            auto add_atom_indices = iw::AtomIndexList {};
+            auto del_atom_indices = iw::AtomIndexList {};
+            auto explicit_witnesses = iw::AtomIndexList {};
+            auto all_private_witnesses = iw::AtomIndexList {};
+            for (const auto& transition : transitions)
+            {
+                const auto& fluent_atoms = transition.state.get_atoms<FluentTag>();
+                const auto& succ_fluent_atoms = transition.succ_state.get_atoms<FluentTag>();
+                add_atom_indices.clear();
+                del_atom_indices.clear();
+                for (const auto atom_index : succ_fluent_atoms)
+                {
+                    if (!fluent_atoms.get(atom_index))
+                    {
+                        add_atom_indices.push_back(atom_index);
+                    }
+                }
+                for (const auto atom_index : fluent_atoms)
+                {
+                    if (!succ_fluent_atoms.get(atom_index))
+                    {
+                        del_atom_indices.push_back(atom_index);
+                    }
+                }
+
+                EXPECT_EQ(explicit_table.test_novelty_read_only(transition.state, transition.succ_state),
+                          all_private_table.test_novelty_read_only(transition.state, transition.succ_state))
+                    << "arity " << arity;
+                EXPECT_EQ(explicit_table.test_novelty_read_only_from_delta(transition.state, add_atom_indices, del_atom_indices),
+                          all_private_table.test_novelty_read_only_from_delta(transition.state, add_atom_indices, del_atom_indices))
+                    << "arity " << arity;
+
+                if (arity == 1)
+                {
+                    explicit_table.compute_transition_novel_fluent_atom_indices_read_only(transition.state, transition.succ_state, explicit_witnesses);
+                    all_private_table.compute_transition_novel_fluent_atom_indices_read_only(transition.state, transition.succ_state, all_private_witnesses);
+                    EXPECT_EQ(explicit_witnesses, all_private_witnesses);
+                }
+
+                EXPECT_EQ(explicit_table.test_novelty_and_update_table(transition.state, transition.succ_state),
+                          all_private_table.test_novelty_and_update_table(transition.state, transition.succ_state))
+                    << "arity " << arity;
+            }
+        }
+
+        /* Force the sparse, rank-list implementation too. */
+        auto sparse_options = iw::LandmarkNoveltyTableOptions {};
+        sparse_options.max_dense_table_bytes = 0;
+        auto explicit_table = iw::LandmarkNoveltyTable(remaining_landmarks, explicit_unshared, arity, num_fluent_atoms(fixture), sparse_options);
+        auto all_private_table = iw::LandmarkNoveltyTable(remaining_landmarks, all_private, arity, num_fluent_atoms(fixture), sparse_options);
+        ASSERT_FALSE(explicit_table.is_dense());
+        ASSERT_FALSE(all_private_table.is_dense());
+        EXPECT_EQ(explicit_table.test_novelty_and_update_table(transitions.front().state),
+                  all_private_table.test_novelty_and_update_table(transitions.front().state))
+            << "arity " << arity;
+        for (const auto& transition : transitions)
+        {
+            EXPECT_EQ(explicit_table.test_novelty_and_update_table(transition.state, transition.succ_state),
+                      all_private_table.test_novelty_and_update_table(transition.state, transition.succ_state))
+                << "arity " << arity;
+        }
+    }
+}
+
+TEST(MimirTests, SearchAlgorithmsLandmarkNoveltyAllPrivateRejectsExplicitUnsharedAtoms)
+{
+    auto fixture = Fixture {};
+    const auto landmark_atoms = landmark_atom_indices(fixture);
+    ASSERT_GE(landmark_atoms.size(), 2u);
+
+    auto grouping = iw::LandmarkGrouping {};
+    grouping.disjunctive_landmarks.push_back(iw::AtomIndexList { landmark_atoms[0], landmark_atoms[1] });
+    grouping.unshared_atom_indices.insert(landmark_atoms[0]);
+    grouping.mode = iw::LandmarkGroupingMode::ALL_PRIVATE;
+
+    EXPECT_THROW((iw::LandmarkNoveltyTable(iw::AtomIndexList {}, grouping, 1, num_fluent_atoms(fixture))), std::invalid_argument);
+}
+
+TEST(MimirTests, SearchAlgorithmsLandmarkNoveltyAllPrivateEmptyLandmarkSetUsesBot)
+{
+    auto grouping = iw::LandmarkGrouping {};
+    grouping.mode = iw::LandmarkGroupingMode::ALL_PRIVATE;
+    const auto table = iw::LandmarkNoveltyTable(iw::AtomIndexList {}, grouping, 1, 0);
+
+    EXPECT_TRUE(table.get_coordinates().has_bijective_ranks());
+    EXPECT_FALSE(table.get_coordinates().has_shared_ranks());
+    EXPECT_EQ(table.get_num_landmarks(), 0u);
+    EXPECT_EQ(table.get_bot_rank(), 0u);
+}
+
+TEST(MimirTests, SearchAlgorithmsLandmarkNoveltyAllPrivateHasNoNonBijectiveScratch)
+{
+    auto fixture = Fixture {};
+    const auto landmark_atoms = landmark_atom_indices(fixture);
+    ASSERT_GE(landmark_atoms.size(), 2u);
+
+    auto grouping = iw::LandmarkGrouping {};
+    grouping.disjunctive_landmarks.push_back(iw::AtomIndexList { landmark_atoms[0], landmark_atoms[1] });
+    grouping.mode = iw::LandmarkGroupingMode::ALL_PRIVATE;
+    const auto table = iw::LandmarkNoveltyTable(iw::AtomIndexList {}, grouping, 1, num_fluent_atoms(fixture));
+    const auto& coordinates = table.get_coordinates();
+
+    EXPECT_FALSE(coordinates.has_shared_ranks());
+    EXPECT_TRUE(coordinates.has_bijective_ranks());
+    auto carrier_counts = std::vector<uint32_t> { 123u };
+    coordinates.collect_rank_carrier_counts(iw::AtomIndexList { landmark_atoms[0] }, carrier_counts);
+    EXPECT_TRUE(carrier_counts.empty()) << "the private fast path must not build shared-rank carrier counts";
+}
+
+TEST(MimirTests, SearchAlgorithmsLandmarkNoveltyOverlappingSingletonGroupsUseTheNonBijectivePath)
+{
+    auto fixture = Fixture {};
+    const auto landmark_atoms = landmark_atom_indices(fixture);
+    ASSERT_GE(landmark_atoms.size(), 2u);
+
+    /* No rank is shared here, but atom 0 appears in two singleton groups. This is precisely why
+       `!has_shared_ranks()` is not a sufficient proof of atom/rank bijection. */
+    auto grouping = iw::LandmarkGrouping {};
+    grouping.disjunctive_landmarks.push_back(iw::AtomIndexList { landmark_atoms[0] });
+    grouping.disjunctive_landmarks.push_back(iw::AtomIndexList { landmark_atoms[0] });
+    grouping.disjunctive_landmarks.push_back(iw::AtomIndexList { landmark_atoms[1] });
+    const auto table = iw::LandmarkNoveltyTable(iw::AtomIndexList {}, grouping, 1, num_fluent_atoms(fixture));
+    const auto& coordinates = table.get_coordinates();
+    EXPECT_FALSE(coordinates.has_shared_ranks());
+    EXPECT_FALSE(coordinates.has_bijective_ranks());
+    EXPECT_EQ(coordinates.get_ranks(landmark_atoms[0]).size(), 2u);
+
+    const auto normalize = [](std::vector<uint32_t> ranks)
+    {
+        std::sort(ranks.begin(), ranks.end());
+        ranks.erase(std::unique(ranks.begin(), ranks.end()), ranks.end());
+        return ranks;
+    };
+    auto true_atoms = iw::AtomIndexList {};
+    auto carrier_counts = std::vector<uint32_t> {};
+    auto flipped_two_state = std::vector<uint32_t> {};
+    auto kept_two_state = std::vector<uint32_t> {};
+    auto flipped_delta = std::vector<uint32_t> {};
+    auto kept_delta = std::vector<uint32_t> {};
+    auto true_mask = std::vector<uint64_t> {};
+    auto flipped_mask = std::vector<uint64_t> {};
+    auto kept_mask = std::vector<uint64_t> {};
+    auto saw_atom_zero_transition = false;
+
+    for (const auto& transition : collect_transitions(fixture, 400))
+    {
+        const auto& fluent_atoms = transition.state.get_atoms<FluentTag>();
+        const auto& succ_fluent_atoms = transition.succ_state.get_atoms<FluentTag>();
+        auto add_atom_indices = iw::AtomIndexList {};
+        auto del_atom_indices = iw::AtomIndexList {};
+        for (const auto atom_index : succ_fluent_atoms)
+        {
+            if (!fluent_atoms.get(atom_index))
+            {
+                add_atom_indices.push_back(atom_index);
+            }
+        }
+        for (const auto atom_index : fluent_atoms)
+        {
+            if (!succ_fluent_atoms.get(atom_index))
+            {
+                del_atom_indices.push_back(atom_index);
+            }
+        }
+
+        coordinates.collect_transition(transition.state, transition.succ_state, flipped_two_state, kept_two_state);
+        coordinates.collect_true_landmark_atoms(transition.state, true_atoms);
+        coordinates.collect_rank_carrier_counts(true_atoms, carrier_counts);
+        coordinates.collect_transition_from_delta(true_atoms, carrier_counts, add_atom_indices, del_atom_indices, flipped_delta, kept_delta);
+        EXPECT_EQ(normalize(flipped_two_state), normalize(flipped_delta));
+        EXPECT_EQ(normalize(kept_two_state), normalize(kept_delta));
+
+        coordinates.collect_true_landmark_mask(transition.state, true_mask);
+        coordinates.collect_transition_masks_from_delta(true_mask, carrier_counts, add_atom_indices, del_atom_indices, flipped_mask, kept_mask);
+        auto flipped_from_mask = std::vector<uint32_t> {};
+        auto kept_from_mask = std::vector<uint32_t> {};
+        for (uint32_t rank = 0; rank < coordinates.get_num_ranks(); ++rank)
+        {
+            if ((flipped_mask[rank >> 6] >> (rank & 63)) & uint64_t(1))
+            {
+                flipped_from_mask.push_back(rank);
+            }
+            if ((kept_mask[rank >> 6] >> (rank & 63)) & uint64_t(1))
+            {
+                kept_from_mask.push_back(rank);
+            }
+        }
+        EXPECT_EQ(normalize(flipped_two_state), flipped_from_mask);
+        EXPECT_EQ(normalize(kept_two_state), kept_from_mask);
+        saw_atom_zero_transition =
+            saw_atom_zero_transition || std::find(add_atom_indices.begin(), add_atom_indices.end(), landmark_atoms[0]) != add_atom_indices.end();
+    }
+    EXPECT_TRUE(saw_atom_zero_transition);
+}
+
 TEST(MimirTests, SearchAlgorithmsLandmarkNoveltySharedRanksDeltaCoordinatesMatchTwoState)
 {
     auto fixture = Fixture {};

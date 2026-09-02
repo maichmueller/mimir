@@ -166,6 +166,26 @@ def test_landmark_novelty_pruning_strategy_is_bound():
     assert result.status == search.SearchStatus.SOLVED
 
 
+def test_all_private_landmark_mode_is_bound():
+    """The first-class mode is available both on IW options and explicit groupings."""
+    instance = _Instance("blocks_3")
+
+    options = search.IWOptions()
+    assert not options.landmark_novelty_all_private
+    options.landmark_novelty_all_private = True
+    assert options.landmark_novelty_all_private
+
+    grouping = search.LandmarkGrouping()
+    assert grouping.mode == search.LandmarkGroupingMode.SHARED
+    grouping.mode = search.LandmarkGroupingMode.ALL_PRIVATE
+    assert grouping.is_all_private()
+
+    # `make_grouping` exposes the same mode without materializing a legacy IndexSet union.
+    grouping = search.LandmarkNoveltyPruningStrategy.make_grouping(instance.landmarks, True, all_private=True)
+    assert grouping.mode == search.LandmarkGroupingMode.ALL_PRIVATE
+    assert grouping.is_all_private()
+
+
 def test_landmark_novelty_precheck_builds_no_successor_state():
     """The precheck exists to decide whether a successor could survive pruning WITHOUT building
     it. The repository counts every construction entry point, staged ones included, so this stays

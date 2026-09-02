@@ -355,4 +355,28 @@ TEST(MimirTests, SearchAlgorithmsAbstractedLandmarkNoveltySharedRanksPruneAtLeas
     }
 }
 
+TEST(MimirTests, SearchAlgorithmsAbstractedLandmarkNoveltyAllPrivateMatchesExplicitUnsharedUnion)
+{
+    auto instance = Instance {};
+    const auto transitions = collect_transitions(instance, 400);
+    ASSERT_FALSE(transitions.empty());
+
+    const auto& landmark_atoms = instance.landmarks->get_landmark_atom_indices();
+    ASSERT_GE(landmark_atoms.size(), 2u);
+
+    auto explicit_unshared = iw::LandmarkGrouping {};
+    explicit_unshared.disjunctive_landmarks.push_back(iw::AtomIndexList { landmark_atoms[0], landmark_atoms[1] });
+    explicit_unshared.unshared_atom_indices.insert(landmark_atoms[0]);
+    explicit_unshared.unshared_atom_indices.insert(landmark_atoms[1]);
+
+    auto all_private = iw::LandmarkGrouping {};
+    all_private.disjunctive_landmarks = explicit_unshared.disjunctive_landmarks;
+    all_private.mode = iw::LandmarkGroupingMode::ALL_PRIVATE;
+
+    auto explicit_strategy = make_strategy(instance, 1, instance.landmarks, explicit_unshared);
+    auto all_private_strategy = make_strategy(instance, 1, instance.landmarks, all_private);
+    EXPECT_EQ(explicit_strategy->get_num_landmark_ranks(), all_private_strategy->get_num_landmark_ranks());
+    EXPECT_EQ(admitted(*explicit_strategy, transitions), admitted(*all_private_strategy, transitions));
+}
+
 }
