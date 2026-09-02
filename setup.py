@@ -21,7 +21,8 @@ from setuptools.command.build_ext import build_ext
 #   NB_DOMAIN=pymimir_abi_domain must be rebuilt against the same generation, and
 #   a downstream needs to express that as a resolvable floor rather than discover
 #   it as a TypeError at the first cross-module cast.
-__version__ = "0.15.0"
+# 0.15.1: native all-private landmark novelty grouping for disjunctive LIW.
+__version__ = "0.15.1"
 HERE = Path(__file__).resolve().parent
 
 
