@@ -24,6 +24,7 @@
 #include "mimir/formalism/ground_conjunctive_condition.hpp"
 #include "mimir/formalism/ground_effects.hpp"
 #include "mimir/formalism/object.hpp"
+#include "mimir/formalism/type.hpp"
 #include "mimir/formalism/parser.hpp"
 #include "mimir/formalism/predicate.hpp"
 #include "mimir/formalism/problem.hpp"
@@ -128,6 +129,16 @@ std::vector<IndexList> sets_over_predicate(const FactLandmarkGraph& landmarks, c
         }
     }
     return result;
+}
+
+std::string atom_signature(GroundAtom<FluentTag> atom)
+{
+    auto rendered = atom->get_predicate()->get_name() + "(";
+    for (size_t i = 0; i < atom->get_objects().size(); ++i)
+    {
+        rendered += (i ? ", " : "") + atom->get_objects()[i]->get_name();
+    }
+    return rendered + ")";
 }
 
 bool has_duplicates(IndexList indices)
@@ -877,6 +888,118 @@ TEST(MimirTests, SearchLandmarksLiftedGraphContractTest)
     const auto ready_record = find_lifted(promoted, "ready(t1)");
     ASSERT_NE(ready_record, nullptr);
     EXPECT_TRUE(ready_record->fact_atom_index.has_value());
+}
+
+/**
+ * §2.5 reachability. An atom no schema can produce is in no reachable state, so it is not one of
+ * the members a plan could have made true and dropping it leaves the landmark property intact.
+ *
+ * Without this the lifted rule instantiates a partial landmark over the *typed* universe, which on
+ * the domains below is not a precision nicety but a difference of two orders of magnitude.
+ */
+
+TEST(MimirTests, SearchLandmarksLiftedUnaddablePredicateTest)
+{
+    /* miconic's `origin` is FLUENT because `board` deletes it, and no schema adds it. Every
+       non-initial instance is therefore unreachable by construction, and `origin(?, ?)` over 485
+       passengers x 196 floors was 95,060 members of which 485 could ever hold. */
+    const auto problem = parse("ipc/miconic-ipc/test", "p30-hard.pddl");
+
+    auto initial_origin = std::set<std::string> {};
+    for (const auto atom : problem->get_fluent_initial_atoms())
+    {
+        if (atom->get_predicate()->get_name() == "origin")
+        {
+            initial_origin.insert(atom_signature(atom));
+        }
+    }
+    ASSERT_FALSE(initial_origin.empty());
+
+    // Ground first: the repository then holds exactly the delete-relaxed-reachable universe, and
+    // what the extractor adds on top of it is the thing being bounded.
+    const auto grounder = LiftedGrounder(problem);
+    const auto ground_actions = grounder.create_ground_actions();
+    ASSERT_FALSE(ground_actions.empty());
+    const auto atoms_after_grounding = num_fluent_atoms(problem);
+
+    const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+
+    // No `origin` set survives, and any `origin` landmark that does is one of the initial atoms.
+    EXPECT_TRUE(sets_over_predicate(landmarks, "origin").empty());
+    for (const auto& record : landmarks->get_lifted_landmarks())
+    {
+        if (record.predicate->get_name() != "origin")
+        {
+            continue;
+        }
+        for (const auto member : record.member_atom_indices)
+        {
+            EXPECT_TRUE(initial_origin.count(atom_signature(resolve_atom(landmarks, member))) > 0)
+                << to_string(record) << " keeps the unreachable member " << atom_signature(resolve_atom(landmarks, member));
+        }
+        // Every member is true at I, so the record cannot have been expanded either.
+        EXPECT_TRUE(record.initially_true) << to_string(record);
+    }
+
+    /* The bound that says the vocabulary is a planning one rather than a typed one. Before the
+       filter this instance interned 96,226 atoms against the grounder's 1,651. */
+    const auto atoms_after_extraction = num_fluent_atoms(problem);
+    EXPECT_LE(atoms_after_extraction, atoms_after_grounding + 16)
+        << "interned " << (atoms_after_extraction - atoms_after_grounding) << " atoms beyond the grounder's universe of "
+        << atoms_after_grounding;
+}
+
+TEST(MimirTests, SearchLandmarksLiftedTypeGatedAdderTest)
+{
+    /* spanner's `at` IS added -- by `walk`, whose only `at` effect binds a `?m - man`. So
+       `at(spanner1, l)` and `at(nut1, l)` are unreachable for exactly the same reason, caught by
+       the type check inside the unification rather than by "no adder at all". */
+    const auto problem = parse("spanner", "p30-hard.pddl");
+    const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+
+    const auto is_a = [](Object object, const std::string& type_name)
+    {
+        const auto& bases = object->get_bases();
+        return std::any_of(bases.begin(), bases.end(), [&](Type type) { return type->get_name() == type_name; });
+    };
+
+    auto num_at_members = size_t(0);
+    for (const auto& members : landmarks->get_disjunctive_landmarks())
+    {
+        for (const auto member : members)
+        {
+            const auto atom = resolve_atom(landmarks, member);
+            if (atom->get_predicate()->get_name() != "at")
+            {
+                continue;
+            }
+            ++num_at_members;
+            const auto located = atom->get_objects().front();
+            EXPECT_FALSE(is_a(located, "spanner")) << "unreachable member " << atom_signature(atom);
+            EXPECT_FALSE(is_a(located, "nut")) << "unreachable member " << atom_signature(atom);
+        }
+    }
+    EXPECT_GT(num_at_members, 0u) << "no `at` member at all: the test would pass vacuously";
+}
+
+TEST(MimirTests, SearchLandmarksLiftedStaticallyGatedAdderTest)
+{
+    // The general case: `marked` is added only under a static condition `t3` fails.
+    const auto problem = parse("landmark_lifted_unreachable_members");
+    const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+
+    const auto marked_sets = sets_over_predicate(landmarks, "marked");
+    ASSERT_EQ(marked_sets.size(), 1u);
+    EXPECT_EQ(marked_sets.front().size(), 2u);
+    EXPECT_TRUE(contains_atom(landmarks, marked_sets.front(), "marked", { "t1" }));
+    EXPECT_TRUE(contains_atom(landmarks, marked_sets.front(), "marked", { "t2" }));
+    EXPECT_FALSE(contains_atom(landmarks, marked_sets.front(), "marked", { "t3" }));
+
+    // The control: `want` adds `need` for anything, so nothing is filtered there.
+    const auto need_sets = sets_over_predicate(landmarks, "need");
+    ASSERT_EQ(need_sets.size(), 1u);
+    EXPECT_EQ(need_sets.front().size(), 3u);
+    EXPECT_TRUE(contains_atom(landmarks, need_sets.front(), "need", { "t3" }));
 }
 
 /**

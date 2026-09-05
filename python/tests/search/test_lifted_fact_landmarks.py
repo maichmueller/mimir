@@ -248,3 +248,65 @@ def test_lifted_landmark_rendering_and_options():
     options = search.LiftedFactLandmarkGeneratorOptions()
     options.include_positive_goal_facts = False
     assert search.LiftedFactLandmarkGenerator.create(problem, options).get_landmark_atom_indices() == []
+
+
+def test_a_predicate_no_schema_adds_keeps_only_its_initial_atoms():
+    """ Python parity with SearchLandmarksLiftedUnaddablePredicateTest.
+
+        miconic's `origin` is fluent because `board` deletes it, and nothing adds it, so every
+        instance beyond the initial ones is unreachable by construction.
+    """
+    problem = _parse("ipc/miconic-ipc/test", "p30-hard.pddl")
+    initial_origin = {
+        str(atom)
+        for atom in problem.get_fluent_initial_atoms()
+        if atom.get_predicate().get_name() == "origin"
+    }
+    assert initial_origin
+
+    grounder = search.LiftedGrounder(problem)
+    assert grounder.create_ground_actions()
+    repositories = problem.get_repositories()
+    atoms_after_grounding = len(repositories.get_fluent_ground_atoms())
+
+    landmarks = search.LiftedFactLandmarkGenerator.create(problem)
+
+    assert _sets_over_predicate(landmarks, "origin") == []
+    for record in landmarks.get_lifted_landmarks():
+        if record.get_predicate().get_name() != "origin":
+            continue
+        members = {
+            str(_resolve_atom(landmarks, index))
+            for index in record.get_member_atom_indices()
+        }
+        assert members <= initial_origin, f"{record} keeps unreachable members"
+        assert record.is_initially_true()
+
+    # Before the filter this instance interned 96,226 atoms against the grounder's 1,651.
+    atoms_after_extraction = len(repositories.get_fluent_ground_atoms())
+    assert atoms_after_extraction <= atoms_after_grounding + 16
+
+
+def test_a_type_gated_adder_excludes_the_wrong_objects():
+    """ Python parity with SearchLandmarksLiftedTypeGatedAdderTest.
+
+        spanner's `at` is added only by `walk`, which binds a `?m - man`, so no spanner and no nut
+        can ever be `at` anywhere it did not start.
+    """
+    problem = _parse("spanner", "p30-hard.pddl")
+    landmarks = search.LiftedFactLandmarkGenerator.create(problem)
+
+    def type_names(obj):
+        return {base.get_name() for base in obj.get_bases()}
+
+    seen_at_members = 0
+    for members in landmarks.get_disjunctive_landmarks():
+        for index in members:
+            atom = _resolve_atom(landmarks, index)
+            if atom.get_predicate().get_name() != "at":
+                continue
+            seen_at_members += 1
+            located = atom.get_objects()[0]
+            assert "spanner" not in type_names(located), str(atom)
+            assert "nut" not in type_names(located), str(atom)
+    assert seen_at_members > 0, "no `at` member at all: the test would pass vacuously"

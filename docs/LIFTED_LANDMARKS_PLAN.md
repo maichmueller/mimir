@@ -211,11 +211,41 @@ Soundness of `members` (in addition to Proposition 1): the first achiever of
 applicable ⇒ statically consistent and type-correct ⇒ `a`'s precondition
 instance of `ℓ_j` lies in `members`, and it is true in the state before `a`.
 
-**Do not add delete-relaxed reachability to members.** It is the grounding
-we are avoiding, and on childsnack it prunes nothing (Fišer 2020 removes 0
-operators). Where it would help (rovers `at(?r, w)` for rovers that cannot
-reach `w`), the lifted set is a *superset* of the grounded one — sound, less
-precise. Measured, not fixed, in this iteration (§6).
+**Producibility filter (added 2026-09-05, after measurement).** Keep a member
+`m` only if `m` is a fluent initial atom, or some `(A, E, ℓ)` with `m`'s
+predicate has a positive fluent effect literal that unifies with `m`'s objects
+— constants matching, variables type-compatible, repeated variables consistent
+— whose achiever survives the §2.3 static filter. Memoize per identity, and
+short-circuit the whole test for a predicate no schema adds at all.
+
+*Proof.* If no such `(A, E, ℓ)` exists, no ground action can add `m`, and `m`
+is not in `I`, so `m` is false in every reachable state. "Every plan traverses
+a state containing some member" quantifies over reachable states, so `m` was
+never one of the members a plan could have made true and removing it leaves the
+set a landmark. ∎ (Applies to member sets only. A *fully bound* PGA keeps its
+own atom regardless: its landmark-hood comes from the derivation, and whether it
+is achievable is a separate question — an unachievable fact landmark means the
+task is unsolvable, which is not this code's business.) An emptied set drops the
+PGA exactly as an empty one does; a set left with one member promotes exactly as
+one derived with one member does.
+
+Why it is not optional: mimir classifies a predicate as fluent as soon as some
+effect *deletes* it, so "fluent" does not imply "anything adds it". miconic's
+`origin` is deleted by `board` and added by nothing; on `test/p30-hard`
+(485 passengers, 196 floors) `origin(?, ?)` was 95,060 members of which 485 can
+ever hold, LIW's rank set was 96,209 against the grounded generator's 1,634, and
+every one of those atoms was interned into the problem's repositories. spanner's
+`at` is added only by `walk`, which binds a `?m - man`, so `at(spannerₙ, l)` and
+`at(nutₙ, l)` are unreachable the same way (rank 26,207 → 1,807; 75,394 interned
+atoms → 2,294). The test is asked *before* interning, so the atoms it rejects
+never reach the repositories at all.
+
+**This is still not delete-relaxed reachability, and that stays out of scope.**
+The filter asks only whether a schema can produce the atom — a lifted question,
+answered from the schemas and the static atoms. Where fluent reachability would
+help beyond it (rovers `at(?r, w)` for a rover that cannot reach `w`, floortile,
+which this filter does not move at all), the lifted set remains a *superset* of
+the grounded one — sound, less precise. Measured, not fixed (§6).
 
 ### 2.6 Termination and cost
 

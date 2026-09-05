@@ -140,6 +140,7 @@ public:
         for (const auto atom : problem->get_fluent_initial_atoms())
         {
             m_initial_fluent_mask.set(atom->get_index());
+            m_initial_fluent_identities.insert(make_identity(atom->get_predicate()->get_index(), atom->get_objects()));
         }
         for (const auto object : problem->get_problem_and_domain_objects())
         {
@@ -164,6 +165,16 @@ public:
     bool is_initially_true(const IndexList& atom_indices) const
     {
         return std::any_of(atom_indices.begin(), atom_indices.end(), [&](Index atom_index) { return m_initial_fluent_mask.get(atom_index); });
+    }
+
+    /// @brief Is `predicate(objects)` a fluent initial atom?
+    ///
+    /// By identity rather than by index on purpose: this is asked about atoms
+    /// that have not been interned yet, and interning them to ask would be the
+    /// cost the question exists to avoid.
+    bool has_initial_fluent_atom(Index predicate_index, const ObjectList& objects) const
+    {
+        return m_initial_fluent_identities.count(make_identity(predicate_index, objects)) > 0;
     }
 
     /// @brief The objects a parameter may take, by its declared types; every object when the
@@ -206,6 +217,7 @@ public:
 private:
     ObjectList m_all_objects;
     FlatBitset m_initial_fluent_mask;
+    std::unordered_set<Identity, IdentityHash> m_initial_fluent_identities;
     std::unordered_map<Index, GroundAtomList<StaticTag>> m_static_atoms_by_predicate;
     std::unordered_set<Identity, IdentityHash> m_static_atom_identities;
     mutable std::unordered_map<Parameter, ObjectList> m_objects_by_parameter;
@@ -269,6 +281,29 @@ std::vector<SchemaEffect> collect_schema_effects(const Problem& problem)
     }
 
     return result;
+}
+
+/// @brief One way a schema adds a fluent predicate: the `(A, E)` pair and the effect literal.
+using Adder = std::pair<const SchemaEffect*, Literal<FluentTag>>;
+
+/// @brief Every schema effect that adds a given fluent predicate, indexed once.
+///
+/// The empty case is the one worth having: a predicate that *no* schema adds can only ever hold
+/// where the initial state put it, and that is not a rarity -- mimir classifies a predicate as
+/// fluent as soon as some effect DELETES it. miconic's `origin` is deleted by `board` and added by
+/// nothing, so `origin(?, ?)` had 1.3 million typed instances of which all but the initial ones are
+/// unreachable by construction.
+std::unordered_map<Index, std::vector<Adder>> collect_adders_by_predicate(const std::vector<SchemaEffect>& schemas)
+{
+    auto adders = std::unordered_map<Index, std::vector<Adder>> {};
+    for (const auto& schema : schemas)
+    {
+        for (const auto effect_literal : schema.positive_fluent_effects)
+        {
+            adders[effect_literal->get_atom()->get_predicate()->get_index()].emplace_back(&schema, effect_literal);
+        }
+    }
+    return adders;
 }
 
 /// @brief The object a term denotes under `sigma`, or `nullptr` if it is still free.
@@ -466,6 +501,69 @@ bool apply_static_filter(Achiever& achiever, const ProblemIndex& index)
     return true;
 }
 
+/// @brief Unify one positive fluent effect literal with `binding` and, if asked, run the static
+/// filter over the result: the `(A, E, sigma)` of §1, or nothing when the schema cannot produce it.
+///
+/// One function for two callers that ask the same question of different things. §2.2 asks it of a
+/// partially bound pattern -- "which schemas could have achieved this subgoal" -- and §2.5 asks it
+/// of a fully bound candidate member -- "could this atom ever be true". A `nullptr` in `binding`
+/// means "free, constrains nothing", so a ground atom is just the case with no free positions.
+std::optional<Achiever> try_build_achiever(const SchemaEffect& schema,
+                                           Literal<FluentTag> effect_literal,
+                                           const ObjectList& binding,
+                                           const ProblemIndex& index,
+                                           bool apply_filter)
+{
+    auto achiever = Achiever { &schema, ObjectList(schema.num_slots, nullptr), {} };
+
+    const auto& terms = effect_literal->get_atom()->get_terms();
+    if (terms.size() != binding.size())
+    {
+        return std::nullopt;
+    }
+    for (size_t i = 0; i < binding.size(); ++i)
+    {
+        if (!binding[i])
+        {
+            continue;  // a free position of the pattern constrains nothing
+        }
+        const auto& variant = terms[i]->get_variant();
+        if (std::holds_alternative<Object>(variant))
+        {
+            if (std::get<Object>(variant) != binding[i])
+            {
+                return std::nullopt;
+            }
+            continue;
+        }
+        const auto slot = std::get<Variable>(variant)->get_parameter_index();
+        // A repeated variable has to agree with itself, and the object has to be admissible for the
+        // parameter -- the check that rules out spanner's `at(spanner1, ...)` against `walk`, whose
+        // only `at` effect binds a `?m - man`.
+        if ((achiever.sigma[slot] && achiever.sigma[slot] != binding[i])
+            || !index.is_type_compatible(binding[i], schema.parameter_by_slot[slot]))
+        {
+            return std::nullopt;
+        }
+        achiever.sigma[slot] = binding[i];
+    }
+
+    achiever.candidates.resize(schema.num_slots);
+    for (size_t slot = 0; slot < schema.num_slots; ++slot)
+    {
+        if (!achiever.sigma[slot])
+        {
+            achiever.candidates[slot] = index.get_candidate_objects(schema.parameter_by_slot[slot]);
+        }
+    }
+
+    if (apply_filter && !apply_static_filter(achiever, index))
+    {
+        return std::nullopt;
+    }
+    return achiever;
+}
+
 /// @brief §2.5's per-member test: is `sigma` statically consistent for `schema`?
 bool is_statically_consistent(const SchemaEffect& schema, const ObjectList& sigma, const ProblemIndex& index)
 {
@@ -541,12 +639,91 @@ bool is_statically_consistent(const SchemaEffect& schema, const ObjectList& sigm
     return true;
 }
 
+/// @brief §2.5's reachability test for one candidate member, memoized by identity.
+///
+/// A ground atom that is not a fluent initial atom and that no statically consistent,
+/// type-compatible instance of any schema effect adds is false in *every* reachable state. Dropping
+/// it from a member set therefore preserves the landmark property exactly: "every plan makes some
+/// member true" quantifies over reachable states, and this atom is in none of them, so it was never
+/// one of the members a plan could have made true.
+///
+/// This is the one filter §2.5 originally left out ("do not add delete-relaxed reachability to
+/// members ... measured, not fixed, in this iteration"). What was measured is that it is not a
+/// precision nicety: without it, `origin(?, ?)` on miconic `test` carries 1,314,565 members that no
+/// plan can reach, LIW's rank set triples, and every one of those atoms is interned into the
+/// problem's repositories. Note what this is NOT: it is not delete-relaxed reachability, which
+/// would need the ground action universe this generator exists to avoid. It asks only whether a
+/// schema can produce the atom at all -- a purely lifted question, answered once per identity.
+class MemberReachability
+{
+public:
+    MemberReachability(const ProblemIndex& index, const std::unordered_map<Index, std::vector<Adder>>& adders_by_predicate) :
+        m_index(index),
+        m_adders_by_predicate(adders_by_predicate)
+    {
+    }
+
+    bool can_ever_hold(Predicate<FluentTag> predicate, const ObjectList& objects)
+    {
+        const auto predicate_index = predicate->get_index();
+        if (m_index.has_initial_fluent_atom(predicate_index, objects))
+        {
+            return true;
+        }
+
+        const auto it = m_adders_by_predicate.find(predicate_index);
+        if (it == m_adders_by_predicate.end())
+        {
+            // No schema adds this predicate at all, so the initial state is the only source and the
+            // test above already answered. Short-circuited before the memo, because this is the
+            // case that would otherwise cost a million lookups.
+            return false;
+        }
+
+        auto identity = make_identity(predicate_index, objects);
+        const auto cached = m_memo.find(identity);
+        if (cached != m_memo.end())
+        {
+            return cached->second;
+        }
+
+        auto reachable = false;
+        for (const auto& [schema, effect_literal] : it->second)
+        {
+            // The static filter always runs here, whatever `use_static_filter` says: that option
+            // governs which achievers the *intersection* of §2.3 runs over, while this is the
+            // member definition of §2.5, whose static consistency test was never optional either.
+            if (try_build_achiever(*schema, effect_literal, objects, m_index, true).has_value())
+            {
+                reachable = true;
+                break;
+            }
+        }
+        m_memo.emplace(std::move(identity), reachable);
+        return reachable;
+    }
+
+private:
+    const ProblemIndex& m_index;
+    const std::unordered_map<Index, std::vector<Adder>>& m_adders_by_predicate;
+    std::unordered_map<Identity, bool, IdentityHash> m_memo;
+};
+
 }
 
 FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, const LiftedFactLandmarkGeneratorOptions& options)
 {
     const auto index = ProblemIndex(problem);
     const auto schemas = collect_schema_effects(problem);
+    const auto adders_by_predicate = collect_adders_by_predicate(schemas);
+    auto reachability = MemberReachability(index, adders_by_predicate);
+
+    static const auto no_adders = std::vector<Adder> {};
+    const auto adders_of = [&](Predicate<FluentTag> predicate) -> const std::vector<Adder>&
+    {
+        const auto it = adders_by_predicate.find(predicate->get_index());
+        return (it == adders_by_predicate.end()) ? no_adders : it->second;
+    };
 
     /**
      * State: one record per kept partially ground atom, a map from its identity to its position,
@@ -705,6 +882,7 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
     auto achievers = std::vector<Achiever> {};
     auto occurrences_by_achiever = std::vector<std::unordered_map<Index, LiteralList<FluentTag>>> {};
     auto derived_predicate_indices = IndexList {};
+    auto member_objects = ObjectList {};
 
     while (!worklist.empty())
     {
@@ -737,59 +915,12 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
          */
 
         achievers.clear();
-        for (const auto& schema : schemas)
+        for (const auto& [schema, effect_literal] : adders_of(predicate))
         {
-            for (const auto effect_literal : schema.positive_fluent_effects)
+            auto achiever = try_build_achiever(*schema, effect_literal, binding, index, options.use_static_filter);
+            if (achiever.has_value())
             {
-                if (effect_literal->get_atom()->get_predicate() != predicate)
-                {
-                    continue;
-                }
-
-                auto achiever = Achiever { &schema, ObjectList(schema.num_slots, nullptr), {} };
-
-                const auto& terms = effect_literal->get_atom()->get_terms();
-                auto unifies = (terms.size() == binding.size());
-                for (size_t i = 0; unifies && i < binding.size(); ++i)
-                {
-                    if (!binding[i])
-                    {
-                        continue;  // a free position of the pattern constrains nothing
-                    }
-                    const auto& variant = terms[i]->get_variant();
-                    if (std::holds_alternative<Object>(variant))
-                    {
-                        unifies = (std::get<Object>(variant) == binding[i]);
-                        continue;
-                    }
-                    const auto slot = std::get<Variable>(variant)->get_parameter_index();
-                    unifies = (!achiever.sigma[slot] || achiever.sigma[slot] == binding[i])
-                              && index.is_type_compatible(binding[i], schema.parameter_by_slot[slot]);
-                    if (unifies)
-                    {
-                        achiever.sigma[slot] = binding[i];
-                    }
-                }
-                if (!unifies)
-                {
-                    continue;
-                }
-
-                achiever.candidates.resize(schema.num_slots);
-                for (size_t slot = 0; slot < schema.num_slots; ++slot)
-                {
-                    if (!achiever.sigma[slot])
-                    {
-                        achiever.candidates[slot] = index.get_candidate_objects(schema.parameter_by_slot[slot]);
-                    }
-                }
-
-                if (options.use_static_filter && !apply_static_filter(achiever, index))
-                {
-                    continue;
-                }
-
-                achievers.push_back(std::move(achiever));
+                achievers.push_back(std::move(*achiever));
             }
         }
 
@@ -930,13 +1061,21 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
 
                             if (is_statically_consistent(*achiever.schema, completion, index))
                             {
-                                auto objects = ObjectList {};
-                                objects.reserve(terms.size());
+                                member_objects.clear();
+                                member_objects.reserve(terms.size());
                                 for (const auto term : terms)
                                 {
-                                    objects.push_back(resolve_term(term, completion));
+                                    member_objects.push_back(resolve_term(term, completion));
                                 }
-                                members.push_back(problem->get_or_create_ground_atom<FluentTag>(precondition_predicate, objects)->get_index());
+                                /* Asked BEFORE interning, not after: the atoms this rejects are the
+                                   ones whose interning was the cost, so testing the identity rather
+                                   than the interned atom is what actually keeps them out of the
+                                   problem's repositories. */
+                                if (reachability.can_ever_hold(precondition_predicate, member_objects))
+                                {
+                                    members.push_back(
+                                        problem->get_or_create_ground_atom<FluentTag>(precondition_predicate, member_objects)->get_index());
+                                }
                             }
 
                             exhausted = true;
