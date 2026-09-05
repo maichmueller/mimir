@@ -356,6 +356,55 @@ OracleResult run_oracle(const FactLandmarkGraph& landmarks, const RelaxedTask& t
     return result;
 }
 
+/// @brief The whole graph rendered by *name*, so two runs can be compared byte for byte without
+/// depending on the atom indices two separate parses happen to hand out.
+std::string render_graph(const FactLandmarkGraph& landmarks)
+{
+    const auto render_atom = [&](Index atom_index)
+    {
+        const auto atom = resolve_atom(landmarks, atom_index);
+        auto rendered = atom->get_predicate()->get_name() + "(";
+        for (size_t i = 0; i < atom->get_objects().size(); ++i)
+        {
+            rendered += (i ? ", " : "") + atom->get_objects()[i]->get_name();
+        }
+        return rendered + ")";
+    };
+
+    auto out = std::string {};
+    out += "facts:\n";
+    for (const auto atom_index : landmarks->get_landmark_atom_indices())
+    {
+        out += "  " + render_atom(atom_index) + "\n";
+    }
+    out += "sets:\n";
+    for (const auto& members : landmarks->get_disjunctive_landmarks())
+    {
+        out += "  {";
+        for (size_t i = 0; i < members.size(); ++i)
+        {
+            out += (i ? ", " : "") + render_atom(members[i]);
+        }
+        out += "}\n";
+    }
+    out += "records:\n";
+    for (const auto& record : landmarks->get_lifted_landmarks())
+    {
+        out += "  " + to_string(record) + (record.initially_true ? " initially_true" : "") + " members=[";
+        for (size_t i = 0; i < record.member_atom_indices.size(); ++i)
+        {
+            out += (i ? ", " : "") + render_atom(record.member_atom_indices[i]);
+        }
+        out += "] parents=[";
+        for (size_t i = 0; i < record.parent_positions.size(); ++i)
+        {
+            out += (i ? "," : "") + std::to_string(record.parent_positions[i]);
+        }
+        out += "]\n";
+    }
+    return out;
+}
+
 /// @brief `<domain dir>/train/domain.pddl` + the smallest instance of each shipped IPC domain.
 const std::vector<std::string>& ipc_domains()
 {
@@ -659,30 +708,70 @@ TEST(MimirTests, SearchLandmarksLiftedConditionalEffectTest)
 
 TEST(MimirTests, SearchLandmarksLiftedInitiallyTrueStopTest)
 {
-    const auto problem = parse("blocks_4");
-    const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
-    const auto& records = landmarks->get_lifted_landmarks();
-
-    auto num_initially_true = size_t(0);
-    for (Index position = 0; position < records.size(); ++position)
+    auto instances = std::vector<std::pair<std::string, std::string>> { { "blocks_4", "test_problem.pddl" },
+                                                                       { "gripper", "test_problem.pddl" },
+                                                                       { "delivery", "test_problem.pddl" },
+                                                                       { "childsnack", "test_problem.pddl" } };
+    for (const auto& domain : ipc_domains())
     {
-        if (!records[position].initially_true)
+        instances.emplace_back("ipc/" + domain + "/train", "p69.pddl");
+    }
+
+    auto total_initially_true = size_t(0);
+    for (const auto& [domain, instance] : instances)
+    {
+        const auto problem = parse(domain, instance);
+        const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+        const auto& records = landmarks->get_lifted_landmarks();
+
+        for (Index position = 0; position < records.size(); ++position)
         {
-            continue;
-        }
-        ++num_initially_true;
-        for (const auto& other : records)
-        {
-            EXPECT_EQ(std::find(other.parent_positions.begin(), other.parent_positions.end(), position), other.parent_positions.end())
-                << to_string(other) << " was derived through the initially-true " << to_string(records[position]);
-        }
-        // Nothing is derived through it, so it has no successors in the ordering either.
-        if (records[position].fact_atom_index.has_value())
-        {
-            EXPECT_TRUE(landmarks->get_predecessors(*records[position].fact_atom_index).empty());
+            if (!records[position].initially_true)
+            {
+                continue;
+            }
+            ++total_initially_true;
+
+            /* The flag is recomputed at assembly from the *final* member union, while the decision
+               to stop was taken when the record was popped. A record whose set grew afterwards
+               could in principle end up flagged with children already derived -- still sound (the
+               earlier derivation's set does avoid I, and Proposition 1 only needs one such set),
+               but it would make the flag and the graph disagree. Swept over every shipped instance
+               so the day it happens is the day this fails. */
+            for (const auto& other : records)
+            {
+                EXPECT_EQ(std::find(other.parent_positions.begin(), other.parent_positions.end(), position), other.parent_positions.end())
+                    << domain << "/" << instance << ": " << to_string(other) << " was derived through the initially-true "
+                    << to_string(records[position]);
+            }
+            if (records[position].fact_atom_index.has_value())
+            {
+                EXPECT_TRUE(landmarks->get_predecessors(*records[position].fact_atom_index).empty()) << domain << "/" << instance;
+            }
         }
     }
-    EXPECT_GT(num_initially_true, 0u) << "blocks_4 must have at least one initially-true landmark";
+    EXPECT_GT(total_initially_true, 0u) << "no shipped instance had an initially-true landmark, so nothing was tested";
+}
+
+/// @brief F3: the stop is over members, not over the pattern.
+///
+/// `landmark_lifted_static` with the filter off is the witness: `ready(?)` has the single member
+/// `ready(t1)` (the `achieve-slow` completions are statically inconsistent), so `ready(t2)` being
+/// true in `I` matches the *pattern* but is no way to satisfy the recorded landmark.
+TEST(MimirTests, SearchLandmarksLiftedInitiallyTrueIsOverMembersTest)
+{
+    const auto problem = parse("landmark_lifted_static", "test_problem_pattern_only.pddl");
+
+    auto options = LiftedFactLandmarkGeneratorOptions {};
+    options.use_static_filter = false;
+    const auto landmarks = LiftedFactLandmarkGenerator::create(problem, options);
+
+    const auto ready_t1 = find_lifted(landmarks, "ready(t1)");
+    ASSERT_NE(ready_t1, nullptr) << "the promoted member landmark must exist";
+    EXPECT_FALSE(ready_t1->initially_true) << "ready(t2) in I matches the pattern but is not a member";
+
+    // ... and because it was not stopped, the chain below it exists.
+    EXPECT_NE(find_landmark(landmarks, "ready", { "t1" }), nullptr);
 }
 
 /**
@@ -782,13 +871,60 @@ TEST(MimirTests, SearchLandmarksLiftedGraphContractTest)
         EXPECT_EQ(std::find(members.begin(), members.end(), ready->get_index()), members.end());
     }
 
-    promotion_options.promote_singleton_disjunctions = false;
-    const auto unpromoted = LiftedFactLandmarkGenerator::create(promotion_problem, promotion_options);
-    EXPECT_EQ(find_landmark(unpromoted, "ready", { "t1" }), nullptr);
-    const auto unpromoted_ready = find_lifted(unpromoted, "ready(?)");
-    ASSERT_NE(unpromoted_ready, nullptr);
-    EXPECT_EQ(unpromoted_ready->member_atom_indices.size(), 1u);
-    EXPECT_LT(unpromoted->get_landmark_atom_indices().size(), promoted->get_landmark_atom_indices().size());
+    // The partial form is gone: it is dropped, not kept alongside the fact it promoted to.
+    EXPECT_EQ(find_lifted(promoted, "ready(?)"), nullptr);
+    EXPECT_TRUE(sets_over_predicate(promoted, "ready").empty());
+    const auto ready_record = find_lifted(promoted, "ready(t1)");
+    ASSERT_NE(ready_record, nullptr);
+    EXPECT_TRUE(ready_record->fact_atom_index.has_value());
+}
+
+/**
+ * Determinism. The extraction rule is order-sensitive by construction -- §2.4 subsumption keeps a
+ * general pattern only when no more specific one was inserted before it -- so an unspecified
+ * iteration order would make the member vocabulary a property of the standard library the binary
+ * was built against. Two runs must agree, and the order must be the one the generator declares.
+ */
+
+TEST(MimirTests, SearchLandmarksLiftedDeterministicOrderTest)
+{
+    auto instances = std::vector<std::pair<std::string, std::string>> { { "blocks_4", "test_problem.pddl" },
+                                                                       { "gripper", "test_problem.pddl" },
+                                                                       { "childsnack", "test_problem.pddl" },
+                                                                       { "landmark_lifted_occurrences", "test_problem.pddl" } };
+    for (const auto& domain : ipc_domains())
+    {
+        instances.emplace_back("ipc/" + domain + "/train", "p69.pddl");
+    }
+
+    for (const auto& [domain, instance] : instances)
+    {
+        // Two independent parses, so repository index assignment is exercised too, not just the
+        // second call over a warm problem.
+        const auto first = render_graph(LiftedFactLandmarkGenerator::create(parse(domain, instance)));
+        const auto second = render_graph(LiftedFactLandmarkGenerator::create(parse(domain, instance)));
+        EXPECT_EQ(first, second) << domain << "/" << instance;
+
+        const auto problem = parse(domain, instance);
+        const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+        EXPECT_EQ(render_graph(LiftedFactLandmarkGenerator::create(problem)), render_graph(landmarks)) << domain << "/" << instance;
+
+        /* The declared order: goal atoms first in goal order, then one block of records per
+           expansion, and within a block ascending by the derived predicate's index. A record's
+           first parent is the one that created it, so a block is a maximal run of consecutive
+           records sharing that first parent. */
+        const auto& records = landmarks->get_lifted_landmarks();
+        for (size_t i = 1; i < records.size(); ++i)
+        {
+            if (records[i - 1].parent_positions.empty() || records[i].parent_positions.empty()
+                || records[i - 1].parent_positions.front() != records[i].parent_positions.front())
+            {
+                continue;  // a block boundary
+            }
+            EXPECT_LE(records[i - 1].predicate->get_index(), records[i].predicate->get_index())
+                << domain << "/" << instance << ": " << to_string(records[i - 1]) << " before " << to_string(records[i]);
+        }
+    }
 }
 
 /**

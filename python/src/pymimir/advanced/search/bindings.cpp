@@ -928,8 +928,7 @@ void bind_module_definitions(nb::module_& m)
         .def_rw("compute_greedy_necessary_orderings", &landmarks::LiftedFactLandmarkGeneratorOptions::compute_greedy_necessary_orderings)
         .def_rw("use_static_filter", &landmarks::LiftedFactLandmarkGeneratorOptions::use_static_filter)
         .def_rw("max_occurrence_combinations", &landmarks::LiftedFactLandmarkGeneratorOptions::max_occurrence_combinations)
-        .def_rw("max_disjunctive_members", &landmarks::LiftedFactLandmarkGeneratorOptions::max_disjunctive_members)
-        .def_rw("promote_singleton_disjunctions", &landmarks::LiftedFactLandmarkGeneratorOptions::promote_singleton_disjunctions);
+        .def_rw("max_disjunctive_members", &landmarks::LiftedFactLandmarkGeneratorOptions::max_disjunctive_members);
 
     nb::class_<landmarks::LiftedFactLandmarkGenerator>(m, "LiftedFactLandmarkGenerator")  //
         .def_static("create",

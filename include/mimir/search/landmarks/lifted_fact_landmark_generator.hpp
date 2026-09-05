@@ -69,13 +69,6 @@ struct LiftedFactLandmarkGeneratorOptions
     /// truncated set is not a landmark). The landmark's own `LiftedLandmark` record keeps its full
     /// member list either way, because that record is diagnostics, not vocabulary.
     size_t max_disjunctive_members = 0;
-
-    /// @brief Turn a partial landmark with exactly one member into a fact landmark.
-    ///
-    /// Every plan makes *some* member true, and there is exactly one, so that member is mandatory.
-    /// Promoting it is what lets the back-chain continue through it as a fact rather than stopping
-    /// at a one-element disjunction.
-    bool promote_singleton_disjunctions = true;
 };
 
 /// @brief `LiftedFactLandmarkGenerator` computes necessary-subgoal landmarks over *partially ground

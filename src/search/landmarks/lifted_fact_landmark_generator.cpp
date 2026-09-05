@@ -139,7 +139,7 @@ public:
         }
         for (const auto atom : problem->get_fluent_initial_atoms())
         {
-            m_fluent_initial_by_predicate[atom->get_predicate()->get_index()].push_back(atom);
+            m_initial_fluent_mask.set(atom->get_index());
         }
         for (const auto object : problem->get_problem_and_domain_objects())
         {
@@ -155,16 +155,15 @@ public:
         return (it == m_static_atoms_by_predicate.end()) ? empty : it->second;
     }
 
-    const GroundAtomList<FluentTag>& get_fluent_initial_atoms(Index predicate_index) const
-    {
-        static const auto empty = GroundAtomList<FluentTag> {};
-        const auto it = m_fluent_initial_by_predicate.find(predicate_index);
-        return (it == m_fluent_initial_by_predicate.end()) ? empty : it->second;
-    }
-
     bool has_static_atom(Index predicate_index, const ObjectList& objects) const
     {
         return m_static_atom_identities.count(make_identity(predicate_index, objects)) > 0;
+    }
+
+    /// @brief Is any of these fluent atoms true in the initial state?
+    bool is_initially_true(const IndexList& atom_indices) const
+    {
+        return std::any_of(atom_indices.begin(), atom_indices.end(), [&](Index atom_index) { return m_initial_fluent_mask.get(atom_index); });
     }
 
     /// @brief The objects a parameter may take, by its declared types; every object when the
@@ -206,8 +205,8 @@ public:
 
 private:
     ObjectList m_all_objects;
+    FlatBitset m_initial_fluent_mask;
     std::unordered_map<Index, GroundAtomList<StaticTag>> m_static_atoms_by_predicate;
-    std::unordered_map<Index, GroundAtomList<FluentTag>> m_fluent_initial_by_predicate;
     std::unordered_set<Identity, IdentityHash> m_static_atom_identities;
     mutable std::unordered_map<Parameter, ObjectList> m_objects_by_parameter;
 };
@@ -663,11 +662,12 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
                    is a landmark the task is unsolvable, which is not this code's business. */
                 return;
             }
-            if (members.size() == 1 && options.promote_singleton_disjunctions)
+            if (members.size() == 1)
             {
                 /* Every plan makes *some* member true and there is exactly one, so that member is
-                   mandatory. The partial form is dropped rather than kept alongside: expanding it
-                   too would rederive, more weakly, everything the promoted fact derives. */
+                   mandatory -- a theorem, not a policy, which is why there is no option to skip it.
+                   The partial form is dropped rather than kept alongside: expanding it too would
+                   rederive, more weakly, everything the promoted fact derives. */
                 effective_binding = problem->get_repositories().get_ground_atom<FluentTag>(members.front())->get_objects();
             }
         }
@@ -704,6 +704,7 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
 
     auto achievers = std::vector<Achiever> {};
     auto occurrences_by_achiever = std::vector<std::unordered_map<Index, LiteralList<FluentTag>>> {};
+    auto derived_predicate_indices = IndexList {};
 
     while (!worklist.empty())
     {
@@ -714,32 +715,18 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
         const auto binding = records[position].binding;  // by value: `records` reallocates below
 
         /**
-         * §2.1: an initially-true instance means the first state holding an instance of the pattern
-         * need not have been produced by any action, so the induction step of Proposition 1 has no
-         * base and nothing may be derived through it. The landmark itself stays (trivially
-         * satisfied at I, parity with the grounded generator, whose back-chain stops here too).
+         * §2.1: nothing may be derived through a landmark that already holds at `I`. The induction
+         * step of Proposition 1 needs "the first state containing a MEMBER was produced by an
+         * action", so the test is over the recorded member set, not over the pattern: an instance
+         * of the pattern that is true in `I` but is not a member (the static filter excluded it --
+         * a rover parked at a waypoint it is not equipped to analyse) is no way to satisfy the
+         * landmark we recorded, and stopping on it would lose real landmarks for nothing.
+         *
+         * The landmark itself stays (trivially satisfied at I, parity with the grounded generator,
+         * whose back-chain stops at the same place).
          */
 
-        auto initially_true = false;
-        for (const auto atom : index.get_fluent_initial_atoms(predicate->get_index()))
-        {
-            const auto& objects = atom->get_objects();
-            if (objects.size() != binding.size())
-            {
-                continue;
-            }
-            auto matches = true;
-            for (size_t i = 0; matches && i < binding.size(); ++i)
-            {
-                matches = !binding[i] || (binding[i] == objects[i]);
-            }
-            if (matches)
-            {
-                initially_true = true;
-                break;
-            }
-        }
-        if (initially_true)
+        if (index.is_initially_true(records[position].member_atom_indices))
         {
             records[position].initially_true = true;
             continue;
@@ -825,9 +812,21 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
             }
         }
 
-        for (const auto& [precondition_predicate_index, first_occurrences] : occurrences_by_achiever.front())
+        /* Ascending predicate index, never the hash order of `occurrences_by_achiever.front()`.
+           §2.4 subsumption keeps a general pattern only when no more specific one was inserted
+           before it, so the order in which predicates are visited decides which records survive --
+           and an unordered_map's order differs between libc++ and libstdc++, which would make the
+           member vocabulary a property of the machine that built it. */
+        derived_predicate_indices.clear();
+        for (const auto& [precondition_predicate_index, _occurrences] : occurrences_by_achiever.front())
         {
-            auto occurrences = std::vector<const LiteralList<FluentTag>*> { &first_occurrences };
+            derived_predicate_indices.push_back(precondition_predicate_index);
+        }
+        std::sort(derived_predicate_indices.begin(), derived_predicate_indices.end());
+
+        for (const auto precondition_predicate_index : derived_predicate_indices)
+        {
+            auto occurrences = std::vector<const LiteralList<FluentTag>*> { &occurrences_by_achiever.front().at(precondition_predicate_index) };
             auto in_every_achiever = true;
             for (size_t j = 1; j < achievers.size(); ++j)
             {
@@ -963,6 +962,15 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
      * Assemble the graph. A partial landmark contributes its member set; a set over the cap is
      * dropped rather than truncated, because a truncated set is not a landmark.
      */
+
+    /* The flag is a property of the *recorded* set, and a record's set can still grow after it was
+       expanded (another parent deriving the same identity contributes its own members, which are
+       unioned in). Recomputing here rather than trusting what the expansion loop saw is what keeps
+       the flag from going stale under that union. */
+    for (auto& record : records)
+    {
+        record.initially_true = index.is_initially_true(record.member_atom_indices);
+    }
 
     auto disjunctive_landmarks = std::vector<IndexList> {};
     for (const auto& record : records)

@@ -194,6 +194,25 @@ def test_graph_contract_without_an_achiever_index():
     assert not landmarks.is_landmark(beyond)
 
 
+def test_extraction_is_deterministic():
+    """ Python parity with SearchLandmarksLiftedDeterministicOrderTest: subsumption makes the rule
+        order-sensitive, so the derived-predicate order has to be defined rather than hashed.
+    """
+    def render(landmarks):
+        lines = []
+        for record in landmarks.get_lifted_landmarks():
+            members = sorted(_atom_signature(_resolve_atom(landmarks, i)) for i in record.get_member_atom_indices())
+            lines.append(f"{record} {record.is_initially_true()} {members} {list(record.get_parent_positions())}")
+        return "\n".join(lines)
+
+    for domain, instance in [("childsnack", "test_problem.pddl"),
+                             ("ipc/childsnack-ipc/train", "p69.pddl"),
+                             ("ipc/rovers-ipc/train", "p69.pddl")]:
+        first = render(search.LiftedFactLandmarkGenerator.create(_parse(domain, instance)))
+        second = render(search.LiftedFactLandmarkGenerator.create(_parse(domain, instance)))
+        assert first == second, domain
+
+
 def test_lifted_landmark_rendering_and_options():
     problem = _parse("gripper")
     landmarks = search.LiftedFactLandmarkGenerator.create(problem)
@@ -218,7 +237,7 @@ def test_lifted_landmark_rendering_and_options():
     assert options.use_static_filter
     assert options.max_occurrence_combinations == 64
     assert options.max_disjunctive_members == 0  # 0 is UNCAPPED on this generator
-    assert options.promote_singleton_disjunctions
+    assert not hasattr(options, "promote_singleton_disjunctions")  # promotion is a theorem, not an option
 
     # A set over the cap is dropped, never truncated.
     options.max_disjunctive_members = 1
