@@ -945,8 +945,7 @@ void bind_module_definitions(nb::module_& m)
 
     nb::class_<RelaxedReachabilityOptions>(m, "RelaxedReachabilityOptions")  //
         .def(nb::init<>())
-        .def_rw("enforce_negative_static_conditions", &RelaxedReachabilityOptions::enforce_negative_static_conditions)
-        .def_rw("refine_plan_with_measured_sizes", &RelaxedReachabilityOptions::refine_plan_with_measured_sizes);
+        .def_rw("enforce_negative_static_conditions", &RelaxedReachabilityOptions::enforce_negative_static_conditions);
 
     nb::class_<RelaxedReachabilityStatistics>(m, "RelaxedReachabilityStatistics")  //
         .def_ro("num_rules", &RelaxedReachabilityStatistics::num_rules)
@@ -960,8 +959,7 @@ void bind_module_definitions(nb::module_& m)
         .def_ro("num_auxiliary_tuples", &RelaxedReachabilityStatistics::num_auxiliary_tuples)
         .def_ro("num_static_tuples", &RelaxedReachabilityStatistics::num_static_tuples)
         .def_ro("compile_time_ms", &RelaxedReachabilityStatistics::compile_time_ms)
-        .def_ro("fixpoint_time_ms", &RelaxedReachabilityStatistics::fixpoint_time_ms)
-        .def_ro("planning_fixpoint_time_ms", &RelaxedReachabilityStatistics::planning_fixpoint_time_ms);
+        .def_ro("fixpoint_time_ms", &RelaxedReachabilityStatistics::fixpoint_time_ms);
 
     // `ReachableTuples` is a view into the table's relations, so every accessor that hands one out keeps the
     // table alive for as long as Python holds the view (`keep_alive<0, 1>`).

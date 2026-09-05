@@ -54,19 +54,6 @@ struct RelaxedReachabilityOptions
     /// to explain any difference between the two reachable sets.
     bool enforce_negative_static_conditions = true;
 
-    /// @brief Try a second join order compiled from the relation sizes the first fixpoint measured, and keep
-    /// whichever of the two plans ran faster.
-    ///
-    /// The first compilation can only guess the size of a fluent relation (the number of type-compatible
-    /// tuples, which over-estimates badly: childsnack's `at(?t, ?p)` has 10 x 292 typed instances and 10
-    /// reachable ones). Feeding the measured sizes back is not automatically better, though -- they are the
-    /// sizes *at* the fixpoint rather than during it, and a relation far below its typed bound makes every
-    /// fanout estimate clamp to 1, which flattens the ordering instead of sharpening it. On the thirteen
-    /// largest hierarchical test instances the refined plan won on some domains and lost by up to 1.4x on
-    /// others, so the winner is decided by the clock. Costs one extra construction-time fixpoint, or two when
-    /// the first plan wins (`planning_fixpoint_time_ms` reports the trial runs); the plan that survives is the
-    /// one every restricted query -- hundreds per problem -- then uses.
-    bool refine_plan_with_measured_sizes = true;
 };
 
 /**
@@ -85,10 +72,8 @@ struct RelaxedReachabilityStatistics
     size_t num_reachable_derived_atoms = 0;  ///< Relaxed-reachable ground atoms over derived predicates.
     size_t num_auxiliary_tuples = 0;         ///< Tuples materialised in auxiliary relations (the memory the splitting costs).
     size_t num_static_tuples = 0;            ///< Tuples in the static EDB relations (shared by every query).
-    double compile_time_ms = 0.0;              ///< Both plan compilations together.
-    double fixpoint_time_ms = 0.0;             ///< The unrestricted fixpoint under the plan every query uses.
-    double planning_fixpoint_time_ms = 0.0;    ///< The first fixpoint, the one that only measured the relation
-                                               ///< sizes; 0 when `refine_plan_with_measured_sizes` is off.
+    double compile_time_ms = 0.0;   ///< Reading the schemas, splitting the rules and choosing the join orders.
+    double fixpoint_time_ms = 0.0;  ///< The unrestricted fixpoint, excluding compilation.
 };
 
 /**

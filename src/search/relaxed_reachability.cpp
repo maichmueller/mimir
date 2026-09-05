@@ -211,6 +211,32 @@ public:
     size_t get_memory_bytes() const { return m_data.capacity() * sizeof(ObjectId) + m_buckets.capacity() * sizeof(uint32_t); }
 };
 
+/// @brief How many distinct objects occur in each column of `relation`.
+///
+/// This is the only number the join planner really wants: the fanout of a join on a column is the relation's
+/// size divided by the number of distinct keys in it, and the size of a projection is bounded by the product
+/// of the distinct values of the surviving columns. Counting from the declared types instead -- which is all
+/// that is available before the first fixpoint -- over-estimates badly: sokoban's `adjacent(?l1, ?l2, ?dir)`
+/// has four directions in its third column, not `|objects|`.
+static std::vector<double> compute_position_domains(const Relation& relation)
+{
+    auto result = std::vector<double>(relation.get_arity(), 0.0);
+    auto seen = std::vector<std::unordered_set<ObjectId>>(relation.get_arity());
+    for (size_t position = 0; position < relation.size(); ++position)
+    {
+        const auto* tuple = relation.get_tuple(position);
+        for (uint32_t column = 0; column < relation.get_arity(); ++column)
+        {
+            seen[column].insert(tuple[column]);
+        }
+    }
+    for (uint32_t column = 0; column < relation.get_arity(); ++column)
+    {
+        result[column] = double(seen[column].size());
+    }
+    return result;
+}
+
 /**
  * JoinIndex: a hash index over a column subset of an append-only relation.
  *
@@ -997,9 +1023,10 @@ static std::string describe_step(const Step& step, const std::vector<VariableId>
 /// |breads| x |contents| x |sandwiches| into their sum: `?b` occurs only in `at_kitchen_bread(?b)` and in the
 /// type literal `bread-portion(?b)`, so after those two are joined `?b` is dead and the accumulator drops
 /// back to the empty tuple.
-static void compile_rule(Program& program, const Rule& rule, std::vector<Step>& out_steps)
+static double compile_rule(Program& program, const Rule& rule, std::vector<Step>& out_steps, size_t seed_literal, bool dry_run)
 {
     const auto num_variables = rule.num_variables;
+    auto total_cost = double(0);
 
     auto head_variables = std::vector<char>(num_variables, 0);
     collect_variables(rule.head.args, head_variables);
@@ -1020,6 +1047,23 @@ static void compile_rule(Program& program, const Rule& rule, std::vector<Step>& 
         remaining.push_back(i);
     }
 
+    /* A variable ranges over at most the objects that actually occur at the positions it is joined on, which
+       is usually far fewer than its declared type allows. Taking the tightest of those bounds is what keeps
+       the projection estimate from collapsing into "the same as the probe count" for every candidate. */
+    auto variable_domain = rule.variable_domain;
+    for (const auto& literal : rule.body)
+    {
+        const auto& position_domain = program.relation_position_domain[literal.relation];
+        for (size_t position = 0; position < literal.args.size(); ++position)
+        {
+            const auto& term = literal.args[position];
+            if (term.is_variable && position_domain[position] > 0.0)
+            {
+                variable_domain[term.value] = std::min(variable_domain[term.value], position_domain[position]);
+            }
+        }
+    }
+
     auto accumulator_relation = program.true_relation;
     auto accumulator_variables = std::vector<VariableId> {};  ///< in column order
     auto accumulator_column = std::vector<uint32_t>(num_variables, NO_INDEX);
@@ -1027,6 +1071,10 @@ static void compile_rule(Program& program, const Rule& rule, std::vector<Step>& 
 
     if (remaining.empty())
     {
+        if (dry_run)
+        {
+            return 0.0;
+        }
         // Every literal was decided at compile time: the head is a fact, gated only on guards over constants.
         auto step = Step {};
         step.out = rule.head.relation;
@@ -1046,8 +1094,10 @@ static void compile_rule(Program& program, const Rule& rule, std::vector<Step>& 
             step.out_columns.push_back(Slot { 2, term.value });
         }
         out_steps.push_back(std::move(step));
-        return;
+        return 0.0;
     }
+
+    auto is_first_step = true;
 
     while (!remaining.empty())
     {
@@ -1058,6 +1108,17 @@ static void compile_rule(Program& program, const Rule& rule, std::vector<Step>& 
 
         for (size_t slot = 0; slot < remaining.size(); ++slot)
         {
+            /* The first literal is dictated by the caller. A greedy chain is only ever as good as where it
+               starts, and the cheapest single relation is often the wrong door: childsnack's
+               `serve_sandwich_no_gluten` seeded at `place` (4 tuples) is dragged through `at` and `waiting`
+               into a child-by-sandwich intermediate of 34k rows, whereas seeded at `no_gluten_sandwich` it
+               joins `ontray`, drops `?s` on the spot and never exceeds the eight trays.
+               `compile_rule_with_best_seed` plans once per possible first literal and keeps the cheapest. */
+            if (is_first_step && seed_literal < rule.body.size() && remaining[slot] != seed_literal)
+            {
+                continue;
+            }
+
             const auto& literal = rule.body[remaining[slot]];
             const auto relation = literal.relation;
             const auto& position_domain = program.relation_position_domain[relation];
@@ -1135,7 +1196,7 @@ static void compile_rule(Program& program, const Rule& rule, std::vector<Step>& 
             {
                 if (bound[variable] && needed[variable])
                 {
-                    output *= std::max(1.0, rule.variable_domain[variable]);
+                    output *= std::max(1.0, variable_domain[variable]);
                 }
             }
             output = std::min(output, std::max(1.0, pairs));
@@ -1160,11 +1221,14 @@ static void compile_rule(Program& program, const Rule& rule, std::vector<Step>& 
                 best_connected = connected;
             }
         }
+        total_cost += best_pairs + best_output;
 
         const auto literal_index = remaining[best_slot];
         remaining.erase(remaining.begin() + best_slot);
+        is_first_step = false;
         const auto& literal = rule.body[literal_index];
 
+        auto emit_this_step = !dry_run;
         auto step = Step {};
         step.lhs = accumulator_relation;
         step.rhs = literal.relation;
@@ -1290,41 +1354,50 @@ static void compile_rule(Program& program, const Rule& rule, std::vector<Step>& 
             /* Two rules over the same body -- sokoban's `push` has three positive effect literals, so three
                rules share every precondition -- compile to the same prefix as long as they still need the
                same variables. Emitting that prefix once is a plain saving in both time and tuples. */
-            const auto key = describe_step(step, out_variables);
-            const auto it = program.shared_auxiliary_steps.find(key);
-            if (it != program.shared_auxiliary_steps.end())
+            auto next_estimate = best_output;
+            if (dry_run)
             {
-                accumulator_relation = it->second;
-                accumulator_variables = out_variables;
-                std::fill(accumulator_column.begin(), accumulator_column.end(), NO_INDEX);
-                for (uint32_t column = 0; column < out_variables.size(); ++column)
+                accumulator_relation = program.true_relation;  ///< a trial plan allocates nothing
+            }
+            else
+            {
+                const auto key = describe_step(step, out_variables);
+                const auto it = program.shared_auxiliary_steps.find(key);
+                if (it != program.shared_auxiliary_steps.end())
                 {
-                    accumulator_column[out_variables[column]] = column;
+                    accumulator_relation = it->second;
+                    next_estimate = program.relation_size_estimate[accumulator_relation];
+                    emit_this_step = false;
                 }
-                accumulator_estimate = program.relation_size_estimate[accumulator_relation];
-                continue;
+                else
+                {
+                    const auto id = RelationId(program.relation_kind.size());
+                    program.relation_kind.push_back(RelationKind::Auxiliary);
+                    program.relation_arity.push_back(uint32_t(out_variables.size()));
+                    program.relation_predicate.push_back(nullptr);
+                    program.relation_name.push_back("$aux_" + std::to_string(program.num_auxiliary_relations));
+                    program.relation_position_domain.push_back(std::vector<double>(out_variables.size(), 0.0));
+                    program.relation_size_estimate.push_back(best_output);
+                    program.edb.emplace_back();
+                    ++program.num_auxiliary_relations;
+                    step.out = id;
+                    program.shared_auxiliary_steps.emplace(key, id);
+                    accumulator_relation = id;
+                }
             }
 
-            const auto id = RelationId(program.relation_kind.size());
-            program.relation_kind.push_back(RelationKind::Auxiliary);
-            program.relation_arity.push_back(uint32_t(out_variables.size()));
-            program.relation_predicate.push_back(nullptr);
-            program.relation_name.push_back("$aux_" + std::to_string(program.num_auxiliary_relations));
-            program.relation_position_domain.push_back(std::vector<double>(out_variables.size(), 0.0));
-            program.relation_size_estimate.push_back(best_output);
-            program.edb.emplace_back();
-            ++program.num_auxiliary_relations;
-            step.out = id;
-            program.shared_auxiliary_steps.emplace(key, id);
-
-            accumulator_relation = id;
             accumulator_variables = out_variables;
             std::fill(accumulator_column.begin(), accumulator_column.end(), NO_INDEX);
             for (uint32_t column = 0; column < out_variables.size(); ++column)
             {
                 accumulator_column[out_variables[column]] = column;
             }
-            accumulator_estimate = best_output;
+            accumulator_estimate = next_estimate;
+        }
+
+        if (!emit_this_step)
+        {
+            continue;
         }
 
         /* Index slots. The right side is probed whenever there is anything to probe on; the left side is
@@ -1347,6 +1420,31 @@ static void compile_rule(Program& program, const Rule& rule, std::vector<Step>& 
 
         out_steps.push_back(std::move(step));
     }
+
+    return total_cost;
+}
+
+/// @brief Plan one rule from every possible first literal and emit the cheapest chain.
+///
+/// A trial plan allocates nothing, so this costs |body| passes of an O(|body|^2) loop per rule and no memory.
+/// Measured on the thirteen largest test instances it never added more than a few milliseconds to the
+/// compilation, and it is what stops one unlucky opening literal from turning a linear chain into a product.
+static void compile_rule_with_best_seed(Program& program, const Rule& rule, std::vector<Step>& out_steps)
+{
+    auto best_seed = std::numeric_limits<size_t>::max();
+    auto best_cost = std::numeric_limits<double>::infinity();
+    auto scratch = std::vector<Step> {};
+    for (size_t seed = 0; seed < rule.body.size(); ++seed)
+    {
+        scratch.clear();
+        const auto cost = compile_rule(program, rule, scratch, seed, true);
+        if (cost < best_cost)
+        {
+            best_cost = cost;
+            best_seed = seed;
+        }
+    }
+    compile_rule(program, rule, out_steps, best_seed, false);
 }
 
 /**
@@ -1802,6 +1900,40 @@ static bool simplify_static_literals(const Program& program, Rule& rule)
     }
     rule.negative_static = std::move(negative);
 
+    /* mimir compiles the type hierarchy into unary static predicates and puts every one of them into the
+       action's condition, so a rule over five parameters carries five `(object ?x)` literals on top of the
+       five type literals that actually restrict anything. A unary static relation that holds every object
+       filters nothing, so joining it is pure cost -- drop it, unless it is the only thing binding its
+       variable, in which case it is what makes the rule safe. */
+    {
+        auto occurrences = std::vector<size_t>(rule.num_variables, 0);
+        for (const auto& atom : rule.body)
+        {
+            for (const auto& term : atom.args)
+            {
+                if (term.is_variable)
+                {
+                    ++occurrences[term.value];
+                }
+            }
+        }
+        auto kept = std::vector<RuleAtom> {};
+        for (auto& atom : rule.body)
+        {
+            const auto kind = program.relation_kind[atom.relation];
+            const auto is_universal = (kind == RelationKind::Static || kind == RelationKind::TypeDomain)  //
+                                      && atom.args.size() == 1 && atom.args[0].is_variable                //
+                                      && program.edb[atom.relation].size() == program.object_by_id.size();
+            if (is_universal && occurrences[atom.args[0].value] > 1)
+            {
+                --occurrences[atom.args[0].value];
+                continue;
+            }
+            kept.push_back(std::move(atom));
+        }
+        rule.body = std::move(kept);
+    }
+
     auto disequalities = std::vector<std::pair<RuleTerm, RuleTerm>> {};
     for (const auto& [lhs, rhs] : rule.disequalities)
     {
@@ -1841,7 +1973,7 @@ static void compile_plan(Program& program, const std::vector<Rule>& rules)
 
     for (const auto& rule : rules)
     {
-        compile_rule(program, rule, program.steps);
+        compile_rule_with_best_seed(program, rule, program.steps);
     }
 
     /* The EDB indexes are built once and shared by every query, because a static relation never changes. */
@@ -2050,6 +2182,7 @@ std::shared_ptr<const RelaxedReachability> RelaxedReachability::create(const for
             if (program->relation_kind[id] == RelationKind::Static)
             {
                 program->relation_size_estimate[id] = double(program->edb[id].size());
+                program->relation_position_domain[id] = compute_position_domains(program->edb[id]);
             }
         }
     }
@@ -2111,67 +2244,13 @@ std::shared_ptr<const RelaxedReachability> RelaxedReachability::create(const for
 
     compile_plan(*program, rules);
 
-    auto compile_ms = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - compile_start).count();
+    const auto compile_ms = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - compile_start).count();
 
     /* The unrestricted fixpoint. */
-    auto fixpoint_start = std::chrono::high_resolution_clock::now();
+    const auto fixpoint_start = std::chrono::high_resolution_clock::now();
     auto database = std::make_unique<Database>(*program);
     database->run(false);
-    auto fixpoint_ms = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - fixpoint_start).count();
-
-    auto planning_fixpoint_ms = double(0);
-    if (options.refine_plan_with_measured_sizes)
-    {
-        /* The first plan could only guess how large a fluent relation gets. Feed the measured sizes back,
-           compile again, and run again -- but *keep* the second plan only when its fixpoint was actually
-           faster. Measured sizes are not automatically the better model: they are the sizes at the fixpoint,
-           not during it, and a relation that ends up far below its typed bound drives every fanout estimate
-           to the same clamped 1, which flattens the ordering rather than sharpening it. Measured on the
-           thirteen largest test instances, the refined plan won on some domains and lost by up to 1.4x on
-           others, so the choice is made by the clock rather than by the model. */
-        const auto typed_estimates = program->relation_size_estimate;
-
-        const auto refine_start = std::chrono::high_resolution_clock::now();
-        for (RelationId id = 0; id < program->relation_kind.size(); ++id)
-        {
-            const auto kind = program->relation_kind[id];
-            if (kind == RelationKind::Fluent || kind == RelationKind::Derived)
-            {
-                program->relation_size_estimate[id] = double(database->get_relation(id).size());
-            }
-        }
-        compile_plan(*program, rules);
-        compile_ms += std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - refine_start).count();
-
-        const auto refined_start = std::chrono::high_resolution_clock::now();
-        auto refined_database = std::make_unique<Database>(*program);
-        refined_database->run(false);
-        const auto refined_ms = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - refined_start).count();
-
-        if (refined_ms <= fixpoint_ms)
-        {
-            planning_fixpoint_ms = fixpoint_ms;
-            fixpoint_ms = refined_ms;
-            database = std::move(refined_database);
-        }
-        else
-        {
-            /* Put the first plan back. `compile_plan` is a pure function of the rules and the estimates, so
-               recompiling from the typed estimates reproduces it exactly; the database has to be rebuilt with
-               it because a database's auxiliary relations are indexed by the plan that created them. */
-            planning_fixpoint_ms = fixpoint_ms + refined_ms;
-            refined_database.reset();
-            const auto restore_start = std::chrono::high_resolution_clock::now();
-            program->relation_size_estimate = typed_estimates;
-            compile_plan(*program, rules);
-            compile_ms += std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - restore_start).count();
-
-            fixpoint_start = std::chrono::high_resolution_clock::now();
-            database = std::make_unique<Database>(*program);
-            database->run(false);
-            fixpoint_ms = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - fixpoint_start).count();
-        }
-    }
+    const auto fixpoint_ms = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - fixpoint_start).count();
 
     auto& statistics = result->m_statistics;
     program->relation_capacity_hint.assign(program->relation_kind.size(), 0);
@@ -2194,7 +2273,6 @@ std::shared_ptr<const RelaxedReachability> RelaxedReachability::create(const for
     statistics.num_static_tuples = database->get_num_tuples(RelationKind::Static) + database->get_num_tuples(RelationKind::TypeDomain);
     statistics.compile_time_ms = compile_ms;
     statistics.fixpoint_time_ms = fixpoint_ms;
-    statistics.planning_fixpoint_time_ms = planning_fixpoint_ms;
 
     result->m_program = program;
     result->m_table = std::make_unique<ReachabilityTable>(program, std::move(database));

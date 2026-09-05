@@ -554,7 +554,8 @@ const std::vector<std::string>& exactness_domains()
                                                            "landmark_lifted_static",
                                                            "landmark_lifted_unreachable_members",
                                                            "relaxed_reachability_chain",
-                                                           "relaxed_reachability_axiom" };
+                                                           "relaxed_reachability_axiom",
+                                                           "relaxed_reachability_negative_static" };
     return domains;
 }
 
@@ -747,6 +748,56 @@ TEST(MimirTests, SearchRelaxedReachabilityAxiomTest)
 }
 
 /**
+ * 1b. Negative static preconditions: where this engine and `LiftedGrounder` part company.
+ */
+
+TEST(MimirTests, SearchRelaxedReachabilityNegativeStaticConditionTest)
+{
+    const auto problem = parse_fixture("relaxed_reachability_negative_static", "test_problem.pddl");
+    const auto object = [&](const std::string& name) { return problem->get_problem_or_domain_object(name); };
+    const auto& predicates = problem->get_domain()->get_name_to_predicate<FluentTag>();
+
+    /* Exact: `(not (blocked ?i))` is a static condition, and no action can make a static atom go away, so
+       `step1(b)` can never fire and nothing downstream of it is reachable. */
+    const auto exact = RelaxedReachability::create(problem);
+    EXPECT_TRUE(exact->is_reachable(predicates.at("mid"), { object("a") }));
+    EXPECT_TRUE(exact->is_reachable(predicates.at("goal"), { object("a") }));
+    EXPECT_FALSE(exact->is_reachable(predicates.at("mid"), { object("b") }));
+    EXPECT_FALSE(exact->is_reachable(predicates.at("goal"), { object("b") }));
+    EXPECT_TRUE(exact->is_goal_reachable());
+
+    /* `LiftedGrounder`'s delete-free copy drops the negative literal, so its exploration instantiates
+       `step1(b)`. `create_ground_actions()` filters that one back out on static applicability -- but
+       `step2(b)`, which has no static condition, survives, and its precondition atom `mid(b)` is not
+       reachable at all. The grounded universe is therefore a strict superset of the reachable one, which is
+       the over-approximation, and it is on the safe side for every consumer. */
+    auto grounder = LiftedGrounder(problem);
+    auto grounded_step2_b = false;
+    for (const auto action : grounder.create_ground_actions())
+    {
+        if (action->get_action()->get_name() == "step2" && action->get_objects().at(0) == object("b"))
+        {
+            grounded_step2_b = true;
+        }
+    }
+    EXPECT_TRUE(grounded_step2_b) << "expected the grounder to instantiate an action the engine calls unreachable";
+
+    /* Closing the initial state under the *returned* action list still agrees with the engine atom for atom:
+       `mid(b)` is never derived, so `step2(b)` never fires. That is why the exactness test over all 49
+       instances comes out clean even though the two disagree about which ground actions exist. */
+    const auto reference = GroundReference(problem);
+    EXPECT_EQ(engine_fluent_atoms(problem, exact->get_table()), reference_fluent_atoms(problem, reference.close({})));
+
+    /* Turning the filter off reproduces the delete-free exploration's reading, and it reaches strictly more. */
+    auto relaxed_options = RelaxedReachabilityOptions {};
+    relaxed_options.enforce_negative_static_conditions = false;
+    const auto over = RelaxedReachability::create(problem, relaxed_options);
+    EXPECT_TRUE(over->is_reachable(predicates.at("mid"), { object("b") }));
+    EXPECT_TRUE(over->is_reachable(predicates.at("goal"), { object("b") }));
+    EXPECT_GT(over->get_num_reachable_atoms(), exact->get_num_reachable_atoms());
+}
+
+/**
  * 5. Determinism.
  */
 
@@ -836,7 +887,6 @@ TEST(MimirTests, SearchRelaxedReachabilityPerformanceTest)
         size_t num_objects = 0;
         double parse_ms = 0;
         double compile_ms = 0;
-        double planning_fixpoint_ms = 0;
         double fixpoint_ms = 0;
         size_t num_atoms = 0;
         size_t num_rules = 0;
@@ -845,20 +895,33 @@ TEST(MimirTests, SearchRelaxedReachabilityPerformanceTest)
         double restricted_mean_ms = 0;
         double restricted_max_ms = 0;
         double goal_query_mean_ms = 0;
-        double rss_delta_mb = 0;
+        double parse_rss_mb = 0;   ///< what mimir's parser cost, so a large row can be attributed
+        double engine_rss_mb = 0;  ///< what the reachability engine added on top of the parsed problem
         double peak_rss_mb = 0;
     };
 
     /* The largest test instance of every domain, plus the childsnack ladder. */
     const auto entries = std::vector<std::pair<std::string, std::string>> {
-        { "barman-ipc", "" },       { "blocks", "" },
-        { "blocksworld-ipc-enhanced", "" }, { "childsnack-ipc", "" },
-        { "ferry-ipc", "" },        { "floortile-ipc", "" },
-        { "logistics-6", "" },      { "miconic-ipc", "" },
-        { "rovers-ipc", "" },       { "satellite-ipc", "" },
-        { "sokoban-ipc", "" },      { "spanner-ipc", "" },
-        { "transport-ipc", "" },    { "childsnack-ipc", "p05-hard.pddl" },
-        { "childsnack-ipc", "p10-hard.pddl" }, { "childsnack-ipc", "p20-hard.pddl" },
+        { "barman-ipc", "" },
+        { "blocks", "" },
+        { "blocksworld-ipc-enhanced", "" },
+        { "childsnack-ipc", "" },
+        { "ferry-ipc", "" },
+        { "floortile-ipc", "" },
+        { "logistics-6", "" },
+        { "miconic-ipc", "" },
+        { "rovers-ipc", "" },
+        { "satellite-ipc", "" },
+        { "sokoban-ipc", "" },
+        { "spanner-ipc", "" },
+        { "transport-ipc", "" },
+        /* The childsnack ladder: the instance family the engine exists for. */
+        { "childsnack-ipc", "p05-hard.pddl" },
+        { "childsnack-ipc", "p10-hard.pddl" },
+        { "childsnack-ipc", "p13-hard.pddl" },
+        { "childsnack-ipc", "p15-hard.pddl" },
+        { "childsnack-ipc", "p20-hard.pddl" },
+        { "childsnack-ipc", "p25-hard.pddl" },
         { "childsnack-ipc", "p30-hard.pddl" },
     };
 
@@ -871,9 +934,16 @@ TEST(MimirTests, SearchRelaxedReachabilityPerformanceTest)
 
     for (const auto& [domain_name, explicit_problem] : entries)
     {
-        if (!only.empty() && only != domain_name && only != domain_name + ":" + explicit_problem)
+        // "<domain>" selects the largest-instance row, "<domain>:<file>" one explicit row, so that a shell loop
+        // can give every row its own process and therefore a peak RSS that is only about that instance.
+        if (!only.empty())
         {
-            continue;
+            const auto matches = (only.find(':') == std::string::npos) ? (only == domain_name && explicit_problem.empty()) :
+                                                                        (only == domain_name + ":" + explicit_problem);
+            if (!matches)
+            {
+                continue;
+            }
         }
         auto domain_dir = root / domain_name;
         if (!fs::exists(domain_dir))
@@ -927,11 +997,12 @@ TEST(MimirTests, SearchRelaxedReachabilityPerformanceTest)
         const auto problem = ProblemImpl::create(domain_file, problem_file, loki::ParserOptions {});
         row.parse_ms = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - parse_start).count();
         row.num_objects = problem->get_problem_and_domain_objects().size();
+        const auto rss_after_parse = current_resident_bytes();
+        row.parse_rss_mb = double(rss_after_parse > rss_before ? rss_after_parse - rss_before : 0) / (1024.0 * 1024.0);
 
         const auto reachability = RelaxedReachability::create(problem);
         const auto& statistics = reachability->get_statistics();
         row.compile_ms = statistics.compile_time_ms;
-        row.planning_fixpoint_ms = statistics.planning_fixpoint_time_ms;
         row.fixpoint_ms = statistics.fixpoint_time_ms;
         row.num_atoms = statistics.num_reachable_fluent_atoms + statistics.num_reachable_derived_atoms;
         row.num_rules = statistics.num_rules;
@@ -972,7 +1043,7 @@ TEST(MimirTests, SearchRelaxedReachabilityPerformanceTest)
         row.restricted_mean_ms = num_queries ? restricted_total / double(num_queries) : 0.0;
         row.goal_query_mean_ms = num_queries ? goal_total / double(num_queries) : 0.0;
         const auto rss_after = current_resident_bytes();
-        row.rss_delta_mb = double(rss_after > rss_before ? rss_after - rss_before : 0) / (1024.0 * 1024.0);
+        row.engine_rss_mb = double(rss_after > rss_after_parse ? rss_after - rss_after_parse : 0) / (1024.0 * 1024.0);
         row.peak_rss_mb = double(peak_resident_bytes()) / (1024.0 * 1024.0);
 
         rows.push_back(row);
@@ -980,16 +1051,15 @@ TEST(MimirTests, SearchRelaxedReachabilityPerformanceTest)
     }
 
     std::cout << "\n=== relaxed reachability performance ===\n";
-    std::cout << "instance                                       objs   parse(ms) compile(ms)  plan-fp(ms)  fixpoint(ms)   atoms  rules "
-                 "steps  aux-tuples  restr-mean(ms) restr-max(ms) goal-mean(ms)  dRSS(MB)  peakRSS(MB)\n";
+    std::cout << "instance                                       objs   parse(ms) compile(ms) fixpoint(ms)   atoms  rules "
+                 "steps  aux-tuples  restr-mean(ms) restr-max(ms) goal-mean(ms) parseRSS(MB) engineRSS(MB) peakRSS(MB)\n";
     for (const auto& row : rows)
     {
-        printf("%-44s %6zu %11.2f %11.2f %12.2f %13.2f %7zu %6zu %6zu %11zu %15.3f %13.3f %13.3f %9.1f %12.1f\n",
+        printf("%-44s %6zu %11.2f %11.2f %12.2f %7zu %6zu %6zu %11zu %15.3f %13.3f %13.3f %12.1f %13.1f %11.1f\n",
                row.label.c_str(),
                row.num_objects,
                row.parse_ms,
                row.compile_ms,
-               row.planning_fixpoint_ms,
                row.fixpoint_ms,
                row.num_atoms,
                row.num_rules,
@@ -998,7 +1068,8 @@ TEST(MimirTests, SearchRelaxedReachabilityPerformanceTest)
                row.restricted_mean_ms,
                row.restricted_max_ms,
                row.goal_query_mean_ms,
-               row.rss_delta_mb,
+               row.parse_rss_mb,
+               row.engine_rss_mb,
                row.peak_rss_mb);
     }
     std::cout << std::endl;
