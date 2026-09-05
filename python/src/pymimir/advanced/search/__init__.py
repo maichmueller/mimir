@@ -47,6 +47,15 @@ from pymimir.pymimir.advanced.search import (
     SetAddHeuristic,
 )
 
+# Relaxed reachability
+from pymimir.pymimir.advanced.search import (
+    RelaxedReachabilityOptions,
+    RelaxedReachabilityStatistics,
+    ReachableTuples,
+    ReachabilityTable,
+    RelaxedReachability,
+)
+
 # Landmarks
 from pymimir.pymimir.advanced.search import (
     FactLandmarkGeneratorOptions,
