@@ -113,7 +113,7 @@ def test_childsnack_static_disambiguation():
     assert _find_landmark(landmarks, "ontray", ["sandw1", "tray1"]) is not None
     assert _find_lifted(landmarks, "at(tray1, kitchen)").is_initially_true()
 
-    ipc = _parse("ipc/childsnack-ipc/train", "p69.pddl")
+    ipc = _parse("landmark_ipc_smallest/childsnack-ipc", "p69.pddl")
     ipc_landmarks = search.LiftedFactLandmarkGenerator.create(ipc)
 
     # Eight children, four allergic, two trays, three tables: the fact landmarks are exactly the
@@ -208,8 +208,8 @@ def test_extraction_is_deterministic():
         return "\n".join(lines)
 
     for domain, instance in [("childsnack", "test_problem.pddl"),
-                             ("ipc/childsnack-ipc/train", "p69.pddl"),
-                             ("ipc/rovers-ipc/train", "p69.pddl")]:
+                             ("landmark_ipc_smallest/childsnack-ipc", "p69.pddl"),
+                             ("landmark_ipc_smallest/rovers-ipc", "p69.pddl")]:
         first = render(search.LiftedFactLandmarkGenerator.create(_parse(domain, instance)))
         second = render(search.LiftedFactLandmarkGenerator.create(_parse(domain, instance)))
         assert first == second, domain
@@ -258,7 +258,7 @@ def test_a_predicate_no_schema_adds_keeps_only_its_initial_atoms():
         miconic's `origin` is fluent because `board` deletes it, and nothing adds it, so every
         instance beyond the initial ones is unreachable by construction.
     """
-    problem = _parse("ipc/miconic-ipc/test", "p30-hard.pddl")
+    problem = _parse("landmark_ipc_smallest/miconic-ipc-hard", "p30-hard.pddl")
     initial_origin = {
         str(atom)
         for atom in problem.get_fluent_initial_atoms()

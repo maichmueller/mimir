@@ -416,7 +416,10 @@ std::string render_graph(const FactLandmarkGraph& landmarks)
     return out;
 }
 
-/// @brief `<domain dir>/train/domain.pddl` + the smallest instance of each shipped IPC domain.
+/// @brief The smallest instance of each shipped IPC domain.
+///
+/// Read from `data/landmark_ipc_smallest/`, not from `data/ipc/`: the latter is gitignored, so on a
+/// clean checkout every test that reached into it failed with "File does not exist".
 const std::vector<std::string>& ipc_domains()
 {
     static const auto domains = std::vector<std::string> { "blocksworld-ipc", "childsnack-ipc", "ferry-ipc",   "floortile-ipc", "miconic-ipc",
@@ -564,10 +567,10 @@ TEST(MimirTests, SearchLandmarksLiftedChildsnackTest)
 
     /* The IPC instance has eight children, four of them allergic, two trays and three tables --
        enough for the partial landmarks to stay partial. */
-    const auto ipc_problem = parse("ipc/childsnack-ipc/train", "p69.pddl");
+    const auto ipc_problem = parse("landmark_ipc_smallest/childsnack-ipc", "p69.pddl");
     const auto ipc_landmarks = LiftedFactLandmarkGenerator::create(ipc_problem);
 
-    std::cout << "ipc/childsnack-ipc/train/p69.pddl lifted landmarks:\n";
+    std::cout << "childsnack-ipc p69 lifted landmarks:\n";
     for (const auto& record : ipc_landmarks->get_lifted_landmarks())
     {
         std::cout << "  " << to_string(record) << " members=" << record.member_atom_indices.size()
@@ -657,7 +660,7 @@ TEST(MimirTests, SearchLandmarksLiftedStaticFilterTest)
         // The disambiguation half, on the domain it was designed for. With the filter, `?c := child1`
         // makes `waiting(child1, ?p)` bind the place and rules out one of the two `serve` schemas;
         // without it, the place stays free and the two schemas share no gluten predicate at all.
-        const auto problem = parse("ipc/childsnack-ipc/train", "p69.pddl");
+        const auto problem = parse("landmark_ipc_smallest/childsnack-ipc", "p69.pddl");
 
         const auto filtered = LiftedFactLandmarkGenerator::create(problem);
         EXPECT_NE(find_lifted(filtered, "at(?, table1)"), nullptr);
@@ -745,7 +748,7 @@ TEST(MimirTests, SearchLandmarksLiftedInitiallyTrueStopTest)
                                                                        { "childsnack", "test_problem.pddl" } };
     for (const auto& domain : ipc_domains())
     {
-        instances.emplace_back("ipc/" + domain + "/train", "p69.pddl");
+        instances.emplace_back("landmark_ipc_smallest/" + domain, "p69.pddl");
     }
 
     auto total_initially_true = size_t(0);
@@ -923,7 +926,7 @@ TEST(MimirTests, SearchLandmarksLiftedUnaddablePredicateTest)
     /* miconic's `origin` is FLUENT because `board` deletes it, and no schema adds it. Every
        non-initial instance is therefore unreachable by construction, and `origin(?, ?)` over 485
        passengers x 196 floors was 95,060 members of which 485 could ever hold. */
-    const auto problem = parse("ipc/miconic-ipc/test", "p30-hard.pddl");
+    const auto problem = parse("landmark_ipc_smallest/miconic-ipc-hard", "p30-hard.pddl");
 
     auto initial_origin = std::set<std::string> {};
     for (const auto atom : problem->get_fluent_initial_atoms())
@@ -1155,7 +1158,7 @@ TEST(MimirTests, SearchLandmarksLiftedDeterministicOrderTest)
                                                                        { "landmark_lifted_occurrences", "test_problem.pddl" } };
     for (const auto& domain : ipc_domains())
     {
-        instances.emplace_back("ipc/" + domain + "/train", "p69.pddl");
+        instances.emplace_back("landmark_ipc_smallest/" + domain, "p69.pddl");
     }
 
     for (const auto& [domain, instance] : instances)
@@ -1200,7 +1203,7 @@ TEST(MimirTests, SearchLandmarksLiftedSoundnessOracleTest)
     };
     for (const auto& domain : ipc_domains())
     {
-        instances.emplace_back("ipc/" + domain + "/train", "p69.pddl");
+        instances.emplace_back("landmark_ipc_smallest/" + domain, "p69.pddl");
     }
 
     auto grounded_totals = OracleResult {};

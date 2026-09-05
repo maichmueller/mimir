@@ -134,14 +134,24 @@ public:
     {
         for (const auto atom : problem->get_static_initial_atoms())
         {
-            m_static_atoms_by_predicate[atom->get_predicate()->get_index()].push_back(atom);
-            m_static_atom_identities.insert(make_identity(atom->get_predicate()->get_index(), atom->get_objects()));
+            const auto predicate_index = atom->get_predicate()->get_index();
+            m_static_atoms_by_predicate[predicate_index].push_back(atom);
+            m_static_atom_identities.insert(make_identity(predicate_index, atom->get_objects()));
+            for (size_t position = 0; position < atom->get_objects().size(); ++position)
+            {
+                m_static_atoms_by_slot[bucket_key(predicate_index, position, atom->get_objects()[position])].push_back(atom);
+            }
         }
         for (const auto atom : problem->get_fluent_initial_atoms())
         {
+            const auto predicate_index = atom->get_predicate()->get_index();
             m_initial_fluent_mask.set(atom->get_index());
-            m_initial_fluent_identities.insert(make_identity(atom->get_predicate()->get_index(), atom->get_objects()));
-            m_fluent_initial_by_predicate[atom->get_predicate()->get_index()].push_back(atom);
+            m_initial_fluent_identities.insert(make_identity(predicate_index, atom->get_objects()));
+            m_fluent_initial_by_predicate[predicate_index].push_back(atom);
+            for (size_t position = 0; position < atom->get_objects().size(); ++position)
+            {
+                m_fluent_initial_by_slot[bucket_key(predicate_index, position, atom->get_objects()[position])].push_back(atom);
+            }
         }
         for (const auto object : problem->get_problem_and_domain_objects())
         {
@@ -175,6 +185,23 @@ public:
         return (it == m_fluent_initial_by_predicate.end()) ? empty : it->second;
     }
 
+    /// @brief The static atoms that can match `pattern`, which is the smallest bucket a bound
+    /// position selects -- or the predicate's whole list when nothing is bound.
+    ///
+    /// Every atom matching the pattern agrees with it at every bound position, so it is in each of
+    /// those positions' buckets; taking any one of them loses nothing, and taking the smallest is
+    /// what turns a scan of sokoban's 10k-atom `move-dir` table into a scan of about four.
+    const GroundAtomList<StaticTag>& get_static_atom_candidates(Index predicate_index, const ObjectList& pattern) const
+    {
+        return smallest_bucket(m_static_atoms_by_slot, get_static_atoms(predicate_index), predicate_index, pattern);
+    }
+
+    /// @brief The same, over the fluent initial atoms.
+    const GroundAtomList<FluentTag>& get_fluent_initial_candidates(Index predicate_index, const ObjectList& pattern) const
+    {
+        return smallest_bucket(m_fluent_initial_by_slot, get_fluent_initial_atoms(predicate_index), predicate_index, pattern);
+    }
+
     /// @brief Does the initial state contain any instance of the pattern `predicate(binding)`?
     ///
     /// The §2.7 gate. Deliberately *not* §2.1's test, which asks about the recorded members: an
@@ -182,7 +209,7 @@ public:
     /// trivially satisfied, and that is exactly the case §2.7's argument cannot survive.
     bool has_initial_pattern_instance(Index predicate_index, const ObjectList& binding) const
     {
-        for (const auto atom : get_fluent_initial_atoms(predicate_index))
+        for (const auto atom : get_fluent_initial_candidates(predicate_index, binding))
         {
             const auto& objects = atom->get_objects();
             if (objects.size() != binding.size())
@@ -250,7 +277,43 @@ public:
     }
 
 private:
+    /// @brief Key of the bucket holding every atom of `predicate_index` with `object` at `position`.
+    static Identity bucket_key(Index predicate_index, size_t position, Object object)
+    {
+        return Identity { predicate_index, Index(position), object->get_index() };
+    }
+
+    /// @brief The smallest bucket a bound position of `pattern` selects, or `fallback`.
+    template<typename AtomList>
+    static const AtomList& smallest_bucket(const std::unordered_map<Identity, AtomList, IdentityHash>& buckets,
+                                           const AtomList& fallback,
+                                           Index predicate_index,
+                                           const ObjectList& pattern)
+    {
+        const AtomList* best = nullptr;
+        for (size_t position = 0; position < pattern.size(); ++position)
+        {
+            if (!pattern[position])
+            {
+                continue;
+            }
+            const auto it = buckets.find(bucket_key(predicate_index, position, pattern[position]));
+            if (it == buckets.end())
+            {
+                static const auto empty = AtomList {};
+                return empty;  // no atom has this object here, so none can match
+            }
+            if (!best || it->second.size() < best->size())
+            {
+                best = &it->second;
+            }
+        }
+        return best ? *best : fallback;
+    }
+
     ObjectList m_all_objects;
+    std::unordered_map<Identity, GroundAtomList<StaticTag>, IdentityHash> m_static_atoms_by_slot;
+    std::unordered_map<Identity, GroundAtomList<FluentTag>, IdentityHash> m_fluent_initial_by_slot;
     FlatBitset m_initial_fluent_mask;
     std::unordered_set<Identity, IdentityHash> m_initial_fluent_identities;
     std::unordered_map<Index, GroundAtomList<FluentTag>> m_fluent_initial_by_predicate;
@@ -379,10 +442,34 @@ bool narrow_by_positive_static_literal(Literal<StaticTag> literal, const Problem
     const auto& terms = literal->get_atom()->get_terms();
     const auto predicate_index = literal->get_atom()->get_predicate()->get_index();
 
-    auto narrowed = std::unordered_map<Index, ObjectList> {};
-    auto any_match = false;
+    /* Slot-indexed scratch rather than a hash map per candidate atom. This is the inner loop of the
+       whole extractor -- sokoban `test/p27-hard` reaches it about ten million times -- and a map
+       allocated and freed per atom cost more than the matching it was there to record. Reset by
+       walking the touched slots, so nothing is O(num_slots) per atom. */
+    static thread_local auto local_object = ObjectList {};
+    static thread_local auto local_slots = std::vector<Index> {};
+    static thread_local auto narrowed = std::vector<ObjectList> {};
+    static thread_local auto narrowed_slots = std::vector<Index> {};
 
-    for (const auto atom : index.get_static_atoms(predicate_index))
+    local_object.assign(candidates.size(), nullptr);
+    narrowed.resize(candidates.size());
+    for (const auto slot : narrowed_slots)
+    {
+        narrowed[slot].clear();
+    }
+    narrowed_slots.clear();
+
+    /* Bound positions select the bucket; the loop below still checks every position, so this only
+       decides how many atoms it has to look at. */
+    auto bound_pattern = ObjectList {};
+    bound_pattern.reserve(terms.size());
+    for (const auto term : terms)
+    {
+        bound_pattern.push_back(resolve_term(term, sigma));
+    }
+
+    auto any_match = false;
+    for (const auto atom : index.get_static_atom_candidates(predicate_index, bound_pattern))
     {
         const auto& objects = atom->get_objects();
         if (objects.size() != terms.size())
@@ -392,14 +479,13 @@ bool narrow_by_positive_static_literal(Literal<StaticTag> literal, const Problem
 
         /* A variable may occur at several positions of one literal; the atom has to agree with
            itself there, which a per-position test alone would not catch. */
-        auto local = std::unordered_map<Index, Object> {};
+        local_slots.clear();
         auto consistent = true;
         for (size_t i = 0; consistent && i < terms.size(); ++i)
         {
-            const auto bound = resolve_term(terms[i], sigma);
-            if (bound)
+            if (bound_pattern[i])
             {
-                consistent = (bound == objects[i]);
+                consistent = (bound_pattern[i] == objects[i]);
                 continue;
             }
             const auto slot = term_slot(terms[i]);
@@ -413,18 +499,32 @@ bool narrow_by_positive_static_literal(Literal<StaticTag> literal, const Problem
                 consistent = false;
                 break;
             }
-            const auto [it, inserted] = local.emplace(slot, objects[i]);
-            consistent = inserted || (it->second == objects[i]);
-        }
-        if (!consistent)
-        {
-            continue;
+            if (local_object[slot])
+            {
+                consistent = (local_object[slot] == objects[i]);
+            }
+            else
+            {
+                local_object[slot] = objects[i];
+                local_slots.push_back(slot);
+            }
         }
 
-        any_match = true;
-        for (const auto& [slot, object] : local)
+        if (consistent)
         {
-            narrowed[slot].push_back(object);
+            any_match = true;
+            for (const auto slot : local_slots)
+            {
+                if (narrowed[slot].empty())
+                {
+                    narrowed_slots.push_back(slot);
+                }
+                narrowed[slot].push_back(local_object[slot]);
+            }
+        }
+        for (const auto slot : local_slots)
+        {
+            local_object[slot] = nullptr;
         }
     }
 
@@ -433,8 +533,9 @@ bool narrow_by_positive_static_literal(Literal<StaticTag> literal, const Problem
         return false;
     }
 
-    for (auto& [slot, objects] : narrowed)
+    for (const auto slot : narrowed_slots)
     {
+        auto& objects = narrowed[slot];
         std::sort(objects.begin(), objects.end(), by_object_index);
         objects.erase(std::unique(objects.begin(), objects.end()), objects.end());
         if (objects.empty())
@@ -442,7 +543,7 @@ bool narrow_by_positive_static_literal(Literal<StaticTag> literal, const Problem
             return false;
         }
         changed |= (objects.size() < candidates[slot].size());
-        candidates[slot] = std::move(objects);
+        candidates[slot] = objects;
     }
 
     return true;
@@ -658,7 +759,7 @@ bool is_statically_consistent(const SchemaEffect& schema, const ObjectList& sigm
            the positions that *are* bound. Over-approximating here only keeps members that no
            instance can produce, which costs precision and never soundness. */
         auto matched = false;
-        for (const auto atom : index.get_static_atoms(predicate->get_index()))
+        for (const auto atom : index.get_static_atom_candidates(predicate->get_index(), objects))
         {
             const auto& atom_objects = atom->get_objects();
             if (atom_objects.size() != objects.size())
@@ -817,7 +918,7 @@ bool apply_self_dependent_precondition_rule(Achiever& achiever,
            first achiever uses cannot have been produced: it is an initial atom. */
         auto narrowed = std::unordered_map<Index, ObjectList> {};
         auto any_match = false;
-        for (const auto atom : index.get_fluent_initial_atoms(predicate->get_index()))
+        for (const auto atom : index.get_fluent_initial_candidates(predicate->get_index(), precondition_pattern))
         {
             const auto& objects = atom->get_objects();
             if (objects.size() != terms.size())
