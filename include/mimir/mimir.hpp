@@ -90,6 +90,7 @@
 #include "mimir/search/landmarks.hpp"
 #include "mimir/search/openlists.hpp"
 #include "mimir/search/partially_ordered_plan.hpp"
+#include "mimir/search/relaxed_reachability.hpp"
 #include "mimir/search/satisficing_binding_generators.hpp"
 #include "mimir/search/search_context.hpp"
 #include "mimir/search/search_node.hpp"
