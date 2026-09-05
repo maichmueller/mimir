@@ -1,0 +1,884 @@
+/*
+ * Copyright (C) 2023 Dominik Drexler and Simon Stahlberg
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#include "mimir/search/landmarks/lifted_fact_landmark_generator.hpp"
+
+#include "mimir/common/filesystem.hpp"
+#include "mimir/formalism/action.hpp"
+#include "mimir/formalism/ground_action.hpp"
+#include "mimir/formalism/ground_atom.hpp"
+#include "mimir/formalism/ground_conjunctive_condition.hpp"
+#include "mimir/formalism/ground_effects.hpp"
+#include "mimir/formalism/object.hpp"
+#include "mimir/formalism/parser.hpp"
+#include "mimir/formalism/predicate.hpp"
+#include "mimir/formalism/problem.hpp"
+#include "mimir/formalism/repositories.hpp"
+#include "mimir/search/algorithms/iw.hpp"
+#include "mimir/search/algorithms/strategies/transition_ordering_strategy.hpp"
+#include "mimir/search/grounders/lifted.hpp"
+#include "mimir/search/landmarks/fact_landmark_generator.hpp"
+#include "mimir/search/landmarks/fact_landmark_graph.hpp"
+#include "mimir/search/plan.hpp"
+#include "mimir/search/search_context.hpp"
+#include "mimir/search/state.hpp"
+#include "mimir/search/state_repository.hpp"
+
+#include <gtest/gtest.h>
+
+#include <algorithm>
+#include <iostream>
+#include <set>
+#include <string>
+#include <unordered_set>
+#include <vector>
+
+using namespace mimir::search;
+using namespace mimir::search::landmarks;
+using namespace mimir::formalism;
+
+namespace mimir::tests
+{
+namespace
+{
+
+bool matches(GroundAtom<FluentTag> atom, const std::string& predicate_name, const std::vector<std::string>& object_names)
+{
+    if (atom->get_predicate()->get_name() != predicate_name)
+    {
+        return false;
+    }
+    const auto& objects = atom->get_objects();
+    if (objects.size() != object_names.size())
+    {
+        return false;
+    }
+    for (size_t i = 0; i < objects.size(); ++i)
+    {
+        if (objects[i]->get_name() != object_names[i])
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+GroundAtom<FluentTag> resolve_atom(const FactLandmarkGraph& landmarks, Index atom_index)
+{
+    return landmarks->get_problem()->get_repositories().get_ground_atom<FluentTag>(atom_index);
+}
+
+GroundAtom<FluentTag> find_landmark(const FactLandmarkGraph& landmarks, const std::string& predicate_name, const std::vector<std::string>& object_names)
+{
+    for (const auto atom : landmarks->get_landmark_atoms())
+    {
+        if (matches(atom, predicate_name, object_names))
+        {
+            return atom;
+        }
+    }
+    return nullptr;
+}
+
+bool contains_atom(const FactLandmarkGraph& landmarks,
+                   const IndexList& atom_indices,
+                   const std::string& predicate_name,
+                   const std::vector<std::string>& object_names)
+{
+    return std::any_of(atom_indices.begin(),
+                       atom_indices.end(),
+                       [&](Index idx) { return matches(resolve_atom(landmarks, idx), predicate_name, object_names); });
+}
+
+/// @brief The lifted landmark rendered as `predicate(a, ?, ...)`, or `nullptr` if absent.
+const LiftedLandmark* find_lifted(const FactLandmarkGraph& landmarks, const std::string& rendered)
+{
+    for (const auto& record : landmarks->get_lifted_landmarks())
+    {
+        if (to_string(record) == rendered)
+        {
+            return &record;
+        }
+    }
+    return nullptr;
+}
+
+std::vector<IndexList> sets_over_predicate(const FactLandmarkGraph& landmarks, const std::string& predicate_name)
+{
+    auto result = std::vector<IndexList> {};
+    for (const auto& members : landmarks->get_disjunctive_landmarks())
+    {
+        if (!members.empty() && resolve_atom(landmarks, members.front())->get_predicate()->get_name() == predicate_name)
+        {
+            result.push_back(members);
+        }
+    }
+    return result;
+}
+
+bool has_duplicates(IndexList indices)
+{
+    std::sort(indices.begin(), indices.end());
+    return std::adjacent_find(indices.begin(), indices.end()) != indices.end();
+}
+
+Problem parse(const std::string& domain_name, const std::string& problem_filename = "test_problem.pddl")
+{
+    const auto domain_file = fs::path(std::string(DATA_DIR) + domain_name + "/domain.pddl");
+    const auto problem_file = fs::path(std::string(DATA_DIR) + domain_name + "/" + problem_filename);
+    auto parser = Parser(domain_file);
+    parser.get_domain();
+    return parser.parse_problem(problem_file);
+}
+
+size_t num_fluent_atoms(const Problem& problem)
+{
+    return boost::hana::at_key(problem->get_repositories().get_hana_repositories(), boost::hana::type<GroundAtomImpl<FluentTag>> {}).size();
+}
+
+/**
+ * The soundness oracle (T9).
+ *
+ * A landmark claims that every plan passes through a state containing one of its members. Every
+ * rule this generator applies argues over an arbitrary plan and stays valid under the delete
+ * relaxation, so each landmark must also be a landmark of Pi+ -- and *that* is decidable: delete
+ * every ground action able to produce a member and ask whether the goal is still relaxed-reachable.
+ * If it is, some relaxed plan avoids the landmark entirely and the derivation was wrong.
+ */
+
+/// @brief One conditional effect of one ground action, as a delete-relaxed production rule.
+struct RelaxedRule
+{
+    Index action_index;
+    IndexList preconditions;
+    IndexList adds;
+};
+
+class RelaxedTask
+{
+public:
+    RelaxedTask(const Problem& problem, const GroundActionList& actions) : m_num_atoms(num_fluent_atoms(problem))
+    {
+        for (const auto action : actions)
+        {
+            auto base_preconditions = IndexList {};
+            for (const auto atom_index : action->get_conjunctive_condition()->get_precondition<PositiveTag, FluentTag>())
+            {
+                base_preconditions.push_back(atom_index);
+            }
+
+            for (const auto conditional_effect : action->get_conditional_effects())
+            {
+                auto rule = RelaxedRule { action->get_index(), base_preconditions, {} };
+                for (const auto atom_index : conditional_effect->get_conjunctive_condition()->get_precondition<PositiveTag, FluentTag>())
+                {
+                    rule.preconditions.push_back(atom_index);
+                }
+                for (const auto atom_index : conditional_effect->get_conjunctive_effect()->get_propositional_effects<PositiveTag>())
+                {
+                    rule.adds.push_back(atom_index);
+                }
+                std::sort(rule.preconditions.begin(), rule.preconditions.end());
+                rule.preconditions.erase(std::unique(rule.preconditions.begin(), rule.preconditions.end()), rule.preconditions.end());
+                m_rules.push_back(std::move(rule));
+            }
+        }
+
+        m_num_atoms = std::max(m_num_atoms, num_fluent_atoms(problem));
+        m_rules_by_precondition.resize(m_num_atoms);
+        m_rules_by_add.resize(m_num_atoms);
+        for (size_t r = 0; r < m_rules.size(); ++r)
+        {
+            for (const auto atom_index : m_rules[r].preconditions)
+            {
+                m_rules_by_precondition[atom_index].push_back(Index(r));
+            }
+            for (const auto atom_index : m_rules[r].adds)
+            {
+                m_rules_by_add[atom_index].push_back(Index(r));
+            }
+        }
+
+        for (const auto atom : problem->get_fluent_initial_atoms())
+        {
+            m_initial_atoms.push_back(atom->get_index());
+        }
+        for (const auto atom_index : problem->get_goal_condition()->get_precondition<PositiveTag, FluentTag>())
+        {
+            m_goal_atoms.push_back(atom_index);
+        }
+    }
+
+    /// @brief Is the goal delete-relaxed reachable with every action that produces a `forbidden`
+    /// atom removed?
+    bool goal_reachable_without(const IndexList& forbidden) const
+    {
+        auto disabled_actions = std::unordered_set<Index> {};
+        for (const auto atom_index : forbidden)
+        {
+            if (atom_index >= m_rules_by_add.size())
+            {
+                continue;
+            }
+            for (const auto rule_index : m_rules_by_add[atom_index])
+            {
+                disabled_actions.insert(m_rules[rule_index].action_index);
+            }
+        }
+
+        auto unsatisfied = std::vector<size_t>(m_rules.size());
+        for (size_t r = 0; r < m_rules.size(); ++r)
+        {
+            unsatisfied[r] = m_rules[r].preconditions.size();
+        }
+
+        auto reached = std::vector<char>(m_num_atoms, 0);
+        auto queue = IndexList {};
+        const auto reach = [&](Index atom_index)
+        {
+            if (atom_index < m_num_atoms && !reached[atom_index])
+            {
+                reached[atom_index] = 1;
+                queue.push_back(atom_index);
+            }
+        };
+
+        for (const auto atom_index : m_initial_atoms)
+        {
+            reach(atom_index);
+        }
+        for (size_t r = 0; r < m_rules.size(); ++r)
+        {
+            if (unsatisfied[r] == 0 && !disabled_actions.count(m_rules[r].action_index))
+            {
+                for (const auto atom_index : m_rules[r].adds)
+                {
+                    reach(atom_index);
+                }
+            }
+        }
+
+        while (!queue.empty())
+        {
+            const auto atom_index = queue.back();
+            queue.pop_back();
+            for (const auto rule_index : m_rules_by_precondition[atom_index])
+            {
+                if (--unsatisfied[rule_index] == 0 && !disabled_actions.count(m_rules[rule_index].action_index))
+                {
+                    for (const auto add_index : m_rules[rule_index].adds)
+                    {
+                        reach(add_index);
+                    }
+                }
+            }
+        }
+
+        return std::all_of(m_goal_atoms.begin(), m_goal_atoms.end(), [&](Index atom_index) { return atom_index < m_num_atoms && reached[atom_index]; });
+    }
+
+    const IndexList& get_initial_atoms() const { return m_initial_atoms; }
+
+private:
+    size_t m_num_atoms;
+    std::vector<RelaxedRule> m_rules;
+    std::vector<IndexList> m_rules_by_precondition;
+    std::vector<IndexList> m_rules_by_add;
+    IndexList m_initial_atoms;
+    IndexList m_goal_atoms;
+};
+
+/// @brief Number of landmarks the oracle refutes, and how many it could test.
+struct OracleResult
+{
+    size_t num_tested = 0;
+    size_t num_failed = 0;
+};
+
+/// @brief Run the oracle over every landmark none of whose members is true initially. `goal_atoms`
+/// are excluded: a goal atom is a landmark by definition and removing its achievers trivially makes
+/// the goal unreachable, so testing it measures nothing.
+OracleResult run_oracle(const FactLandmarkGraph& landmarks, const RelaxedTask& task, const std::string& label, bool report_failures)
+{
+    const auto initial = std::unordered_set<Index>(task.get_initial_atoms().begin(), task.get_initial_atoms().end());
+    const auto goal_atoms = std::unordered_set<Index>(landmarks->get_problem()->get_goal_condition()->get_precondition<PositiveTag, FluentTag>().begin(),
+                                                      landmarks->get_problem()->get_goal_condition()->get_precondition<PositiveTag, FluentTag>().end());
+
+    auto candidates = std::vector<IndexList> {};
+    for (const auto atom_index : landmarks->get_landmark_atom_indices())
+    {
+        if (!goal_atoms.count(atom_index))
+        {
+            candidates.push_back(IndexList { atom_index });
+        }
+    }
+    for (const auto& members : landmarks->get_disjunctive_landmarks())
+    {
+        candidates.push_back(members);
+    }
+
+    auto result = OracleResult {};
+    for (const auto& members : candidates)
+    {
+        if (std::any_of(members.begin(), members.end(), [&](Index atom_index) { return initial.count(atom_index) > 0; }))
+        {
+            continue;  // trivially satisfied at I: the oracle says nothing about it
+        }
+        ++result.num_tested;
+        if (task.goal_reachable_without(members))
+        {
+            ++result.num_failed;
+            if (report_failures)
+            {
+                auto rendered = std::string {};
+                for (const auto atom_index : members)
+                {
+                    rendered += (rendered.empty() ? "" : ", ") + resolve_atom(landmarks, atom_index)->get_predicate()->get_name();
+                }
+                ADD_FAILURE() << label << ": refuted landmark {" << rendered << "} (goal still relaxed-reachable without its achievers)";
+            }
+        }
+    }
+    return result;
+}
+
+/// @brief `<domain dir>/train/domain.pddl` + the smallest instance of each shipped IPC domain.
+const std::vector<std::string>& ipc_domains()
+{
+    static const auto domains = std::vector<std::string> { "blocksworld-ipc", "childsnack-ipc", "ferry-ipc",   "floortile-ipc", "miconic-ipc",
+                                                           "rovers-ipc",      "satellite-ipc",  "sokoban-ipc", "spanner-ipc",   "transport-ipc" };
+    return domains;
+}
+
+}
+
+/**
+ * T1: blocks_4 -- the goal atoms, the single-achiever chain, and the pinned difference against the
+ * grounded generator.
+ */
+
+TEST(MimirTests, SearchLandmarksLiftedBlocks4Test)
+{
+    const auto problem = parse("blocks_4");
+    const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+
+    for (const auto& [predicate_name, object_names] :
+         std::vector<std::pair<std::string, std::vector<std::string>>> {
+             { "clear", { "b2" } }, { "on", { "b2", "b3" } }, { "on-table", { "b3" } }, { "clear", { "b1" } }, { "on-table", { "b1" } } })
+    {
+        EXPECT_NE(find_landmark(landmarks, predicate_name, object_names), nullptr) << predicate_name;
+    }
+
+    // `stack` is the only schema adding `on`, so `on(b2,b3)` has one achiever and its whole
+    // precondition set is necessary.
+    const auto on_b2_b3 = find_landmark(landmarks, "on", { "b2", "b3" });
+    ASSERT_NE(on_b2_b3, nullptr);
+    const auto& predecessors = landmarks->get_predecessors(on_b2_b3->get_index());
+    EXPECT_EQ(predecessors.size(), 2u);
+    EXPECT_TRUE(contains_atom(landmarks, predecessors, "clear", { "b3" }));
+    EXPECT_TRUE(contains_atom(landmarks, predecessors, "holding", { "b2" }));
+
+    // `holding(b2)` is added by both `pick-up` and `unstack`, which share `clear(b2)` and
+    // `arm-empty` but disagree on where b2 comes from -- so no `on-table`/`on` predecessor.
+    const auto holding_b2 = find_landmark(landmarks, "holding", { "b2" });
+    ASSERT_NE(holding_b2, nullptr);
+    const auto& holding_predecessors = landmarks->get_predecessors(holding_b2->get_index());
+    EXPECT_TRUE(contains_atom(landmarks, holding_predecessors, "clear", { "b2" }));
+    EXPECT_TRUE(contains_atom(landmarks, holding_predecessors, "arm-empty", {}));
+    EXPECT_FALSE(contains_atom(landmarks, holding_predecessors, "on-table", { "b2" }));
+
+    // The documented difference, pinned. `on-table(b2)` and `on(b1,b3)` hold initially, and the
+    // grounded generator reports them as landmarks because `pick-up`/`unstack` beat each other on
+    // h_max there -- the surplus the lifted rule does not produce.
+    EXPECT_EQ(find_landmark(landmarks, "on-table", { "b2" }), nullptr);
+    EXPECT_EQ(find_landmark(landmarks, "on", { "b1", "b3" }), nullptr);
+
+    const auto grounder = LiftedGrounder(problem);
+    const auto grounded = ApproximateFactLandmarkGenerator::create(grounder);
+    EXPECT_NE(find_landmark(grounded, "on-table", { "b2" }), nullptr);
+    EXPECT_NE(find_landmark(grounded, "on", { "b1", "b3" }), nullptr);
+}
+
+/**
+ * T2: gripper -- the disjunctive set the precondition intersection has to drop, recovered whole and
+ * identical to the grounded generator's (`SearchLandmarksGripperDisjunctiveCarryTest`).
+ */
+
+TEST(MimirTests, SearchLandmarksLiftedGripperTest)
+{
+    const auto problem = parse("gripper");
+    const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+
+    const auto at_ball2_roomb = find_landmark(landmarks, "at", { "ball2", "roomb" });
+    ASSERT_NE(at_ball2_roomb, nullptr);
+
+    // `drop(ball2, roomb, ?g)` for either gripper: `at-robby(roomb)` is shared, `carry` is not.
+    EXPECT_TRUE(contains_atom(landmarks, landmarks->get_predecessors(at_ball2_roomb->get_index()), "at-robby", { "roomb" }));
+    EXPECT_EQ(find_landmark(landmarks, "carry", { "ball2", "left" }), nullptr);
+
+    const auto carry_sets = sets_over_predicate(landmarks, "carry");
+    ASSERT_EQ(carry_sets.size(), 1u);
+    EXPECT_EQ(carry_sets.front().size(), 2u);
+    EXPECT_TRUE(contains_atom(landmarks, carry_sets.front(), "carry", { "ball2", "left" }));
+    EXPECT_TRUE(contains_atom(landmarks, carry_sets.front(), "carry", { "ball2", "right" }));
+
+    const auto carry = find_lifted(landmarks, "carry(ball2, ?)");
+    ASSERT_NE(carry, nullptr);
+    EXPECT_FALSE(carry->fact_atom_index.has_value());
+    EXPECT_EQ(carry->member_atom_indices.size(), 2u);
+
+    // Same set as the grounded generator finds.
+    const auto grounder = LiftedGrounder(problem);
+    auto grounded_options = FactLandmarkGeneratorOptions {};
+    grounded_options.max_disjunctive_landmark_size = 4;
+    const auto grounded = ApproximateFactLandmarkGenerator::create(grounder, grounded_options);
+    const auto grounded_carry_sets = sets_over_predicate(grounded, "carry");
+    ASSERT_EQ(grounded_carry_sets.size(), 1u);
+    EXPECT_EQ(grounded_carry_sets.front(), carry_sets.front());
+}
+
+/**
+ * T3: childsnack -- static disambiguation is what makes this domain come out right.
+ */
+
+TEST(MimirTests, SearchLandmarksLiftedChildsnackTest)
+{
+    const auto problem = parse("childsnack");
+    const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+
+    std::cout << "childsnack/test_problem.pddl lifted landmarks:\n";
+    for (const auto& record : landmarks->get_lifted_landmarks())
+    {
+        std::cout << "  " << to_string(record) << " members=" << record.member_atom_indices.size()
+                  << (record.fact_atom_index.has_value() ? " fact" : " disjunctive") << (record.initially_true ? " initially_true" : "") << '\n';
+    }
+
+    // `child1` is *not* allergic, so `serve_sandwich_no_gluten` is statically impossible and
+    // nothing ever requires a gluten-free sandwich.
+    EXPECT_TRUE(sets_over_predicate(landmarks, "no_gluten_sandwich").empty());
+    EXPECT_EQ(find_landmark(landmarks, "no_gluten_sandwich", { "sandw1" }), nullptr);
+
+    // One tray, one sandwich: every set collapses to a singleton and is promoted to a fact.
+    EXPECT_NE(find_landmark(landmarks, "served", { "child1" }), nullptr);
+    EXPECT_NE(find_landmark(landmarks, "at", { "tray1", "table1" }), nullptr);
+    EXPECT_NE(find_landmark(landmarks, "ontray", { "sandw1", "tray1" }), nullptr);
+    EXPECT_NE(find_landmark(landmarks, "at_kitchen_sandwich", { "sandw1" }), nullptr);
+
+    const auto at_kitchen = find_lifted(landmarks, "at(tray1, kitchen)");
+    ASSERT_NE(at_kitchen, nullptr);
+    EXPECT_TRUE(at_kitchen->initially_true);
+
+    /* The IPC instance has eight children, four of them allergic, two trays and three tables --
+       enough for the partial landmarks to stay partial. */
+    const auto ipc_problem = parse("ipc/childsnack-ipc/train", "p69.pddl");
+    const auto ipc_landmarks = LiftedFactLandmarkGenerator::create(ipc_problem);
+
+    std::cout << "ipc/childsnack-ipc/train/p69.pddl lifted landmarks:\n";
+    for (const auto& record : ipc_landmarks->get_lifted_landmarks())
+    {
+        std::cout << "  " << to_string(record) << " members=" << record.member_atom_indices.size()
+                  << (record.fact_atom_index.has_value() ? " fact" : " disjunctive") << (record.initially_true ? " initially_true" : "") << '\n';
+    }
+
+    // The fact landmarks are exactly the eight goal atoms: no atom is individually mandatory here.
+    EXPECT_EQ(ipc_landmarks->get_landmark_atom_indices().size(), 8u);
+
+    // `child2` is allergic and `child1` is not: only the allergic one forces a gluten-free sandwich.
+    const auto no_gluten_sets = sets_over_predicate(ipc_landmarks, "no_gluten_sandwich");
+    ASSERT_EQ(no_gluten_sets.size(), 1u);
+    const auto no_gluten = find_lifted(ipc_landmarks, "no_gluten_sandwich(?)");
+    ASSERT_NE(no_gluten, nullptr);
+    const auto served_child2 = find_landmark(ipc_landmarks, "served", { "child2" });
+    const auto served_child1 = find_landmark(ipc_landmarks, "served", { "child1" });
+    ASSERT_NE(served_child2, nullptr);
+    ASSERT_NE(served_child1, nullptr);
+    const auto& records = ipc_landmarks->get_lifted_landmarks();
+    auto no_gluten_parents = std::set<std::string> {};
+    for (const auto parent_position : no_gluten->parent_positions)
+    {
+        no_gluten_parents.insert(to_string(records[parent_position]));
+    }
+    EXPECT_TRUE(no_gluten_parents.count("served(child2)") > 0);
+    EXPECT_TRUE(no_gluten_parents.count("served(child1)") == 0);
+
+    // `waiting(child1, table1)` is static, so the place is disambiguated and only the tray stays
+    // free: the members are every tray at that one place.
+    const auto at_table1 = find_lifted(ipc_landmarks, "at(?, table1)");
+    ASSERT_NE(at_table1, nullptr);
+    EXPECT_EQ(at_table1->member_atom_indices.size(), 2u);
+    EXPECT_TRUE(contains_atom(ipc_landmarks, at_table1->member_atom_indices, "at", { "tray1", "table1" }));
+    EXPECT_TRUE(contains_atom(ipc_landmarks, at_table1->member_atom_indices, "at", { "tray2", "table1" }));
+
+    // One `ontray` set, not one per (sandwich, tray) pair; and one `at_kitchen_sandwich` set below it.
+    EXPECT_EQ(sets_over_predicate(ipc_landmarks, "ontray").size(), 1u);
+    const auto ontray = find_lifted(ipc_landmarks, "ontray(?, ?)");
+    ASSERT_NE(ontray, nullptr);
+    EXPECT_EQ(ontray->member_atom_indices.size(), 22u);  // 11 sandwiches x 2 trays
+
+    EXPECT_EQ(sets_over_predicate(ipc_landmarks, "at_kitchen_sandwich").size(), 1u);
+    const auto at_kitchen_sandwich = find_lifted(ipc_landmarks, "at_kitchen_sandwich(?)");
+    ASSERT_NE(at_kitchen_sandwich, nullptr);
+    ASSERT_EQ(at_kitchen_sandwich->parent_positions.size(), 1u);
+    EXPECT_EQ(to_string(records[at_kitchen_sandwich->parent_positions.front()]), "ontray(?, ?)");
+
+    // `at(?, kitchen)` is recorded, initially true, and nothing is derived through it.
+    const auto ipc_at_kitchen = find_lifted(ipc_landmarks, "at(?, kitchen)");
+    ASSERT_NE(ipc_at_kitchen, nullptr);
+    EXPECT_TRUE(ipc_at_kitchen->initially_true);
+    const auto ipc_at_kitchen_position = Index(ipc_at_kitchen - records.data());
+    for (const auto& record : records)
+    {
+        EXPECT_EQ(std::find(record.parent_positions.begin(), record.parent_positions.end(), ipc_at_kitchen_position), record.parent_positions.end())
+            << to_string(record) << " was derived through the initially-true at(?, kitchen)";
+    }
+}
+
+/**
+ * T4: the static filter.
+ */
+
+TEST(MimirTests, SearchLandmarksLiftedStaticFilterTest)
+{
+    auto without_filter = LiftedFactLandmarkGeneratorOptions {};
+    without_filter.use_static_filter = false;
+
+    {
+        const auto problem = parse("landmark_lifted_static");
+
+        // `achieve-slow` needs `enabled(t1)`, which the instance does not contain, so `achieve-fast`
+        // is the only achiever left and both of its preconditions are mandatory.
+        const auto filtered = LiftedFactLandmarkGenerator::create(problem);
+        EXPECT_NE(find_landmark(filtered, "p", { "t1" }), nullptr);
+        EXPECT_NE(find_landmark(filtered, "ready", { "t1" }), nullptr);
+
+        // Without the filter the intersection has to hold over an achiever that can never fire, and
+        // `p` -- which only `achieve-fast` needs -- is lost. `ready` survives, but only because
+        // §2.5's per-member static test (which is part of the member definition, not of this
+        // option) leaves `achieve-slow` contributing nothing and the singleton is promoted back.
+        const auto unfiltered = LiftedFactLandmarkGenerator::create(problem, without_filter);
+        EXPECT_EQ(find_landmark(unfiltered, "p", { "t1" }), nullptr);
+        EXPECT_LT(unfiltered->get_landmark_atom_indices().size(), filtered->get_landmark_atom_indices().size());
+    }
+    {
+        // The disambiguation half, on the domain it was designed for. With the filter, `?c := child1`
+        // makes `waiting(child1, ?p)` bind the place and rules out one of the two `serve` schemas;
+        // without it, the place stays free and the two schemas share no gluten predicate at all.
+        const auto problem = parse("ipc/childsnack-ipc/train", "p69.pddl");
+
+        const auto filtered = LiftedFactLandmarkGenerator::create(problem);
+        EXPECT_NE(find_lifted(filtered, "at(?, table1)"), nullptr);
+        EXPECT_EQ(find_lifted(filtered, "at(?, ?)"), nullptr);
+        EXPECT_EQ(sets_over_predicate(filtered, "no_gluten_sandwich").size(), 1u);
+
+        const auto unfiltered = LiftedFactLandmarkGenerator::create(problem, without_filter);
+        EXPECT_EQ(find_lifted(unfiltered, "at(?, table1)"), nullptr);
+        EXPECT_NE(find_lifted(unfiltered, "at(?, ?)"), nullptr);
+        EXPECT_TRUE(sets_over_predicate(unfiltered, "no_gluten_sandwich").empty());
+    }
+}
+
+/**
+ * T5: occurrence combinations.
+ */
+
+TEST(MimirTests, SearchLandmarksLiftedOccurrenceCombinationsTest)
+{
+    const auto problem = parse("landmark_lifted_occurrences");
+
+    const auto all = LiftedFactLandmarkGenerator::create(problem);
+    // `act-two` needs `(q a ?x)` and `(q ?y b)`, `act-one` needs `(q a b)`: one choice vector agrees
+    // on the first position, the other on the second, and both are landmarks.
+    EXPECT_NE(find_lifted(all, "q(a, ?)"), nullptr);
+    EXPECT_NE(find_lifted(all, "q(?, b)"), nullptr);
+    EXPECT_EQ(sets_over_predicate(all, "q").size(), 2u);
+
+    auto options = LiftedFactLandmarkGeneratorOptions {};
+    options.max_occurrence_combinations = 1;
+    const auto first_only = LiftedFactLandmarkGenerator::create(problem, options);
+    // Which occurrence comes first is the repository's literal order, so assert the count rather
+    // than the identity: exactly one of the two choice landmarks survives.
+    EXPECT_EQ(sets_over_predicate(first_only, "q").size(), 1u);
+    EXPECT_NE(find_lifted(first_only, "q(a, ?)") != nullptr, find_lifted(first_only, "q(?, b)") != nullptr);
+}
+
+/**
+ * T6: conditional effects.
+ */
+
+TEST(MimirTests, SearchLandmarksLiftedConditionalEffectTest)
+{
+    {
+        const auto problem = parse("landmark_cond_effect_dedup");
+        const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+
+        // `act` adds `r` from two conditional effects. They are two achievers, so the intersection
+        // is {p} ∪ ({s1} ∩ {s2}) = {p}; folding them into one achiever would make s1 and s2
+        // landmarks, which they are not.
+        EXPECT_NE(find_landmark(landmarks, "p", {}), nullptr);
+        EXPECT_EQ(find_landmark(landmarks, "s1", {}), nullptr);
+        EXPECT_EQ(find_landmark(landmarks, "s2", {}), nullptr);
+        EXPECT_TRUE(landmarks->get_disjunctive_landmarks().empty());
+    }
+    {
+        const auto problem = parse("landmark_lifted_cond_effect");
+        const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+
+        // `target` has a single achiever whose add sits inside a `when`: the effect condition
+        // `guard` joins the precondition intersection and comes out a landmark.
+        const auto target = find_landmark(landmarks, "target", {});
+        ASSERT_NE(target, nullptr);
+        EXPECT_TRUE(contains_atom(landmarks, landmarks->get_predecessors(target->get_index()), "guard", {}));
+        EXPECT_TRUE(contains_atom(landmarks, landmarks->get_predecessors(target->get_index()), "base", {}));
+
+        // `other` is added unconditionally by one action and conditionally by another. Both count,
+        // so only their shared `base` survives -- `shared` would be a landmark if the conditional
+        // add were not an achiever of its own.
+        EXPECT_NE(find_landmark(landmarks, "base", {}), nullptr);
+        EXPECT_EQ(find_landmark(landmarks, "shared", {}), nullptr);
+        EXPECT_EQ(find_landmark(landmarks, "extra", {}), nullptr);
+    }
+}
+
+/**
+ * T7: the initially-true stop.
+ */
+
+TEST(MimirTests, SearchLandmarksLiftedInitiallyTrueStopTest)
+{
+    const auto problem = parse("blocks_4");
+    const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+    const auto& records = landmarks->get_lifted_landmarks();
+
+    auto num_initially_true = size_t(0);
+    for (Index position = 0; position < records.size(); ++position)
+    {
+        if (!records[position].initially_true)
+        {
+            continue;
+        }
+        ++num_initially_true;
+        for (const auto& other : records)
+        {
+            EXPECT_EQ(std::find(other.parent_positions.begin(), other.parent_positions.end(), position), other.parent_positions.end())
+                << to_string(other) << " was derived through the initially-true " << to_string(records[position]);
+        }
+        // Nothing is derived through it, so it has no successors in the ordering either.
+        if (records[position].fact_atom_index.has_value())
+        {
+            EXPECT_TRUE(landmarks->get_predecessors(*records[position].fact_atom_index).empty());
+        }
+    }
+    EXPECT_GT(num_initially_true, 0u) << "blocks_4 must have at least one initially-true landmark";
+}
+
+/**
+ * T8: the graph contract.
+ */
+
+TEST(MimirTests, SearchLandmarksLiftedGraphContractTest)
+{
+    const auto problem = parse("gripper");
+    const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+
+    EXPECT_FALSE(landmarks->has_achiever_index());
+
+    const auto some_landmark = landmarks->get_landmark_atom_indices().front();
+    EXPECT_THROW((void) landmarks->get_achiever_action_indices(some_landmark), std::logic_error);
+    EXPECT_THROW((void) landmarks->get_achievers(some_landmark), std::logic_error);
+    EXPECT_THROW((void) landmarks->get_first_achiever_action_indices(some_landmark), std::logic_error);
+    EXPECT_THROW((void) landmarks->get_first_achievers(some_landmark), std::logic_error);
+    EXPECT_THROW((void) landmarks->get_unique_achiever_action_index(some_landmark), std::logic_error);
+    EXPECT_THROW((void) landmarks->get_unique_achiever(some_landmark), std::logic_error);
+    EXPECT_THROW((void) LandmarkTransitionOrderingStrategy(landmarks), std::logic_error);
+
+    const auto grounder = LiftedGrounder(problem);
+    const auto ground_actions = grounder.create_ground_actions();
+    ASSERT_FALSE(ground_actions.empty());
+    EXPECT_THROW((void) landmarks->is_landmark_achiever(ground_actions.front()), std::logic_error);
+    EXPECT_THROW((void) landmarks->is_first_landmark_achiever(ground_actions.front()), std::logic_error);
+    EXPECT_THROW((void) landmarks->is_unique_landmark_achiever(ground_actions.front()), std::logic_error);
+    EXPECT_THROW((void) landmarks->get_landmarks_achieved_by_action(ground_actions.front()), std::logic_error);
+    EXPECT_THROW((void) landmarks->get_landmarks_uniquely_achieved_by_action(ground_actions.front()), std::logic_error);
+
+    // The grounded generator keeps the index, so nothing above changes for it.
+    const auto grounded = ApproximateFactLandmarkGenerator::create(grounder);
+    EXPECT_TRUE(grounded->has_achiever_index());
+    EXPECT_NO_THROW((void) grounded->get_achiever_action_indices(grounded->get_landmark_atom_indices().front()));
+    EXPECT_NO_THROW((void) LandmarkTransitionOrderingStrategy(grounded));
+    EXPECT_TRUE(grounded->get_lifted_landmarks().empty());
+
+    EXPECT_EQ(landmarks->get_landmark_atoms().size(), landmarks->get_landmark_atom_indices().size());
+
+    auto seen = std::set<IndexList> {};
+    auto union_of_members = IndexList {};
+    for (const auto& members : landmarks->get_disjunctive_landmarks())
+    {
+        EXPECT_FALSE(members.empty());
+        EXPECT_TRUE(std::is_sorted(members.begin(), members.end()));
+        EXPECT_FALSE(has_duplicates(members));
+        EXPECT_TRUE(seen.insert(members).second) << "duplicate disjunctive landmark";
+        for (const auto member : members)
+        {
+            EXPECT_FALSE(landmarks->is_landmark(member));
+        }
+        union_of_members.insert(union_of_members.end(), members.begin(), members.end());
+    }
+    std::sort(union_of_members.begin(), union_of_members.end());
+    union_of_members.erase(std::unique(union_of_members.begin(), union_of_members.end()), union_of_members.end());
+    EXPECT_EQ(landmarks->get_disjunctive_landmark_atom_indices(), union_of_members);
+
+    for (const auto atom_index : landmarks->get_landmark_atom_indices())
+    {
+        EXPECT_FALSE(has_duplicates(landmarks->get_predecessors(atom_index)));
+        EXPECT_FALSE(has_duplicates(landmarks->get_successors(atom_index)));
+        for (const auto predecessor_index : landmarks->get_predecessors(atom_index))
+        {
+            EXPECT_TRUE(landmarks->is_landmark(predecessor_index));
+            const auto& successors = landmarks->get_successors(predecessor_index);
+            EXPECT_NE(std::find(successors.begin(), successors.end(), atom_index), successors.end());
+        }
+        for (const auto successor_index : landmarks->get_successors(atom_index))
+        {
+            EXPECT_TRUE(landmarks->is_landmark(successor_index));
+            const auto& predecessors = landmarks->get_predecessors(successor_index);
+            EXPECT_NE(std::find(predecessors.begin(), predecessors.end(), atom_index), predecessors.end());
+        }
+    }
+
+    // A lifted problem interns atoms during search, so an atom index far beyond the graph's range
+    // is a legitimate question with the answer "no edges", not an out-of-bounds read.
+    const auto beyond = Index(num_fluent_atoms(problem) + 100000);
+    EXPECT_TRUE(landmarks->get_predecessors(beyond).empty());
+    EXPECT_TRUE(landmarks->get_successors(beyond).empty());
+    EXPECT_FALSE(landmarks->is_landmark(beyond));
+
+    /* Promotion turns a one-member set into a fact landmark that then stays out of every set.
+       `landmark_lifted_static` without the static filter is the minimal witness: `ready(?)` is
+       partial (the two achievers disagree on the position) yet only `achieve-fast` contributes a
+       statically consistent instance, so the set has exactly one member. */
+    const auto promotion_problem = parse("landmark_lifted_static");
+    auto promotion_options = LiftedFactLandmarkGeneratorOptions {};
+    promotion_options.use_static_filter = false;
+
+    const auto promoted = LiftedFactLandmarkGenerator::create(promotion_problem, promotion_options);
+    const auto ready = find_landmark(promoted, "ready", { "t1" });
+    ASSERT_NE(ready, nullptr);
+    for (const auto& members : promoted->get_disjunctive_landmarks())
+    {
+        EXPECT_EQ(std::find(members.begin(), members.end(), ready->get_index()), members.end());
+    }
+
+    promotion_options.promote_singleton_disjunctions = false;
+    const auto unpromoted = LiftedFactLandmarkGenerator::create(promotion_problem, promotion_options);
+    EXPECT_EQ(find_landmark(unpromoted, "ready", { "t1" }), nullptr);
+    const auto unpromoted_ready = find_lifted(unpromoted, "ready(?)");
+    ASSERT_NE(unpromoted_ready, nullptr);
+    EXPECT_EQ(unpromoted_ready->member_atom_indices.size(), 1u);
+    EXPECT_LT(unpromoted->get_landmark_atom_indices().size(), promoted->get_landmark_atom_indices().size());
+}
+
+/**
+ * T9: the soundness oracle. Mandatory for every lifted landmark; recorded, not asserted, for the
+ * grounded generator.
+ */
+
+TEST(MimirTests, SearchLandmarksLiftedSoundnessOracleTest)
+{
+    auto instances = std::vector<std::pair<std::string, std::string>> {
+        { "blocks_4", "test_problem.pddl" }, { "gripper", "test_problem.pddl" }, { "delivery", "test_problem.pddl" }, { "childsnack", "test_problem.pddl" }
+    };
+    for (const auto& domain : ipc_domains())
+    {
+        instances.emplace_back("ipc/" + domain + "/train", "p69.pddl");
+    }
+
+    auto grounded_totals = OracleResult {};
+    for (const auto& [domain, instance] : instances)
+    {
+        const auto problem = parse(domain, instance);
+        ASSERT_TRUE(problem->get_problem_and_domain_axioms().empty()) << domain << ": the oracle does not model axioms";
+
+        const auto grounder = LiftedGrounder(problem);
+        const auto lifted = LiftedFactLandmarkGenerator::create(problem);
+
+        auto grounded_options = FactLandmarkGeneratorOptions {};
+        grounded_options.max_disjunctive_landmark_size = size_t(1) << 30;  // uncapped, the §6 "G" configuration
+        const auto grounded = ApproximateFactLandmarkGenerator::create(grounder, grounded_options);
+
+        /* Built after both generators ran, so the relaxed task covers every atom they interned. */
+        const auto task = RelaxedTask(problem, grounder.create_ground_actions());
+        ASSERT_TRUE(task.goal_reachable_without({})) << domain << "/" << instance << ": unsolvable even relaxed, the oracle would be vacuous";
+
+        const auto lifted_result = run_oracle(lifted, task, domain + "/" + instance + " [lifted]", true);
+        const auto grounded_result = run_oracle(grounded, task, domain + "/" + instance + " [grounded]", false);
+        grounded_totals.num_tested += grounded_result.num_tested;
+        grounded_totals.num_failed += grounded_result.num_failed;
+
+        std::cout << "oracle " << domain << "/" << instance << ": lifted " << lifted_result.num_failed << "/" << lifted_result.num_tested
+                  << " refuted, grounded " << grounded_result.num_failed << "/" << grounded_result.num_tested << " refuted\n";
+    }
+
+    std::cout << "oracle TOTAL grounded: " << grounded_totals.num_failed << "/" << grounded_totals.num_tested << " refuted\n";
+}
+
+/**
+ * T10: end to end under a lifted parse, which is what this generator exists for.
+ */
+
+TEST(MimirTests, SearchLandmarksLiftedEndToEndTest)
+{
+    const auto instances =
+        std::vector<std::pair<std::string, std::string>> { { "gripper", "test_problem.pddl" }, { "childsnack", "test_problem.pddl" } };
+
+    auto any_instance_grew = false;
+    for (const auto& [domain, instance] : instances)
+    {
+        const auto problem = parse(domain, instance);
+        const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+        const auto atoms_at_build_time = num_fluent_atoms(problem);
+
+        const auto context = SearchContextImpl::create(problem, SearchContextImpl::Options(SearchContextImpl::LiftedOptions()));
+
+        auto options = iw::Options {};
+        options.max_arity = 1;
+        options.max_num_states = 500000;
+        options.landmark_novelty_graph = landmarks;
+        options.landmark_novelty_disjunctive = true;
+        options.landmark_novelty_all_private = true;
+
+        const auto result = iw::find_solution(context, options);
+        EXPECT_EQ(result.status, SearchStatus::SOLVED) << domain << "/" << instance;
+        ASSERT_TRUE(result.plan.has_value()) << domain << "/" << instance;
+        EXPECT_GT(result.plan->get_length(), 0u) << domain << "/" << instance;
+
+        /* A lifted parse interns atoms as the search reaches them, so the graph's per-atom vectors
+           are outgrown by the very search that reads them. Asking about the newest atom index must
+           answer "no edges" rather than read out of bounds -- the resize path T8 pins. */
+        const auto atoms_after_search = num_fluent_atoms(problem);
+        EXPECT_GE(atoms_after_search, atoms_at_build_time) << domain << "/" << instance;
+        any_instance_grew |= (atoms_after_search > atoms_at_build_time);
+
+        const auto newest_atom = Index(atoms_after_search - 1);
+        EXPECT_NO_THROW((void) landmarks->get_predecessors(newest_atom));
+        EXPECT_NO_THROW((void) landmarks->get_successors(newest_atom));
+        EXPECT_NO_THROW((void) landmarks->is_landmark(newest_atom));
+    }
+
+    EXPECT_TRUE(any_instance_grew) << "no instance interned an atom the generator had not already named, so the resize path never ran";
+}
+
+}

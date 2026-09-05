@@ -51,6 +51,7 @@ add_gtest(search_iw_abstracted_landmark_novelty_test       "search/algorithms/iw
 add_gtest(search_observation_test                          "search/algorithms/search_observation.cpp")
 add_gtest(search_rich_observation_test                     "search/algorithms/rich_observation.cpp")
 add_gtest(search_landmarks_fact_landmarks_test              "search/landmarks/fact_landmarks.cpp")
+add_gtest(search_landmarks_lifted_fact_landmarks_test       "search/landmarks/lifted_fact_landmarks.cpp")
 add_gtest(search_iw_parallel_rollouts_test                 "search/algorithms/iw_parallel_rollouts.cpp")
 add_gtest(search_rollout_iw_test                           "search/algorithms/rollout_iw.cpp")
 add_gtest(search_atomic_goal_iw_portfolio_test             "search/algorithms/atomic_goal_iw_portfolio.cpp")

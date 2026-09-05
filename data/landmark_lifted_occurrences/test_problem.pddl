@@ -1,0 +1,5 @@
+(define (problem landmark-lifted-occurrences-1)
+  (:domain landmark-lifted-occurrences)
+  (:objects c - obj)
+  (:init)
+  (:goal (and (goal))))
