@@ -26,6 +26,7 @@
 
 #include <concepts>
 #include <cstdint>
+#include <stdexcept>
 #include <utility>
 
 namespace mimir::search
@@ -123,11 +124,19 @@ private:
     LandmarkTransitionOrderingOptions m_options;
 
 public:
+    /// @brief Requires a graph with an achiever index: `score_impl` ranks a transition by whether
+    /// its action is the *unique achiever* of a landmark, which a graph built without grounding
+    /// cannot answer. Rejecting it here rather than at the first score call keeps the failure at
+    /// configuration time, where the caller can still pick a different ordering.
     LandmarkTransitionOrderingStrategy(landmarks::FactLandmarkGraph landmarks,
                                        LandmarkTransitionOrderingOptions options = LandmarkTransitionOrderingOptions()) :
         m_landmarks(std::move(landmarks)),
         m_options(options)
     {
+        if (m_landmarks && !m_landmarks->has_achiever_index())
+        {
+            throw std::logic_error("landmark graph carries no achiever index (built without grounding)");
+        }
     }
 
     static constexpr bool requires_deferred_novelty = true;

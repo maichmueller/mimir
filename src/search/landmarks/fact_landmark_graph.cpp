@@ -19,16 +19,50 @@
 
 #include "mimir/formalism/ground_action.hpp"
 #include "mimir/formalism/ground_atom.hpp"
+#include "mimir/formalism/object.hpp"
+#include "mimir/formalism/predicate.hpp"
 #include "mimir/formalism/problem.hpp"
 #include "mimir/formalism/repositories.hpp"
 #include "mimir/search/state.hpp"
 
 #include <algorithm>
+#include <ostream>
+#include <sstream>
+#include <stdexcept>
 
 using namespace mimir::formalism;
 
 namespace mimir::search::landmarks
 {
+namespace
+{
+
+/// @brief Returned by the per-atom accessors for an index the graph was never sized for.
+const IndexList& empty_index_list()
+{
+    static const auto empty = IndexList {};
+    return empty;
+}
+
+}
+
+std::string to_string(const LiftedLandmark& landmark)
+{
+    auto out = std::ostringstream {};
+    out << landmark.predicate->get_name() << '(';
+    for (size_t i = 0; i < landmark.binding.size(); ++i)
+    {
+        if (i > 0)
+        {
+            out << ", ";
+        }
+        out << (landmark.binding[i] ? landmark.binding[i]->get_name() : std::string("?"));
+    }
+    out << ')';
+    return out.str();
+}
+
+std::ostream& operator<<(std::ostream& out, const LiftedLandmark& landmark) { return out << to_string(landmark); }
 
 FactLandmarkGraphImpl::FactLandmarkGraphImpl(formalism::Problem problem,
                                              FlatBitset landmark_atom_mask,
@@ -51,11 +85,106 @@ FactLandmarkGraphImpl::FactLandmarkGraphImpl(formalism::Problem problem,
     m_landmarks_first_achieved_by_action(std::move(landmarks_first_achieved_by_action)),
     m_landmarks_uniquely_achieved_by_action(std::move(landmarks_uniquely_achieved_by_action)),
     m_predecessors_by_atom(std::move(predecessors_by_atom)),
-    m_successors_by_atom(std::move(successors_by_atom))
+    m_successors_by_atom(std::move(successors_by_atom)),
+    m_has_achiever_index(true),
+    m_lifted_landmarks()
 {
 }
 
+FactLandmarkGraphImpl::FactLandmarkGraphImpl(formalism::Problem problem,
+                                             FlatBitset landmark_atom_mask,
+                                             IndexList landmark_atom_indices,
+                                             std::vector<IndexList> disjunctive_landmarks,
+                                             std::vector<IndexList> predecessors_by_atom,
+                                             std::vector<IndexList> successors_by_atom,
+                                             std::vector<LiftedLandmark> lifted_landmarks) :
+    m_problem(std::move(problem)),
+    m_landmark_atom_mask(std::move(landmark_atom_mask)),
+    m_landmark_atom_indices(std::move(landmark_atom_indices)),
+    m_disjunctive_landmarks(std::move(disjunctive_landmarks)),
+    m_achiever_action_indices_by_atom(),
+    m_first_achiever_action_indices_by_atom(),
+    m_landmarks_achieved_by_action(),
+    m_landmarks_first_achieved_by_action(),
+    m_landmarks_uniquely_achieved_by_action(),
+    m_predecessors_by_atom(std::move(predecessors_by_atom)),
+    m_successors_by_atom(std::move(successors_by_atom)),
+    m_has_achiever_index(false),
+    m_lifted_landmarks(std::move(lifted_landmarks))
+{
+}
+
+FactLandmarkGraph FactLandmarkGraphImpl::create(formalism::Problem problem,
+                                                IndexList landmark_atom_indices,
+                                                std::vector<IndexList> disjunctive_landmarks,
+                                                std::vector<IndexList> predecessors_by_atom,
+                                                std::vector<IndexList> successors_by_atom,
+                                                std::vector<LiftedLandmark> lifted_landmarks)
+{
+    auto landmark_atom_mask = FlatBitset {};
+    auto max_atom_index = Index(0);
+    auto seen = FlatBitset {};
+    auto deduplicated_landmarks = IndexList {};
+    for (const auto atom_index : landmark_atom_indices)
+    {
+        if (!seen.get(atom_index))
+        {
+            seen.set(atom_index);
+            deduplicated_landmarks.push_back(atom_index);
+        }
+        landmark_atom_mask.set(atom_index);
+        max_atom_index = std::max(max_atom_index, atom_index);
+    }
+
+    /* Normalize the sets exactly the way the grounded generator does, so a consumer cannot tell the
+       two producers apart from the shape of what it reads. */
+    for (auto& members : disjunctive_landmarks)
+    {
+        std::sort(members.begin(), members.end());
+        members.erase(std::unique(members.begin(), members.end()), members.end());
+        for (const auto member : members)
+        {
+            max_atom_index = std::max(max_atom_index, member);
+        }
+    }
+    std::sort(disjunctive_landmarks.begin(), disjunctive_landmarks.end());
+    disjunctive_landmarks.erase(std::unique(disjunctive_landmarks.begin(), disjunctive_landmarks.end()), disjunctive_landmarks.end());
+    disjunctive_landmarks.erase(std::remove_if(disjunctive_landmarks.begin(),
+                                               disjunctive_landmarks.end(),
+                                               [&](const IndexList& members) {
+                                                   return members.empty()
+                                                          || std::any_of(members.begin(),
+                                                                         members.end(),
+                                                                         [&](Index member) { return landmark_atom_mask.get(member); });
+                                               }),
+                                disjunctive_landmarks.end());
+
+    const auto num_atom_slots = size_t(max_atom_index) + 1;
+    predecessors_by_atom.resize(std::max(predecessors_by_atom.size(), num_atom_slots));
+    successors_by_atom.resize(std::max(successors_by_atom.size(), num_atom_slots));
+
+    return std::make_shared<const FactLandmarkGraphImpl>(std::move(problem),
+                                                         std::move(landmark_atom_mask),
+                                                         std::move(deduplicated_landmarks),
+                                                         std::move(disjunctive_landmarks),
+                                                         std::move(predecessors_by_atom),
+                                                         std::move(successors_by_atom),
+                                                         std::move(lifted_landmarks));
+}
+
 const formalism::Problem& FactLandmarkGraphImpl::get_problem() const { return m_problem; }
+
+bool FactLandmarkGraphImpl::has_achiever_index() const { return m_has_achiever_index; }
+
+const std::vector<LiftedLandmark>& FactLandmarkGraphImpl::get_lifted_landmarks() const { return m_lifted_landmarks; }
+
+void FactLandmarkGraphImpl::assert_achiever_index() const
+{
+    if (!m_has_achiever_index)
+    {
+        throw std::logic_error("landmark graph carries no achiever index (built without grounding)");
+    }
+}
 
 const IndexList& FactLandmarkGraphImpl::get_landmark_atom_indices() const { return m_landmark_atom_indices; }
 
@@ -118,6 +247,7 @@ IndexList FactLandmarkGraphImpl::get_unachieved_landmark_atom_indices(const Stat
 
 const IndexList& FactLandmarkGraphImpl::get_achiever_action_indices(Index landmark_atom_index) const
 {
+    assert_achiever_index();
     return m_achiever_action_indices_by_atom[landmark_atom_index];
 }
 
@@ -135,6 +265,7 @@ GroundActionList FactLandmarkGraphImpl::get_achievers(Index landmark_atom_index)
 
 const IndexList& FactLandmarkGraphImpl::get_first_achiever_action_indices(Index landmark_atom_index) const
 {
+    assert_achiever_index();
     return m_first_achiever_action_indices_by_atom[landmark_atom_index];
 }
 
@@ -169,6 +300,7 @@ bool FactLandmarkGraphImpl::is_landmark_achiever(GroundAction action) const
 
 bool FactLandmarkGraphImpl::is_first_landmark_achiever(GroundAction action) const
 {
+    assert_achiever_index();
     return !m_landmarks_first_achieved_by_action[action->get_index()].empty();
 }
 
@@ -179,17 +311,25 @@ bool FactLandmarkGraphImpl::is_unique_landmark_achiever(GroundAction action) con
 
 const IndexList& FactLandmarkGraphImpl::get_landmarks_achieved_by_action(GroundAction action) const
 {
+    assert_achiever_index();
     return m_landmarks_achieved_by_action[action->get_index()];
 }
 
 const IndexList& FactLandmarkGraphImpl::get_landmarks_uniquely_achieved_by_action(GroundAction action) const
 {
+    assert_achiever_index();
     return m_landmarks_uniquely_achieved_by_action[action->get_index()];
 }
 
-const IndexList& FactLandmarkGraphImpl::get_predecessors(Index landmark_atom_index) const { return m_predecessors_by_atom[landmark_atom_index]; }
+const IndexList& FactLandmarkGraphImpl::get_predecessors(Index landmark_atom_index) const
+{
+    return (landmark_atom_index < m_predecessors_by_atom.size()) ? m_predecessors_by_atom[landmark_atom_index] : empty_index_list();
+}
 
-const IndexList& FactLandmarkGraphImpl::get_successors(Index landmark_atom_index) const { return m_successors_by_atom[landmark_atom_index]; }
+const IndexList& FactLandmarkGraphImpl::get_successors(Index landmark_atom_index) const
+{
+    return (landmark_atom_index < m_successors_by_atom.size()) ? m_successors_by_atom[landmark_atom_index] : empty_index_list();
+}
 
 GroundAction FactLandmarkGraphImpl::get_ground_action(Index action_index) const
 {

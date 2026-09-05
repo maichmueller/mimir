@@ -24,10 +24,47 @@
 #include "mimir/search/declarations.hpp"
 
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace mimir::search::landmarks
 {
+
+/// @brief `LiftedLandmark` is the *intensional* form of a landmark: a partially ground atom
+/// `Q(w1...wn)` where a bound position carries an object and a free position carries `nullptr`.
+///
+/// It exists because the lifted extractor derives landmarks over patterns, not over ground atoms,
+/// and that pattern is the only place the derivation is legible: `ontray(?, ?)` is one landmark
+/// with hundreds of members, and printing its member list says nothing about why it was derived.
+/// The graph's atom-indexed vectors cannot hold a partial landmark at all (it has no atom index),
+/// so orderings that touch one live here in `parent_positions` and nowhere else.
+struct LiftedLandmark
+{
+    formalism::Predicate<formalism::FluentTag> predicate;
+
+    /// @brief One entry per predicate position; `nullptr` marks a free position.
+    formalism::ObjectList binding;
+
+    /// @brief The ground vocabulary of this landmark: every plan makes one of these true.
+    /// A fully bound landmark's member list is exactly its own atom.
+    IndexList member_atom_indices;
+
+    /// @brief Set iff the landmark is fully bound, in which case it is a *fact* landmark.
+    std::optional<Index> fact_atom_index;
+
+    /// @brief Positions in the enclosing `std::vector<LiftedLandmark>` of the landmarks this one
+    /// was back-chained from, i.e. `this ->_D parent` ("ordered directly before").
+    IndexList parent_positions;
+
+    /// @brief Some instance of this landmark holds in the initial state, so it was recorded but
+    /// never expanded -- see `LiftedFactLandmarkGeneratorOptions` for why expanding it is unsound.
+    bool initially_true = false;
+};
+
+/// @brief Render a lifted landmark as `predicate(arg, ?, ...)`, with `?` for a free position.
+extern std::string to_string(const LiftedLandmark& landmark);
+
+extern std::ostream& operator<<(std::ostream& out, const LiftedLandmark& landmark);
 
 /// @brief `FactLandmarkGraphImpl` stores an immutable set of approximate positive fluent fact
 /// landmarks for a problem, computed once by `ApproximateFactLandmarkGeneratorImpl`, together with
@@ -48,7 +85,40 @@ public:
                            std::vector<IndexList> predecessors_by_atom,
                            std::vector<IndexList> successors_by_atom);
 
+    /// @brief The achiever-free form: no ground action was ever instantiated, so every
+    /// action-indexed accessor is absent rather than empty. See `has_achiever_index`.
+    FactLandmarkGraphImpl(formalism::Problem problem,
+                          FlatBitset landmark_atom_mask,
+                          IndexList landmark_atom_indices,
+                          std::vector<IndexList> disjunctive_landmarks,
+                          std::vector<IndexList> predecessors_by_atom,
+                          std::vector<IndexList> successors_by_atom,
+                          std::vector<LiftedLandmark> lifted_landmarks);
+
+    /// @brief Build a graph from atom indices alone -- no grounder, no achiever index.
+    ///
+    /// Normalises what the caller hands over: each disjunctive set is sorted and deduplicated,
+    /// empty sets, sets holding a fact landmark (subsumed by it) and exact duplicates are dropped,
+    /// and the per-atom ordering vectors are sized to the largest atom index mentioned.
+    static FactLandmarkGraph create(formalism::Problem problem,
+                                    IndexList landmark_atom_indices,
+                                    std::vector<IndexList> disjunctive_landmarks,
+                                    std::vector<IndexList> predecessors_by_atom = {},
+                                    std::vector<IndexList> successors_by_atom = {},
+                                    std::vector<LiftedLandmark> lifted_landmarks = {});
+
     const formalism::Problem& get_problem() const;
+
+    /// @brief Whether the graph carries the per-ground-action achiever index.
+    ///
+    /// False for a graph built without grounding (`LiftedFactLandmarkGenerator`, `create`): the
+    /// achiever accessors then throw rather than returning empty lists, because "this action
+    /// achieves no landmark" and "this graph cannot answer that" are different facts and a
+    /// consumer that silently reads the first for the second is silently wrong.
+    bool has_achiever_index() const;
+
+    /// @brief The intensional landmarks, in discovery order, or empty for a grounded graph.
+    const std::vector<LiftedLandmark>& get_lifted_landmarks() const;
 
     const IndexList& get_landmark_atom_indices() const;
     formalism::GroundAtomList<formalism::FluentTag> get_landmark_atoms() const;
@@ -92,6 +162,11 @@ public:
     const IndexList& get_landmarks_achieved_by_action(formalism::GroundAction action) const;
     const IndexList& get_landmarks_uniquely_achieved_by_action(formalism::GroundAction action) const;
 
+    /// @brief Greedy-necessary predecessors of a fact landmark, empty beyond the stored range.
+    ///
+    /// The bounds check is not defensive padding: a lifted problem interns fluent atoms during
+    /// search, so the atom universe keeps growing after the graph was built and a perfectly
+    /// legitimate atom index can exceed what the graph was sized for.
     const IndexList& get_predecessors(Index landmark_atom_index) const;
     const IndexList& get_successors(Index landmark_atom_index) const;
 
@@ -112,7 +187,13 @@ private:
     std::vector<IndexList> m_predecessors_by_atom;
     std::vector<IndexList> m_successors_by_atom;
 
+    bool m_has_achiever_index;
+    std::vector<LiftedLandmark> m_lifted_landmarks;
+
     formalism::GroundAction get_ground_action(Index action_index) const;
+
+    /// @brief Throws unless the achiever index is present.
+    void assert_achiever_index() const;
 };
 
 }
