@@ -48,7 +48,7 @@ def _sets_over_predicate(landmarks, predicate_name: str):
             if members and _resolve_atom(landmarks, members[0]).get_predicate().get_name() == predicate_name]
 
 
-def test_blocks4_chain_and_the_grounded_surplus():
+def test_blocks4_chain_matches_the_grounded_generator():
     """ Python parity with tests/unit/search/landmarks/lifted_fact_landmarks.cpp
         (SearchLandmarksLiftedBlocks4Test).
     """
@@ -67,14 +67,16 @@ def test_blocks4_chain_and_the_grounded_surplus():
     predecessors = landmarks.get_predecessors(on_b2_b3.get_index())
     assert _atom_signatures(landmarks, predecessors) == {("clear", ("b3",)), ("holding", ("b2",))}
 
-    # The documented difference against the grounded generator: on-table(b2) and on(b1,b3) hold
-    # initially and are not landmarks, but the h_max-minimal-achiever intersection reports them.
-    assert _find_landmark(landmarks, "on-table", ["b2"]) is None
-    assert _find_landmark(landmarks, "on", ["b1", "b3"]) is None
+    # This used to pin the opposite: on-table(b2) and on(b1,b3) were the grounded generator's
+    # h_max surplus. Since the §2.7 self-dependent-precondition rule they are found soundly, and
+    # the two generators agree exactly on this instance.
+    assert _find_landmark(landmarks, "on-table", ["b2"]) is not None
+    assert _find_landmark(landmarks, "on", ["b1", "b3"]) is not None
 
     grounded = search.ApproximateFactLandmarkGenerator.create(search.LiftedGrounder(problem))
-    assert _find_landmark(grounded, "on-table", ["b2"]) is not None
-    assert _find_landmark(grounded, "on", ["b1", "b3"]) is not None
+    assert {_atom_signature(a) for a in landmarks.get_landmark_atoms()} == {
+        _atom_signature(a) for a in grounded.get_landmark_atoms()
+    }
 
 
 def test_gripper_disjunctive_carry_matches_the_grounded_set():
@@ -299,14 +301,67 @@ def test_a_type_gated_adder_excludes_the_wrong_objects():
     def type_names(obj):
         return {base.get_name() for base in obj.get_bases()}
 
-    seen_at_members = 0
+    # Asked of every `at` atom the graph names, fact or member: §2.7 turned spanner's `at` sets into
+    # fact landmarks, so a members-only check would now pass vacuously. An `at` naming a spanner or
+    # a nut is admissible only where the instance put it, since nothing can move one.
+    initial = {str(atom) for atom in problem.get_fluent_initial_atoms()}
+    atom_indices = list(landmarks.get_landmark_atom_indices())
     for members in landmarks.get_disjunctive_landmarks():
-        for index in members:
-            atom = _resolve_atom(landmarks, index)
-            if atom.get_predicate().get_name() != "at":
-                continue
-            seen_at_members += 1
-            located = atom.get_objects()[0]
-            assert "spanner" not in type_names(located), str(atom)
-            assert "nut" not in type_names(located), str(atom)
-    assert seen_at_members > 0, "no `at` member at all: the test would pass vacuously"
+        atom_indices.extend(members)
+
+    seen_at_atoms = 0
+    for index in atom_indices:
+        atom = _resolve_atom(landmarks, index)
+        if atom.get_predicate().get_name() != "at":
+            continue
+        seen_at_atoms += 1
+        located = atom.get_objects()[0]
+        if type_names(located) & {"spanner", "nut"}:
+            assert str(atom) in initial, str(atom)
+    assert seen_at_atoms > 0, "no `at` atom at all: the test would pass vacuously"
+
+
+def test_a_self_dependent_precondition_recovers_the_blocks_chain():
+    """ Python parity with SearchLandmarksLiftedSelfDependentPrecondition* (blocks half).
+
+        `clear(b3)`'s `putdown`/`stack` achievers need `holding(b3)`, every adder of which needs
+        `clear(b3)` itself, so only `unstack(?x, b3)` can be first -- and `on(?x, b3)` has to be an
+        initial atom, which binds ?x to the block actually on b3.
+    """
+    problem = _parse("blocks_4")
+    landmarks = search.LiftedFactLandmarkGenerator.create(problem)
+
+    clear_b3 = _find_landmark(landmarks, "clear", ["b3"])
+    assert clear_b3 is not None
+    predecessors = _atom_signatures(landmarks, landmarks.get_predecessors(clear_b3.get_index()))
+    assert ("on", ("b1", "b3")) in predecessors
+    assert ("clear", ("b1",)) in predecessors
+    assert ("arm-empty", ()) in predecessors
+
+    # `holding(b2)`: `unstack(b2, ?y)` is dropped because b2 is on the table in I, leaving `pickup`
+    # as the only possible first achiever and its whole precondition set necessary.
+    holding_b2 = _find_landmark(landmarks, "holding", ["b2"])
+    assert holding_b2 is not None
+    assert ("on-table", ("b2",)) in _atom_signatures(
+        landmarks, landmarks.get_predecessors(holding_b2.get_index())
+    )
+
+    # The two generators now agree exactly on this instance.
+    grounded = search.ApproximateFactLandmarkGenerator.create(search.LiftedGrounder(problem))
+    assert {_atom_signature(a) for a in landmarks.get_landmark_atoms()} == {
+        _atom_signature(a) for a in grounded.get_landmark_atoms()
+    }
+
+
+def test_a_self_dependent_precondition_fixes_the_ferry_location():
+    """ Python parity with SearchLandmarksLiftedSelfDependentPreconditionFerryTest. """
+    problem = _parse("ferry")
+    landmarks = search.LiftedFactLandmarkGenerator.create(problem)
+
+    on_car1 = _find_landmark(landmarks, "on", ["car1"])
+    assert on_car1 is not None
+    predecessors = _atom_signatures(landmarks, landmarks.get_predecessors(on_car1.get_index()))
+    assert ("at-ferry", ("loc3",)) in predecessors  # car1's initial location
+    assert ("empty-ferry", ()) in predecessors
+    assert ("at", ("car1", "loc3")) in predecessors
+    assert _sets_over_predicate(landmarks, "at-ferry") == []

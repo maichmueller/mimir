@@ -452,25 +452,45 @@ TEST(MimirTests, SearchLandmarksLiftedBlocks4Test)
     EXPECT_TRUE(contains_atom(landmarks, predecessors, "clear", { "b3" }));
     EXPECT_TRUE(contains_atom(landmarks, predecessors, "holding", { "b2" }));
 
-    // `holding(b2)` is added by both `pick-up` and `unstack`, which share `clear(b2)` and
-    // `arm-empty` but disagree on where b2 comes from -- so no `on-table`/`on` predecessor.
+    /* `holding(b2)` is added by `pickup(b2)` and by `unstack(b2, ?y)`, and the plain intersection
+       over the two keeps only `clear(b2)` and `arm-empty`. §2.7 removes `unstack`: every adder of
+       its `on(b2, ?y)` precondition is a `stack(b2, ?)`, which needs `holding(b2)` itself, so the
+       instance it uses would have to be initial -- and b2 is on the table in `I`. With `pickup` the
+       only possible first achiever, its whole precondition set is necessary. */
     const auto holding_b2 = find_landmark(landmarks, "holding", { "b2" });
     ASSERT_NE(holding_b2, nullptr);
     const auto& holding_predecessors = landmarks->get_predecessors(holding_b2->get_index());
     EXPECT_TRUE(contains_atom(landmarks, holding_predecessors, "clear", { "b2" }));
     EXPECT_TRUE(contains_atom(landmarks, holding_predecessors, "arm-empty", {}));
-    EXPECT_FALSE(contains_atom(landmarks, holding_predecessors, "on-table", { "b2" }));
+    EXPECT_TRUE(contains_atom(landmarks, holding_predecessors, "on-table", { "b2" }));
 
-    // The documented difference, pinned. `on-table(b2)` and `on(b1,b3)` hold initially, and the
-    // grounded generator reports them as landmarks because `pick-up`/`unstack` beat each other on
-    // h_max there -- the surplus the lifted rule does not produce.
-    EXPECT_EQ(find_landmark(landmarks, "on-table", { "b2" }), nullptr);
-    EXPECT_EQ(find_landmark(landmarks, "on", { "b1", "b3" }), nullptr);
+    /* The other half of the same rule. `clear(b3)`'s achievers are `putdown(b3)`, `stack(b3, ?)`
+       and `unstack(?x, b3)`; the first two need `holding(b3)`, every adder of which needs
+       `clear(b3)` -- so only `unstack` can be first, and `on(?x, b3)` must be initial, which binds
+       ?x to the block actually sitting on b3. */
+    const auto clear_b3 = find_landmark(landmarks, "clear", { "b3" });
+    ASSERT_NE(clear_b3, nullptr);
+    const auto& clear_b3_predecessors = landmarks->get_predecessors(clear_b3->get_index());
+    EXPECT_TRUE(contains_atom(landmarks, clear_b3_predecessors, "on", { "b1", "b3" }));
+    EXPECT_TRUE(contains_atom(landmarks, clear_b3_predecessors, "clear", { "b1" }));
+    EXPECT_TRUE(contains_atom(landmarks, clear_b3_predecessors, "arm-empty", {}));
 
+    /* Until §2.7 this test pinned the opposite: `on-table(b2)` and `on(b1,b3)` were the grounded
+       generator's *surplus*, atoms it reported because `pickup`/`unstack` beat each other on h_max.
+       They are real landmarks, reachable by the RHW exclusion rather than by accident, and on this
+       instance the two generators now agree exactly. */
     const auto grounder = LiftedGrounder(problem);
     const auto grounded = ApproximateFactLandmarkGenerator::create(grounder);
-    EXPECT_NE(find_landmark(grounded, "on-table", { "b2" }), nullptr);
-    EXPECT_NE(find_landmark(grounded, "on", { "b1", "b3" }), nullptr);
+    const auto names = [](const FactLandmarkGraph& graph)
+    {
+        auto result = std::set<std::string> {};
+        for (const auto atom : graph->get_landmark_atoms())
+        {
+            result.insert(atom_signature(atom));
+        }
+        return result;
+    };
+    EXPECT_EQ(names(landmarks), names(grounded));
 }
 
 /**
@@ -963,23 +983,39 @@ TEST(MimirTests, SearchLandmarksLiftedTypeGatedAdderTest)
         return std::any_of(bases.begin(), bases.end(), [&](Type type) { return type->get_name() == type_name; });
     };
 
-    auto num_at_members = size_t(0);
+    /* Asked of every `at` atom the graph names, fact or member. §2.7 turned spanner's `at` sets
+       into fact landmarks, so a members-only check would now pass vacuously -- and the claim was
+       never about sets: an `at` naming a spanner or a nut is admissible only where the instance
+       put it, because nothing can move one. */
+    auto initial = std::set<std::string> {};
+    for (const auto atom : problem->get_fluent_initial_atoms())
+    {
+        initial.insert(atom_signature(atom));
+    }
+
+    auto atom_indices = landmarks->get_landmark_atom_indices();
     for (const auto& members : landmarks->get_disjunctive_landmarks())
     {
-        for (const auto member : members)
+        atom_indices.insert(atom_indices.end(), members.begin(), members.end());
+    }
+
+    auto num_at_atoms = size_t(0);
+    for (const auto atom_index : atom_indices)
+    {
+        const auto atom = resolve_atom(landmarks, atom_index);
+        if (atom->get_predicate()->get_name() != "at")
         {
-            const auto atom = resolve_atom(landmarks, member);
-            if (atom->get_predicate()->get_name() != "at")
-            {
-                continue;
-            }
-            ++num_at_members;
-            const auto located = atom->get_objects().front();
-            EXPECT_FALSE(is_a(located, "spanner")) << "unreachable member " << atom_signature(atom);
-            EXPECT_FALSE(is_a(located, "nut")) << "unreachable member " << atom_signature(atom);
+            continue;
+        }
+        ++num_at_atoms;
+        const auto located = atom->get_objects().front();
+        if (is_a(located, "spanner") || is_a(located, "nut"))
+        {
+            EXPECT_TRUE(initial.count(atom_signature(atom)) > 0)
+                << "unreachable: nothing moves a spanner or a nut, so " << atom_signature(atom) << " can only hold where I put it";
         }
     }
-    EXPECT_GT(num_at_members, 0u) << "no `at` member at all: the test would pass vacuously";
+    EXPECT_GT(num_at_atoms, 0u) << "no `at` atom at all: the test would pass vacuously";
 }
 
 TEST(MimirTests, SearchLandmarksLiftedStaticallyGatedAdderTest)
@@ -1000,6 +1036,108 @@ TEST(MimirTests, SearchLandmarksLiftedStaticallyGatedAdderTest)
     ASSERT_EQ(need_sets.size(), 1u);
     EXPECT_EQ(need_sets.front().size(), 3u);
     EXPECT_TRUE(contains_atom(landmarks, need_sets.front(), "need", { "t3" }));
+}
+
+/**
+ * §2.7, the self-dependent-precondition rule. Four domains where the plain intersection over all
+ * achievers is empty and a landmark is waiting behind an achiever that cannot possibly be first.
+ */
+
+TEST(MimirTests, SearchLandmarksLiftedSelfDependentPreconditionFerryTest)
+{
+    // `on(car)` is achieved only by `board(car, ?loc)`, whose `at(car, ?loc)` has one adder,
+    // `debark`, which needs `on(car)` itself -- so the car boards where the instance put it.
+    const auto problem = parse("ferry");
+    const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+
+    const auto on_car1 = find_landmark(landmarks, "on", { "car1" });
+    ASSERT_NE(on_car1, nullptr);
+    const auto& predecessors = landmarks->get_predecessors(on_car1->get_index());
+    EXPECT_TRUE(contains_atom(landmarks, predecessors, "at-ferry", { "loc3" }));  // car1's initial location
+    EXPECT_TRUE(contains_atom(landmarks, predecessors, "empty-ferry", {}));
+    EXPECT_TRUE(contains_atom(landmarks, predecessors, "at", { "car1", "loc3" }));
+    EXPECT_TRUE(sets_over_predicate(landmarks, "at-ferry").empty()) << "the ferry's location is fixed, not a disjunction";
+}
+
+TEST(MimirTests, SearchLandmarksLiftedSelfDependentPreconditionMiconicTest)
+{
+    // The vacuous case: nothing adds `origin`, so `origin(p, ?f)` must be initial and the floor the
+    // lift has to visit for `boarded(p)` is fixed.
+    const auto problem = parse("miconic");
+    const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+
+    const auto boarded_p0 = find_landmark(landmarks, "boarded", { "p0" });
+    ASSERT_NE(boarded_p0, nullptr);
+    const auto& predecessors = landmarks->get_predecessors(boarded_p0->get_index());
+    EXPECT_TRUE(contains_atom(landmarks, predecessors, "lift-at", { "f0" }));  // p0's origin floor
+    EXPECT_TRUE(contains_atom(landmarks, predecessors, "origin", { "p0", "f0" }));
+    EXPECT_TRUE(sets_over_predicate(landmarks, "lift-at").empty());
+}
+
+TEST(MimirTests, SearchLandmarksLiftedSelfDependentPreconditionLogisticsTest)
+{
+    /* The partial case. `in(p0, ?)` is loaded at `at(p0, ?loc)`, whose only surviving adders are
+       the two unload actions -- `drive-truck`/`fly-airplane` cannot add `at(p0, ?)` because p0 is
+       not a truck or an airplane -- and both need `in(p0, ?)`. So the load happens at p0's initial
+       location, and the vehicle stays a disjunction over whatever can be there. */
+    const auto problem = parse("logistics");
+    const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+
+    const auto in_p0 = find_lifted(landmarks, "in(p0, ?)");
+    ASSERT_NE(in_p0, nullptr);
+    const auto& records = landmarks->get_lifted_landmarks();
+
+    auto derived = std::set<std::string> {};
+    const auto in_p0_position = Index(in_p0 - records.data());
+    for (const auto& record : records)
+    {
+        if (std::find(record.parent_positions.begin(), record.parent_positions.end(), in_p0_position) != record.parent_positions.end())
+        {
+            derived.insert(to_string(record));
+        }
+    }
+    EXPECT_TRUE(derived.count("at(?, l0-0)") > 0) << "expected the vehicle to stay a disjunction over l0-0";
+    EXPECT_TRUE(derived.count("at(p0, l0-0)") > 0) << "expected the package's own initial location";
+
+    const auto vehicles = find_lifted(landmarks, "at(?, l0-0)");
+    ASSERT_NE(vehicles, nullptr);
+    EXPECT_GT(vehicles->member_atom_indices.size(), 1u);
+}
+
+TEST(MimirTests, SearchLandmarksLiftedSelfDependentPreconditionGateTest)
+{
+    /* §2.7 concludes "the instance the first achiever used was already there", which needs that no
+       instance of the *pattern* was there. §2.1's member-level stop is not enough: an instance that
+       is not a member leaves the landmark perfectly unsatisfied at `I` and still breaks the
+       argument. The fixture puts exactly such an atom in `I` -- `held(t2)`, excluded from the
+       members because t2 is not `usable` -- and the only difference between the two problems is
+       whether it is there. */
+    const auto open_gate = LiftedFactLandmarkGenerator::create(parse("landmark_lifted_sdp_gate"));
+    const auto closed_gate = LiftedFactLandmarkGenerator::create(parse("landmark_lifted_sdp_gate", "test_problem_closed.pddl"));
+
+    // Same landmark either way: `held(?)` over the two usable things.
+    for (const auto& landmarks : { open_gate, closed_gate })
+    {
+        const auto held = find_lifted(landmarks, "held(?)");
+        ASSERT_NE(held, nullptr);
+        EXPECT_EQ(held->member_atom_indices.size(), 2u);
+        EXPECT_TRUE(contains_atom(landmarks, held->member_atom_indices, "held", { "t1" }));
+        EXPECT_TRUE(contains_atom(landmarks, held->member_atom_indices, "held", { "t3" }));
+    }
+
+    /* With the gate open the rule fires: every adder of `ready` is a `prep`, which needs `held`
+       itself, so the `ready` instance the first `grab` used is initial and `?x` narrows to the
+       things that start ready. */
+    const auto narrowed = find_lifted(open_gate, "ready(?)");
+    ASSERT_NE(narrowed, nullptr);
+    EXPECT_EQ(narrowed->member_atom_indices.size(), 2u);
+    EXPECT_FALSE(contains_atom(open_gate, narrowed->member_atom_indices, "ready", { "t2" }));
+
+    // With `held(t2)` in `I` the gate closes and the expansion is the plain one.
+    const auto plain = find_lifted(closed_gate, "ready(?)");
+    ASSERT_NE(plain, nullptr);
+    EXPECT_EQ(plain->member_atom_indices.size(), 3u);
+    EXPECT_TRUE(contains_atom(closed_gate, plain->member_atom_indices, "ready", { "t2" }));
 }
 
 /**

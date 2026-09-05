@@ -256,6 +256,69 @@ Each identity is expanded at most once and identities are finite
 — childsnack p30-hard: `ontray(?s,?t)` is 437 × #trays bindings. Expect
 milliseconds to low seconds and megabytes, against 37 min / 23.4 GB.
 
+### 2.7 Self-dependent preconditions (added 2026-09-05, after measurement)
+
+Proposition 1 intersects over *all* achievers of `P(u)`. Some of them cannot be
+the **first** achiever, and intersecting over those loses landmarks: on
+blocksworld, expanding `clear(b)` the achievers are `unstack(?x, b)`,
+`stack(b, ?y)` and `putdown(b)`; the last two need `holding(b)`, and every adder
+of `holding(b)` needs `clear(b)` itself, so neither can go first — but the
+intersection over all three is empty and the chain dies with a landmark waiting
+one step below. Hoffmann–Porteous–Sebastia and Richter–Helmert–Westphal exclude
+such achievers on an RPG that never adds the landmark; this is that exclusion at
+schema level, against `I` instead of an RPG.
+
+**Gate.** Apply the rule to record `R = P(u)` only when *no instance of the
+pattern* `P(u)` is true in `I`. This is stricter than §2.1's member-level stop
+and cannot be folded into it: an instance of the pattern that is not a member
+leaves the landmark perfectly unsatisfied at `I` — so §2.1 correctly expands —
+while destroying the argument below.
+
+**Rule.** For each statically filtered achiever `A_j` and each positive fluent
+precondition `Q(v)` of `A_j` under `σ_j`:
+
+- `adders(Q(v))` := every `(A, E, ℓ)` whose positive fluent effect literal
+  unifies with `Q(v)` on `Q(v)`'s bound positions and survives the static filter
+  (`try_build_achiever` with `Q(v)` as the pattern).
+- an adder **needs** `P(u)` iff, under its own `σ'`, its positive fluent
+  preconditions contain a `P(s)` with `s_i σ' = u_i` at every position `u` binds
+  (free positions of `u` impose nothing) — i.e. every ground instance of that
+  precondition lies in `inst(P(u))`.
+- if **every** adder needs `P(u)` — vacuously true when there are none, e.g.
+  miconic's `origin` — then `matches` := the fluent initial atoms of `Q` agreeing
+  with `Q(v)` on its bound positions, whose objects at free positions lie in the
+  current candidate domains (a repeated variable agreeing with itself per atom).
+  `matches = ∅` ⇒ **drop** `A_j`. Otherwise intersect each free variable's domain
+  with its values over `matches`, and bind it when the domain becomes a singleton.
+
+Rerun the static filter after a pass and iterate to a joint fixpoint: a binding
+the rule discovers can collapse another precondition's adder set. §2.4/§2.5 then
+proceed unchanged over the narrowed achievers.
+
+**Proof.** Let `π` be any plan and `s_k` the first state of `π` containing an
+instance of `P(u)`; `a` is the action producing `s_k`, an applicable ground
+instance of some `A_j` (achievers are collected for the whole pattern). By the
+gate and the choice of `k`, no instance of `P(u)` is true in `I` or in any state
+before `s_k`. `a`'s ground precondition `q`, an instance of `Q(v)`, holds in
+`s_{k-1}`. If `q ∉ I` then some earlier action `b` added `q`; `b` is applicable,
+hence a statically consistent instance of an adder of `Q(v)`, hence needs an
+instance of `P(u)` true before it — contradicting the choice of `k`. So `q ∈ I`,
+`a`'s binding restricted to `Q(v)`'s variables is one of `matches`, and the
+narrowed domains contain it. Dropping and narrowing therefore keep `a` among the
+achievers, so the intersection over the narrowed achievers is sound by
+Proposition 1. ∎
+
+What it recovers, on the four shapes the evaluation's residue analysis named
+(45 of 221 sampled residue atoms were landmarks of this kind): blocksworld
+`clear(x)` derives `on(y, x)`/`clear(y)`/`arm-empty` for the `y` actually on `x`,
+and on `data/blocks_4` the lifted fact-landmark set becomes **identical** to the
+grounded one; ferry `on(car)` derives `at-ferry(l)` for the car's own initial
+location; miconic `boarded(p)` derives `lift-at(f)` for `p`'s origin floor;
+logistics `in(p, ?)` derives `at(?, l)` over the vehicles at `p`'s initial
+location instead of nothing. On `test/p30-hard` it also collapses floortile's
+member union — the one §2.5's producibility filter could not touch — from 28,980
+to 840, and its rank set from 29,400 to 2,769.
+
 ## 3. What goes into `FactLandmarkGraph`
 
 `FactLandmarkGraphImpl` (`include/mimir/search/landmarks/fact_landmark_graph.hpp`)

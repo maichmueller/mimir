@@ -141,6 +141,7 @@ public:
         {
             m_initial_fluent_mask.set(atom->get_index());
             m_initial_fluent_identities.insert(make_identity(atom->get_predicate()->get_index(), atom->get_objects()));
+            m_fluent_initial_by_predicate[atom->get_predicate()->get_index()].push_back(atom);
         }
         for (const auto object : problem->get_problem_and_domain_objects())
         {
@@ -165,6 +166,40 @@ public:
     bool is_initially_true(const IndexList& atom_indices) const
     {
         return std::any_of(atom_indices.begin(), atom_indices.end(), [&](Index atom_index) { return m_initial_fluent_mask.get(atom_index); });
+    }
+
+    const GroundAtomList<FluentTag>& get_fluent_initial_atoms(Index predicate_index) const
+    {
+        static const auto empty = GroundAtomList<FluentTag> {};
+        const auto it = m_fluent_initial_by_predicate.find(predicate_index);
+        return (it == m_fluent_initial_by_predicate.end()) ? empty : it->second;
+    }
+
+    /// @brief Does the initial state contain any instance of the pattern `predicate(binding)`?
+    ///
+    /// The §2.7 gate. Deliberately *not* §2.1's test, which asks about the recorded members: an
+    /// instance of the pattern that is not a member can hold at `I` without making the landmark
+    /// trivially satisfied, and that is exactly the case §2.7's argument cannot survive.
+    bool has_initial_pattern_instance(Index predicate_index, const ObjectList& binding) const
+    {
+        for (const auto atom : get_fluent_initial_atoms(predicate_index))
+        {
+            const auto& objects = atom->get_objects();
+            if (objects.size() != binding.size())
+            {
+                continue;
+            }
+            auto matches = true;
+            for (size_t i = 0; matches && i < binding.size(); ++i)
+            {
+                matches = !binding[i] || (binding[i] == objects[i]);
+            }
+            if (matches)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     /// @brief Is `predicate(objects)` a fluent initial atom?
@@ -218,6 +253,7 @@ private:
     ObjectList m_all_objects;
     FlatBitset m_initial_fluent_mask;
     std::unordered_set<Identity, IdentityHash> m_initial_fluent_identities;
+    std::unordered_map<Index, GroundAtomList<FluentTag>> m_fluent_initial_by_predicate;
     std::unordered_map<Index, GroundAtomList<StaticTag>> m_static_atoms_by_predicate;
     std::unordered_set<Identity, IdentityHash> m_static_atom_identities;
     mutable std::unordered_map<Parameter, ObjectList> m_objects_by_parameter;
@@ -284,7 +320,16 @@ std::vector<SchemaEffect> collect_schema_effects(const Problem& problem)
 }
 
 /// @brief One way a schema adds a fluent predicate: the `(A, E)` pair and the effect literal.
-using Adder = std::pair<const SchemaEffect*, Literal<FluentTag>>;
+///
+/// `id` is a stable index over all adders of all predicates, so a unification result can be cached
+/// on `(id, pattern)` -- the static filter that decides it is the expensive part of §2.7 and the
+/// same pair recurs across thousands of expansions.
+struct Adder
+{
+    const SchemaEffect* schema;
+    Literal<FluentTag> effect_literal;
+    Index id;
+};
 
 /// @brief Every schema effect that adds a given fluent predicate, indexed once.
 ///
@@ -296,11 +341,12 @@ using Adder = std::pair<const SchemaEffect*, Literal<FluentTag>>;
 std::unordered_map<Index, std::vector<Adder>> collect_adders_by_predicate(const std::vector<SchemaEffect>& schemas)
 {
     auto adders = std::unordered_map<Index, std::vector<Adder>> {};
+    auto next_id = Index(0);
     for (const auto& schema : schemas)
     {
         for (const auto effect_literal : schema.positive_fluent_effects)
         {
-            adders[effect_literal->get_atom()->get_predicate()->get_index()].emplace_back(&schema, effect_literal);
+            adders[effect_literal->get_atom()->get_predicate()->get_index()].push_back(Adder { &schema, effect_literal, next_id++ });
         }
     }
     return adders;
@@ -639,6 +685,208 @@ bool is_statically_consistent(const SchemaEffect& schema, const ObjectList& sigm
     return true;
 }
 
+/// @brief Does every applicable ground instance of `adder` need an instance of `P(u)`?
+///
+/// True when some positive fluent precondition of the adder's schema is a `P(s)` whose terms, under
+/// the adder's own substitution, already equal `u` on every position `u` binds. Free positions of
+/// `u` impose nothing, so this is exactly "every ground instance of that precondition lies in
+/// inst(P(u))".
+bool adder_needs_pattern(const SchemaEffect& schema,
+                         const ObjectList& sigma,
+                         Predicate<FluentTag> pattern_predicate,
+                         const ObjectList& pattern_binding)
+{
+    for (const auto literal : schema.positive_fluent_preconditions)
+    {
+        const auto atom = literal->get_atom();
+        if (atom->get_predicate() != pattern_predicate || atom->get_terms().size() != pattern_binding.size())
+        {
+            continue;
+        }
+        const auto& terms = atom->get_terms();
+        auto covers = true;
+        for (size_t i = 0; covers && i < pattern_binding.size(); ++i)
+        {
+            covers = !pattern_binding[i] || (resolve_term(terms[i], sigma) == pattern_binding[i]);
+        }
+        if (covers)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+/// @brief `try_build_achiever` for one adder against one precondition pattern, memoized.
+///
+/// The substitution is all §2.7 needs from the achiever, and it is a pure function of the adder and
+/// the pattern -- independent of which landmark is being expanded -- so one cache serves the whole
+/// extraction. Without it, rovers `test/p30-hard` re-runs the static filter over 46k `visible_from`
+/// atoms for the same pairs across 1,600 expansions: 91 s against 28 s.
+using AdderSigmaCache = std::unordered_map<Identity, std::optional<ObjectList>, IdentityHash>;
+
+const std::optional<ObjectList>&
+adder_substitution(const Adder& adder, const ObjectList& pattern, const ProblemIndex& index, AdderSigmaCache& cache)
+{
+    auto key = make_identity(adder.id, pattern);
+    const auto cached = cache.find(key);
+    if (cached != cache.end())
+    {
+        return cached->second;
+    }
+    const auto achiever = try_build_achiever(*adder.schema, adder.effect_literal, pattern, index, true);
+    auto sigma = achiever.has_value() ? std::make_optional(achiever->sigma) : std::nullopt;
+    return cache.emplace(std::move(key), std::move(sigma)).first->second;
+}
+
+/// @brief §2.7, the self-dependent-precondition rule. Narrows `achiever`, or returns false to drop
+/// it because it cannot be the *first* achiever of `P(u)`.
+///
+/// Richter-Helmert-Westphal exclude an achiever that the RPG cannot reach without already having
+/// the landmark. This is that exclusion at schema level, against the initial state instead of an
+/// RPG, and it is what keeps the back-chain alive on blocksworld: expanding `clear(b)`, the
+/// achievers are `unstack(?x, b)`, `stack(b, ?y)` and `putdown(b)`, the last two need `holding(b)`,
+/// and every adder of `holding(b)` needs `clear(b)` itself -- so neither can be first, but the
+/// intersection over all three is empty and the chain dies where a landmark was waiting.
+///
+/// Caller must have checked the gate: no instance of the *pattern* is true in `I`. That is stricter
+/// than §2.1's member-level stop and cannot be folded into it -- a non-member instance of the
+/// pattern holding at `I` is harmless for §2.1 and fatal here, because the argument below turns on
+/// there being no instance at all before the first achiever fires.
+bool apply_self_dependent_precondition_rule(Achiever& achiever,
+                                            Predicate<FluentTag> pattern_predicate,
+                                            const ObjectList& pattern_binding,
+                                            const ProblemIndex& index,
+                                            const std::unordered_map<Index, std::vector<Adder>>& adders_by_predicate,
+                                            std::unordered_map<Identity, bool, IdentityHash>& decided,
+                                            AdderSigmaCache& adder_cache,
+                                            bool& changed)
+{
+    for (const auto literal : achiever.schema->positive_fluent_preconditions)
+    {
+        const auto predicate = literal->get_atom()->get_predicate();
+        const auto& terms = literal->get_atom()->get_terms();
+
+        auto precondition_pattern = ObjectList {};
+        precondition_pattern.reserve(terms.size());
+        for (const auto term : terms)
+        {
+            precondition_pattern.push_back(resolve_term(term, achiever.sigma));
+        }
+
+        /* Vacuously true when nothing adds the predicate at all -- miconic's `origin`, where this
+           rule alone fixes the passenger's floor.
+
+           Cached on the precondition pattern: `P(u)` is fixed for this expansion, so the answer
+           depends only on `Q(v)`, and the same `Q(v)` recurs across the achievers and across the
+           fixpoint's iterations. */
+        auto every_adder_needs_pattern = true;
+        auto identity = make_identity(predicate->get_index(), precondition_pattern);
+        const auto cached = decided.find(identity);
+        if (cached != decided.end())
+        {
+            every_adder_needs_pattern = cached->second;
+        }
+        else
+        {
+            const auto adders = adders_by_predicate.find(predicate->get_index());
+            if (adders != adders_by_predicate.end())
+            {
+                for (const auto& adder : adders->second)
+                {
+                    const auto& sigma = adder_substitution(adder, precondition_pattern, index, adder_cache);
+                    if (!sigma.has_value())
+                    {
+                        continue;  // cannot produce this precondition at all, so it is not an adder of it
+                    }
+                    if (!adder_needs_pattern(*adder.schema, *sigma, pattern_predicate, pattern_binding))
+                    {
+                        every_adder_needs_pattern = false;
+                        break;
+                    }
+                }
+            }
+            decided.emplace(std::move(identity), every_adder_needs_pattern);
+        }
+        if (!every_adder_needs_pattern)
+        {
+            continue;
+        }
+
+        /* Every way of producing this precondition would already need `P(u)`, so the instance the
+           first achiever uses cannot have been produced: it is an initial atom. */
+        auto narrowed = std::unordered_map<Index, ObjectList> {};
+        auto any_match = false;
+        for (const auto atom : index.get_fluent_initial_atoms(predicate->get_index()))
+        {
+            const auto& objects = atom->get_objects();
+            if (objects.size() != terms.size())
+            {
+                continue;
+            }
+            auto local = std::unordered_map<Index, Object> {};
+            auto consistent = true;
+            for (size_t i = 0; consistent && i < terms.size(); ++i)
+            {
+                if (precondition_pattern[i])
+                {
+                    consistent = (precondition_pattern[i] == objects[i]);
+                    continue;
+                }
+                const auto slot = term_slot(terms[i]);
+                if (slot == FREE_POSITION || slot >= achiever.candidates.size())
+                {
+                    continue;
+                }
+                const auto& domain = achiever.candidates[slot];
+                if (!std::binary_search(domain.begin(), domain.end(), objects[i], by_object_index))
+                {
+                    consistent = false;
+                    break;
+                }
+                const auto [position, inserted] = local.emplace(slot, objects[i]);
+                consistent = inserted || (position->second == objects[i]);
+            }
+            if (!consistent)
+            {
+                continue;
+            }
+            any_match = true;
+            for (const auto& [slot, object] : local)
+            {
+                narrowed[slot].push_back(object);
+            }
+        }
+
+        if (!any_match)
+        {
+            return false;  // no initial instance it could have used: it cannot be the first achiever
+        }
+
+        for (auto& [slot, objects] : narrowed)
+        {
+            std::sort(objects.begin(), objects.end(), by_object_index);
+            objects.erase(std::unique(objects.begin(), objects.end()), objects.end());
+            if (objects.empty())
+            {
+                return false;
+            }
+            changed |= (objects.size() < achiever.candidates[slot].size());
+            achiever.candidates[slot] = std::move(objects);
+        }
+    }
+
+    for (size_t slot = 0; slot < achiever.candidates.size(); ++slot)
+    {
+        if (!achiever.sigma[slot] && achiever.candidates[slot].size() == 1)
+        {
+            achiever.sigma[slot] = achiever.candidates[slot].front();
+            changed = true;
+        }
+    }
+    return true;
+}
+
 /// @brief §2.5's reachability test for one candidate member, memoized by identity.
 ///
 /// A ground atom that is not a fluent initial atom and that no statically consistent,
@@ -688,12 +936,12 @@ public:
         }
 
         auto reachable = false;
-        for (const auto& [schema, effect_literal] : it->second)
+        for (const auto& adder : it->second)
         {
             // The static filter always runs here, whatever `use_static_filter` says: that option
             // governs which achievers the *intersection* of §2.3 runs over, while this is the
             // member definition of §2.5, whose static consistency test was never optional either.
-            if (try_build_achiever(*schema, effect_literal, objects, m_index, true).has_value())
+            if (try_build_achiever(*adder.schema, adder.effect_literal, objects, m_index, true).has_value())
             {
                 reachable = true;
                 break;
@@ -883,6 +1131,8 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
     auto occurrences_by_achiever = std::vector<std::unordered_map<Index, LiteralList<FluentTag>>> {};
     auto derived_predicate_indices = IndexList {};
     auto member_objects = ObjectList {};
+    auto sdp_decisions = std::unordered_map<Identity, bool, IdentityHash> {};
+    auto adder_cache = AdderSigmaCache {};
 
     while (!worklist.empty())
     {
@@ -915,13 +1165,46 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
          */
 
         achievers.clear();
-        for (const auto& [schema, effect_literal] : adders_of(predicate))
+        for (const auto& adder : adders_of(predicate))
         {
-            auto achiever = try_build_achiever(*schema, effect_literal, binding, index, options.use_static_filter);
+            auto achiever = try_build_achiever(*adder.schema, adder.effect_literal, binding, index, options.use_static_filter);
             if (achiever.has_value())
             {
                 achievers.push_back(std::move(*achiever));
             }
+        }
+
+        /**
+         * §2.7: drop the achievers that cannot be the *first* one, and narrow those that can.
+         *
+         * Gated on the pattern, not on the members: the argument needs "no instance of `P(u)` is
+         * true before the first achiever fires", and a non-member instance holding at `I` breaks
+         * it while leaving §2.1's member-level stop untouched.
+         */
+        if (!index.has_initial_pattern_instance(predicate->get_index(), binding))
+        {
+            sdp_decisions.clear();
+            auto surviving = std::vector<Achiever> {};
+            for (auto& achiever : achievers)
+            {
+                auto keep = true;
+                // A binding the rule discovers can collapse another precondition's adder set, and
+                // the static filter can bind more still, so the two run to a joint fixpoint.
+                for (auto changed = true; keep && changed;)
+                {
+                    changed = false;
+                    keep = apply_self_dependent_precondition_rule(achiever, predicate, binding, index, adders_by_predicate, sdp_decisions, adder_cache, changed);
+                    if (keep && changed)
+                    {
+                        keep = apply_static_filter(achiever, index);
+                    }
+                }
+                if (keep)
+                {
+                    surviving.push_back(std::move(achiever));
+                }
+            }
+            achievers = std::move(surviving);
         }
 
         if (achievers.empty())
