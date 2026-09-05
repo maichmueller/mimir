@@ -20,5 +20,6 @@
 
 #include "mimir/search/landmarks/fact_landmark_generator.hpp"
 #include "mimir/search/landmarks/fact_landmark_graph.hpp"
+#include "mimir/search/landmarks/lifted_fact_landmark_generator.hpp"
 
 #endif

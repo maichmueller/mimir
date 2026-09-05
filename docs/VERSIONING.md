@@ -63,3 +63,4 @@ only works if the version actually moves when the surface does -- hence the rule
 |---|---|
 | `0.14.0` | Landmark-restricted novelty: `IWOptions.landmark_novelty_graph`, `IWOptions.landmark_novelty_table_options`, `LandmarkNoveltyTableOptions`, `LandmarkNoveltyPruningStrategy`, and the `IPruningStrategy` precheck-capability queries. |
 | `0.15.1` | Native all-private landmark grouping: `IWOptions.landmark_novelty_all_private` and the corresponding `LandmarkNoveltyPruningStrategy.make_grouping(..., all_private=True)` mode. |
+| `0.16.0` | Lifted necessary-subgoal landmarks: `LiftedFactLandmarkGenerator`, `LiftedFactLandmarkGeneratorOptions`, `LiftedLandmark`, and `FactLandmarkGraph.has_achiever_index()` / `.get_lifted_landmarks()`. |

@@ -888,13 +888,54 @@ void bind_module_definitions(nb::module_& m)
         .def("get_landmarks_achieved_by_action", &landmarks::FactLandmarkGraphImpl::get_landmarks_achieved_by_action, "action"_a)
         .def("get_landmarks_uniquely_achieved_by_action", &landmarks::FactLandmarkGraphImpl::get_landmarks_uniquely_achieved_by_action, "action"_a)
         .def("get_predecessors", &landmarks::FactLandmarkGraphImpl::get_predecessors, "landmark_atom_index"_a)
-        .def("get_successors", &landmarks::FactLandmarkGraphImpl::get_successors, "landmark_atom_index"_a);
+        .def("get_successors", &landmarks::FactLandmarkGraphImpl::get_successors, "landmark_atom_index"_a)
+        .def("has_achiever_index", &landmarks::FactLandmarkGraphImpl::has_achiever_index)
+        .def("get_lifted_landmarks", &landmarks::FactLandmarkGraphImpl::get_lifted_landmarks, nb::rv_policy::reference_internal);
 
     nb::class_<landmarks::ApproximateFactLandmarkGenerator>(m, "ApproximateFactLandmarkGenerator")  //
         .def_static("create",
                     &landmarks::ApproximateFactLandmarkGenerator::create,
                     "grounder"_a,
                     "options"_a = landmarks::FactLandmarkGeneratorOptions());
+
+    nb::class_<landmarks::LiftedLandmark>(m, "LiftedLandmark")  //
+        // `Predicate<FluentTag>` and `Object` are interned `const ...Impl*` owned by the problem's
+        // repositories; the same double-free applies to them as to `get_unique_achiever` above.
+        .def("get_predicate", [](const landmarks::LiftedLandmark& self) { return self.predicate; }, nb::rv_policy::reference)
+        .def(
+            "get_binding",
+            [](const landmarks::LiftedLandmark& self)
+            {
+                auto binding = nb::list {};
+                for (const auto object : self.binding)
+                {
+                    // A free position is `None`, not a sentinel object: the caller must not be able
+                    // to confuse it with a real binding.
+                    binding.append(object ? nb::cast(object, nb::rv_policy::reference) : nb::none());
+                }
+                return binding;
+            })
+        .def("get_member_atom_indices", [](const landmarks::LiftedLandmark& self) { return self.member_atom_indices; })
+        .def("get_fact_atom_index", [](const landmarks::LiftedLandmark& self) { return self.fact_atom_index; })
+        .def("get_parent_positions", [](const landmarks::LiftedLandmark& self) { return self.parent_positions; })
+        .def("is_initially_true", [](const landmarks::LiftedLandmark& self) { return self.initially_true; })
+        .def("__str__", [](const landmarks::LiftedLandmark& self) { return landmarks::to_string(self); })
+        .def("__repr__", [](const landmarks::LiftedLandmark& self) { return landmarks::to_string(self); });
+
+    nb::class_<landmarks::LiftedFactLandmarkGeneratorOptions>(m, "LiftedFactLandmarkGeneratorOptions")  //
+        .def(nb::init<>())
+        .def_rw("include_positive_goal_facts", &landmarks::LiftedFactLandmarkGeneratorOptions::include_positive_goal_facts)
+        .def_rw("compute_greedy_necessary_orderings", &landmarks::LiftedFactLandmarkGeneratorOptions::compute_greedy_necessary_orderings)
+        .def_rw("use_static_filter", &landmarks::LiftedFactLandmarkGeneratorOptions::use_static_filter)
+        .def_rw("max_occurrence_combinations", &landmarks::LiftedFactLandmarkGeneratorOptions::max_occurrence_combinations)
+        .def_rw("max_disjunctive_members", &landmarks::LiftedFactLandmarkGeneratorOptions::max_disjunctive_members)
+        .def_rw("promote_singleton_disjunctions", &landmarks::LiftedFactLandmarkGeneratorOptions::promote_singleton_disjunctions);
+
+    nb::class_<landmarks::LiftedFactLandmarkGenerator>(m, "LiftedFactLandmarkGenerator")  //
+        .def_static("create",
+                    &landmarks::LiftedFactLandmarkGenerator::create,
+                    "problem"_a,
+                    "options"_a = landmarks::LiftedFactLandmarkGeneratorOptions());
 
     /* Algorithms */
 

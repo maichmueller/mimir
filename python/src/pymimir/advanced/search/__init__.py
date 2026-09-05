@@ -52,6 +52,9 @@ from pymimir.pymimir.advanced.search import (
     FactLandmarkGeneratorOptions,
     FactLandmarkGraph,
     ApproximateFactLandmarkGenerator,
+    LiftedLandmark,
+    LiftedFactLandmarkGeneratorOptions,
+    LiftedFactLandmarkGenerator,
 )
 
 # SatisficingBindingGenerator

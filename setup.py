@@ -22,7 +22,7 @@ from setuptools.command.build_ext import build_ext
 #   a downstream needs to express that as a resolvable floor rather than discover
 #   it as a TypeError at the first cross-module cast.
 # 0.15.1: native all-private landmark novelty grouping for disjunctive LIW.
-__version__ = "0.15.1"
+__version__ = "0.16.0"
 HERE = Path(__file__).resolve().parent
 
 
