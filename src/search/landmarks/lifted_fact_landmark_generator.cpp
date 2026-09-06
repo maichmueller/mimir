@@ -41,6 +41,10 @@
 #include <stdexcept>
 #include <limits>
 #include <optional>
+#include <cstdio>
+#include <cstdlib>
+#include <cstdio>
+#include <cstdlib>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -1073,6 +1077,56 @@ private:
     mutable std::unordered_map<Identity, std::vector<const ObjectList*>, IdentityHash> m_buckets;
 };
 
+/// @brief Membership in `R_{¬M}`, answered by the witness store where it can and by the real
+/// restricted fixpoint where it cannot.
+///
+/// The engine records, during the ONE unrestricted fixpoint, how each atom was first derived. If
+/// that derivation tree touches no member of `M`, it is also a derivation in the restricted program
+/// and the atom is in `R_{¬M}` -- a sound "yes" with no fixpoint at all. A "don't know" is the only
+/// case that pays. Note what the store is: a property of `R`, computed once, not a cache of
+/// restricted results, so nothing here is reused across expansions in the way §9.3 forbids.
+///
+/// Results are identical to always computing the fixpoint: callers enumerate candidates from `R`,
+/// `R_{¬M} ⊆ R`, and this test is exact on every candidate.
+class RestrictedMembership
+{
+public:
+    RestrictedMembership(const RelaxedReachability& engine, GroundAtomList<FluentTag> forbidden) :
+        m_engine(engine),
+        m_forbidden(std::move(forbidden)),
+        m_witness(engine.get_table().has_witnesses() ? std::make_optional(engine.get_table().witness_query(m_forbidden)) : std::nullopt)
+    {
+    }
+
+    bool contains(Predicate<FluentTag> predicate, const ObjectList& objects)
+    {
+        if (m_witness && m_witness->avoids(predicate, objects) == WitnessVerdict::REACHABLE_WITHOUT)
+        {
+            return true;
+        }
+        return get_table().is_reachable(predicate, objects);
+    }
+
+    /// @brief The real restricted fixpoint, computed at most once. `JOINT` needs it outright --
+    /// `project` runs against a table, and a witness cannot enumerate.
+    const ReachabilityTable& get_table()
+    {
+        if (!m_table)
+        {
+            m_table.emplace(m_engine.compute_restricted(m_forbidden));
+        }
+        return *m_table;
+    }
+
+    bool computed_a_fixpoint() const { return m_table.has_value(); }
+
+private:
+    const RelaxedReachability& m_engine;
+    GroundAtomList<FluentTag> m_forbidden;
+    std::optional<WitnessQuery> m_witness;
+    std::optional<ReachabilityTable> m_table;
+};
+
 /// @brief §9.2 `per_literal` for one positive fluent precondition: a free variable may only take
 /// the objects that appear at its position in some *reachable* instance of the literal.
 ///
@@ -1081,6 +1135,7 @@ private:
 /// first achiever of anything.
 bool narrow_by_reachable_literal(Literal<FluentTag> literal,
                                  const ReachableIndex& reachable,
+                                 RestrictedMembership* membership,
                                  const ObjectList& sigma,
                                  std::vector<ObjectList>& candidates,
                                  bool& changed)
@@ -1147,6 +1202,14 @@ bool narrow_by_reachable_literal(Literal<FluentTag> literal,
             }
         }
 
+        /* Candidates come from `R`; membership in `R_{¬M}` is decided per candidate, by the witness
+           where it can answer and by the restricted fixpoint where it cannot. Enumerating the
+           restricted table directly would give the same tuples and force the fixpoint every time. */
+        if (consistent && membership && !membership->contains(predicate, objects))
+        {
+            consistent = false;
+        }
+
         if (consistent)
         {
             any_match = true;
@@ -1184,6 +1247,7 @@ bool narrow_by_reachable_literal(Literal<FluentTag> literal,
     }
     return true;
 }
+
 
 /// @brief §9.2 `joint`: narrow every free slot at once by the projection of the achiever's whole
 /// positive precondition conjunction over the reachable set.
@@ -1351,11 +1415,11 @@ bool apply_joint_narrowing(Achiever& achiever, const ReachabilityTable& table, b
 }
 
 /// @brief §9.2 over every positive fluent precondition. Returns false to drop the achiever.
-bool apply_reachability_narrowing(Achiever& achiever, const ReachableIndex& reachable, bool& changed)
+bool apply_reachability_narrowing(Achiever& achiever, const ReachableIndex& reachable, RestrictedMembership* membership, bool& changed)
 {
     for (const auto literal : achiever.schema->positive_fluent_preconditions)
     {
-        if (!narrow_by_reachable_literal(literal, reachable, achiever.sigma, achiever.candidates, changed))
+        if (!narrow_by_reachable_literal(literal, reachable, membership, achiever.sigma, achiever.candidates, changed))
         {
             return false;
         }
@@ -1374,7 +1438,8 @@ bool apply_reachability_narrowing(Achiever& achiever, const ReachableIndex& reac
 /// @brief Whichever §9.2 level the options ask for.
 bool apply_configured_narrowing(Achiever& achiever,
                                 const ReachableIndex& reachable,
-                                const ReachabilityTable& table,
+                                RestrictedMembership* membership,
+                                const ReachabilityTable& unrestricted,
                                 const LiftedFactLandmarkGeneratorOptions& options,
                                 bool& changed)
 {
@@ -1383,10 +1448,12 @@ bool apply_configured_narrowing(Achiever& achiever,
         case ReachabilityDisambiguation::OFF:
             return true;
         case ReachabilityDisambiguation::PER_LITERAL:
-            return apply_reachability_narrowing(achiever, reachable, changed);
+            return apply_reachability_narrowing(achiever, reachable, membership, changed);
         case ReachabilityDisambiguation::JOINT:
-            // Joint subsumes per-literal, so running both would only cost time.
-            return apply_joint_narrowing(achiever, table, changed);
+            /* `project` runs against a table and a witness cannot enumerate, so JOINT pays a real
+               restricted fixpoint on every expansion. That is the price of path-consistency, and
+               the ladder is where it is weighed against PER_LITERAL. */
+            return apply_joint_narrowing(achiever, membership ? membership->get_table() : unrestricted, changed);
     }
     return true;
 }
@@ -1774,6 +1841,8 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
     auto sdp_decisions = std::unordered_map<Identity, bool, IdentityHash> {};
     auto adder_cache = AdderSigmaCache {};
     auto unrestricted_index = std::optional<ReachableIndex> {};
+    auto num_expansions = size_t(0);
+    auto num_restricted_fixpoints = size_t(0);
 
     while (!worklist.empty())
     {
@@ -1824,9 +1893,14 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
          * in it and its binding survives the narrowing below. §2.1 guarantees `M ∩ I = ∅`, which is
          * what makes the restricted fixpoint well defined here.
          */
-        auto restricted = std::optional<ReachabilityTable> {};
-        auto restricted_index = std::optional<ReachableIndex> {};
+        auto membership = std::optional<RestrictedMembership> {};
         const ReachableIndex* narrowing = nullptr;
+        /* Enumeration always comes from `R`, which never changes, so its index is built once for the
+           whole extraction; `R_{¬M}` only ever decides membership of a candidate. */
+        if (relaxed && !unrestricted_index)
+        {
+            unrestricted_index.emplace(relaxed->get_table());
+        }
 
         if (relaxed && options.first_achievers_restricted)
         {
@@ -1836,9 +1910,8 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
             {
                 forbidden.push_back(problem->get_repositories().get_ground_atom<FluentTag>(member));
             }
-            restricted.emplace(relaxed->compute_restricted(forbidden));
-            restricted_index.emplace(*restricted);
-            narrowing = &*restricted_index;
+            membership.emplace(*relaxed, forbidden);
+            narrowing = &*unrestricted_index;
 
             auto member_objects_by_position = std::vector<ObjectList> {};
             member_objects_by_position.reserve(forbidden.size());
@@ -1856,7 +1929,7 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
                 {
                     changed = false;
                     keep = narrow_to_member_projection(achiever, achiever.effect_literal, member_objects_by_position, changed)
-                           && apply_configured_narrowing(achiever, *narrowing, *restricted, options, changed);
+                           && apply_configured_narrowing(achiever, *narrowing, &*membership, relaxed->get_table(), options, changed);
                     if (keep && changed)
                     {
                         keep = apply_static_filter(achiever, index);
@@ -1877,7 +1950,6 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
         }
         else if (relaxed && options.reachability_disambiguation != ReachabilityDisambiguation::OFF)
         {
-            unrestricted_index.emplace(relaxed->get_table());
             narrowing = &*unrestricted_index;
             auto surviving = std::vector<Achiever> {};
             for (auto& achiever : achievers)
@@ -1886,7 +1958,7 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
                 for (auto changed = true; keep && changed;)
                 {
                     changed = false;
-                    keep = apply_configured_narrowing(achiever, *narrowing, relaxed->get_table(), options, changed);
+                    keep = apply_configured_narrowing(achiever, *narrowing, nullptr, relaxed->get_table(), options, changed);
                     if (keep && changed)
                     {
                         keep = apply_static_filter(achiever, index);
@@ -1898,6 +1970,18 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
                 }
             }
             achievers = std::move(surviving);
+        }
+
+        if (membership)
+        {
+            ++num_expansions;
+            num_restricted_fixpoints += membership->computed_a_fixpoint() ? 1 : 0;
+        }
+
+        if (membership)
+        {
+            ++num_expansions;
+            num_restricted_fixpoints += membership->computed_a_fixpoint() ? 1 : 0;
         }
 
         /**
@@ -2091,7 +2175,7 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
                                     /* §9.3: a derived member has to hold in a state the first
                                        achiever of the PARENT could have been applicable in, which is
                                        a state of `R_{¬M}`. */
-                                    && (!restricted || restricted->is_reachable(precondition_predicate, member_objects)))
+                                    && (!membership || membership->contains(precondition_predicate, member_objects)))
                                 {
                                     members.push_back(
                                         problem->get_or_create_ground_atom<FluentTag>(precondition_predicate, member_objects)->get_index());
@@ -2257,6 +2341,30 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
             record.initially_true = false;
             records.push_back(std::move(record));
         }
+    }
+
+    /* A measurement hook for the ladder, not a runtime feature: the witness shortcut's whole claim
+       is that most expansions never need the restricted fixpoint, and that claim has to be
+       checkable per instance. */
+    if (std::getenv("MIMIR_LANDMARK_STATS"))
+    {
+        std::fprintf(stderr,
+                     "[landmark-stats] expansions=%zu restricted_fixpoints=%zu records=%zu\n",
+                     num_expansions,
+                     num_restricted_fixpoints,
+                     records.size());
+    }
+
+    /* A measurement hook for the ladder, not a runtime feature: the witness shortcut's whole claim
+       is that most expansions never need the restricted fixpoint, and that has to be checkable per
+       instance. */
+    if (std::getenv("MIMIR_LANDMARK_STATS"))
+    {
+        std::fprintf(stderr,
+                     "[landmark-stats] expansions=%zu restricted_fixpoints=%zu records=%zu\n",
+                     num_expansions,
+                     num_restricted_fixpoints,
+                     records.size());
     }
 
     auto graph = FactLandmarkGraphImpl::create(problem,
