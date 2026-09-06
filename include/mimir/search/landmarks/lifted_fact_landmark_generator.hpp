@@ -106,12 +106,25 @@ struct LiftedFactLandmarkGeneratorOptions
     /// path-consistency, and it shows exactly where two preconditions share a variable that neither
     /// constrains alone.
     ///
-    /// NOT the default yet, and the reason is a live discrepancy rather than a preference: built
-    /// against `ReachabilityTable::project`, `JOINT` drops achievers it should keep -- on blocks_4
-    /// it loses `on(b1, b3)`, `clear(b1)` and `arm-empty` as predecessors of `clear(b3)`. The
-    /// engine's projection is not at fault (asked the same conjunction directly, over the same
-    /// restricted table, it answers `{b1}`, which is exactly right), so the fault is in how this
-    /// file builds the query from an achiever, and it is unresolved. Selecting `JOINT` runs it.
+    /// `JOINT` is the default. It once dropped achievers it should keep -- on blocks_4 it lost
+    /// `on(b1, b3)`, `clear(b1)` and `arm-empty` as predecessors of `clear(b3)` -- and the engine's
+    /// projection was never at fault: an achiever whose free slots are all pinned has nothing to
+    /// narrow, and this file used to keep it without ever asking whether it was possible at all.
+    /// `putdown(b3)` survived that way and emptied the §2.4 intersection. Fixed in 444850ec3, which
+    /// tests each ground precondition against the table on that path.
+    ///
+    /// The two levels agree far more often than the theory suggests. Across 1542 train and
+    /// validation instances they extract the same landmarks on all but 91, every one of them
+    /// sokoban (91 of 99), where `PER_LITERAL` loses 59 fact landmarks -- 47 `clear`, 9 `at`, 3
+    /// `at-robot` -- and gains 8: `push` shares `?bloc` between preconditions that neither
+    /// constrains alone, which is the arc-versus-path case exactly. `JOINT` costs up to 2.24x
+    /// (miconic) and never more.
+    ///
+    /// `PER_LITERAL` is the cheaper level for a caller that wants it: its questions are pure
+    /// membership, so the unrestricted table's witness store answers most of them without a
+    /// restricted fixpoint at all (0 of 2326 expansions on miconic `test/p30-hard`, 154 of 3190 on
+    /// rovers). `JOINT` projects a join against a table, which a witness store cannot enumerate, so
+    /// it pays one real fixpoint on every expansion.
     ReachabilityDisambiguation reachability_disambiguation = ReachabilityDisambiguation::JOINT;
 
     /// @brief §9.3: restrict achievers to those that can be the FIRST to add a member.
