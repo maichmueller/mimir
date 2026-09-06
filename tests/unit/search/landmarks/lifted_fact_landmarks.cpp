@@ -34,6 +34,7 @@
 #include "mimir/search/grounders/lifted.hpp"
 #include "mimir/search/landmarks/fact_landmark_generator.hpp"
 #include "mimir/search/landmarks/fact_landmark_graph.hpp"
+#include "mimir/search/relaxed_reachability.hpp"
 #include "mimir/search/plan.hpp"
 #include "mimir/search/search_context.hpp"
 #include "mimir/search/state.hpp"
@@ -965,6 +966,7 @@ const std::vector<std::tuple<std::string, std::string, std::string>>& golden_ins
             { "landmark_lifted_unreachable_members", "test_problem.pddl", "landmark_lifted_unreachable_members" },
             { "landmark_lifted_sdp_gate", "test_problem.pddl", "landmark_lifted_sdp_gate" },
             { "landmark_lifted_sdp_gate", "test_problem_closed.pddl", "landmark_lifted_sdp_gate_closed" },
+            { "landmark_lifted_cross_city", "test_problem.pddl", "landmark_lifted_cross_city" },
             { "landmark_ipc_smallest/miconic-ipc-hard", "p30-hard.pddl", "miconic_ipc_p30_hard" },
         };
         for (const auto& domain : ipc_domains())
@@ -1001,6 +1003,63 @@ TEST(MimirTests, SearchLandmarksLiftedAllOptionsOffMatchesTheReleasedOutputTest)
         ASSERT_TRUE(in.good()) << "missing golden " << path << " -- regenerate with MIMIR_WRITE_LANDMARK_GOLDEN=1";
         const auto expected = std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
         EXPECT_EQ(rendered, expected) << domain << "/" << instance << " no longer matches the 0.16.0 output";
+    }
+}
+
+/**
+ * §9.1: drop members no reachable state holds.
+ *
+ * The static pre-pass of §2.5 asks whether a schema *could* produce an atom; this asks whether any
+ * reachable state actually does. The gap between the two is where a fluent initial atom decides the
+ * answer -- which city a truck starts in -- and no static analysis can see that.
+ */
+
+TEST(MimirTests, SearchLandmarksLiftedReachabilityFilterMembersTest)
+{
+    const auto problem = parse("landmark_lifted_cross_city");
+
+    auto filtered_options = LiftedFactLandmarkGeneratorOptions {};
+    filtered_options.reachability_disambiguation = ReachabilityDisambiguation::OFF;
+    filtered_options.first_achievers_restricted = false;
+    filtered_options.verify_pi_plus = false;
+    filtered_options.complete_fact_landmarks = CompleteFactLandmarks::OFF;
+
+    const auto unfiltered = LiftedFactLandmarkGenerator::create(problem, all_reachability_options_off());
+    const auto filtered = LiftedFactLandmarkGenerator::create(parse("landmark_lifted_cross_city"), filtered_options);
+
+    /* `t1` starts in city 1 and `DRIVE-TRUCK` never crosses `in-city`, so `at(t1, l0-1)` is in no
+       reachable state -- but `(at t1 l1-0)` is a fluent initial atom, so §2.5's static test cannot
+       exclude it and the unfiltered run proposes both trucks. */
+    const auto unfiltered_at = find_lifted(unfiltered, "at(?, l0-1)");
+    ASSERT_NE(unfiltered_at, nullptr);
+    EXPECT_EQ(unfiltered_at->member_atom_indices.size(), 2u);
+    EXPECT_TRUE(contains_atom(unfiltered, unfiltered_at->member_atom_indices, "at", { "t1", "l0-1" }));
+
+    // Filtered, only the truck that can be there survives -- and a one-member set is a fact.
+    EXPECT_EQ(find_lifted(filtered, "at(?, l0-1)"), nullptr);
+    EXPECT_NE(find_landmark(filtered, "at", { "t0", "l0-1" }), nullptr);
+    EXPECT_EQ(find_landmark(filtered, "at", { "t1", "l0-1" }), nullptr);
+
+    // ... and the same at the destination: only city 1's truck can deliver there.
+    EXPECT_NE(find_landmark(filtered, "at", { "t1", "l1-1" }), nullptr);
+    EXPECT_EQ(find_landmark(filtered, "at", { "t0", "l1-1" }), nullptr);
+
+    // Nothing that was a landmark stops being one, and no set is emptied (§9.1 says an emptied set
+    // would be a bug: the parent's first achiever's precondition instance is reachable).
+    for (const auto& members : filtered->get_disjunctive_landmarks())
+    {
+        EXPECT_FALSE(members.empty());
+    }
+    EXPECT_GE(filtered->get_landmark_atom_indices().size(), unfiltered->get_landmark_atom_indices().size());
+
+    // Every surviving member is reachable, which is the property the option exists to establish.
+    const auto engine = RelaxedReachability::create(filtered->get_problem());
+    for (const auto& members : filtered->get_disjunctive_landmarks())
+    {
+        for (const auto member : members)
+        {
+            EXPECT_TRUE(engine->is_reachable(resolve_atom(filtered, member))) << atom_signature(resolve_atom(filtered, member));
+        }
     }
 }
 

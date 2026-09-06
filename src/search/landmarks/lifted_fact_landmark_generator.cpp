@@ -1069,7 +1069,6 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
        parity still holds. Built only when some option needs it, so an all-off run does not pay for
        a fixpoint it will not read. */
     const auto relaxed = needs_relaxed_reachability(options) ? RelaxedReachability::create(problem) : nullptr;
-    (void) relaxed;
 
     const auto index = ProblemIndex(problem);
     const auto schemas = collect_schema_effects(problem);
@@ -1463,8 +1462,15 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
                                 /* Asked BEFORE interning, not after: the atoms this rejects are the
                                    ones whose interning was the cost, so testing the identity rather
                                    than the interned atom is what actually keeps them out of the
-                                   problem's repositories. */
-                                if (reachability.can_ever_hold(precondition_predicate, member_objects))
+                                   problem's repositories.
+
+                                   §9.1 runs after it, and subsumes it: the static pre-pass asks
+                                   whether a schema *could* produce the atom, this asks whether any
+                                   reachable state actually holds it. The cheap test stays in front
+                                   because it answers most candidates without touching the engine. */
+                                if (reachability.can_ever_hold(precondition_predicate, member_objects)
+                                    && (!relaxed || !options.reachability_filter_members
+                                        || relaxed->is_reachable(precondition_predicate, member_objects)))
                                 {
                                     members.push_back(
                                         problem->get_or_create_ground_atom<FluentTag>(precondition_predicate, member_objects)->get_index());
