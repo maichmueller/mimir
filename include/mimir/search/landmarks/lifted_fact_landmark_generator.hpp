@@ -32,8 +32,6 @@ enum class ReachabilityDisambiguation
     OFF,          ///< No narrowing beyond the static filter.
     PER_LITERAL,  ///< Each precondition literal narrows its own variables against the reachable set.
     JOINT,        ///< The projection of the whole precondition conjunction, never materialised.
-                  ///< NOT IMPLEMENTED YET: it needs a projected-query entry point on the engine
-                  ///< (§9.2), and `create` throws rather than quietly doing `PER_LITERAL`.
 };
 
 /// @brief §9.5: which atoms are tested against the complete Π⁺ fact-landmark characterisation.
@@ -103,8 +101,17 @@ struct LiftedFactLandmarkGeneratorOptions
 
     /// @brief §9.2: narrow an achiever's free variables to what the reachable set can supply.
     ///
-    /// Defaults to `PER_LITERAL` until `JOINT` exists, so that the default configuration is one the
-    /// generator can actually run.
+    /// `JOINT` keeps a value only when the preconditions have a COMMON solution; `PER_LITERAL` keeps
+    /// one that some tuple of each literal admits separately. The difference is arc- versus
+    /// path-consistency, and it shows exactly where two preconditions share a variable that neither
+    /// constrains alone.
+    ///
+    /// NOT the default yet, and the reason is a live discrepancy rather than a preference: built
+    /// against `ReachabilityTable::project`, `JOINT` drops achievers it should keep -- on blocks_4
+    /// it loses `on(b1, b3)`, `clear(b1)` and `arm-empty` as predecessors of `clear(b3)`. The
+    /// engine's projection is not at fault (asked the same conjunction directly, over the same
+    /// restricted table, it answers `{b1}`, which is exactly right), so the fault is in how this
+    /// file builds the query from an achiever, and it is unresolved. Selecting `JOINT` runs it.
     ReachabilityDisambiguation reachability_disambiguation = ReachabilityDisambiguation::PER_LITERAL;
 
     /// @brief §9.3: restrict achievers to those that can be the FIRST to add a member.

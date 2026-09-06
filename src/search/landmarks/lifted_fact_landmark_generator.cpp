@@ -40,6 +40,8 @@
 #include <deque>
 #include <stdexcept>
 #include <limits>
+#include <optional>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -1183,6 +1185,149 @@ bool narrow_by_reachable_literal(Literal<FluentTag> literal,
     return true;
 }
 
+/// @brief §9.2 `joint`: narrow every free slot at once by the projection of the achiever's whole
+/// positive precondition conjunction over the reachable set.
+///
+/// `per_literal` asks each literal separately and keeps a value that some tuple of *that* literal
+/// admits; `joint` keeps a value for which the literals have a common solution. The difference is
+/// the usual arc- versus path-consistency one, and it matters exactly where two preconditions share
+/// a variable that neither constrains alone. The engine answers it with the same projecting
+/// binary-join machinery it uses for rules, so the join is never materialised -- materialising it
+/// is the grounding wall this generator exists to avoid.
+bool apply_joint_narrowing(Achiever& achiever, const ReachabilityTable& table, bool& changed)
+{
+    /* Query variables are the achiever's UNBOUND slots; a slot the substitution fixed is a constant
+       in the query, which is what lets the engine cache a plan by shape and reuse it across
+       expansions that differ only in their objects. */
+    /* Only slots that actually OCCUR in a literal become query variables. A free slot the
+       preconditions never mention is unconstrained, and declaring it would make the engine project
+       an empty list for it -- which the intersection below would read as "no admissible value" and
+       drop an achiever that is perfectly fine. */
+    auto variable_of_slot = std::vector<uint32_t>(achiever.candidates.size(), std::numeric_limits<uint32_t>::max());
+    auto slot_of_variable = std::vector<Index> {};
+    const auto declare = [&](Term term)
+    {
+        if (resolve_term(term, achiever.sigma))
+        {
+            return;
+        }
+        const auto slot = term_slot(term);
+        if (slot == FREE_POSITION || slot >= variable_of_slot.size() || variable_of_slot[slot] != std::numeric_limits<uint32_t>::max())
+        {
+            return;
+        }
+        variable_of_slot[slot] = uint32_t(slot_of_variable.size());
+        slot_of_variable.push_back(Index(slot));
+    };
+    for (const auto literal : achiever.schema->positive_fluent_preconditions)
+    {
+        for (const auto term : literal->get_atom()->get_terms())
+        {
+            declare(term);
+        }
+    }
+    for (const auto literal : achiever.schema->static_literals)
+    {
+        for (const auto term : literal->get_atom()->get_terms())
+        {
+            declare(term);
+        }
+    }
+    if (slot_of_variable.empty())
+    {
+        return true;  // nothing free that the preconditions constrain
+    }
+
+    auto query = ConjunctiveQuery {};
+    query.num_variables = slot_of_variable.size();
+
+    const auto to_term = [&](Term term) -> std::optional<QueryTerm>
+    {
+        if (const auto object = resolve_term(term, achiever.sigma))
+        {
+            return QueryTerm::of_object(object);
+        }
+        const auto slot = term_slot(term);
+        if (slot == FREE_POSITION || slot >= variable_of_slot.size() || variable_of_slot[slot] == std::numeric_limits<uint32_t>::max())
+        {
+            return std::nullopt;  // not a slot of this schema: the query cannot speak about it
+        }
+        return QueryTerm::of_variable(variable_of_slot[slot]);
+    };
+
+    const auto add_literal = [&](auto literal, bool is_static) -> bool
+    {
+        using LiteralTag = typename std::decay_t<decltype(*literal)>::Type;
+        auto terms = std::vector<QueryTerm> {};
+        for (const auto term : literal->get_atom()->get_terms())
+        {
+            const auto query_term = to_term(term);
+            if (!query_term.has_value())
+            {
+                return true;  // skip a literal the query cannot express; skipping only loses precision
+            }
+            terms.push_back(*query_term);
+        }
+        if constexpr (std::is_same_v<LiteralTag, StaticTag>)
+        {
+            if (is_equality_predicate(literal->get_atom()->get_predicate()) && terms.size() == 2)
+            {
+                // `=` is a builtin of the query, not a relation to look up.
+                (literal->get_polarity() ? query.equalities : query.disequalities).emplace_back(terms[0], terms[1]);
+                return true;
+            }
+        }
+        if (!is_static && !literal->get_polarity())
+        {
+            return true;  // a negative fluent literal is meaningless under the delete relaxation
+        }
+        query.literals.push_back(QueryLiteral { literal->get_atom()->get_predicate(), std::move(terms), literal->get_polarity() });
+        return true;
+    };
+
+    for (const auto literal : achiever.schema->positive_fluent_preconditions)
+    {
+        add_literal(literal, false);
+    }
+    for (const auto literal : achiever.schema->static_literals)
+    {
+        add_literal(literal, true);
+    }
+
+    auto projection = table.project(query);
+    for (size_t variable = 0; variable < slot_of_variable.size() && variable < projection.size(); ++variable)
+    {
+        const auto slot = slot_of_variable[variable];
+        /* The engine sorts by its own object ids, which are not this file's `get_index()` order, and
+           `set_intersection` on two differently ordered ranges silently returns nonsense. */
+        auto& admissible = projection[variable];
+        std::sort(admissible.begin(), admissible.end(), by_object_index);
+        auto intersected = ObjectList {};
+        std::set_intersection(achiever.candidates[slot].begin(),
+                              achiever.candidates[slot].end(),
+                              admissible.begin(),
+                              admissible.end(),
+                              std::back_inserter(intersected),
+                              by_object_index);
+        if (intersected.empty())
+        {
+            return false;
+        }
+        changed |= (intersected.size() < achiever.candidates[slot].size());
+        achiever.candidates[slot] = std::move(intersected);
+    }
+
+    for (size_t slot = 0; slot < achiever.candidates.size(); ++slot)
+    {
+        if (!achiever.sigma[slot] && achiever.candidates[slot].size() == 1)
+        {
+            achiever.sigma[slot] = achiever.candidates[slot].front();
+            changed = true;
+        }
+    }
+    return true;
+}
+
 /// @brief §9.2 over every positive fluent precondition. Returns false to drop the achiever.
 bool apply_reachability_narrowing(Achiever& achiever, const ReachableIndex& reachable, bool& changed)
 {
@@ -1200,6 +1345,26 @@ bool apply_reachability_narrowing(Achiever& achiever, const ReachableIndex& reac
             achiever.sigma[slot] = achiever.candidates[slot].front();
             changed = true;
         }
+    }
+    return true;
+}
+
+/// @brief Whichever §9.2 level the options ask for.
+bool apply_configured_narrowing(Achiever& achiever,
+                                const ReachableIndex& reachable,
+                                const ReachabilityTable& table,
+                                const LiftedFactLandmarkGeneratorOptions& options,
+                                bool& changed)
+{
+    switch (options.reachability_disambiguation)
+    {
+        case ReachabilityDisambiguation::OFF:
+            return true;
+        case ReachabilityDisambiguation::PER_LITERAL:
+            return apply_reachability_narrowing(achiever, reachable, changed);
+        case ReachabilityDisambiguation::JOINT:
+            // Joint subsumes per-literal, so running both would only cost time.
+            return apply_joint_narrowing(achiever, table, changed);
     }
     return true;
 }
@@ -1374,11 +1539,6 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
        tuples rather than interning atoms, so the "interns nothing beyond the grounder's universe"
        parity still holds. Built only when some option needs it, so an all-off run does not pay for
        a fixpoint it will not read. */
-    if (options.reachability_disambiguation == ReachabilityDisambiguation::JOINT)
-    {
-        throw std::logic_error("reachability_disambiguation=JOINT is not implemented yet (it needs a projected-query "
-                               "entry point on RelaxedReachability); use PER_LITERAL");
-    }
     const auto relaxed = needs_relaxed_reachability(options) ? RelaxedReachability::create(problem) : nullptr;
 
     const auto index = ProblemIndex(problem);
@@ -1674,7 +1834,7 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
                 {
                     changed = false;
                     keep = narrow_to_member_projection(achiever, achiever.effect_literal, member_objects_by_position, changed)
-                           && apply_reachability_narrowing(achiever, *narrowing, changed);
+                           && apply_configured_narrowing(achiever, *narrowing, *restricted, options, changed);
                     if (keep && changed)
                     {
                         keep = apply_static_filter(achiever, index);
@@ -1704,7 +1864,7 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
                 for (auto changed = true; keep && changed;)
                 {
                     changed = false;
-                    keep = apply_reachability_narrowing(achiever, *narrowing, changed);
+                    keep = apply_configured_narrowing(achiever, *narrowing, relaxed->get_table(), options, changed);
                     if (keep && changed)
                     {
                         keep = apply_static_filter(achiever, index);
