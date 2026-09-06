@@ -153,6 +153,16 @@ inline bool needs_relaxed_reachability(const LiftedFactLandmarkGeneratorOptions&
 /// superset of the reachable ones. It also does not inherit the grounded generator's
 /// h_max-minimal-achiever approximation, which reports initially-true atoms (blocksworld
 /// `ontable(A)`) as landmarks they are not.
+/// @brief §9.4: certify every non-goal, non-initial fact landmark of `graph` against the complete
+/// delete-relaxation characterisation -- the goal must be unreachable once the atom's producers are.
+///
+/// Declared here rather than hidden in the generator because it is a check of the *generator*, and a
+/// check nobody can run on a graph of their own choosing is a check nobody can trust. A caller that
+/// builds a graph by hand can point it at that graph; the generator points it at its own output.
+///
+/// @throws std::logic_error naming the first atom whose removal leaves the goal reachable.
+extern void verify_pi_plus_fact_landmarks(const formalism::Problem& problem, const FactLandmarkGraph& graph);
+
 class LiftedFactLandmarkGenerator
 {
 public:

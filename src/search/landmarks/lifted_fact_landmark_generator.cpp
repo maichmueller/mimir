@@ -1330,6 +1330,43 @@ private:
 
 }
 
+void verify_pi_plus_fact_landmarks(const Problem& problem, const FactLandmarkGraph& graph)
+{
+    const auto engine = RelaxedReachability::create(problem);
+    if (!engine->is_goal_reachable())
+    {
+        return;  // no relaxed plan at all: every atom is vacuously a landmark and the test says nothing
+    }
+
+    const auto& repositories = problem->get_repositories();
+    auto initial = std::unordered_set<Index> {};
+    for (const auto atom : problem->get_fluent_initial_atoms())
+    {
+        initial.insert(atom->get_index());
+    }
+    const auto goal = problem->get_goal_condition()->get_precondition<PositiveTag, FluentTag>();
+    const auto goal_atoms = std::unordered_set<Index>(goal.begin(), goal.end());
+
+    for (const auto atom_index : graph->get_landmark_atom_indices())
+    {
+        /* A goal atom is a landmark by definition and removing its producers makes the goal
+           unreachable for a reason that says nothing about the extraction; an initially-true one is
+           not a Π⁺ landmark at all (it is already there), and §2.1 records it deliberately. */
+        if (initial.count(atom_index) || goal_atoms.count(atom_index))
+        {
+            continue;
+        }
+        const auto atom = repositories.get_ground_atom<FluentTag>(atom_index);
+        if (engine->is_goal_reachable_without(GroundAtomList<FluentTag> { atom }))
+        {
+            throw std::logic_error("lifted landmark extraction produced a fact landmark that is not one: the goal is "
+                                   "still delete-relaxed reachable without "
+                                   + atom->get_predicate()->get_name() + " over its own objects (atom index "
+                                   + std::to_string(atom_index) + ")");
+        }
+    }
+}
+
 FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, const LiftedFactLandmarkGeneratorOptions& options)
 {
     /* One engine per extraction, built from the same `Problem` and never from a grounder: the whole
@@ -1466,8 +1503,16 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
             sort_unique(members);
             if (members.empty())
             {
-                /* No statically consistent achiever instance in this instance. If the parent really
-                   is a landmark the task is unsolvable, which is not this code's business. */
+                /* The parent's first achiever's precondition instance is reachable by construction,
+                   so an empty member set contradicts the proof -- unless the task has no relaxed
+                   plan at all, in which case every landmark here is vacuous and the emptiness says
+                   nothing. Exact, not silent: with the engine live we can tell the two apart. */
+                if (relaxed && relaxed->is_goal_reachable())
+                {
+                    throw std::logic_error("lifted landmark extraction derived an empty member set for "
+                                           + to_string(LiftedLandmark { predicate, binding, {}, std::nullopt, {}, false })
+                                           + ", which contradicts the reachability of the parent's first achiever");
+                }
                 return;
             }
             if (members.size() == 1)
@@ -1590,6 +1635,7 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
                 member_objects_by_position.push_back(atom->get_objects());
             }
 
+            const auto surviving_before_narrowing = achievers;
             auto surviving = std::vector<Achiever> {};
             for (auto& achiever : achievers)
             {
@@ -1608,6 +1654,12 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
                 {
                     surviving.push_back(std::move(achiever));
                 }
+            }
+            if (surviving.empty() && !surviving_before_narrowing.empty() && relaxed->is_goal_reachable())
+            {
+                throw std::logic_error("§9.3 dropped every achiever of "
+                                       + to_string(LiftedLandmark { predicate, binding, {}, std::nullopt, {}, false })
+                                       + ", which contradicts the reachability of its first member-adder");
             }
             achievers = std::move(surviving);
         }
@@ -1890,12 +1942,23 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
         sort_unique(edges);
     }
 
-    return FactLandmarkGraphImpl::create(problem,
-                                         std::move(landmark_atom_indices),
-                                         std::move(disjunctive_landmarks),
-                                         std::move(predecessors_by_atom),
-                                         std::move(successors_by_atom),
-                                         std::move(records));
+    auto graph = FactLandmarkGraphImpl::create(problem,
+                                              std::move(landmark_atom_indices),
+                                              std::move(disjunctive_landmarks),
+                                              std::move(predecessors_by_atom),
+                                              std::move(successors_by_atom),
+                                              std::move(records));
+
+    /* §9.4. On by default so that a rule which breaks soundness is caught on the first instance
+       that exercises it rather than in an evaluation months later. It cannot use the witness
+       shortcut: a witness can only certify that an atom IS reachable without `f`, and this needs
+       the goal to be BLOCKED, which only the full restricted fixpoint shows. */
+    if (options.verify_pi_plus)
+    {
+        verify_pi_plus_fact_landmarks(problem, graph);
+    }
+
+    return graph;
 }
 
 }

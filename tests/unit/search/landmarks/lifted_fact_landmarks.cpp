@@ -26,6 +26,7 @@
 #include "mimir/formalism/object.hpp"
 #include "mimir/formalism/type.hpp"
 #include "mimir/formalism/parser.hpp"
+#include "mimir/formalism/domain.hpp"
 #include "mimir/formalism/predicate.hpp"
 #include "mimir/formalism/problem.hpp"
 #include "mimir/formalism/repositories.hpp"
@@ -1134,6 +1135,47 @@ TEST(MimirTests, SearchLandmarksLiftedFirstAchieversSubsumeTheSyntacticRuleTest)
         const auto landmarks = LiftedFactLandmarkGenerator::create(parse(domain));
         EXPECT_NE(find_landmark(landmarks, predicate_name, object_names), nullptr) << domain << " " << predicate_name;
     }
+}
+
+/**
+ * §9.4: certify every extracted fact against the complete Π⁺ characterisation.
+ */
+
+TEST(MimirTests, SearchLandmarksLiftedVerifyPiPlusTest)
+{
+    const auto problem = parse("blocks_4");
+
+    // The generator's own output passes -- which is what having it on by default asserts on every
+    // fixture in this file, and what makes the negative case below meaningful.
+    EXPECT_NO_THROW(verify_pi_plus_fact_landmarks(problem, LiftedFactLandmarkGenerator::create(problem)));
+
+    /* A graph built by hand around an atom that is not a landmark. `on(b1, b2)` is reachable and the
+       goal does not need it, so the certification has to refuse it and name it. The check is a free
+       function precisely so this can be written without a back door into the generator. */
+    const auto on_predicate = LiftedFactLandmarkGenerator::create(problem)->get_problem()->get_domain()->get_predicate<FluentTag>("on");
+    const auto b1 = problem->get_problem_or_domain_object("b1");
+    const auto b2 = problem->get_problem_or_domain_object("b2");
+    const auto not_a_landmark = problem->get_or_create_ground_atom<FluentTag>(on_predicate, ObjectList { b1, b2 });
+
+    const auto unsound = FactLandmarkGraphImpl::create(problem, IndexList { not_a_landmark->get_index() }, {});
+    EXPECT_THROW(verify_pi_plus_fact_landmarks(problem, unsound), std::logic_error);
+
+    try
+    {
+        verify_pi_plus_fact_landmarks(problem, unsound);
+        ADD_FAILURE() << "expected the certification to refuse a non-landmark";
+    }
+    catch (const std::logic_error& error)
+    {
+        EXPECT_NE(std::string(error.what()).find("on"), std::string::npos) << error.what();
+    }
+
+    // A goal atom and an initially-true atom are exempt, for different reasons: the first is a
+    // landmark by definition, the second is not a Π⁺ landmark at all and §2.1 records it anyway.
+    const auto goal_only = FactLandmarkGraphImpl::create(
+        problem, IndexList(problem->get_goal_condition()->get_precondition<PositiveTag, FluentTag>().begin(),
+                           problem->get_goal_condition()->get_precondition<PositiveTag, FluentTag>().end()), {});
+    EXPECT_NO_THROW(verify_pi_plus_fact_landmarks(problem, goal_only));
 }
 
 /**
