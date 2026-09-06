@@ -365,3 +365,68 @@ def test_a_self_dependent_precondition_fixes_the_ferry_location():
     assert ("empty-ferry", ()) in predecessors
     assert ("at", ("car1", "loc3")) in predecessors
     assert _sets_over_predicate(landmarks, "at-ferry") == []
+
+
+def test_the_reachability_options_are_on_the_python_surface():
+    """ §9.7: every option reachable from Python, with the generator's own defaults. """
+    options = search.LiftedFactLandmarkGeneratorOptions()
+    assert options.reachability_filter_members is True
+    assert options.reachability_disambiguation == search.ReachabilityDisambiguation.PER_LITERAL
+    assert options.first_achievers_restricted is True
+    assert options.verify_pi_plus is True
+    assert options.complete_fact_landmarks == search.CompleteFactLandmarks.MEMBERS
+
+    # JOINT is on the enum and refused by the generator until the engine can project a query, so a
+    # caller that asks for it is told rather than quietly given the weaker rule.
+    options.reachability_disambiguation = search.ReachabilityDisambiguation.JOINT
+    with pytest.raises(Exception):
+        search.LiftedFactLandmarkGenerator.create(_parse("blocks_4"), options)
+
+
+def test_first_achievers_restricted_closes_the_cross_city_chain():
+    """ Python parity with SearchLandmarksLiftedFirstAchieversRestrictedTest. """
+    problem = _parse("landmark_lifted_first_achiever_chain")
+    default = search.LiftedFactLandmarkGenerator.create(problem)
+
+    off = search.LiftedFactLandmarkGeneratorOptions()
+    off.reachability_filter_members = False
+    off.reachability_disambiguation = search.ReachabilityDisambiguation.OFF
+    off.first_achievers_restricted = False
+    off.verify_pi_plus = False
+    off.complete_fact_landmarks = search.CompleteFactLandmarks.OFF
+    without = search.LiftedFactLandmarkGenerator.create(_parse("landmark_lifted_first_achiever_chain"), off)
+
+    assert _find_landmark(without, "at", ["p0", "l1-0"]) is None
+    assert _find_landmark(default, "at", ["p0", "l1-0"]) is not None
+    assert _find_landmark(default, "at", ["t1", "l1-3"]) is not None
+
+
+def test_the_complete_test_promotes_a_member_and_collapses_its_set():
+    """ Python parity with SearchLandmarksLiftedCompleteFactLandmarksTest. """
+    off = search.LiftedFactLandmarkGeneratorOptions()
+    off.complete_fact_landmarks = search.CompleteFactLandmarks.OFF
+
+    without = search.LiftedFactLandmarkGenerator.create(_parse("landmark_lifted_complete_member"), off)
+    with_members = search.LiftedFactLandmarkGenerator.create(_parse("landmark_lifted_complete_member"))
+
+    assert len(_sets_over_predicate(without, "a")) == 1
+    assert _find_landmark(without, "a", ["t1"]) is None
+
+    assert _sets_over_predicate(with_members, "a") == []
+    assert _find_landmark(with_members, "a", ["t1"]) is not None
+    assert _find_landmark(with_members, "a", ["t2"]) is None
+
+
+def test_verify_pi_plus_refuses_a_hand_built_non_landmark():
+    """ Python parity with SearchLandmarksLiftedVerifyPiPlusTest. """
+    problem = _parse("blocks_4")
+    search.verify_pi_plus_fact_landmarks(problem, search.LiftedFactLandmarkGenerator.create(problem))
+
+    on_predicate = problem.get_domain().get_fluent_predicate("on")
+    b1 = problem.get_problem_or_domain_object("b1")
+    b2 = problem.get_problem_or_domain_object("b2")
+    not_a_landmark = problem.get_or_create_ground_atom(on_predicate, [b1, b2])
+
+    unsound = search.FactLandmarkGraph.create(problem, [not_a_landmark.get_index()], [])
+    with pytest.raises(Exception):
+        search.verify_pi_plus_fact_landmarks(problem, unsound)

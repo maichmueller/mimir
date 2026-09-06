@@ -889,6 +889,17 @@ void bind_module_definitions(nb::module_& m)
         .def("get_landmarks_uniquely_achieved_by_action", &landmarks::FactLandmarkGraphImpl::get_landmarks_uniquely_achieved_by_action, "action"_a)
         .def("get_predecessors", &landmarks::FactLandmarkGraphImpl::get_predecessors, "landmark_atom_index"_a)
         .def("get_successors", &landmarks::FactLandmarkGraphImpl::get_successors, "landmark_atom_index"_a)
+        // The §3 factory: a graph from atom indices, with no grounder anywhere. On the surface
+        // because `verify_pi_plus_fact_landmarks` is only trustworthy if a caller can point it at a
+        // graph of their own making.
+        .def_static("create",
+                    &landmarks::FactLandmarkGraphImpl::create,
+                    "problem"_a,
+                    "landmark_atom_indices"_a,
+                    "disjunctive_landmarks"_a,
+                    "predecessors_by_atom"_a = std::vector<IndexList> {},
+                    "successors_by_atom"_a = std::vector<IndexList> {},
+                    "lifted_landmarks"_a = std::vector<landmarks::LiftedLandmark> {})
         .def("has_achiever_index", &landmarks::FactLandmarkGraphImpl::has_achiever_index)
         .def("get_lifted_landmarks", &landmarks::FactLandmarkGraphImpl::get_lifted_landmarks, nb::rv_policy::reference_internal);
 
@@ -922,8 +933,27 @@ void bind_module_definitions(nb::module_& m)
         .def("__str__", [](const landmarks::LiftedLandmark& self) { return landmarks::to_string(self); })
         .def("__repr__", [](const landmarks::LiftedLandmark& self) { return landmarks::to_string(self); });
 
+    nb::enum_<landmarks::ReachabilityDisambiguation>(m, "ReachabilityDisambiguation")
+        .value("OFF", landmarks::ReachabilityDisambiguation::OFF)
+        .value("PER_LITERAL", landmarks::ReachabilityDisambiguation::PER_LITERAL)
+        // JOINT is accepted by the enum and refused by the generator until the engine exposes a
+        // projected query; see LiftedFactLandmarkGeneratorOptions.
+        .value("JOINT", landmarks::ReachabilityDisambiguation::JOINT);
+
+    nb::enum_<landmarks::CompleteFactLandmarks>(m, "CompleteFactLandmarks")
+        .value("OFF", landmarks::CompleteFactLandmarks::OFF)
+        .value("MEMBERS", landmarks::CompleteFactLandmarks::MEMBERS)
+        .value("ALL", landmarks::CompleteFactLandmarks::ALL);
+
+    m.def("verify_pi_plus_fact_landmarks", &landmarks::verify_pi_plus_fact_landmarks, "problem"_a, "graph"_a);
+
     nb::class_<landmarks::LiftedFactLandmarkGeneratorOptions>(m, "LiftedFactLandmarkGeneratorOptions")  //
         .def(nb::init<>())
+        .def_rw("reachability_filter_members", &landmarks::LiftedFactLandmarkGeneratorOptions::reachability_filter_members)
+        .def_rw("reachability_disambiguation", &landmarks::LiftedFactLandmarkGeneratorOptions::reachability_disambiguation)
+        .def_rw("first_achievers_restricted", &landmarks::LiftedFactLandmarkGeneratorOptions::first_achievers_restricted)
+        .def_rw("verify_pi_plus", &landmarks::LiftedFactLandmarkGeneratorOptions::verify_pi_plus)
+        .def_rw("complete_fact_landmarks", &landmarks::LiftedFactLandmarkGeneratorOptions::complete_fact_landmarks)
         .def_rw("include_positive_goal_facts", &landmarks::LiftedFactLandmarkGeneratorOptions::include_positive_goal_facts)
         .def_rw("compute_greedy_necessary_orderings", &landmarks::LiftedFactLandmarkGeneratorOptions::compute_greedy_necessary_orderings)
         .def_rw("use_static_filter", &landmarks::LiftedFactLandmarkGeneratorOptions::use_static_filter)

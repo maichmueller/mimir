@@ -64,6 +64,9 @@ from pymimir.pymimir.advanced.search import (
     LiftedLandmark,
     LiftedFactLandmarkGeneratorOptions,
     LiftedFactLandmarkGenerator,
+    ReachabilityDisambiguation,
+    CompleteFactLandmarks,
+    verify_pi_plus_fact_landmarks,
 )
 
 # SatisficingBindingGenerator
