@@ -112,7 +112,7 @@ struct LiftedFactLandmarkGeneratorOptions
     /// engine's projection is not at fault (asked the same conjunction directly, over the same
     /// restricted table, it answers `{b1}`, which is exactly right), so the fault is in how this
     /// file builds the query from an achiever, and it is unresolved. Selecting `JOINT` runs it.
-    ReachabilityDisambiguation reachability_disambiguation = ReachabilityDisambiguation::PER_LITERAL;
+    ReachabilityDisambiguation reachability_disambiguation = ReachabilityDisambiguation::JOINT;
 
     /// @brief §9.3: restrict achievers to those that can be the FIRST to add a member.
     ///

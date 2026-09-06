@@ -154,6 +154,18 @@ bool has_duplicates(IndexList indices)
     return std::adjacent_find(indices.begin(), indices.end()) != indices.end();
 }
 
+/// @brief Every option off: the pre-0.17 generator exactly.
+LiftedFactLandmarkGeneratorOptions all_reachability_options_off()
+{
+    auto options = LiftedFactLandmarkGeneratorOptions {};
+    options.reachability_filter_members = false;
+    options.reachability_disambiguation = ReachabilityDisambiguation::OFF;
+    options.first_achievers_restricted = false;
+    options.verify_pi_plus = false;
+    options.complete_fact_landmarks = CompleteFactLandmarks::OFF;
+    return options;
+}
+
 Problem parse(const std::string& domain_name, const std::string& problem_filename = "test_problem.pddl")
 {
     const auto domain_file = fs::path(std::string(DATA_DIR) + domain_name + "/domain.pddl");
@@ -643,7 +655,11 @@ TEST(MimirTests, SearchLandmarksLiftedChildsnackTest)
 
 TEST(MimirTests, SearchLandmarksLiftedStaticFilterTest)
 {
-    auto without_filter = LiftedFactLandmarkGeneratorOptions {};
+    /* §2.3's own configuration. The reachability options subsume the static filter -- with them on,
+       `achieve-slow` is dropped for being unreachable whether or not the filter looked at it -- so
+       running this under the default would be testing §9, not §2.3. */
+    auto with_filter = all_reachability_options_off();
+    auto without_filter = all_reachability_options_off();
     without_filter.use_static_filter = false;
 
     {
@@ -651,7 +667,7 @@ TEST(MimirTests, SearchLandmarksLiftedStaticFilterTest)
 
         // `achieve-slow` needs `enabled(t1)`, which the instance does not contain, so `achieve-fast`
         // is the only achiever left and both of its preconditions are mandatory.
-        const auto filtered = LiftedFactLandmarkGenerator::create(problem);
+        const auto filtered = LiftedFactLandmarkGenerator::create(problem, with_filter);
         EXPECT_NE(find_landmark(filtered, "p", { "t1" }), nullptr);
         EXPECT_NE(find_landmark(filtered, "ready", { "t1" }), nullptr);
 
@@ -669,7 +685,7 @@ TEST(MimirTests, SearchLandmarksLiftedStaticFilterTest)
         // without it, the place stays free and the two schemas share no gluten predicate at all.
         const auto problem = parse("landmark_ipc_smallest/childsnack-ipc", "p69.pddl");
 
-        const auto filtered = LiftedFactLandmarkGenerator::create(problem);
+        const auto filtered = LiftedFactLandmarkGenerator::create(problem, with_filter);
         EXPECT_NE(find_lifted(filtered, "at(?, table1)"), nullptr);
         EXPECT_EQ(find_lifted(filtered, "at(?, ?)"), nullptr);
         EXPECT_EQ(sets_over_predicate(filtered, "no_gluten_sandwich").size(), 1u);
@@ -932,17 +948,6 @@ TEST(MimirTests, SearchLandmarksLiftedGraphContractTest)
  * -- which should only ever be run when a change to the *released* behaviour is intended.
  */
 
-/// @brief Every option off: the pre-0.17 generator exactly.
-LiftedFactLandmarkGeneratorOptions all_reachability_options_off()
-{
-    auto options = LiftedFactLandmarkGeneratorOptions {};
-    options.reachability_filter_members = false;
-    options.reachability_disambiguation = ReachabilityDisambiguation::OFF;
-    options.first_achievers_restricted = false;
-    options.verify_pi_plus = false;
-    options.complete_fact_landmarks = CompleteFactLandmarks::OFF;
-    return options;
-}
 
 namespace
 {
@@ -1568,6 +1573,17 @@ TEST(MimirTests, SearchLandmarksLiftedSoundnessOracleTest)
             auto without_member_filter = LiftedFactLandmarkGeneratorOptions {};
             without_member_filter.reachability_filter_members = false;
             configurations.emplace_back("-1", without_member_filter);
+        }
+        {
+            // The two §9.2 levels are priced against each other by the ladder, so both are swept.
+            auto per_literal = LiftedFactLandmarkGeneratorOptions {};
+            per_literal.reachability_disambiguation = ReachabilityDisambiguation::PER_LITERAL;
+            configurations.emplace_back("per_literal", per_literal);
+        }
+        {
+            auto without_disambiguation = LiftedFactLandmarkGeneratorOptions {};
+            without_disambiguation.reachability_disambiguation = ReachabilityDisambiguation::OFF;
+            configurations.emplace_back("-2", without_disambiguation);
         }
         configurations.emplace_back("all-off", all_reachability_options_off());
 

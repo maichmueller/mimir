@@ -1235,7 +1235,29 @@ bool apply_joint_narrowing(Achiever& achiever, const ReachabilityTable& table, b
     }
     if (slot_of_variable.empty())
     {
-        return true;  // nothing free that the preconditions constrain
+        /* Nothing free to narrow -- but the achiever still has to be POSSIBLE, and returning early
+           here is what made `JOINT` keep achievers `PER_LITERAL` drops. `clear(b3)` on blocksworld
+           is the case: `putdown(b3)` needs `holding(b3)`, which no state of `R_{¬clear(b3)}` holds,
+           and once it survives the §2.4 intersection over it and `unstack` is empty and the whole
+           chain below `clear(b3)` disappears. A ground conjunction needs no join to check. */
+        for (const auto literal : achiever.schema->positive_fluent_preconditions)
+        {
+            auto objects = ObjectList {};
+            objects.reserve(literal->get_atom()->get_terms().size());
+            for (const auto term : literal->get_atom()->get_terms())
+            {
+                objects.push_back(resolve_term(term, achiever.sigma));
+            }
+            if (std::any_of(objects.begin(), objects.end(), [](Object object) { return object == nullptr; }))
+            {
+                continue;  // a term outside this schema's slots: nothing to check
+            }
+            if (!table.is_reachable(literal->get_atom()->get_predicate(), objects))
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     auto query = ConjunctiveQuery {};
