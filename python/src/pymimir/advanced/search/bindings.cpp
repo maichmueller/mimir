@@ -975,7 +975,8 @@ void bind_module_definitions(nb::module_& m)
 
     nb::class_<RelaxedReachabilityOptions>(m, "RelaxedReachabilityOptions")  //
         .def(nb::init<>())
-        .def_rw("enforce_negative_static_conditions", &RelaxedReachabilityOptions::enforce_negative_static_conditions);
+        .def_rw("enforce_negative_static_conditions", &RelaxedReachabilityOptions::enforce_negative_static_conditions)
+        .def_rw("record_witnesses", &RelaxedReachabilityOptions::record_witnesses);
 
     nb::class_<RelaxedReachabilityStatistics>(m, "RelaxedReachabilityStatistics")  //
         .def_ro("num_rules", &RelaxedReachabilityStatistics::num_rules)
@@ -1010,6 +1011,44 @@ void bind_module_definitions(nb::module_& m)
         // hand out dangling iterators.
         ;
 
+    nb::enum_<WitnessVerdict>(m, "WitnessVerdict")
+        .value("REACHABLE_WITHOUT", WitnessVerdict::REACHABLE_WITHOUT)
+        .value("UNKNOWN", WitnessVerdict::UNKNOWN);
+
+    nb::class_<QueryTerm>(m, "QueryTerm")  //
+        .def_static("of_object", &QueryTerm::of_object, "object"_a)
+        .def_static("of_variable", &QueryTerm::of_variable, "index"_a)
+        .def("is_variable", &QueryTerm::is_variable)
+        .def("get_object", &QueryTerm::get_object, nb::rv_policy::reference)
+        .def("get_variable", &QueryTerm::get_variable);
+
+    nb::class_<QueryLiteral>(m, "QueryLiteral")  //
+        .def(nb::init<>())
+        .def_rw("predicate", &QueryLiteral::predicate)
+        .def_rw("terms", &QueryLiteral::terms)
+        .def_rw("polarity", &QueryLiteral::polarity);
+
+    nb::class_<ConjunctiveQuery>(m, "ConjunctiveQuery")  //
+        .def(nb::init<>())
+        .def_rw("num_variables", &ConjunctiveQuery::num_variables)
+        .def_rw("literals", &ConjunctiveQuery::literals)
+        .def_rw("equalities", &ConjunctiveQuery::equalities)
+        .def_rw("disequalities", &ConjunctiveQuery::disequalities);
+
+    // A witness query points into the table it was opened on, so Python must keep that table alive.
+    nb::class_<WitnessQuery>(m, "WitnessQuery")  //
+        .def("avoids",
+             nb::overload_cast<Predicate<FluentTag>, const ObjectList&>(&WitnessQuery::avoids, nb::const_),
+             "predicate"_a,
+             "objects"_a)
+        .def("avoids",
+             nb::overload_cast<Predicate<DerivedTag>, const ObjectList&>(&WitnessQuery::avoids, nb::const_),
+             "predicate"_a,
+             "objects"_a)
+        .def("avoids", nb::overload_cast<GroundAtom<FluentTag>>(&WitnessQuery::avoids, nb::const_), "atom"_a)
+        .def("avoids", nb::overload_cast<GroundAtom<DerivedTag>>(&WitnessQuery::avoids, nb::const_), "atom"_a)
+        .def("get_num_memoised", &WitnessQuery::get_num_memoised);
+
     nb::class_<ReachabilityTable>(m, "ReachabilityTable")  //
         .def("is_reachable",
              nb::overload_cast<Predicate<FluentTag>, const ObjectList&>(&ReachabilityTable::is_reachable, nb::const_),
@@ -1033,7 +1072,20 @@ void bind_module_definitions(nb::module_& m)
         .def("get_num_reachable_fluent_atoms", &ReachabilityTable::get_num_reachable_fluent_atoms)
         .def("get_num_reachable_derived_atoms", &ReachabilityTable::get_num_reachable_derived_atoms)
         .def("is_goal_reachable", &ReachabilityTable::is_goal_reachable)
-        .def("get_num_fixpoint_rounds", &ReachabilityTable::get_num_fixpoint_rounds);
+        .def("get_num_fixpoint_rounds", &ReachabilityTable::get_num_fixpoint_rounds)
+        .def("project", &ReachabilityTable::project, "query"_a)
+        .def("has_witnesses", &ReachabilityTable::has_witnesses)
+        .def("get_num_witnesses", &ReachabilityTable::get_num_witnesses)
+        .def("witness_query",
+             nb::overload_cast<const ForbiddenAtomList&>(&ReachabilityTable::witness_query, nb::const_),
+             nb::rv_policy::move,
+             nb::keep_alive<0, 1>(),
+             "forbidden"_a)
+        .def("witness_query",
+             nb::overload_cast<const GroundAtomList<FluentTag>&>(&ReachabilityTable::witness_query, nb::const_),
+             nb::rv_policy::move,
+             nb::keep_alive<0, 1>(),
+             "forbidden"_a);
 
     nb::class_<RelaxedReachability>(m, "RelaxedReachability")  //
         .def_static("create", &RelaxedReachability::create, "problem"_a, "options"_a = RelaxedReachabilityOptions())

@@ -207,6 +207,68 @@ and not conversely. Both directions are sound for declaring a landmark; the atom
 reading is the more complete of the two. The test suite asserts the implication
 on every query and reports how often the two verdicts differ (§5).
 
+## 4b. Projected conjunctive queries
+
+`ReachabilityTable::project(const ConjunctiveQuery&)` answers, for each query variable, the objects it can
+take in *some* satisfying assignment of the whole conjunction over that table's relations. A query is a
+conjunction of positive literals over static, fluent and derived predicates, plus `=` and `!=` between terms,
+plus negative static literals where the engine enforces them for rules; terms are objects or variable indices.
+This backs the lifted generator's `reachability_disambiguation = JOINT`: the query is an achiever's
+precondition conjunction under a partial substitution, asked once per achiever per expansion.
+
+It is evaluated with the same machinery as the fixpoint and never materialises the join. One unary head
+relation is reserved per variable, each is planned as its own rule over the shared body -- so each chain
+projects away everything its own head does not need -- and the prefix memo shares steps between two variables
+wherever their chains still need the same variables. The query's auxiliaries live in a relation id space that
+continues past the problem's, and a query database resolves an id below the problem's relation count through
+the table it was opened on and above it through its own vector, so nothing is copied and the `Program` is
+never mutated.
+
+**Plans are cached by query shape.** The shape key records the predicates, the polarities and, per term,
+whether it is a variable (and which) or *a* constant -- never which object. The objects travel separately in a
+constant table that the plan indexes into, which is why `Slot`'s third side and `Step::const_rhs_columns`
+carry slot indices rather than object ids. Asking the same achiever with a different binding is therefore a
+hash lookup and a fresh constant vector, not a recompilation. Two things the shape cannot decide -- whether
+two constants are equal, and whether a variable pinned twice was pinned to the same object -- are recorded as
+checks against the call's constant table and evaluated before the plan runs.
+
+Query variables that no positive literal binds range over every object, through an `$all_objects` relation
+built once per problem, exactly as an action parameter occurring only in a negative precondition ranges over
+its declared type.
+
+Not thread-safe: the plan cache is shared and mutated on a miss.
+
+## 4c. Witness derivations
+
+With `RelaxedReachabilityOptions::record_witnesses` (default true) the unrestricted fixpoint records, for
+every derived atom and every intermediate tuple, the plan step and the two body tuple positions of its
+**first** derivation -- one `(step, left, right)` triple, 12 bytes, appended on the insert that created the
+tuple. `ReachabilityTable::witness_query(forbidden)` then answers, per atom:
+
+- `REACHABLE_WITHOUT` -- the stored derivation tree of the atom contains no forbidden atom at any node,
+  initial atoms included. Since a derivation from `I` that never uses a forbidden atom as a body atom is still
+  a derivation once those atoms are forbidden, the atom really is reachable in the restricted program. This is
+  the half a caller may act on.
+- `UNKNOWN` -- carries no information. Either the atom is not reachable at all, or the one derivation that was
+  recorded runs through a forbidden atom and another may well exist.
+
+Verdicts are memoised per query and shared across the trees, so the cost of asking *every* atom against one
+forbidden set is linear in the number of derived tuples rather than one fixpoint per atom. The traversal is
+iterative: a derivation chain is as deep as the atom's h-max layer, and sokoban's `at-robot` spreads one grid
+cell per layer over an 8000-cell grid. A cycle would be a contradiction -- a body tuple always exists before
+the head it produces -- so re-entering a node still on the stack is treated as "not certified" rather than
+trusted.
+
+Measured on the two instances the brief names (`witness_query` per landmark, then one `avoids` per reachable
+atom of that landmark's own predicate):
+
+| instance | fact landmarks | sampled | asks | time | REACHABLE_WITHOUT |
+|---|---|---|---|---|---|
+| ferry-ipc p30-hard | 2369 | 100 | 200,000 | 30.8 ms | 200,000 (**100%**) |
+| blocksworld-ipc-enhanced p30-hard | 1462 | 100 | 165,224 | 16.6 ms | 165,097 (**99.92%**) |
+
+The same 200,000 questions through `compute_restricted` would be 200,000 x 26 ms, about 1.4 hours.
+
 ## 5. Correctness
 
 `tests/unit/search/relaxed_reachability.cpp`, target
@@ -253,53 +315,64 @@ forbidding one random reachable atom; `goal-mean` is the same 20 through
 what the engine added on top of the parsed problem.
 
 ```
-instance                                       objs   parse(ms) compile(ms) fixpoint(ms)   atoms  rules steps  aux-tuples  restr-mean(ms) restr-max(ms) goal-mean(ms) parseRSS(MB) engineRSS(MB) peakRSS(MB)
-barman-ipc/barman-c40-i12-s51-...-002-hard        121        4.85        3.78         1.00    5623     23   211       16769           0.517         0.624         0.306          4.0           3.0        15.0
-blocks/blocks-50-3                                 50        1.63        0.06         0.20    2601      9    13         151           0.132         0.152         0.131          2.7           1.0        11.7
-blocksworld-ipc-enhanced/p30-hard                 488       10.41        0.15        14.85  239609      9    15        1467           9.788        10.166         9.817          7.5          71.4        86.8
-childsnack-ipc/p30-hard                          1327       19.38        0.57         0.50    6597      7    39        8562           0.244         0.285         0.247         12.6           1.0        21.5
-ferry-ipc/p30-hard                               1461       23.06        0.39        41.18  475800      4    15      478724          22.609        23.169        16.606         13.5          83.8       105.2
-floortile-ipc/p29-hard                           1022       41.35        0.93        12.10   36550     11    54      166498           7.502         7.682         2.950         23.3           8.0        39.2
-logistics-6/logistics_p-27_a-13_c-20              120        2.72        0.38         0.73    2271      6    51        9477           0.406         0.463         0.397          3.3           1.4        12.7
-miconic-ipc/p30-hard                              681      118.73        1.12         0.44    1651      4    11        2237           0.326         0.348         0.331         45.5           0.5        60.4
-rovers-ipc/p26-hard                               555     2792.85       17.48        30.18   16251     11    83      423112          18.795        20.796        12.195        534.9          20.4       563.2
-satellite-ipc/p30-hard                            402       17.11        0.36         1.42   11171      5    27        5688           1.113         1.154         1.022         10.3           1.6        19.8
-sokoban-ipc/p30-hard                             9884      310.45        4.75       125.60  638945      4    27     1034743         118.193       131.823       115.480        164.4         181.7       354.0
-spanner-ipc/p30-hard                              833       17.01        0.45         0.28    2294      3    21        5142           0.110         0.167         0.106         10.2           0.8        18.9
-transport-ipc/p23-hard                            295       41.09        0.86        28.93   24474      5    47      115525          24.090        24.901         9.231         19.8           8.3        36.0
-childsnack-ipc/p05-hard                           360        6.32        0.35         0.10     986      7    39        1630           0.039         0.055         0.040          5.7           0.5        14.1
-childsnack-ipc/p10-hard                           555        9.20        0.40         0.17    1929      7    39        2842           0.079         0.100         0.080          7.0           0.5        15.5
-childsnack-ipc/p13-hard                           670       10.96        0.42         0.19    2364      7    39        3432           0.091         0.116         0.091          8.0           0.7        16.7
-childsnack-ipc/p15-hard                           749       11.60        0.44         0.24    2899      7    39        4077           0.113         0.147         0.115          8.5           0.7        17.1
-childsnack-ipc/p20-hard                           939       14.63        0.49         0.31    3989      7    39        5424           0.151         0.199         0.153          9.9           1.0        18.8
-childsnack-ipc/p25-hard                          1133       17.37        0.53         0.44    5226      7    39        6926           0.206         0.249         0.207         11.2           1.3        20.4
-childsnack-ipc/p30-hard                          1327       19.74        0.58         0.49    6597      7    39        8562           0.245         0.288         0.247         12.3           0.9        21.1
+instance                              objs  parse(ms) compile(ms) fixpoint(ms)   atoms rules steps  aux-tuples  witnesses  restr-mean restr-max goal-mean parseRSS engineRSS peakRSS
+barman-ipc/barman-c40-...-002-hard     121       8.74        4.17         1.10    5623    23   211       16769      22392       0.613     0.745     0.366      4.1       3.5     15.6
+blocks/blocks-50-3                      50       2.15        0.07         0.25    2601     9    13         151       2752       0.151     0.172     0.151      2.7       1.3     12.0
+blocksworld-ipc-enhanced/p30-hard      488      10.49        0.16        16.96  239609     9    15        1467     241076      10.985    11.594    10.976      7.4      59.6     75.0
+childsnack-ipc/p30-hard               1327      22.80        0.68         0.62    6597     7    39        8562      15159       0.295     0.367     0.299     12.5       1.3     21.8
+ferry-ipc/p30-hard                    1461      23.60        0.42        45.95  475800     4    15      478724     954524      25.305    26.016    18.384     13.5      96.2    117.7
+floortile-ipc/p29-hard                1022      41.60        0.93        13.46   36550    11    54      166498     203048       8.335     8.753     3.278     22.4      10.8     41.1
+logistics-6/p-27_a-13_c-20             120       2.95        0.37         0.80    2271     6    51        9477      11748       0.442     0.495     0.432      3.3       1.8     13.1
+miconic-ipc/p30-hard                   681     119.73        1.12         0.49    1651     4    11        2237       3888       0.361     0.401     0.359     43.1       0.5     62.7
+rovers-ipc/p26-hard                    555    3402.23       19.23        33.51   16251    11    83      423112     439363      20.504    22.204    13.505    484.6      29.1    605.4
+satellite-ipc/p30-hard                 402      19.09        0.39         1.60   11171     5    27        5688      16859       1.237     1.291     1.125     10.3       1.9     20.2
+sokoban-ipc/p30-hard                  9884     326.82        4.86       143.26  638945     4    27     1034743    1673688     120.684   141.011   121.452    161.9     207.1    377.0
+spanner-ipc/p30-hard                   833      17.94        0.46         0.30    2294     3    21        5142       7436       0.134     0.192     0.129     10.3       1.1     19.4
+transport-ipc/p23-hard                 295      49.24        0.95        32.77   24474     5    47      115525     139999      25.368    27.034    10.123     19.6      10.9     38.5
+childsnack-ipc/p05-hard                360       7.14        0.37         0.12     986     7    39        1630       2616       0.046     0.067     0.047      5.8       0.6     14.3
+childsnack-ipc/p10-hard                555       9.71        0.40         0.21    1929     7    39        2842       4771       0.091     0.122     0.092      7.0       0.8     15.7
+childsnack-ipc/p13-hard                670      11.77        0.48         0.23    2364     7    39        3432       5796       0.106     0.137     0.108      8.0       1.0     16.9
+childsnack-ipc/p15-hard                749      12.13        0.46         0.29    2899     7    39        4077       6976       0.132     0.166     0.133      8.5       1.0     17.5
+childsnack-ipc/p20-hard                939      15.22        0.52         0.37    3989     7    39        5424       9413       0.173     0.198     0.176     10.0       1.2     19.2
+childsnack-ipc/p25-hard               1133      18.26        0.56         0.51    5226     7    39        6926      12152       0.240     0.270     0.241     11.2       1.5     20.6
+childsnack-ipc/p30-hard               1327      20.16        0.62         0.60    6597     7    39        8562      15159       0.278     0.310     0.281     12.4       1.3     21.7
 ```
 
 Against the targets (fixpoint ≤ 5 s and ≤ 500 MB on childsnack `p30-hard`; a
 restricted query ≤ 100 ms there; comparable on the largest test instance of
 every domain):
 
-- childsnack `p30-hard`: fixpoint **0.50 ms** and **21.5 MB** peak, restricted
-  query **0.245 ms**. Four orders of magnitude inside the budget on all three.
-- Every fixpoint is ≤ **126 ms**; the slowest is sokoban `p30-hard`, whose answer
+- childsnack `p30-hard`: fixpoint **0.60 ms** and **21.7 MB** peak, restricted
+  query **0.278 ms**. Four orders of magnitude inside the budget on all three.
+- Every fixpoint is ≤ **143 ms**; the slowest is sokoban `p30-hard`, whose answer
   is 638,945 atoms (79 boxes × ~8000 locations).
-- Every peak RSS is ≤ **105 MB** except sokoban (354 MB) and rovers (563 MB).
-  rovers is the only row over 500 MB and **535 of its 563 MB are mimir's parser**
-  — the engine adds 20 MB on top of the parsed problem, and its 2.8 s parse time
-  dwarfs the 30 ms fixpoint.
-- Restricted queries: **sokoban `p30-hard` misses the 100 ms target at 118 ms
-  mean / 132 ms max.** Every other row is ≤ 24 ms. The reason is not a bad plan
+- Every peak RSS is ≤ **118 MB** except sokoban (377 MB) and rovers (605 MB).
+  rovers is the only row over 500 MB and **485 of its 605 MB are mimir's parser**
+  — the engine adds 29 MB on top of the parsed problem, and its 3.4 s parse time
+  dwarfs the 34 ms fixpoint.
+- Restricted queries: **sokoban `p30-hard` misses the 100 ms target at 121 ms
+  mean / 141 ms max.** Every other row is ≤ 25 ms. The reason is not a bad plan
   but the answer size: a restricted query recomputes the fixpoint from scratch,
-  and sokoban's fixpoint is 126 ms because it derives 638k atoms through 1.0M
+  and sokoban's fixpoint is 143 ms because it derives 638k atoms through 1.0M
   intermediate tuples. Closing that gap needs incremental re-derivation
   (over-delete then re-derive) rather than a better join order; it is not
-  implemented.
+  implemented. Where the caller can accept a sufficient answer rather than an
+  exact one, §4c's witness query is three orders of magnitude cheaper again.
 
-Ladder: childsnack scales linearly in the instance size (0.10 → 0.49 ms fixpoint
-and 0.039 → 0.245 ms per restricted query from `p05` to `p30`), which is the
+Ladder: childsnack scales linearly in the instance size (0.12 → 0.60 ms fixpoint
+and 0.046 → 0.278 ms per restricted query from `p05` to `p30`), which is the
 shape the splitting was built for — the atom count grows 986 → 6597 and the cost
 tracks it.
+
+Timings on this machine carry real run-to-run variance: five runs of the *same*
+configuration on sokoban `p30-hard` spread over 135–192 ms. Treat differences
+under ~20% on the large rows as noise.
+
+**What witnesses cost.** Memory, measurably: +27 MB on sokoban `p30-hard` (1,673,688 witnesses), +14 MB on
+ferry (954,524), and under 1 MB wherever the fixpoint stays small. Time, not measurably: the fixpoint
+difference between recording and not was inside this machine's run-to-run variance, which for sokoban
+`p30-hard` is 135-192 ms over five runs of the *same* configuration. Restricted queries are unaffected, since
+only the unrestricted fixpoint records.
 
 **The refinement pass that was removed.** With the seeded planner and measured
 column domains in place, compiling a second plan from measured IDB sizes and
@@ -353,7 +426,23 @@ requires. Numeric constraints are ignored by both.
 ```cpp
 namespace mimir::search {
 
-struct RelaxedReachabilityOptions { bool enforce_negative_static_conditions = true; };
+struct RelaxedReachabilityOptions {
+    bool enforce_negative_static_conditions = true;
+    bool record_witnesses = true;
+};
+
+enum class WitnessVerdict { REACHABLE_WITHOUT, UNKNOWN };
+
+class QueryTerm {                       // QueryTerm::of_object(o) / QueryTerm::of_variable(k)
+public:
+    bool is_variable() const; Object get_object() const; uint32_t get_variable() const;
+};
+struct QueryLiteral    { PredicateVariant predicate; std::vector<QueryTerm> terms; bool polarity = true; };
+struct ConjunctiveQuery {
+    size_t num_variables = 0;
+    std::vector<QueryLiteral> literals;
+    std::vector<std::pair<QueryTerm, QueryTerm>> equalities, disequalities;
+};
 
 class RelaxedReachability {
 public:
@@ -383,6 +472,24 @@ public:
     const Problem&                        get_problem() const;
     const RelaxedReachabilityOptions&     get_options() const;
     const RelaxedReachabilityStatistics&  get_statistics() const;
+};
+
+/* On a table, in addition to the read-only half of the above: */
+class ReachabilityTable {
+public:
+    std::vector<ObjectList> project(const ConjunctiveQuery&) const;
+
+    bool         has_witnesses() const;
+    size_t       get_num_witnesses() const;
+    WitnessQuery witness_query(const ForbiddenAtomList&) const;          // throws without witnesses
+    WitnessQuery witness_query(const GroundAtomList<FluentTag>&) const;
+};
+
+class WitnessQuery {
+public:
+    WitnessVerdict avoids(Predicate<FluentTag>,  const ObjectList&) const;  // also DerivedTag,
+    WitnessVerdict avoids(GroundAtom<FluentTag>) const;                     // also GroundAtom<DerivedTag>
+    size_t get_num_memoised() const;
 };
 
 }
