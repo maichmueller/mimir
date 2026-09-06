@@ -936,6 +936,118 @@ void bind_module_definitions(nb::module_& m)
                     "problem"_a,
                     "options"_a = landmarks::LiftedFactLandmarkGeneratorOptions());
 
+    /* Relaxed reachability
+     *
+     * Exact delete-relaxed reachability over ground atoms that never enumerates a ground action, so a lifted
+     * test-time run can ask "is this atom relaxed-reachable" and "is the goal still reachable without these
+     * atoms" on instances where `LiftedGrounder` would need minutes and tens of gigabytes.
+     */
+
+    nb::class_<RelaxedReachabilityOptions>(m, "RelaxedReachabilityOptions")  //
+        .def(nb::init<>())
+        .def_rw("enforce_negative_static_conditions", &RelaxedReachabilityOptions::enforce_negative_static_conditions);
+
+    nb::class_<RelaxedReachabilityStatistics>(m, "RelaxedReachabilityStatistics")  //
+        .def_ro("num_rules", &RelaxedReachabilityStatistics::num_rules)
+        .def_ro("num_dropped_rules", &RelaxedReachabilityStatistics::num_dropped_rules)
+        .def_ro("num_join_steps", &RelaxedReachabilityStatistics::num_join_steps)
+        .def_ro("num_relations", &RelaxedReachabilityStatistics::num_relations)
+        .def_ro("num_auxiliary_relations", &RelaxedReachabilityStatistics::num_auxiliary_relations)
+        .def_ro("num_fixpoint_rounds", &RelaxedReachabilityStatistics::num_fixpoint_rounds)
+        .def_ro("num_reachable_fluent_atoms", &RelaxedReachabilityStatistics::num_reachable_fluent_atoms)
+        .def_ro("num_reachable_derived_atoms", &RelaxedReachabilityStatistics::num_reachable_derived_atoms)
+        .def_ro("num_auxiliary_tuples", &RelaxedReachabilityStatistics::num_auxiliary_tuples)
+        .def_ro("num_static_tuples", &RelaxedReachabilityStatistics::num_static_tuples)
+        .def_ro("compile_time_ms", &RelaxedReachabilityStatistics::compile_time_ms)
+        .def_ro("fixpoint_time_ms", &RelaxedReachabilityStatistics::fixpoint_time_ms);
+
+    // `ReachableTuples` is a view into the table's relations, so every accessor that hands one out keeps the
+    // table alive for as long as Python holds the view (`keep_alive<0, 1>`).
+    nb::class_<ReachableTuples>(m, "ReachableTuples")  //
+        .def("get_arity", &ReachableTuples::get_arity)
+        .def("__len__", &ReachableTuples::size)
+        .def("__getitem__",
+             [](const ReachableTuples& self, size_t position)
+             {
+                 if (position >= self.size())
+                 {
+                     throw nb::index_error();
+                 }
+                 return self[position];
+             })
+        // No `__iter__`: `__len__` plus a `__getitem__` that raises `IndexError` past the end already makes the
+        // view iterable through Python's sequence protocol, and an iterator over a temporary tuple list would
+        // hand out dangling iterators.
+        ;
+
+    nb::class_<ReachabilityTable>(m, "ReachabilityTable")  //
+        .def("is_reachable",
+             nb::overload_cast<Predicate<FluentTag>, const ObjectList&>(&ReachabilityTable::is_reachable, nb::const_),
+             "predicate"_a,
+             "objects"_a)
+        .def("is_reachable",
+             nb::overload_cast<Predicate<DerivedTag>, const ObjectList&>(&ReachabilityTable::is_reachable, nb::const_),
+             "predicate"_a,
+             "objects"_a)
+        .def("is_reachable", nb::overload_cast<GroundAtom<FluentTag>>(&ReachabilityTable::is_reachable, nb::const_), "atom"_a)
+        .def("is_reachable", nb::overload_cast<GroundAtom<DerivedTag>>(&ReachabilityTable::is_reachable, nb::const_), "atom"_a)
+        .def("get_reachable_tuples",
+             nb::overload_cast<Predicate<FluentTag>>(&ReachabilityTable::get_reachable_tuples, nb::const_),
+             nb::keep_alive<0, 1>(),
+             "predicate"_a)
+        .def("get_reachable_tuples",
+             nb::overload_cast<Predicate<DerivedTag>>(&ReachabilityTable::get_reachable_tuples, nb::const_),
+             nb::keep_alive<0, 1>(),
+             "predicate"_a)
+        .def("get_num_reachable_atoms", &ReachabilityTable::get_num_reachable_atoms)
+        .def("get_num_reachable_fluent_atoms", &ReachabilityTable::get_num_reachable_fluent_atoms)
+        .def("get_num_reachable_derived_atoms", &ReachabilityTable::get_num_reachable_derived_atoms)
+        .def("is_goal_reachable", &ReachabilityTable::is_goal_reachable)
+        .def("get_num_fixpoint_rounds", &ReachabilityTable::get_num_fixpoint_rounds);
+
+    nb::class_<RelaxedReachability>(m, "RelaxedReachability")  //
+        .def_static("create", &RelaxedReachability::create, "problem"_a, "options"_a = RelaxedReachabilityOptions())
+        .def("is_reachable",
+             nb::overload_cast<Predicate<FluentTag>, const ObjectList&>(&RelaxedReachability::is_reachable, nb::const_),
+             "predicate"_a,
+             "objects"_a)
+        .def("is_reachable",
+             nb::overload_cast<Predicate<DerivedTag>, const ObjectList&>(&RelaxedReachability::is_reachable, nb::const_),
+             "predicate"_a,
+             "objects"_a)
+        .def("is_reachable", nb::overload_cast<GroundAtom<FluentTag>>(&RelaxedReachability::is_reachable, nb::const_), "atom"_a)
+        .def("is_reachable", nb::overload_cast<GroundAtom<DerivedTag>>(&RelaxedReachability::is_reachable, nb::const_), "atom"_a)
+        .def("get_reachable_tuples",
+             nb::overload_cast<Predicate<FluentTag>>(&RelaxedReachability::get_reachable_tuples, nb::const_),
+             nb::keep_alive<0, 1>(),
+             "predicate"_a)
+        .def("get_reachable_tuples",
+             nb::overload_cast<Predicate<DerivedTag>>(&RelaxedReachability::get_reachable_tuples, nb::const_),
+             nb::keep_alive<0, 1>(),
+             "predicate"_a)
+        .def("get_num_reachable_atoms", &RelaxedReachability::get_num_reachable_atoms)
+        .def("is_goal_reachable", &RelaxedReachability::is_goal_reachable)
+        .def("get_table", &RelaxedReachability::get_table, nb::rv_policy::reference_internal)
+        // A returned table shares the compiled plan and the static relations through a `shared_ptr` of its own
+        // and owns its derived relations, so it outlives the `RelaxedReachability` without a `keep_alive`.
+        .def("compute_restricted",
+             nb::overload_cast<const GroundAtomList<FluentTag>&>(&RelaxedReachability::compute_restricted, nb::const_),
+             nb::rv_policy::move,
+             "forbidden"_a)
+        .def("compute_restricted",
+             nb::overload_cast<const RelaxedReachability::ForbiddenAtomList&>(&RelaxedReachability::compute_restricted, nb::const_),
+             nb::rv_policy::move,
+             "forbidden"_a)
+        .def("is_goal_reachable_without",
+             nb::overload_cast<const GroundAtomList<FluentTag>&>(&RelaxedReachability::is_goal_reachable_without, nb::const_),
+             "forbidden"_a)
+        .def("is_goal_reachable_without",
+             nb::overload_cast<const RelaxedReachability::ForbiddenAtomList&>(&RelaxedReachability::is_goal_reachable_without, nb::const_),
+             "forbidden"_a)
+        .def("get_problem", &RelaxedReachability::get_problem, nb::rv_policy::copy)
+        .def("get_options", &RelaxedReachability::get_options, nb::rv_policy::copy)
+        .def("get_statistics", &RelaxedReachability::get_statistics, nb::rv_policy::copy);
+
     /* Algorithms */
 
     // SearchResult

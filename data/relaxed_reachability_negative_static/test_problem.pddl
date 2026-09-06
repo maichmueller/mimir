@@ -1,0 +1,6 @@
+(define (problem relaxed-reachability-negative-static-1)
+  (:domain relaxed-reachability-negative-static)
+  (:objects a b - item)
+  (:init (start a) (start b) (blocked b))
+  (:goal (goal a))
+)
