@@ -1,0 +1,51 @@
+facts:
+  tightened(nut1)
+  tightened(nut2)
+  tightened(nut3)
+  tightened(nut4)
+  at(bob, gate)
+  at(nut1, gate)
+  loose(nut1)
+  at(nut2, gate)
+  loose(nut2)
+  at(nut3, gate)
+  loose(nut3)
+  at(nut4, gate)
+  loose(nut4)
+  at(bob, location8)
+  at(bob, location7)
+  at(bob, location6)
+  at(bob, location5)
+  at(bob, location4)
+  at(bob, location3)
+  at(bob, location2)
+  at(bob, location1)
+  at(bob, shed)
+sets:
+  {usable(spanner1), usable(spanner2), usable(spanner3), usable(spanner4), usable(spanner5), usable(spanner6), usable(spanner7)}
+  {carrying(bob, spanner1), carrying(bob, spanner2), carrying(bob, spanner3), carrying(bob, spanner4), carrying(bob, spanner5), carrying(bob, spanner6), carrying(bob, spanner7)}
+records:
+  tightened(nut1) members=[tightened(nut1)] parents=[]
+  tightened(nut2) members=[tightened(nut2)] parents=[]
+  tightened(nut3) members=[tightened(nut3)] parents=[]
+  tightened(nut4) members=[tightened(nut4)] parents=[]
+  at(bob, gate) members=[at(bob, gate)] parents=[0,1,2,3]
+  at(nut1, gate) initially_true members=[at(nut1, gate)] parents=[0]
+  carrying(bob, ?) members=[carrying(bob, spanner1), carrying(bob, spanner2), carrying(bob, spanner3), carrying(bob, spanner4), carrying(bob, spanner5), carrying(bob, spanner6), carrying(bob, spanner7)] parents=[0,1,2,3]
+  usable(?) initially_true members=[usable(spanner1), usable(spanner2), usable(spanner3), usable(spanner4), usable(spanner5), usable(spanner6), usable(spanner7)] parents=[0,1,2,3]
+  loose(nut1) initially_true members=[loose(nut1)] parents=[0]
+  at(nut2, gate) initially_true members=[at(nut2, gate)] parents=[1]
+  loose(nut2) initially_true members=[loose(nut2)] parents=[1]
+  at(nut3, gate) initially_true members=[at(nut3, gate)] parents=[2]
+  loose(nut3) initially_true members=[loose(nut3)] parents=[2]
+  at(nut4, gate) initially_true members=[at(nut4, gate)] parents=[3]
+  loose(nut4) initially_true members=[loose(nut4)] parents=[3]
+  at(bob, location8) members=[at(bob, location8)] parents=[4]
+  at(bob, location7) members=[at(bob, location7)] parents=[15]
+  at(bob, location6) members=[at(bob, location6)] parents=[16]
+  at(bob, location5) members=[at(bob, location5)] parents=[17]
+  at(bob, location4) members=[at(bob, location4)] parents=[18]
+  at(bob, location3) members=[at(bob, location3)] parents=[19]
+  at(bob, location2) members=[at(bob, location2)] parents=[20]
+  at(bob, location1) members=[at(bob, location1)] parents=[21]
+  at(bob, shed) initially_true members=[at(bob, shed)] parents=[22]

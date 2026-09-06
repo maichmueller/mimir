@@ -1,0 +1,41 @@
+facts:
+  pointing(sat1, dir7)
+  pointing(sat2, dir8)
+  pointing(sat3, dir5)
+  pointing(sat4, dir7)
+  pointing(sat7, dir4)
+  have_image(dir3, mod2)
+  have_image(dir4, mod2)
+  have_image(dir1, mod1)
+  have_image(dir1, mod2)
+  have_image(dir5, mod2)
+  have_image(dir6, mod2)
+  have_image(dir3, mod1)
+  have_image(dir7, mod2)
+sets:
+  {pointing(sat1, dir3), pointing(sat3, dir3), pointing(sat4, dir3), pointing(sat2, dir3), pointing(sat7, dir3), pointing(sat5, dir3), pointing(sat6, dir3), pointing(sat8, dir3)}
+  {pointing(sat2, dir6), pointing(sat1, dir6), pointing(sat3, dir6), pointing(sat4, dir6), pointing(sat7, dir6), pointing(sat5, dir6), pointing(sat6, dir6), pointing(sat8, dir6)}
+  {pointing(sat8, dir1), pointing(sat1, dir1), pointing(sat2, dir1), pointing(sat3, dir1), pointing(sat4, dir1), pointing(sat7, dir1), pointing(sat5, dir1), pointing(sat6, dir1)}
+  {power_avail(sat1), power_avail(sat2), power_avail(sat3), power_avail(sat4), power_avail(sat5), power_avail(sat6), power_avail(sat7), power_avail(sat8)}
+  {power_on(ins1), power_on(ins2), power_on(ins3), power_on(ins4), power_on(ins5), power_on(ins6), power_on(ins7), power_on(ins8), power_on(ins9), power_on(ins10), power_on(ins11), power_on(ins12), power_on(ins13), power_on(ins14)}
+  {calibrated(ins1), calibrated(ins2), calibrated(ins3), calibrated(ins4), calibrated(ins5), calibrated(ins6), calibrated(ins7), calibrated(ins8), calibrated(ins9), calibrated(ins10), calibrated(ins11), calibrated(ins12), calibrated(ins13), calibrated(ins14)}
+records:
+  pointing(sat1, dir7) members=[pointing(sat1, dir7)] parents=[]
+  pointing(sat2, dir8) members=[pointing(sat2, dir8)] parents=[]
+  pointing(sat3, dir5) members=[pointing(sat3, dir5)] parents=[]
+  pointing(sat4, dir7) members=[pointing(sat4, dir7)] parents=[]
+  pointing(sat7, dir4) members=[pointing(sat7, dir4)] parents=[]
+  have_image(dir3, mod2) members=[have_image(dir3, mod2)] parents=[]
+  have_image(dir4, mod2) members=[have_image(dir4, mod2)] parents=[]
+  have_image(dir1, mod1) members=[have_image(dir1, mod1)] parents=[]
+  have_image(dir1, mod2) members=[have_image(dir1, mod2)] parents=[]
+  have_image(dir5, mod2) members=[have_image(dir5, mod2)] parents=[]
+  have_image(dir6, mod2) members=[have_image(dir6, mod2)] parents=[]
+  have_image(dir3, mod1) members=[have_image(dir3, mod1)] parents=[]
+  have_image(dir7, mod2) members=[have_image(dir7, mod2)] parents=[]
+  pointing(?, dir3) initially_true members=[pointing(sat1, dir3), pointing(sat3, dir3), pointing(sat4, dir3), pointing(sat2, dir3), pointing(sat7, dir3), pointing(sat5, dir3), pointing(sat6, dir3), pointing(sat8, dir3)] parents=[5,11]
+  power_on(?) members=[power_on(ins1), power_on(ins2), power_on(ins3), power_on(ins4), power_on(ins5), power_on(ins6), power_on(ins7), power_on(ins8), power_on(ins9), power_on(ins10), power_on(ins11), power_on(ins12), power_on(ins13), power_on(ins14)] parents=[5,6,7,8,9,10,11,12,15]
+  calibrated(?) members=[calibrated(ins1), calibrated(ins2), calibrated(ins3), calibrated(ins4), calibrated(ins5), calibrated(ins6), calibrated(ins7), calibrated(ins8), calibrated(ins9), calibrated(ins10), calibrated(ins11), calibrated(ins12), calibrated(ins13), calibrated(ins14)] parents=[5,6,7,8,9,10,11,12]
+  pointing(?, dir1) initially_true members=[pointing(sat8, dir1), pointing(sat1, dir1), pointing(sat2, dir1), pointing(sat3, dir1), pointing(sat4, dir1), pointing(sat7, dir1), pointing(sat5, dir1), pointing(sat6, dir1)] parents=[7,8]
+  pointing(?, dir6) initially_true members=[pointing(sat2, dir6), pointing(sat1, dir6), pointing(sat3, dir6), pointing(sat4, dir6), pointing(sat7, dir6), pointing(sat5, dir6), pointing(sat6, dir6), pointing(sat8, dir6)] parents=[10]
+  power_avail(?) initially_true members=[power_avail(sat1), power_avail(sat2), power_avail(sat3), power_avail(sat4), power_avail(sat5), power_avail(sat6), power_avail(sat7), power_avail(sat8)] parents=[14]

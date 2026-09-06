@@ -1,0 +1,9 @@
+facts:
+  goal()
+sets:
+  {ready(t1), ready(t3)}
+  {held(t1), held(t3)}
+records:
+  goal() members=[goal()] parents=[]
+  held(?) members=[held(t1), held(t3)] parents=[0]
+  ready(?) initially_true members=[ready(t1), ready(t3)] parents=[1]

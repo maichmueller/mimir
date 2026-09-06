@@ -1,0 +1,11 @@
+facts:
+  target()
+  other()
+  base()
+  guard()
+sets:
+records:
+  target() members=[target()] parents=[]
+  other() members=[other()] parents=[]
+  base() members=[base()] parents=[0,1]
+  guard() members=[guard()] parents=[0]

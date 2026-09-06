@@ -1,0 +1,9 @@
+facts:
+  goal(t1)
+  p(t1)
+  ready(t1)
+sets:
+records:
+  goal(t1) members=[goal(t1)] parents=[]
+  p(t1) members=[p(t1)] parents=[0]
+  ready(t1) members=[ready(t1)] parents=[0]

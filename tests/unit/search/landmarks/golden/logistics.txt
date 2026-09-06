@@ -1,0 +1,12 @@
+facts:
+  at(p0, l0-1)
+  at(t0, l0-1)
+  at(p0, l0-0)
+sets:
+  {in(p0, t0), in(p0, a0), in(p0, a1)}
+records:
+  at(p0, l0-1) members=[at(p0, l0-1)] parents=[]
+  at(t0, l0-1) initially_true members=[at(t0, l0-1)] parents=[0]
+  in(p0, ?) members=[in(p0, t0), in(p0, a0), in(p0, a1)] parents=[0]
+  at(?, l0-0) initially_true members=[at(p0, l0-0), at(a0, l0-0), at(a1, l0-0), at(t0, l0-0)] parents=[2]
+  at(p0, l0-0) initially_true members=[at(p0, l0-0)] parents=[2]

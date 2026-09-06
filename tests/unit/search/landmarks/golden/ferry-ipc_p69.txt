@@ -1,0 +1,105 @@
+facts:
+  at(car1, loc10)
+  at(car2, loc2)
+  at(car3, loc11)
+  at(car4, loc9)
+  at(car5, loc5)
+  at(car6, loc8)
+  at(car7, loc11)
+  at(car8, loc11)
+  at(car9, loc4)
+  at(car10, loc6)
+  at(car11, loc8)
+  at(car12, loc12)
+  at(car13, loc4)
+  at-ferry(loc10)
+  on(car1)
+  at-ferry(loc2)
+  on(car2)
+  at-ferry(loc11)
+  on(car3)
+  at-ferry(loc9)
+  on(car4)
+  at-ferry(loc5)
+  on(car5)
+  at-ferry(loc8)
+  on(car6)
+  on(car7)
+  on(car8)
+  at-ferry(loc4)
+  on(car9)
+  at-ferry(loc6)
+  on(car10)
+  on(car11)
+  at-ferry(loc12)
+  on(car12)
+  on(car13)
+  at-ferry(loc7)
+  at(car1, loc7)
+  empty-ferry()
+  at(car2, loc4)
+  at(car3, loc10)
+  at-ferry(loc3)
+  at(car4, loc3)
+  at(car5, loc4)
+  at(car6, loc4)
+  at(car7, loc3)
+  at(car8, loc2)
+  at(car9, loc5)
+  at(car10, loc12)
+  at(car11, loc7)
+  at(car12, loc9)
+  at(car13, loc11)
+sets:
+records:
+  at(car1, loc10) members=[at(car1, loc10)] parents=[]
+  at(car2, loc2) members=[at(car2, loc2)] parents=[]
+  at(car3, loc11) members=[at(car3, loc11)] parents=[]
+  at(car4, loc9) members=[at(car4, loc9)] parents=[]
+  at(car5, loc5) members=[at(car5, loc5)] parents=[]
+  at(car6, loc8) members=[at(car6, loc8)] parents=[]
+  at(car7, loc11) members=[at(car7, loc11)] parents=[]
+  at(car8, loc11) members=[at(car8, loc11)] parents=[]
+  at(car9, loc4) members=[at(car9, loc4)] parents=[]
+  at(car10, loc6) members=[at(car10, loc6)] parents=[]
+  at(car11, loc8) members=[at(car11, loc8)] parents=[]
+  at(car12, loc12) members=[at(car12, loc12)] parents=[]
+  at(car13, loc4) members=[at(car13, loc4)] parents=[]
+  at-ferry(loc10) members=[at-ferry(loc10)] parents=[0,18]
+  on(car1) members=[on(car1)] parents=[0]
+  at-ferry(loc2) members=[at-ferry(loc2)] parents=[1,26]
+  on(car2) members=[on(car2)] parents=[1]
+  at-ferry(loc11) members=[at-ferry(loc11)] parents=[2,6,7,34]
+  on(car3) members=[on(car3)] parents=[2]
+  at-ferry(loc9) members=[at-ferry(loc9)] parents=[3,33]
+  on(car4) members=[on(car4)] parents=[3]
+  at-ferry(loc5) members=[at-ferry(loc5)] parents=[4,28]
+  on(car5) members=[on(car5)] parents=[4]
+  at-ferry(loc8) members=[at-ferry(loc8)] parents=[5,10]
+  on(car6) members=[on(car6)] parents=[5]
+  on(car7) members=[on(car7)] parents=[6]
+  on(car8) members=[on(car8)] parents=[7]
+  at-ferry(loc4) members=[at-ferry(loc4)] parents=[8,12,16,22,24]
+  on(car9) members=[on(car9)] parents=[8]
+  at-ferry(loc6) members=[at-ferry(loc6)] parents=[9]
+  on(car10) members=[on(car10)] parents=[9]
+  on(car11) members=[on(car11)] parents=[10]
+  at-ferry(loc12) members=[at-ferry(loc12)] parents=[11,30]
+  on(car12) members=[on(car12)] parents=[11]
+  on(car13) members=[on(car13)] parents=[12]
+  at-ferry(loc7) initially_true members=[at-ferry(loc7)] parents=[14,31]
+  at(car1, loc7) initially_true members=[at(car1, loc7)] parents=[14]
+  empty-ferry() initially_true members=[empty-ferry()] parents=[14,16,18,20,22,24,25,26,28,30,31,33,34]
+  at(car2, loc4) initially_true members=[at(car2, loc4)] parents=[16]
+  at(car3, loc10) initially_true members=[at(car3, loc10)] parents=[18]
+  at-ferry(loc3) members=[at-ferry(loc3)] parents=[20,25]
+  at(car4, loc3) initially_true members=[at(car4, loc3)] parents=[20]
+  at(car5, loc4) initially_true members=[at(car5, loc4)] parents=[22]
+  at(car6, loc4) initially_true members=[at(car6, loc4)] parents=[24]
+  at(car7, loc3) initially_true members=[at(car7, loc3)] parents=[25]
+  at(car8, loc2) initially_true members=[at(car8, loc2)] parents=[26]
+  at(car9, loc5) initially_true members=[at(car9, loc5)] parents=[28]
+  at(car10, loc12) initially_true members=[at(car10, loc12)] parents=[30]
+  at(car11, loc7) initially_true members=[at(car11, loc7)] parents=[31]
+  at(car12, loc9) initially_true members=[at(car12, loc9)] parents=[33]
+  at(car13, loc11) initially_true members=[at(car13, loc11)] parents=[34]

@@ -1,0 +1,39 @@
+facts:
+  served(child1)
+  served(child2)
+  served(child3)
+  served(child4)
+  served(child5)
+  served(child6)
+  served(child7)
+  served(child8)
+sets:
+  {at(tray1, kitchen), at(tray2, kitchen)}
+  {at_kitchen_bread(bread1), at_kitchen_bread(bread2), at_kitchen_bread(bread3), at_kitchen_bread(bread4), at_kitchen_bread(bread5), at_kitchen_bread(bread6), at_kitchen_bread(bread7), at_kitchen_bread(bread8)}
+  {at_kitchen_content(content1), at_kitchen_content(content2), at_kitchen_content(content3), at_kitchen_content(content4), at_kitchen_content(content5), at_kitchen_content(content6), at_kitchen_content(content7), at_kitchen_content(content8)}
+  {notexist(sandw1), notexist(sandw2), notexist(sandw3), notexist(sandw4), notexist(sandw5), notexist(sandw6), notexist(sandw7), notexist(sandw8), notexist(sandw9), notexist(sandw10), notexist(sandw11)}
+  {ontray(sandw1, tray1), ontray(sandw1, tray2), ontray(sandw2, tray1), ontray(sandw2, tray2), ontray(sandw3, tray1), ontray(sandw3, tray2), ontray(sandw4, tray1), ontray(sandw4, tray2), ontray(sandw5, tray1), ontray(sandw5, tray2), ontray(sandw6, tray1), ontray(sandw6, tray2), ontray(sandw7, tray1), ontray(sandw7, tray2), ontray(sandw8, tray1), ontray(sandw8, tray2), ontray(sandw9, tray1), ontray(sandw9, tray2), ontray(sandw10, tray1), ontray(sandw10, tray2), ontray(sandw11, tray1), ontray(sandw11, tray2)}
+  {at(tray1, table1), at(tray2, table1)}
+  {no_gluten_sandwich(sandw1), no_gluten_sandwich(sandw2), no_gluten_sandwich(sandw3), no_gluten_sandwich(sandw4), no_gluten_sandwich(sandw5), no_gluten_sandwich(sandw6), no_gluten_sandwich(sandw7), no_gluten_sandwich(sandw8), no_gluten_sandwich(sandw9), no_gluten_sandwich(sandw10), no_gluten_sandwich(sandw11)}
+  {at(tray1, table2), at(tray2, table2)}
+  {at(tray1, table3), at(tray2, table3)}
+  {at_kitchen_sandwich(sandw1), at_kitchen_sandwich(sandw2), at_kitchen_sandwich(sandw3), at_kitchen_sandwich(sandw4), at_kitchen_sandwich(sandw5), at_kitchen_sandwich(sandw6), at_kitchen_sandwich(sandw7), at_kitchen_sandwich(sandw8), at_kitchen_sandwich(sandw9), at_kitchen_sandwich(sandw10), at_kitchen_sandwich(sandw11)}
+records:
+  served(child1) members=[served(child1)] parents=[]
+  served(child2) members=[served(child2)] parents=[]
+  served(child3) members=[served(child3)] parents=[]
+  served(child4) members=[served(child4)] parents=[]
+  served(child5) members=[served(child5)] parents=[]
+  served(child6) members=[served(child6)] parents=[]
+  served(child7) members=[served(child7)] parents=[]
+  served(child8) members=[served(child8)] parents=[]
+  ontray(?, ?) members=[ontray(sandw1, tray1), ontray(sandw1, tray2), ontray(sandw2, tray1), ontray(sandw2, tray2), ontray(sandw3, tray1), ontray(sandw3, tray2), ontray(sandw4, tray1), ontray(sandw4, tray2), ontray(sandw5, tray1), ontray(sandw5, tray2), ontray(sandw6, tray1), ontray(sandw6, tray2), ontray(sandw7, tray1), ontray(sandw7, tray2), ontray(sandw8, tray1), ontray(sandw8, tray2), ontray(sandw9, tray1), ontray(sandw9, tray2), ontray(sandw10, tray1), ontray(sandw10, tray2), ontray(sandw11, tray1), ontray(sandw11, tray2)] parents=[0,1,2,3,4,5,6,7]
+  at(?, table1) members=[at(tray1, table1), at(tray2, table1)] parents=[0,2,4,7]
+  no_gluten_sandwich(?) members=[no_gluten_sandwich(sandw1), no_gluten_sandwich(sandw2), no_gluten_sandwich(sandw3), no_gluten_sandwich(sandw4), no_gluten_sandwich(sandw5), no_gluten_sandwich(sandw6), no_gluten_sandwich(sandw7), no_gluten_sandwich(sandw8), no_gluten_sandwich(sandw9), no_gluten_sandwich(sandw10), no_gluten_sandwich(sandw11)] parents=[1,4,5,6]
+  at(?, table2) members=[at(tray1, table2), at(tray2, table2)] parents=[1,6]
+  at(?, table3) members=[at(tray1, table3), at(tray2, table3)] parents=[3,5]
+  at_kitchen_sandwich(?) members=[at_kitchen_sandwich(sandw1), at_kitchen_sandwich(sandw2), at_kitchen_sandwich(sandw3), at_kitchen_sandwich(sandw4), at_kitchen_sandwich(sandw5), at_kitchen_sandwich(sandw6), at_kitchen_sandwich(sandw7), at_kitchen_sandwich(sandw8), at_kitchen_sandwich(sandw9), at_kitchen_sandwich(sandw10), at_kitchen_sandwich(sandw11)] parents=[8]
+  at(?, kitchen) initially_true members=[at(tray1, kitchen), at(tray2, kitchen)] parents=[8]
+  at_kitchen_bread(?) initially_true members=[at_kitchen_bread(bread1), at_kitchen_bread(bread2), at_kitchen_bread(bread3), at_kitchen_bread(bread4), at_kitchen_bread(bread5), at_kitchen_bread(bread6), at_kitchen_bread(bread7), at_kitchen_bread(bread8)] parents=[10,13]
+  at_kitchen_content(?) initially_true members=[at_kitchen_content(content1), at_kitchen_content(content2), at_kitchen_content(content3), at_kitchen_content(content4), at_kitchen_content(content5), at_kitchen_content(content6), at_kitchen_content(content7), at_kitchen_content(content8)] parents=[10,13]
+  notexist(?) initially_true members=[notexist(sandw1), notexist(sandw2), notexist(sandw3), notexist(sandw4), notexist(sandw5), notexist(sandw6), notexist(sandw7), notexist(sandw8), notexist(sandw9), notexist(sandw10), notexist(sandw11)] parents=[10,13]

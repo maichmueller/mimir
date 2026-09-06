@@ -1,0 +1,79 @@
+facts:
+  at(p1, l6)
+  at(p2, l3)
+  at(p3, l2)
+  at(p4, l2)
+  at(p5, l6)
+  at(p6, l11)
+  at(p7, l1)
+  at(p8, l8)
+  at(p9, l6)
+  at(p10, l4)
+  at(p11, l7)
+  at(p12, l9)
+  at(p1, l9)
+  at(p2, l7)
+  at(p3, l9)
+  at(p4, l6)
+  at(p5, l12)
+  at(p6, l1)
+  at(p7, l2)
+  at(p8, l9)
+  at(p9, l2)
+  at(p10, l3)
+  at(p11, l8)
+  at(p12, l11)
+sets:
+  {capacity(v1, c2), capacity(v2, c1), capacity(v3, c2), capacity(v4, c2), capacity(v5, c2), capacity(v6, c1), capacity(v1, c0), capacity(v1, c1), capacity(v2, c0), capacity(v3, c0), capacity(v3, c1), capacity(v4, c0), capacity(v4, c1), capacity(v5, c0), capacity(v5, c1), capacity(v6, c0), capacity(v2, c2), capacity(v6, c2)}
+  {in(p1, v1), in(p1, v2), in(p1, v3), in(p1, v4), in(p1, v5), in(p1, v6)}
+  {in(p2, v1), in(p2, v2), in(p2, v3), in(p2, v4), in(p2, v5), in(p2, v6)}
+  {in(p3, v1), in(p3, v2), in(p3, v3), in(p3, v4), in(p3, v5), in(p3, v6)}
+  {in(p4, v1), in(p4, v2), in(p4, v3), in(p4, v4), in(p4, v5), in(p4, v6)}
+  {in(p5, v1), in(p5, v2), in(p5, v3), in(p5, v4), in(p5, v5), in(p5, v6)}
+  {in(p6, v1), in(p6, v2), in(p6, v3), in(p6, v4), in(p6, v5), in(p6, v6)}
+  {in(p7, v1), in(p7, v2), in(p7, v3), in(p7, v4), in(p7, v5), in(p7, v6)}
+  {in(p8, v1), in(p8, v2), in(p8, v3), in(p8, v4), in(p8, v5), in(p8, v6)}
+  {in(p9, v1), in(p9, v2), in(p9, v3), in(p9, v4), in(p9, v5), in(p9, v6)}
+  {in(p10, v1), in(p10, v2), in(p10, v3), in(p10, v4), in(p10, v5), in(p10, v6)}
+  {in(p11, v1), in(p11, v2), in(p11, v3), in(p11, v4), in(p11, v5), in(p11, v6)}
+  {in(p12, v1), in(p12, v2), in(p12, v3), in(p12, v4), in(p12, v5), in(p12, v6)}
+  {at(v1, l12), at(v2, l12), at(v3, l12), at(v4, l12), at(v5, l12), at(v6, l12)}
+records:
+  at(p1, l6) members=[at(p1, l6)] parents=[]
+  at(p2, l3) members=[at(p2, l3)] parents=[]
+  at(p3, l2) members=[at(p3, l2)] parents=[]
+  at(p4, l2) members=[at(p4, l2)] parents=[]
+  at(p5, l6) members=[at(p5, l6)] parents=[]
+  at(p6, l11) members=[at(p6, l11)] parents=[]
+  at(p7, l1) members=[at(p7, l1)] parents=[]
+  at(p8, l8) members=[at(p8, l8)] parents=[]
+  at(p9, l6) members=[at(p9, l6)] parents=[]
+  at(p10, l4) members=[at(p10, l4)] parents=[]
+  at(p11, l7) members=[at(p11, l7)] parents=[]
+  at(p12, l9) members=[at(p12, l9)] parents=[]
+  in(p1, ?) members=[in(p1, v1), in(p1, v2), in(p1, v3), in(p1, v4), in(p1, v5), in(p1, v6)] parents=[0]
+  capacity(?, ?) initially_true members=[capacity(v1, c2), capacity(v2, c1), capacity(v3, c2), capacity(v4, c2), capacity(v5, c2), capacity(v6, c1), capacity(v1, c0), capacity(v1, c1), capacity(v2, c0), capacity(v3, c0), capacity(v3, c1), capacity(v4, c0), capacity(v4, c1), capacity(v5, c0), capacity(v5, c1), capacity(v6, c0), capacity(v2, c2), capacity(v6, c2)] parents=[0,1,2,3,4,5,6,7,8,9,10,11,12,14,15,16,17,18,19,20,21,22,23,24]
+  in(p2, ?) members=[in(p2, v1), in(p2, v2), in(p2, v3), in(p2, v4), in(p2, v5), in(p2, v6)] parents=[1]
+  in(p3, ?) members=[in(p3, v1), in(p3, v2), in(p3, v3), in(p3, v4), in(p3, v5), in(p3, v6)] parents=[2]
+  in(p4, ?) members=[in(p4, v1), in(p4, v2), in(p4, v3), in(p4, v4), in(p4, v5), in(p4, v6)] parents=[3]
+  in(p5, ?) members=[in(p5, v1), in(p5, v2), in(p5, v3), in(p5, v4), in(p5, v5), in(p5, v6)] parents=[4]
+  in(p6, ?) members=[in(p6, v1), in(p6, v2), in(p6, v3), in(p6, v4), in(p6, v5), in(p6, v6)] parents=[5]
+  in(p7, ?) members=[in(p7, v1), in(p7, v2), in(p7, v3), in(p7, v4), in(p7, v5), in(p7, v6)] parents=[6]
+  in(p8, ?) members=[in(p8, v1), in(p8, v2), in(p8, v3), in(p8, v4), in(p8, v5), in(p8, v6)] parents=[7]
+  in(p9, ?) members=[in(p9, v1), in(p9, v2), in(p9, v3), in(p9, v4), in(p9, v5), in(p9, v6)] parents=[8]
+  in(p10, ?) members=[in(p10, v1), in(p10, v2), in(p10, v3), in(p10, v4), in(p10, v5), in(p10, v6)] parents=[9]
+  in(p11, ?) members=[in(p11, v1), in(p11, v2), in(p11, v3), in(p11, v4), in(p11, v5), in(p11, v6)] parents=[10]
+  in(p12, ?) members=[in(p12, v1), in(p12, v2), in(p12, v3), in(p12, v4), in(p12, v5), in(p12, v6)] parents=[11]
+  at(p1, l9) initially_true members=[at(p1, l9)] parents=[12]
+  at(p2, l7) initially_true members=[at(p2, l7)] parents=[14]
+  at(p3, l9) initially_true members=[at(p3, l9)] parents=[15]
+  at(p4, l6) initially_true members=[at(p4, l6)] parents=[16]
+  at(?, l12) members=[at(v1, l12), at(v2, l12), at(v3, l12), at(v4, l12), at(v5, l12), at(v6, l12)] parents=[17]
+  at(p5, l12) initially_true members=[at(p5, l12)] parents=[17]
+  at(p6, l1) initially_true members=[at(p6, l1)] parents=[18]
+  at(p7, l2) initially_true members=[at(p7, l2)] parents=[19]
+  at(p8, l9) initially_true members=[at(p8, l9)] parents=[20]
+  at(p9, l2) initially_true members=[at(p9, l2)] parents=[21]
+  at(p10, l3) initially_true members=[at(p10, l3)] parents=[22]
+  at(p11, l8) initially_true members=[at(p11, l8)] parents=[23]
+  at(p12, l11) initially_true members=[at(p12, l11)] parents=[24]

@@ -1,0 +1,21 @@
+facts:
+  at(car1, loc1)
+  at(car2, loc1)
+  at-ferry(loc1)
+  on(car1)
+  on(car2)
+  at-ferry(loc3)
+  at(car1, loc3)
+  empty-ferry()
+  at(car2, loc3)
+sets:
+records:
+  at(car1, loc1) members=[at(car1, loc1)] parents=[]
+  at(car2, loc1) members=[at(car2, loc1)] parents=[]
+  at-ferry(loc1) members=[at-ferry(loc1)] parents=[0,1]
+  on(car1) members=[on(car1)] parents=[0]
+  on(car2) members=[on(car2)] parents=[1]
+  at-ferry(loc3) initially_true members=[at-ferry(loc3)] parents=[3,4]
+  at(car1, loc3) initially_true members=[at(car1, loc3)] parents=[3]
+  empty-ferry() initially_true members=[empty-ferry()] parents=[3,4]
+  at(car2, loc3) initially_true members=[at(car2, loc3)] parents=[4]

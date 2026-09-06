@@ -1,0 +1,165 @@
+facts:
+  clear(b15)
+  on(b15, b18)
+  on(b18, b2)
+  on(b2, b1)
+  on(b1, b6)
+  on(b6, b8)
+  on(b8, b20)
+  on(b20, b16)
+  on(b16, b11)
+  on(b11, b19)
+  on(b19, b10)
+  on-table(b10)
+  clear(b17)
+  on(b17, b13)
+  on(b13, b14)
+  on(b14, b9)
+  on(b9, b4)
+  on(b4, b5)
+  on(b5, b3)
+  on(b3, b12)
+  on(b12, b7)
+  on-table(b7)
+  clear(b19)
+  arm-empty()
+  on(b19, b15)
+  clear(b18)
+  holding(b15)
+  clear(b2)
+  holding(b18)
+  clear(b1)
+  holding(b2)
+  clear(b6)
+  holding(b1)
+  clear(b8)
+  holding(b6)
+  clear(b20)
+  holding(b8)
+  clear(b16)
+  holding(b20)
+  clear(b11)
+  holding(b16)
+  holding(b11)
+  clear(b10)
+  holding(b19)
+  holding(b10)
+  on(b15, b17)
+  clear(b13)
+  holding(b17)
+  clear(b14)
+  holding(b13)
+  clear(b9)
+  holding(b14)
+  clear(b4)
+  holding(b9)
+  clear(b5)
+  holding(b4)
+  clear(b3)
+  holding(b5)
+  clear(b12)
+  holding(b3)
+  clear(b7)
+  holding(b12)
+  holding(b7)
+  on(b10, b19)
+  on(b1, b18)
+  on(b18, b6)
+  on(b20, b1)
+  on(b2, b5)
+  on(b5, b8)
+  on-table(b6)
+  on(b3, b20)
+  on(b8, b10)
+  on(b13, b11)
+  on(b16, b9)
+  on(b11, b12)
+  on(b7, b13)
+  on(b17, b3)
+  on(b14, b4)
+  on-table(b9)
+  on-table(b4)
+  on-table(b12)
+sets:
+records:
+  clear(b15) members=[clear(b15)] parents=[12,26]
+  on(b15, b18) members=[on(b15, b18)] parents=[]
+  on(b18, b2) members=[on(b18, b2)] parents=[]
+  on(b2, b1) members=[on(b2, b1)] parents=[]
+  on(b1, b6) members=[on(b1, b6)] parents=[]
+  on(b6, b8) members=[on(b6, b8)] parents=[]
+  on(b8, b20) members=[on(b8, b20)] parents=[]
+  on(b20, b16) members=[on(b20, b16)] parents=[]
+  on(b16, b11) members=[on(b16, b11)] parents=[]
+  on(b11, b19) members=[on(b11, b19)] parents=[]
+  on(b19, b10) members=[on(b19, b10)] parents=[]
+  on-table(b10) members=[on-table(b10)] parents=[]
+  clear(b17) members=[clear(b17)] parents=[47,56]
+  on(b17, b13) members=[on(b17, b13)] parents=[]
+  on(b13, b14) members=[on(b13, b14)] parents=[]
+  on(b14, b9) members=[on(b14, b9)] parents=[]
+  on(b9, b4) members=[on(b9, b4)] parents=[]
+  on(b4, b5) members=[on(b4, b5)] parents=[]
+  on(b5, b3) members=[on(b5, b3)] parents=[]
+  on(b3, b12) members=[on(b3, b12)] parents=[]
+  on(b12, b7) members=[on(b12, b7)] parents=[]
+  on-table(b7) members=[on-table(b7)] parents=[]
+  clear(b19) members=[clear(b19)] parents=[0,9,43]
+  arm-empty() initially_true members=[arm-empty()] parents=[0,12,22,25,26,28,29,30,31,32,33,34,35,36,38,39,40,41,42,43,44,46,47,49,50,51,52,53,54,55,56,57,58,59,61,62]
+  on(b19, b15) initially_true members=[on(b19, b15)] parents=[0,43]
+  clear(b18) members=[clear(b18)] parents=[1,28,31]
+  holding(b15) members=[holding(b15)] parents=[1]
+  clear(b2) initially_true members=[clear(b2)] parents=[2,30,54]
+  holding(b18) members=[holding(b18)] parents=[2]
+  clear(b1) members=[clear(b1)] parents=[3,25,32]
+  holding(b2) members=[holding(b2)] parents=[3]
+  clear(b6) members=[clear(b6)] parents=[4,34]
+  holding(b1) members=[holding(b1)] parents=[4]
+  clear(b8) members=[clear(b8)] parents=[5,36,42]
+  holding(b6) members=[holding(b6)] parents=[5]
+  clear(b20) members=[clear(b20)] parents=[6,29,38]
+  holding(b8) members=[holding(b8)] parents=[6]
+  clear(b16) initially_true members=[clear(b16)] parents=[7,40,50]
+  holding(b20) members=[holding(b20)] parents=[7]
+  clear(b11) members=[clear(b11)] parents=[8,41,58]
+  holding(b16) members=[holding(b16)] parents=[8]
+  holding(b11) members=[holding(b11)] parents=[9]
+  clear(b10) members=[clear(b10)] parents=[10,22,44]
+  holding(b19) members=[holding(b19)] parents=[10]
+  holding(b10) members=[holding(b10)] parents=[11]
+  on(b15, b17) initially_true members=[on(b15, b17)] parents=[12,26]
+  clear(b13) members=[clear(b13)] parents=[13,39,49]
+  holding(b17) members=[holding(b17)] parents=[13]
+  clear(b14) initially_true members=[clear(b14)] parents=[14,51,52]
+  holding(b13) members=[holding(b13)] parents=[14]
+  clear(b9) members=[clear(b9)] parents=[15,53]
+  holding(b14) members=[holding(b14)] parents=[15]
+  clear(b4) members=[clear(b4)] parents=[16,55]
+  holding(b9) members=[holding(b9)] parents=[16]
+  clear(b5) members=[clear(b5)] parents=[17,33,57]
+  holding(b4) members=[holding(b4)] parents=[17]
+  clear(b3) members=[clear(b3)] parents=[18,35,59]
+  holding(b5) members=[holding(b5)] parents=[18]
+  clear(b12) members=[clear(b12)] parents=[19,61]
+  holding(b3) members=[holding(b3)] parents=[19]
+  clear(b7) initially_true members=[clear(b7)] parents=[20,46,62]
+  holding(b12) members=[holding(b12)] parents=[20]
+  holding(b7) members=[holding(b7)] parents=[21]
+  on(b10, b19) initially_true members=[on(b10, b19)] parents=[22,44]
+  on(b1, b18) initially_true members=[on(b1, b18)] parents=[25,32]
+  on(b18, b6) initially_true members=[on(b18, b6)] parents=[28,31]
+  on(b20, b1) initially_true members=[on(b20, b1)] parents=[29,38]
+  on(b2, b5) initially_true members=[on(b2, b5)] parents=[30,54]
+  on(b5, b8) initially_true members=[on(b5, b8)] parents=[33,57]
+  on-table(b6) initially_true members=[on-table(b6)] parents=[34]
+  on(b3, b20) initially_true members=[on(b3, b20)] parents=[35,59]
+  on(b8, b10) initially_true members=[on(b8, b10)] parents=[36,42]
+  on(b13, b11) initially_true members=[on(b13, b11)] parents=[39,49]
+  on(b16, b9) initially_true members=[on(b16, b9)] parents=[40,50]
+  on(b11, b12) initially_true members=[on(b11, b12)] parents=[41,58]
+  on(b7, b13) initially_true members=[on(b7, b13)] parents=[46,62]
+  on(b17, b3) initially_true members=[on(b17, b3)] parents=[47,56]
+  on(b14, b4) initially_true members=[on(b14, b4)] parents=[51,52]
+  on-table(b9) initially_true members=[on-table(b9)] parents=[53]
+  on-table(b4) initially_true members=[on-table(b4)] parents=[55]
+  on-table(b12) initially_true members=[on-table(b12)] parents=[61]

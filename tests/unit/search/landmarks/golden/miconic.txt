@@ -1,0 +1,19 @@
+facts:
+  served(p0)
+  served(p1)
+  boarded(p0)
+  lift-at(f1)
+  boarded(p1)
+  origin(p0, f0)
+  lift-at(f0)
+  origin(p1, f0)
+sets:
+records:
+  served(p0) members=[served(p0)] parents=[]
+  served(p1) members=[served(p1)] parents=[]
+  boarded(p0) members=[boarded(p0)] parents=[0]
+  lift-at(f1) members=[lift-at(f1)] parents=[0,1]
+  boarded(p1) members=[boarded(p1)] parents=[1]
+  origin(p0, f0) initially_true members=[origin(p0, f0)] parents=[2]
+  lift-at(f0) initially_true members=[lift-at(f0)] parents=[2,3,4]
+  origin(p1, f0) initially_true members=[origin(p1, f0)] parents=[4]

@@ -1,0 +1,64 @@
+facts:
+  communicated_rock_data(waypoint4)
+  communicated_rock_data(waypoint5)
+  communicated_soil_data(waypoint7)
+  communicated_soil_data(waypoint4)
+  communicated_image_data(objective7, low_res)
+  communicated_image_data(objective1, colour)
+  communicated_image_data(objective7, high_res)
+  communicated_image_data(objective5, colour)
+  communicated_image_data(objective3, high_res)
+  communicated_image_data(objective3, low_res)
+  have_rock_analysis(rover1, waypoint4)
+  have_rock_analysis(rover1, waypoint5)
+  have_image(rover2, objective7, low_res)
+  have_image(rover2, objective1, colour)
+  have_image(rover2, objective7, high_res)
+  have_image(rover2, objective5, colour)
+  have_image(rover2, objective3, high_res)
+  have_image(rover2, objective3, low_res)
+  at(rover1, waypoint4)
+  empty(rover1store)
+  at_rock_sample(waypoint4)
+  at(rover1, waypoint5)
+  at_rock_sample(waypoint5)
+  at_soil_sample(waypoint7)
+  at_soil_sample(waypoint4)
+sets:
+  {at(rover2, waypoint4), at(rover2, waypoint3), at(rover2, waypoint5), at(rover2, waypoint6), at(rover2, waypoint1)}
+  {at(rover3, waypoint7), at(rover1, waypoint7), at(rover2, waypoint7)}
+  {have_soil_analysis(rover1, waypoint7), have_soil_analysis(rover2, waypoint7), have_soil_analysis(rover3, waypoint7)}
+  {have_soil_analysis(rover1, waypoint4), have_soil_analysis(rover2, waypoint4), have_soil_analysis(rover3, waypoint4)}
+  {calibrated(camera2, rover2), calibrated(camera3, rover2), calibrated(camera1, rover2)}
+records:
+  communicated_rock_data(waypoint4) members=[communicated_rock_data(waypoint4)] parents=[]
+  communicated_rock_data(waypoint5) members=[communicated_rock_data(waypoint5)] parents=[]
+  communicated_soil_data(waypoint7) members=[communicated_soil_data(waypoint7)] parents=[]
+  communicated_soil_data(waypoint4) members=[communicated_soil_data(waypoint4)] parents=[]
+  communicated_image_data(objective7, low_res) members=[communicated_image_data(objective7, low_res)] parents=[]
+  communicated_image_data(objective1, colour) members=[communicated_image_data(objective1, colour)] parents=[]
+  communicated_image_data(objective7, high_res) members=[communicated_image_data(objective7, high_res)] parents=[]
+  communicated_image_data(objective5, colour) members=[communicated_image_data(objective5, colour)] parents=[]
+  communicated_image_data(objective3, high_res) members=[communicated_image_data(objective3, high_res)] parents=[]
+  communicated_image_data(objective3, low_res) members=[communicated_image_data(objective3, low_res)] parents=[]
+  at(?, ?) initially_true members=[at(rover1, waypoint4), at(rover2, waypoint4), at(rover3, waypoint7), at(rover1, waypoint2), at(rover1, waypoint3), at(rover1, waypoint5), at(rover1, waypoint6), at(rover1, waypoint7), at(rover1, waypoint8), at(rover2, waypoint2), at(rover2, waypoint3), at(rover2, waypoint5), at(rover2, waypoint6), at(rover2, waypoint7), at(rover2, waypoint8), at(rover3, waypoint2), at(rover3, waypoint3), at(rover3, waypoint4), at(rover3, waypoint5), at(rover3, waypoint6), at(rover3, waypoint8)] parents=[0,1,2,3,4,5,6,7,8,9]
+  have_rock_analysis(rover1, waypoint4) members=[have_rock_analysis(rover1, waypoint4)] parents=[0]
+  have_rock_analysis(rover1, waypoint5) members=[have_rock_analysis(rover1, waypoint5)] parents=[1]
+  have_soil_analysis(?, waypoint7) members=[have_soil_analysis(rover1, waypoint7), have_soil_analysis(rover2, waypoint7), have_soil_analysis(rover3, waypoint7)] parents=[2]
+  have_soil_analysis(?, waypoint4) members=[have_soil_analysis(rover1, waypoint4), have_soil_analysis(rover2, waypoint4), have_soil_analysis(rover3, waypoint4)] parents=[3]
+  have_image(rover2, objective7, low_res) members=[have_image(rover2, objective7, low_res)] parents=[4]
+  have_image(rover2, objective1, colour) members=[have_image(rover2, objective1, colour)] parents=[5]
+  have_image(rover2, objective7, high_res) members=[have_image(rover2, objective7, high_res)] parents=[6]
+  have_image(rover2, objective5, colour) members=[have_image(rover2, objective5, colour)] parents=[7]
+  have_image(rover2, objective3, high_res) members=[have_image(rover2, objective3, high_res)] parents=[8]
+  have_image(rover2, objective3, low_res) members=[have_image(rover2, objective3, low_res)] parents=[9]
+  at(rover1, waypoint4) initially_true members=[at(rover1, waypoint4)] parents=[11]
+  empty(rover1store) initially_true members=[empty(rover1store)] parents=[11,12]
+  at_rock_sample(waypoint4) initially_true members=[at_rock_sample(waypoint4)] parents=[11]
+  at(rover1, waypoint5) members=[at(rover1, waypoint5)] parents=[12]
+  at_rock_sample(waypoint5) initially_true members=[at_rock_sample(waypoint5)] parents=[12]
+  at(?, waypoint7) initially_true members=[at(rover3, waypoint7), at(rover1, waypoint7), at(rover2, waypoint7)] parents=[13]
+  at_soil_sample(waypoint7) initially_true members=[at_soil_sample(waypoint7)] parents=[13]
+  at_soil_sample(waypoint4) initially_true members=[at_soil_sample(waypoint4)] parents=[14]
+  at(rover2, ?) initially_true members=[at(rover2, waypoint4), at(rover2, waypoint3), at(rover2, waypoint5), at(rover2, waypoint6), at(rover2, waypoint1)] parents=[15,16,17,18,19,20,30]
+  calibrated(?, rover2) members=[calibrated(camera2, rover2), calibrated(camera3, rover2), calibrated(camera1, rover2)] parents=[15,16,17,18,19,20]

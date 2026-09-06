@@ -26,6 +26,22 @@
 namespace mimir::search::landmarks
 {
 
+/// @brief How far §9.2's reachability narrowing of an achiever's free variables goes.
+enum class ReachabilityDisambiguation
+{
+    OFF,          ///< No narrowing beyond the static filter.
+    PER_LITERAL,  ///< Each precondition literal narrows its own variables against the reachable set.
+    JOINT,        ///< The projection of the whole precondition conjunction, never materialised.
+};
+
+/// @brief §9.5: which atoms are tested against the complete Π⁺ fact-landmark characterisation.
+enum class CompleteFactLandmarks
+{
+    OFF,      ///< No completion pass.
+    MEMBERS,  ///< Every member of every disjunctive set.
+    ALL,      ///< Every reachable non-initial atom. One restricted fixpoint each -- see the docs.
+};
+
 /// @brief Options for `LiftedFactLandmarkGenerator`.
 struct LiftedFactLandmarkGeneratorOptions
 {
@@ -69,7 +85,51 @@ struct LiftedFactLandmarkGeneratorOptions
     /// truncated set is not a landmark). The landmark's own `LiftedLandmark` record keeps its full
     /// member list either way, because that record is diagnostics, not vocabulary.
     size_t max_disjunctive_members = 0;
+
+    /* Delete-relaxed reachability (§9), on the grounding-free `RelaxedReachability` engine. Every
+       option below is off-by-construction identical to the pre-0.17 generator when disabled, and
+       the byte-identity harness pins that. */
+
+    /// @brief §9.1: drop members that no reachable state holds.
+    ///
+    /// "Every plan makes some member true" quantifies over reachable states, so an atom outside the
+    /// relaxed-reachable set was never one of them. The phase-4 static pre-pass approximates this
+    /// syntactically; this is the exact test, and it is what closes the rovers `at(?r, w)` and
+    /// logistics cross-city-truck inflation that no static analysis can see (a truck's city is a
+    /// fluent initial atom).
+    bool reachability_filter_members = true;
+
+    /// @brief §9.2: narrow an achiever's free variables to what the reachable set can supply.
+    ReachabilityDisambiguation reachability_disambiguation = ReachabilityDisambiguation::JOINT;
+
+    /// @brief §9.3: restrict achievers to those that can be the FIRST to add a member.
+    ///
+    /// Richter-Helmert-Westphal's possible-first-achiever test, computed as one restricted fixpoint
+    /// per expansion. Subsumes §2.7 exactly -- and strictly, because it argues about the first
+    /// *member* producer where §2.7 could only argue about the first *pattern* producer and had to
+    /// gate on pattern instances in `I`. §2.7 is therefore skipped when this is on.
+    bool first_achievers_restricted = true;
+
+    /// @brief §9.4: certify every extracted fact against the Π⁺ characterisation, and throw if one
+    /// fails. A check of the generator rather than a source of landmarks, on by default so that a
+    /// future rule that breaks soundness is caught on the first instance that exercises it.
+    bool verify_pi_plus = true;
+
+    /// @brief §9.5: promote atoms that the complete Π⁺ test proves to be landmarks.
+    ///
+    /// `MEMBERS` is bounded by the member sets. `ALL` is `|R \ I|` restricted fixpoints -- 638,945
+    /// of them on sokoban `test/p30-hard`, about 21 hours -- which is why it is the one option that
+    /// is opt-in rather than on by default.
+    CompleteFactLandmarks complete_fact_landmarks = CompleteFactLandmarks::MEMBERS;
 };
+
+/// @brief Whether any option needs the reachability engine built.
+inline bool needs_relaxed_reachability(const LiftedFactLandmarkGeneratorOptions& options)
+{
+    return options.reachability_filter_members || options.reachability_disambiguation != ReachabilityDisambiguation::OFF
+           || options.first_achievers_restricted || options.verify_pi_plus
+           || options.complete_fact_landmarks != CompleteFactLandmarks::OFF;
+}
 
 /// @brief `LiftedFactLandmarkGenerator` computes necessary-subgoal landmarks over *partially ground
 /// atoms*, directly from the action schemas -- no ground action is ever instantiated.

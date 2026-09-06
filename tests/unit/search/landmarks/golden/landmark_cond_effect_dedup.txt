@@ -1,0 +1,7 @@
+facts:
+  r()
+  p()
+sets:
+records:
+  r() members=[r()] parents=[]
+  p() initially_true members=[p()] parents=[0]

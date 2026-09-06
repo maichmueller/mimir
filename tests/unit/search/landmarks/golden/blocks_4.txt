@@ -1,0 +1,25 @@
+facts:
+  clear(b2)
+  clear(b1)
+  on-table(b3)
+  on(b2, b3)
+  on-table(b1)
+  clear(b3)
+  holding(b2)
+  holding(b1)
+  arm-empty()
+  on(b1, b3)
+  on-table(b2)
+sets:
+records:
+  clear(b2) initially_true members=[clear(b2)] parents=[6]
+  clear(b1) initially_true members=[clear(b1)] parents=[5,7]
+  on-table(b3) initially_true members=[on-table(b3)] parents=[]
+  on(b2, b3) members=[on(b2, b3)] parents=[]
+  on-table(b1) members=[on-table(b1)] parents=[]
+  clear(b3) members=[clear(b3)] parents=[3]
+  holding(b2) members=[holding(b2)] parents=[3]
+  holding(b1) members=[holding(b1)] parents=[4]
+  arm-empty() initially_true members=[arm-empty()] parents=[5,6,7]
+  on(b1, b3) initially_true members=[on(b1, b3)] parents=[5,7]
+  on-table(b2) initially_true members=[on-table(b2)] parents=[6]

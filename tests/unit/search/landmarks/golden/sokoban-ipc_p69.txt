@@ -1,0 +1,21 @@
+facts:
+  at(box1, loc_4_3)
+  at(box2, loc_4_9)
+  at(box3, loc_8_5)
+  at-robot(loc_4_5)
+  at(box1, loc_4_4)
+  clear(loc_4_3)
+  clear(loc_4_9)
+  clear(loc_8_5)
+  clear(loc_4_4)
+sets:
+records:
+  at(box1, loc_4_3) members=[at(box1, loc_4_3)] parents=[]
+  at(box2, loc_4_9) members=[at(box2, loc_4_9)] parents=[]
+  at(box3, loc_8_5) members=[at(box3, loc_8_5)] parents=[]
+  at-robot(loc_4_5) members=[at-robot(loc_4_5)] parents=[0]
+  at(box1, loc_4_4) members=[at(box1, loc_4_4)] parents=[0]
+  clear(loc_4_3) initially_true members=[clear(loc_4_3)] parents=[0]
+  clear(loc_4_9) initially_true members=[clear(loc_4_9)] parents=[1]
+  clear(loc_8_5) initially_true members=[clear(loc_8_5)] parents=[2]
+  clear(loc_4_4) initially_true members=[clear(loc_4_4)] parents=[4]

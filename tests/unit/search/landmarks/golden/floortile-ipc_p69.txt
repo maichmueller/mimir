@@ -1,0 +1,126 @@
+facts:
+  painted(tile_1_1, white)
+  painted(tile_1_2, black)
+  painted(tile_1_3, white)
+  painted(tile_2_1, black)
+  painted(tile_2_2, white)
+  painted(tile_2_3, black)
+  painted(tile_3_1, white)
+  painted(tile_3_2, black)
+  painted(tile_3_3, white)
+  painted(tile_4_1, black)
+  painted(tile_4_2, white)
+  painted(tile_4_3, black)
+  painted(tile_5_1, white)
+  painted(tile_5_2, black)
+  painted(tile_5_3, white)
+  painted(tile_6_1, black)
+  painted(tile_6_2, white)
+  painted(tile_6_3, black)
+  painted(tile_7_1, white)
+  painted(tile_7_2, black)
+  painted(tile_7_3, white)
+  painted(tile_8_1, black)
+  painted(tile_8_2, white)
+  painted(tile_8_3, black)
+  painted(tile_9_1, white)
+  painted(tile_9_2, black)
+  painted(tile_9_3, white)
+  clear(tile_1_1)
+  clear(tile_1_2)
+  clear(tile_1_3)
+  clear(tile_2_1)
+  clear(tile_2_2)
+  clear(tile_2_3)
+  clear(tile_3_1)
+  clear(tile_3_2)
+  clear(tile_3_3)
+  clear(tile_4_1)
+  clear(tile_4_2)
+  clear(tile_4_3)
+  clear(tile_5_1)
+  clear(tile_5_2)
+  clear(tile_5_3)
+  clear(tile_6_1)
+  clear(tile_6_2)
+  clear(tile_6_3)
+  clear(tile_7_1)
+  clear(tile_7_2)
+  clear(tile_7_3)
+  clear(tile_8_1)
+  clear(tile_8_2)
+  clear(tile_8_3)
+  clear(tile_9_1)
+  clear(tile_9_2)
+  clear(tile_9_3)
+  robot-at(robot1, tile_1_2)
+  robot-at(robot2, tile_4_1)
+sets:
+  {robot-has(robot1, black), robot-has(robot2, black)}
+  {robot-has(robot1, white), robot-has(robot2, white)}
+  {robot-at(robot1, tile_8_1), robot-at(robot2, tile_8_1)}
+  {robot-at(robot1, tile_8_2), robot-at(robot2, tile_8_2)}
+  {robot-at(robot1, tile_8_3), robot-at(robot2, tile_8_3)}
+records:
+  painted(tile_1_1, white) members=[painted(tile_1_1, white)] parents=[]
+  painted(tile_1_2, black) members=[painted(tile_1_2, black)] parents=[]
+  painted(tile_1_3, white) members=[painted(tile_1_3, white)] parents=[]
+  painted(tile_2_1, black) members=[painted(tile_2_1, black)] parents=[]
+  painted(tile_2_2, white) members=[painted(tile_2_2, white)] parents=[]
+  painted(tile_2_3, black) members=[painted(tile_2_3, black)] parents=[]
+  painted(tile_3_1, white) members=[painted(tile_3_1, white)] parents=[]
+  painted(tile_3_2, black) members=[painted(tile_3_2, black)] parents=[]
+  painted(tile_3_3, white) members=[painted(tile_3_3, white)] parents=[]
+  painted(tile_4_1, black) members=[painted(tile_4_1, black)] parents=[]
+  painted(tile_4_2, white) members=[painted(tile_4_2, white)] parents=[]
+  painted(tile_4_3, black) members=[painted(tile_4_3, black)] parents=[]
+  painted(tile_5_1, white) members=[painted(tile_5_1, white)] parents=[]
+  painted(tile_5_2, black) members=[painted(tile_5_2, black)] parents=[]
+  painted(tile_5_3, white) members=[painted(tile_5_3, white)] parents=[]
+  painted(tile_6_1, black) members=[painted(tile_6_1, black)] parents=[]
+  painted(tile_6_2, white) members=[painted(tile_6_2, white)] parents=[]
+  painted(tile_6_3, black) members=[painted(tile_6_3, black)] parents=[]
+  painted(tile_7_1, white) members=[painted(tile_7_1, white)] parents=[]
+  painted(tile_7_2, black) members=[painted(tile_7_2, black)] parents=[]
+  painted(tile_7_3, white) members=[painted(tile_7_3, white)] parents=[]
+  painted(tile_8_1, black) members=[painted(tile_8_1, black)] parents=[]
+  painted(tile_8_2, white) members=[painted(tile_8_2, white)] parents=[]
+  painted(tile_8_3, black) members=[painted(tile_8_3, black)] parents=[]
+  painted(tile_9_1, white) members=[painted(tile_9_1, white)] parents=[]
+  painted(tile_9_2, black) members=[painted(tile_9_2, black)] parents=[]
+  painted(tile_9_3, white) members=[painted(tile_9_3, white)] parents=[]
+  robot-at(?, ?) initially_true members=[robot-at(robot1, tile_1_2), robot-at(robot2, tile_4_1), robot-at(robot1, tile_0_1), robot-at(robot2, tile_0_1), robot-at(robot1, tile_2_1), robot-at(robot2, tile_2_1), robot-at(robot1, tile_0_2), robot-at(robot2, tile_0_2), robot-at(robot1, tile_2_2), robot-at(robot2, tile_2_2), robot-at(robot1, tile_0_3), robot-at(robot2, tile_0_3), robot-at(robot1, tile_2_3), robot-at(robot2, tile_2_3), robot-at(robot1, tile_1_1), robot-at(robot2, tile_1_1), robot-at(robot1, tile_3_1), robot-at(robot2, tile_3_1), robot-at(robot2, tile_1_2), robot-at(robot1, tile_3_2), robot-at(robot2, tile_3_2), robot-at(robot1, tile_1_3), robot-at(robot2, tile_1_3), robot-at(robot1, tile_3_3), robot-at(robot2, tile_3_3), robot-at(robot1, tile_4_1), robot-at(robot1, tile_4_2), robot-at(robot2, tile_4_2), robot-at(robot1, tile_4_3), robot-at(robot2, tile_4_3), robot-at(robot1, tile_5_1), robot-at(robot2, tile_5_1), robot-at(robot1, tile_5_2), robot-at(robot2, tile_5_2), robot-at(robot1, tile_5_3), robot-at(robot2, tile_5_3), robot-at(robot1, tile_6_1), robot-at(robot2, tile_6_1), robot-at(robot1, tile_6_2), robot-at(robot2, tile_6_2), robot-at(robot1, tile_6_3), robot-at(robot2, tile_6_3), robot-at(robot1, tile_7_1), robot-at(robot2, tile_7_1), robot-at(robot1, tile_7_2), robot-at(robot2, tile_7_2), robot-at(robot1, tile_7_3), robot-at(robot2, tile_7_3), robot-at(robot1, tile_8_1), robot-at(robot2, tile_8_1), robot-at(robot1, tile_8_2), robot-at(robot2, tile_8_2), robot-at(robot1, tile_8_3), robot-at(robot2, tile_8_3), robot-at(robot1, tile_9_1), robot-at(robot2, tile_9_1), robot-at(robot1, tile_9_2), robot-at(robot2, tile_9_2), robot-at(robot1, tile_9_3), robot-at(robot2, tile_9_3)] parents=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,54,56,58]
+  clear(tile_1_1) initially_true members=[clear(tile_1_1)] parents=[0]
+  robot-has(?, white) members=[robot-has(robot1, white), robot-has(robot2, white)] parents=[0,2,4,6,8,10,12,14,16,18,20,22,24,26]
+  clear(tile_1_2) members=[clear(tile_1_2)] parents=[1]
+  robot-has(?, black) initially_true members=[robot-has(robot1, black), robot-has(robot2, black)] parents=[1,3,5,7,9,11,13,15,17,19,21,23,25]
+  clear(tile_1_3) initially_true members=[clear(tile_1_3)] parents=[2]
+  clear(tile_2_1) initially_true members=[clear(tile_2_1)] parents=[3]
+  clear(tile_2_2) initially_true members=[clear(tile_2_2)] parents=[4]
+  clear(tile_2_3) initially_true members=[clear(tile_2_3)] parents=[5]
+  clear(tile_3_1) initially_true members=[clear(tile_3_1)] parents=[6]
+  clear(tile_3_2) initially_true members=[clear(tile_3_2)] parents=[7]
+  clear(tile_3_3) initially_true members=[clear(tile_3_3)] parents=[8]
+  clear(tile_4_1) members=[clear(tile_4_1)] parents=[9]
+  clear(tile_4_2) initially_true members=[clear(tile_4_2)] parents=[10]
+  clear(tile_4_3) initially_true members=[clear(tile_4_3)] parents=[11]
+  clear(tile_5_1) initially_true members=[clear(tile_5_1)] parents=[12]
+  clear(tile_5_2) initially_true members=[clear(tile_5_2)] parents=[13]
+  clear(tile_5_3) initially_true members=[clear(tile_5_3)] parents=[14]
+  clear(tile_6_1) initially_true members=[clear(tile_6_1)] parents=[15]
+  clear(tile_6_2) initially_true members=[clear(tile_6_2)] parents=[16]
+  clear(tile_6_3) initially_true members=[clear(tile_6_3)] parents=[17]
+  clear(tile_7_1) initially_true members=[clear(tile_7_1)] parents=[18]
+  clear(tile_7_2) initially_true members=[clear(tile_7_2)] parents=[19]
+  clear(tile_7_3) initially_true members=[clear(tile_7_3)] parents=[20]
+  clear(tile_8_1) initially_true members=[clear(tile_8_1)] parents=[21,54]
+  clear(tile_8_2) initially_true members=[clear(tile_8_2)] parents=[22,56]
+  clear(tile_8_3) initially_true members=[clear(tile_8_3)] parents=[23,58]
+  robot-at(?, tile_8_1) members=[robot-at(robot1, tile_8_1), robot-at(robot2, tile_8_1)] parents=[24]
+  clear(tile_9_1) initially_true members=[clear(tile_9_1)] parents=[24]
+  robot-at(?, tile_8_2) members=[robot-at(robot1, tile_8_2), robot-at(robot2, tile_8_2)] parents=[25]
+  clear(tile_9_2) initially_true members=[clear(tile_9_2)] parents=[25]
+  robot-at(?, tile_8_3) members=[robot-at(robot1, tile_8_3), robot-at(robot2, tile_8_3)] parents=[26]
+  clear(tile_9_3) initially_true members=[clear(tile_9_3)] parents=[26]
+  robot-at(robot1, tile_1_2) initially_true members=[robot-at(robot1, tile_1_2)] parents=[30]
+  robot-at(robot2, tile_4_1) initially_true members=[robot-at(robot2, tile_4_1)] parents=[39]

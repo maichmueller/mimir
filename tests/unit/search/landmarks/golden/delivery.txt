@@ -1,0 +1,15 @@
+facts:
+  at(p1, c_0_0)
+  at(t1, c_0_0)
+  carrying(t1, p1)
+  at(p1, c_1_0)
+  at(t1, c_1_0)
+  empty(t1)
+sets:
+records:
+  at(p1, c_0_0) members=[at(p1, c_0_0)] parents=[]
+  at(t1, c_0_0) members=[at(t1, c_0_0)] parents=[0]
+  carrying(t1, p1) members=[carrying(t1, p1)] parents=[0]
+  at(p1, c_1_0) initially_true members=[at(p1, c_1_0)] parents=[2]
+  at(t1, c_1_0) members=[at(t1, c_1_0)] parents=[2]
+  empty(t1) initially_true members=[empty(t1)] parents=[2]

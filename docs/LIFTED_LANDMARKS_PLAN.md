@@ -619,3 +619,185 @@ singletons).
   kept in `LiftedLandmark.parent_positions` only.
 - Making the grounded generator sound (HPS verification) — a different change;
   the lifted generator supersedes it where grounding is the wall.
+## 9. Phase 6: relaxed reachability inside the lifted generator (pymimir 0.17.0)
+
+Every add-on below is its own option on `LiftedFactLandmarkGeneratorOptions`,
+**on by default** (the one exception is §9.5's `all` level, whose cost is
+stated there), with no automatic time-budget degradation: the hardest-instance
+ladder (§10) decides per-domain settings afterwards. The engine is the
+grounding-free delete-relaxed reachability of `feat/relaxed-reachability`
+(Datalog rules per (schema, effect, add literal) + axioms, rule splitting into
+binary joins with projection, semi-naive fixpoint, restricted queries that never
+derive a forbidden atom). Write `R` for the fixpoint from `I` with nothing
+forbidden and `R_{¬X}` for the fixpoint that never derives any atom of `X`
+(and drops `X ∩ I`, which is empty for every landmark this generator expands, by
+§2.1). Both are exact Π⁺ reachability: an atom absent from `R_{¬X}` is false in
+every state reachable along a prefix in which no atom of `X` was ever made true.
+
+The invariant that every option must keep, in one sentence: **soundness comes
+from Proposition 1 applied to the first action of a plan that adds a MEMBER of
+the landmark being expanded**, and every narrowing below only removes achiever
+instances that cannot be that action, or members that no reachable state holds.
+
+### 9.1 `reachability_filter_members` (option 1)
+
+After §2.5 (and the static filter of phase 4, which stays as the cheap
+pre-pass), drop every member that is not in `R`. Sound: "every plan makes some
+member true" quantifies over reachable states, and an atom outside `R` is in
+none of them. Singleton sets are promoted to facts as before; an emptied set is
+a bug (the parent's first achiever's precondition instance is reachable), so
+assert rather than tolerate it. This is the filter §2.5 declined to build and
+phase 4 approximated; it closes the rovers `at(?r, w)` and logistics
+cross-city-truck inflation (a truck's city is a fluent initial atom, so no
+static analysis can exclude it).
+
+### 9.2 `reachability_disambiguation` (option 2): `off | per_literal | joint`, default `joint`
+
+When an achiever `(A, E, σ)` is built (§2.2–2.3), narrow each free variable's
+candidate domain by what `R` can supply:
+
+- `per_literal`: for each positive fluent precondition `Q(v)` under `σ`, the
+  variable at each free position may only take the objects that appear at that
+  position in some atom of `R ∩ inst(Q(v))` (repeated variables agreeing per
+  atom, as in §2.7's `matches`). Iterate with the static filter to a fixpoint.
+- `joint`: the projection of the *conjunction* of `A`'s positive preconditions
+  (static and fluent, under `σ`) over `R` onto each variable — the set of values
+  for which the precondition join is non-empty. This is exactly the set of
+  Π⁺-applicable ground instances of the achiever projected per variable, and
+  the engine computes it with the same split-rule machinery it uses for
+  effects (one projected rule per variable, bound positions as constants),
+  **without materialising the join** — materialising it is the grounding wall.
+
+Drop the achiever if any domain becomes empty. Sound: the first achiever of a
+member is applicable in a reachable state, so all its preconditions are in `R`
+jointly. Members derived from a narrowed achiever (§2.5) shrink accordingly.
+
+### 9.3 `first_achievers_restricted` (option 3): RHW possible first achievers
+
+When expanding a landmark with member set `M` (a fact is `M = {f}`), compute
+`R_{¬M}` and restrict the achievers to the ones whose instances can be **first**:
+
+- collect achievers for the pattern as in §2.2, then narrow each free variable
+  at a pattern position to the objects that appear at that position in `M`
+  (position-wise projection of the member set — an over-approximation of "adds
+  a member", sound because it is a superset);
+- apply §9.2's narrowing with `R_{¬M}` in place of `R` (same `per_literal |
+  joint` level as option 2); drop achievers whose domains empty;
+- §2.4/§2.5 proceed over the survivors, and the members of every derived
+  landmark are additionally intersected with `R_{¬M}`.
+
+Proof. Let `a` be the first action of a plan that adds a member of `M`; it
+exists because `M ∩ I = ∅` (§2.1). Every state before it holds no member, so
+every atom in those states is in `R_{¬M}`; `a` is applicable in the last of
+them, hence its preconditions are jointly in `R_{¬M}` and its binding lies in
+the narrowed domains; `a` adds a member, so its binding at the pattern positions
+lies in `M`'s projection. Its precondition instances are in `R_{¬M}`, which
+justifies the member intersection. ∎
+
+This subsumes §2.7 exactly: "every adder of `Q(v)` needs `P(u)`, so `Q(v)` is
+initial" is the one-level syntactic approximation of "`Q(v)` reachable in
+`R_{¬M}`". With option 3 on, §2.7 is **not applied** (it is redundant and its
+pattern-level gate is strictly weaker than the member-level argument above);
+with option 3 off, §2.7 runs as in phase 5. Note what changes: the argument is
+about the first *member* producer, which is what Proposition 1 needs, whereas
+§2.7 argued about the first *pattern* producer and therefore had to gate on
+pattern instances in `I`. That gate is what left all 25 residual Π⁺ losses of
+phase C (logistics `at(t1, l1-3)`, `at(p0, l1-0)`): with `R_{¬M}`, expanding
+`in(p0, ?)` over its members keeps only `load-truck(p0, t1, l1-3)` (p0 cannot
+leave `l1-3` without ever being in a vehicle), and the chain
+`at(p0, l2-x) → in(p0, t2) → at(p0, l2-0) → in(p0, a) → at(p0, l1-0)` closes
+with one restricted fixpoint per expansion.
+
+Cost model: one restricted fixpoint per landmark expansion (facts and sets
+alike). This is the term the ladder must measure; do not cache across
+expansions unless the cache is exact (a restricted fixpoint for `M` is not
+reusable for `M' ≠ M`).
+
+### 9.4 `verify_pi_plus` (option 4a): certify every extracted fact
+
+After extraction, for every non-goal, non-initial fact landmark `f`: goal
+reachable in `R_{¬f}` ⇒ **defect** (the extraction proof was violated) — throw
+with the atom named, never silently drop. One restricted fixpoint per fact.
+This is a check of the generator, not a source of landmarks; it is on by
+default so that any future rule that breaks soundness is caught on the first
+instance that exercises it.
+
+### 9.5 `complete_fact_landmarks` (option 4b): `off | members | all`, default `members`
+
+The complete characterisation of Π⁺ fact landmarks: an atom `x ∉ I` is a
+landmark iff the goal is unreachable in `R_{¬x}`. Test candidates and promote
+the ones that pass to fact landmarks (with `parent_positions` empty and a
+`LiftedLandmark` record whose binding is fully bound):
+
+- `members`: every member of every disjunctive set (e.g. sokoban's
+  7,424-member set on `p27-hard`), so that a set that is a landmark only
+  through one of its members becomes that fact;
+- `all`: every atom of `R \ I` that is not already a fact landmark.
+
+One restricted fixpoint per candidate. `all` is `|R \ I|` fixpoints: on sokoban
+`p30-hard` that is 638,945 queries at ~120 ms each, about 21 hours for one
+instance, which is why it is the one option that is **opt-in** rather than on
+by default — it is still implemented in full and the ladder (§10) measures it
+on every domain under the 1 h cap. `members` is bounded by the member sets
+(sokoban `p27-hard`'s 7,424-member set is the largest, ~12 min at sokoban's
+query cost). Orderings: greedy-necessary orderings for promoted facts are not
+derived (they have no achiever chain); record `initially_true = false`.
+
+Follow-up, not in this phase: the complete Π⁺ fact-landmark set can be computed
+in ONE label-propagation fixpoint over the engine's rules (Keyder, Richter &
+Helmert 2010 on the AND/OR graph: each derived atom carries the intersection
+over its derivations of the union of its body atoms' label sets plus itself),
+which replaces `|R \ I|` restricted fixpoints by one fixpoint with sparse label
+sets. Worth building only if the ladder shows `all` recovers landmarks that
+`members` does not on domains where it matters.
+
+### 9.6 What does NOT change
+
+- The static filter (§2.3), the phase-4 member-achievability pre-pass, and
+  §2.7 (when option 3 is off) stay as they are: cheap, output-identical when
+  every reachability option is off. **With every option off the generator
+  must produce byte-identical output to aef34b9dd** — that is the regression
+  test for the integration.
+- `FactLandmarkGraph` contract (§3): unchanged. Promoted facts from §9.5 get
+  `LiftedLandmark` records like any other fact.
+- Engine invocation: the engine is built once per `create(...)` from the same
+  `Problem` (no `LiftedGrounder`, no ground actions anywhere on the path);
+  the parity test "lifted extractor interns 0 atoms beyond the grounder's
+  universe" must still hold, so the engine's atom interning goes through the
+  problem repositories by identity exactly as the generator's does.
+
+### 9.7 Bindings, version, hierarchical
+
+- All options on `LiftedFactLandmarkGeneratorOptions` in pymimir, with the
+  enums exposed; `setup.py` `__version__ = "0.17.0"`; `docs/VERSIONING.md` row.
+- hierarchical: every option reachable from the CLI (`train_args.py`,
+  `plan.py` override, `config_report.py`, W&B config), defaults equal to the
+  generator defaults; `LandmarkRepository` forwards them; the parity and
+  no-grounding tests extended so that a full-options lifted extraction on a
+  grounded parse still interns 0 atoms and never constructs a `LiftedGrounder`.
+
+### 9.8 Tests (gtest + pytest)
+
+1. Every-option-off equals aef34b9dd output on the nine p30-hard instances and
+   the fixture set (dump + diff).
+2. Option 1 alone: rovers `at(?r, w)` members equal `R ∩ inst`; logistics
+   cross-city trucks absent; no set emptied.
+3. Option 3 on logistics: the five-step chain above yields `at(p0, l1-0)` and
+   `at(t1, l1-3)` as facts on a fixture built for it.
+4. Option 4a: a deliberately unsound graph (test hook) throws with the atom named.
+5. Option 4b `members`: sokoban fixture where one member of a set is a landmark
+   and the set collapses to that fact.
+6. Soundness oracle (T9) over all option combinations that the ladder will
+   use: 0 refuted.
+7. Determinism over option combinations.
+
+## 10. Phase D: the hardest-instance ladder (evaluation agent)
+
+For each of the 13 domains: the largest test instance, lifted extraction with
+each option toggled individually from the all-on default (all-on, −1, −2,
+−3, −4a, −4b, all-off), serial, one process each: wall, peak RSS, facts, sets,
+members, rank. Plus the childsnack ladder p05…p30-hard all-on. Plus the Π⁺
+oracle over the all-on output (expected 0 refuted) and the residue closure
+(expected: all 25 `pattern_true_in_I` atoms recovered, and the 34 cross-city
+`l_only` rows gone). The per-domain default for test time is then read off the
+table against the 1 h/problem budget, by the user.

@@ -1,0 +1,15 @@
+facts:
+  at(ball2, roomb)
+  at-robby(roomb)
+  at-robby(rooma)
+  at(ball2, rooma)
+sets:
+  {free(left), free(right)}
+  {carry(ball2, left), carry(ball2, right)}
+records:
+  at(ball2, roomb) members=[at(ball2, roomb)] parents=[]
+  at-robby(roomb) members=[at-robby(roomb)] parents=[0]
+  carry(ball2, ?) members=[carry(ball2, left), carry(ball2, right)] parents=[0]
+  at-robby(rooma) initially_true members=[at-robby(rooma)] parents=[2]
+  at(ball2, rooma) initially_true members=[at(ball2, rooma)] parents=[2]
+  free(?) initially_true members=[free(left), free(right)] parents=[2]

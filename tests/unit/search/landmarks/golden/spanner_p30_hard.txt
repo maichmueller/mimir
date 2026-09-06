@@ -1,0 +1,1473 @@
+facts:
+  tightened(nut1)
+  tightened(nut2)
+  tightened(nut3)
+  tightened(nut4)
+  tightened(nut5)
+  tightened(nut6)
+  tightened(nut7)
+  tightened(nut8)
+  tightened(nut9)
+  tightened(nut10)
+  tightened(nut11)
+  tightened(nut12)
+  tightened(nut13)
+  tightened(nut14)
+  tightened(nut15)
+  tightened(nut16)
+  tightened(nut17)
+  tightened(nut18)
+  tightened(nut19)
+  tightened(nut20)
+  tightened(nut21)
+  tightened(nut22)
+  tightened(nut23)
+  tightened(nut24)
+  tightened(nut25)
+  tightened(nut26)
+  tightened(nut27)
+  tightened(nut28)
+  tightened(nut29)
+  tightened(nut30)
+  tightened(nut31)
+  tightened(nut32)
+  tightened(nut33)
+  tightened(nut34)
+  tightened(nut35)
+  tightened(nut36)
+  tightened(nut37)
+  tightened(nut38)
+  tightened(nut39)
+  tightened(nut40)
+  tightened(nut41)
+  tightened(nut42)
+  tightened(nut43)
+  tightened(nut44)
+  tightened(nut45)
+  tightened(nut46)
+  tightened(nut47)
+  tightened(nut48)
+  tightened(nut49)
+  tightened(nut50)
+  tightened(nut51)
+  tightened(nut52)
+  tightened(nut53)
+  tightened(nut54)
+  tightened(nut55)
+  tightened(nut56)
+  tightened(nut57)
+  tightened(nut58)
+  tightened(nut59)
+  tightened(nut60)
+  tightened(nut61)
+  tightened(nut62)
+  tightened(nut63)
+  tightened(nut64)
+  tightened(nut65)
+  tightened(nut66)
+  tightened(nut67)
+  tightened(nut68)
+  tightened(nut69)
+  tightened(nut70)
+  tightened(nut71)
+  tightened(nut72)
+  tightened(nut73)
+  tightened(nut74)
+  tightened(nut75)
+  tightened(nut76)
+  tightened(nut77)
+  tightened(nut78)
+  tightened(nut79)
+  tightened(nut80)
+  tightened(nut81)
+  tightened(nut82)
+  tightened(nut83)
+  tightened(nut84)
+  tightened(nut85)
+  tightened(nut86)
+  tightened(nut87)
+  tightened(nut88)
+  tightened(nut89)
+  tightened(nut90)
+  tightened(nut91)
+  tightened(nut92)
+  tightened(nut93)
+  tightened(nut94)
+  tightened(nut95)
+  tightened(nut96)
+  tightened(nut97)
+  tightened(nut98)
+  tightened(nut99)
+  tightened(nut100)
+  tightened(nut101)
+  tightened(nut102)
+  tightened(nut103)
+  tightened(nut104)
+  tightened(nut105)
+  tightened(nut106)
+  tightened(nut107)
+  tightened(nut108)
+  tightened(nut109)
+  tightened(nut110)
+  tightened(nut111)
+  tightened(nut112)
+  tightened(nut113)
+  tightened(nut114)
+  tightened(nut115)
+  tightened(nut116)
+  tightened(nut117)
+  tightened(nut118)
+  tightened(nut119)
+  tightened(nut120)
+  tightened(nut121)
+  tightened(nut122)
+  tightened(nut123)
+  tightened(nut124)
+  tightened(nut125)
+  tightened(nut126)
+  tightened(nut127)
+  tightened(nut128)
+  tightened(nut129)
+  tightened(nut130)
+  tightened(nut131)
+  tightened(nut132)
+  tightened(nut133)
+  tightened(nut134)
+  tightened(nut135)
+  tightened(nut136)
+  tightened(nut137)
+  tightened(nut138)
+  tightened(nut139)
+  tightened(nut140)
+  tightened(nut141)
+  tightened(nut142)
+  tightened(nut143)
+  tightened(nut144)
+  tightened(nut145)
+  tightened(nut146)
+  tightened(nut147)
+  tightened(nut148)
+  tightened(nut149)
+  tightened(nut150)
+  tightened(nut151)
+  tightened(nut152)
+  tightened(nut153)
+  tightened(nut154)
+  tightened(nut155)
+  tightened(nut156)
+  tightened(nut157)
+  tightened(nut158)
+  tightened(nut159)
+  tightened(nut160)
+  tightened(nut161)
+  tightened(nut162)
+  tightened(nut163)
+  tightened(nut164)
+  tightened(nut165)
+  tightened(nut166)
+  tightened(nut167)
+  tightened(nut168)
+  tightened(nut169)
+  tightened(nut170)
+  tightened(nut171)
+  tightened(nut172)
+  tightened(nut173)
+  tightened(nut174)
+  tightened(nut175)
+  tightened(nut176)
+  tightened(nut177)
+  tightened(nut178)
+  tightened(nut179)
+  tightened(nut180)
+  tightened(nut181)
+  tightened(nut182)
+  tightened(nut183)
+  tightened(nut184)
+  tightened(nut185)
+  tightened(nut186)
+  tightened(nut187)
+  tightened(nut188)
+  tightened(nut189)
+  tightened(nut190)
+  tightened(nut191)
+  tightened(nut192)
+  tightened(nut193)
+  tightened(nut194)
+  tightened(nut195)
+  tightened(nut196)
+  tightened(nut197)
+  tightened(nut198)
+  tightened(nut199)
+  tightened(nut200)
+  tightened(nut201)
+  tightened(nut202)
+  tightened(nut203)
+  tightened(nut204)
+  tightened(nut205)
+  tightened(nut206)
+  tightened(nut207)
+  tightened(nut208)
+  tightened(nut209)
+  tightened(nut210)
+  tightened(nut211)
+  tightened(nut212)
+  tightened(nut213)
+  tightened(nut214)
+  tightened(nut215)
+  tightened(nut216)
+  tightened(nut217)
+  tightened(nut218)
+  tightened(nut219)
+  tightened(nut220)
+  tightened(nut221)
+  tightened(nut222)
+  tightened(nut223)
+  tightened(nut224)
+  tightened(nut225)
+  tightened(nut226)
+  tightened(nut227)
+  tightened(nut228)
+  tightened(nut229)
+  tightened(nut230)
+  tightened(nut231)
+  tightened(nut232)
+  tightened(nut233)
+  tightened(nut234)
+  tightened(nut235)
+  tightened(nut236)
+  tightened(nut237)
+  tightened(nut238)
+  tightened(nut239)
+  tightened(nut240)
+  tightened(nut241)
+  tightened(nut242)
+  tightened(nut243)
+  tightened(nut244)
+  at(bob, gate)
+  at(nut1, gate)
+  loose(nut1)
+  at(nut2, gate)
+  loose(nut2)
+  at(nut3, gate)
+  loose(nut3)
+  at(nut4, gate)
+  loose(nut4)
+  at(nut5, gate)
+  loose(nut5)
+  at(nut6, gate)
+  loose(nut6)
+  at(nut7, gate)
+  loose(nut7)
+  at(nut8, gate)
+  loose(nut8)
+  at(nut9, gate)
+  loose(nut9)
+  at(nut10, gate)
+  loose(nut10)
+  at(nut11, gate)
+  loose(nut11)
+  at(nut12, gate)
+  loose(nut12)
+  at(nut13, gate)
+  loose(nut13)
+  at(nut14, gate)
+  loose(nut14)
+  at(nut15, gate)
+  loose(nut15)
+  at(nut16, gate)
+  loose(nut16)
+  at(nut17, gate)
+  loose(nut17)
+  at(nut18, gate)
+  loose(nut18)
+  at(nut19, gate)
+  loose(nut19)
+  at(nut20, gate)
+  loose(nut20)
+  at(nut21, gate)
+  loose(nut21)
+  at(nut22, gate)
+  loose(nut22)
+  at(nut23, gate)
+  loose(nut23)
+  at(nut24, gate)
+  loose(nut24)
+  at(nut25, gate)
+  loose(nut25)
+  at(nut26, gate)
+  loose(nut26)
+  at(nut27, gate)
+  loose(nut27)
+  at(nut28, gate)
+  loose(nut28)
+  at(nut29, gate)
+  loose(nut29)
+  at(nut30, gate)
+  loose(nut30)
+  at(nut31, gate)
+  loose(nut31)
+  at(nut32, gate)
+  loose(nut32)
+  at(nut33, gate)
+  loose(nut33)
+  at(nut34, gate)
+  loose(nut34)
+  at(nut35, gate)
+  loose(nut35)
+  at(nut36, gate)
+  loose(nut36)
+  at(nut37, gate)
+  loose(nut37)
+  at(nut38, gate)
+  loose(nut38)
+  at(nut39, gate)
+  loose(nut39)
+  at(nut40, gate)
+  loose(nut40)
+  at(nut41, gate)
+  loose(nut41)
+  at(nut42, gate)
+  loose(nut42)
+  at(nut43, gate)
+  loose(nut43)
+  at(nut44, gate)
+  loose(nut44)
+  at(nut45, gate)
+  loose(nut45)
+  at(nut46, gate)
+  loose(nut46)
+  at(nut47, gate)
+  loose(nut47)
+  at(nut48, gate)
+  loose(nut48)
+  at(nut49, gate)
+  loose(nut49)
+  at(nut50, gate)
+  loose(nut50)
+  at(nut51, gate)
+  loose(nut51)
+  at(nut52, gate)
+  loose(nut52)
+  at(nut53, gate)
+  loose(nut53)
+  at(nut54, gate)
+  loose(nut54)
+  at(nut55, gate)
+  loose(nut55)
+  at(nut56, gate)
+  loose(nut56)
+  at(nut57, gate)
+  loose(nut57)
+  at(nut58, gate)
+  loose(nut58)
+  at(nut59, gate)
+  loose(nut59)
+  at(nut60, gate)
+  loose(nut60)
+  at(nut61, gate)
+  loose(nut61)
+  at(nut62, gate)
+  loose(nut62)
+  at(nut63, gate)
+  loose(nut63)
+  at(nut64, gate)
+  loose(nut64)
+  at(nut65, gate)
+  loose(nut65)
+  at(nut66, gate)
+  loose(nut66)
+  at(nut67, gate)
+  loose(nut67)
+  at(nut68, gate)
+  loose(nut68)
+  at(nut69, gate)
+  loose(nut69)
+  at(nut70, gate)
+  loose(nut70)
+  at(nut71, gate)
+  loose(nut71)
+  at(nut72, gate)
+  loose(nut72)
+  at(nut73, gate)
+  loose(nut73)
+  at(nut74, gate)
+  loose(nut74)
+  at(nut75, gate)
+  loose(nut75)
+  at(nut76, gate)
+  loose(nut76)
+  at(nut77, gate)
+  loose(nut77)
+  at(nut78, gate)
+  loose(nut78)
+  at(nut79, gate)
+  loose(nut79)
+  at(nut80, gate)
+  loose(nut80)
+  at(nut81, gate)
+  loose(nut81)
+  at(nut82, gate)
+  loose(nut82)
+  at(nut83, gate)
+  loose(nut83)
+  at(nut84, gate)
+  loose(nut84)
+  at(nut85, gate)
+  loose(nut85)
+  at(nut86, gate)
+  loose(nut86)
+  at(nut87, gate)
+  loose(nut87)
+  at(nut88, gate)
+  loose(nut88)
+  at(nut89, gate)
+  loose(nut89)
+  at(nut90, gate)
+  loose(nut90)
+  at(nut91, gate)
+  loose(nut91)
+  at(nut92, gate)
+  loose(nut92)
+  at(nut93, gate)
+  loose(nut93)
+  at(nut94, gate)
+  loose(nut94)
+  at(nut95, gate)
+  loose(nut95)
+  at(nut96, gate)
+  loose(nut96)
+  at(nut97, gate)
+  loose(nut97)
+  at(nut98, gate)
+  loose(nut98)
+  at(nut99, gate)
+  loose(nut99)
+  at(nut100, gate)
+  loose(nut100)
+  at(nut101, gate)
+  loose(nut101)
+  at(nut102, gate)
+  loose(nut102)
+  at(nut103, gate)
+  loose(nut103)
+  at(nut104, gate)
+  loose(nut104)
+  at(nut105, gate)
+  loose(nut105)
+  at(nut106, gate)
+  loose(nut106)
+  at(nut107, gate)
+  loose(nut107)
+  at(nut108, gate)
+  loose(nut108)
+  at(nut109, gate)
+  loose(nut109)
+  at(nut110, gate)
+  loose(nut110)
+  at(nut111, gate)
+  loose(nut111)
+  at(nut112, gate)
+  loose(nut112)
+  at(nut113, gate)
+  loose(nut113)
+  at(nut114, gate)
+  loose(nut114)
+  at(nut115, gate)
+  loose(nut115)
+  at(nut116, gate)
+  loose(nut116)
+  at(nut117, gate)
+  loose(nut117)
+  at(nut118, gate)
+  loose(nut118)
+  at(nut119, gate)
+  loose(nut119)
+  at(nut120, gate)
+  loose(nut120)
+  at(nut121, gate)
+  loose(nut121)
+  at(nut122, gate)
+  loose(nut122)
+  at(nut123, gate)
+  loose(nut123)
+  at(nut124, gate)
+  loose(nut124)
+  at(nut125, gate)
+  loose(nut125)
+  at(nut126, gate)
+  loose(nut126)
+  at(nut127, gate)
+  loose(nut127)
+  at(nut128, gate)
+  loose(nut128)
+  at(nut129, gate)
+  loose(nut129)
+  at(nut130, gate)
+  loose(nut130)
+  at(nut131, gate)
+  loose(nut131)
+  at(nut132, gate)
+  loose(nut132)
+  at(nut133, gate)
+  loose(nut133)
+  at(nut134, gate)
+  loose(nut134)
+  at(nut135, gate)
+  loose(nut135)
+  at(nut136, gate)
+  loose(nut136)
+  at(nut137, gate)
+  loose(nut137)
+  at(nut138, gate)
+  loose(nut138)
+  at(nut139, gate)
+  loose(nut139)
+  at(nut140, gate)
+  loose(nut140)
+  at(nut141, gate)
+  loose(nut141)
+  at(nut142, gate)
+  loose(nut142)
+  at(nut143, gate)
+  loose(nut143)
+  at(nut144, gate)
+  loose(nut144)
+  at(nut145, gate)
+  loose(nut145)
+  at(nut146, gate)
+  loose(nut146)
+  at(nut147, gate)
+  loose(nut147)
+  at(nut148, gate)
+  loose(nut148)
+  at(nut149, gate)
+  loose(nut149)
+  at(nut150, gate)
+  loose(nut150)
+  at(nut151, gate)
+  loose(nut151)
+  at(nut152, gate)
+  loose(nut152)
+  at(nut153, gate)
+  loose(nut153)
+  at(nut154, gate)
+  loose(nut154)
+  at(nut155, gate)
+  loose(nut155)
+  at(nut156, gate)
+  loose(nut156)
+  at(nut157, gate)
+  loose(nut157)
+  at(nut158, gate)
+  loose(nut158)
+  at(nut159, gate)
+  loose(nut159)
+  at(nut160, gate)
+  loose(nut160)
+  at(nut161, gate)
+  loose(nut161)
+  at(nut162, gate)
+  loose(nut162)
+  at(nut163, gate)
+  loose(nut163)
+  at(nut164, gate)
+  loose(nut164)
+  at(nut165, gate)
+  loose(nut165)
+  at(nut166, gate)
+  loose(nut166)
+  at(nut167, gate)
+  loose(nut167)
+  at(nut168, gate)
+  loose(nut168)
+  at(nut169, gate)
+  loose(nut169)
+  at(nut170, gate)
+  loose(nut170)
+  at(nut171, gate)
+  loose(nut171)
+  at(nut172, gate)
+  loose(nut172)
+  at(nut173, gate)
+  loose(nut173)
+  at(nut174, gate)
+  loose(nut174)
+  at(nut175, gate)
+  loose(nut175)
+  at(nut176, gate)
+  loose(nut176)
+  at(nut177, gate)
+  loose(nut177)
+  at(nut178, gate)
+  loose(nut178)
+  at(nut179, gate)
+  loose(nut179)
+  at(nut180, gate)
+  loose(nut180)
+  at(nut181, gate)
+  loose(nut181)
+  at(nut182, gate)
+  loose(nut182)
+  at(nut183, gate)
+  loose(nut183)
+  at(nut184, gate)
+  loose(nut184)
+  at(nut185, gate)
+  loose(nut185)
+  at(nut186, gate)
+  loose(nut186)
+  at(nut187, gate)
+  loose(nut187)
+  at(nut188, gate)
+  loose(nut188)
+  at(nut189, gate)
+  loose(nut189)
+  at(nut190, gate)
+  loose(nut190)
+  at(nut191, gate)
+  loose(nut191)
+  at(nut192, gate)
+  loose(nut192)
+  at(nut193, gate)
+  loose(nut193)
+  at(nut194, gate)
+  loose(nut194)
+  at(nut195, gate)
+  loose(nut195)
+  at(nut196, gate)
+  loose(nut196)
+  at(nut197, gate)
+  loose(nut197)
+  at(nut198, gate)
+  loose(nut198)
+  at(nut199, gate)
+  loose(nut199)
+  at(nut200, gate)
+  loose(nut200)
+  at(nut201, gate)
+  loose(nut201)
+  at(nut202, gate)
+  loose(nut202)
+  at(nut203, gate)
+  loose(nut203)
+  at(nut204, gate)
+  loose(nut204)
+  at(nut205, gate)
+  loose(nut205)
+  at(nut206, gate)
+  loose(nut206)
+  at(nut207, gate)
+  loose(nut207)
+  at(nut208, gate)
+  loose(nut208)
+  at(nut209, gate)
+  loose(nut209)
+  at(nut210, gate)
+  loose(nut210)
+  at(nut211, gate)
+  loose(nut211)
+  at(nut212, gate)
+  loose(nut212)
+  at(nut213, gate)
+  loose(nut213)
+  at(nut214, gate)
+  loose(nut214)
+  at(nut215, gate)
+  loose(nut215)
+  at(nut216, gate)
+  loose(nut216)
+  at(nut217, gate)
+  loose(nut217)
+  at(nut218, gate)
+  loose(nut218)
+  at(nut219, gate)
+  loose(nut219)
+  at(nut220, gate)
+  loose(nut220)
+  at(nut221, gate)
+  loose(nut221)
+  at(nut222, gate)
+  loose(nut222)
+  at(nut223, gate)
+  loose(nut223)
+  at(nut224, gate)
+  loose(nut224)
+  at(nut225, gate)
+  loose(nut225)
+  at(nut226, gate)
+  loose(nut226)
+  at(nut227, gate)
+  loose(nut227)
+  at(nut228, gate)
+  loose(nut228)
+  at(nut229, gate)
+  loose(nut229)
+  at(nut230, gate)
+  loose(nut230)
+  at(nut231, gate)
+  loose(nut231)
+  at(nut232, gate)
+  loose(nut232)
+  at(nut233, gate)
+  loose(nut233)
+  at(nut234, gate)
+  loose(nut234)
+  at(nut235, gate)
+  loose(nut235)
+  at(nut236, gate)
+  loose(nut236)
+  at(nut237, gate)
+  loose(nut237)
+  at(nut238, gate)
+  loose(nut238)
+  at(nut239, gate)
+  loose(nut239)
+  at(nut240, gate)
+  loose(nut240)
+  at(nut241, gate)
+  loose(nut241)
+  at(nut242, gate)
+  loose(nut242)
+  at(nut243, gate)
+  loose(nut243)
+  at(nut244, gate)
+  loose(nut244)
+sets:
+  {carrying(bob, spanner1), carrying(bob, spanner2), carrying(bob, spanner3), carrying(bob, spanner4), carrying(bob, spanner5), carrying(bob, spanner6), carrying(bob, spanner7), carrying(bob, spanner8), carrying(bob, spanner9), carrying(bob, spanner10), carrying(bob, spanner11), carrying(bob, spanner12), carrying(bob, spanner13), carrying(bob, spanner14), carrying(bob, spanner15), carrying(bob, spanner16), carrying(bob, spanner17), carrying(bob, spanner18), carrying(bob, spanner19), carrying(bob, spanner20), carrying(bob, spanner21), carrying(bob, spanner22), carrying(bob, spanner23), carrying(bob, spanner24), carrying(bob, spanner25), carrying(bob, spanner26), carrying(bob, spanner27), carrying(bob, spanner28), carrying(bob, spanner29), carrying(bob, spanner30), carrying(bob, spanner31), carrying(bob, spanner32), carrying(bob, spanner33), carrying(bob, spanner34), carrying(bob, spanner35), carrying(bob, spanner36), carrying(bob, spanner37), carrying(bob, spanner38), carrying(bob, spanner39), carrying(bob, spanner40), carrying(bob, spanner41), carrying(bob, spanner42), carrying(bob, spanner43), carrying(bob, spanner44), carrying(bob, spanner45), carrying(bob, spanner46), carrying(bob, spanner47), carrying(bob, spanner48), carrying(bob, spanner49), carrying(bob, spanner50), carrying(bob, spanner51), carrying(bob, spanner52), carrying(bob, spanner53), carrying(bob, spanner54), carrying(bob, spanner55), carrying(bob, spanner56), carrying(bob, spanner57), carrying(bob, spanner58), carrying(bob, spanner59), carrying(bob, spanner60), carrying(bob, spanner61), carrying(bob, spanner62), carrying(bob, spanner63), carrying(bob, spanner64), carrying(bob, spanner65), carrying(bob, spanner66), carrying(bob, spanner67), carrying(bob, spanner68), carrying(bob, spanner69), carrying(bob, spanner70), carrying(bob, spanner71), carrying(bob, spanner72), carrying(bob, spanner73), carrying(bob, spanner74), carrying(bob, spanner75), carrying(bob, spanner76), carrying(bob, spanner77), carrying(bob, spanner78), carrying(bob, spanner79), carrying(bob, spanner80), carrying(bob, spanner81), carrying(bob, spanner82), carrying(bob, spanner83), carrying(bob, spanner84), carrying(bob, spanner85), carrying(bob, spanner86), carrying(bob, spanner87), carrying(bob, spanner88), carrying(bob, spanner89), carrying(bob, spanner90), carrying(bob, spanner91), carrying(bob, spanner92), carrying(bob, spanner93), carrying(bob, spanner94), carrying(bob, spanner95), carrying(bob, spanner96), carrying(bob, spanner97), carrying(bob, spanner98), carrying(bob, spanner99), carrying(bob, spanner100), carrying(bob, spanner101), carrying(bob, spanner102), carrying(bob, spanner103), carrying(bob, spanner104), carrying(bob, spanner105), carrying(bob, spanner106), carrying(bob, spanner107), carrying(bob, spanner108), carrying(bob, spanner109), carrying(bob, spanner110), carrying(bob, spanner111), carrying(bob, spanner112), carrying(bob, spanner113), carrying(bob, spanner114), carrying(bob, spanner115), carrying(bob, spanner116), carrying(bob, spanner117), carrying(bob, spanner118), carrying(bob, spanner119), carrying(bob, spanner120), carrying(bob, spanner121), carrying(bob, spanner122), carrying(bob, spanner123), carrying(bob, spanner124), carrying(bob, spanner125), carrying(bob, spanner126), carrying(bob, spanner127), carrying(bob, spanner128), carrying(bob, spanner129), carrying(bob, spanner130), carrying(bob, spanner131), carrying(bob, spanner132), carrying(bob, spanner133), carrying(bob, spanner134), carrying(bob, spanner135), carrying(bob, spanner136), carrying(bob, spanner137), carrying(bob, spanner138), carrying(bob, spanner139), carrying(bob, spanner140), carrying(bob, spanner141), carrying(bob, spanner142), carrying(bob, spanner143), carrying(bob, spanner144), carrying(bob, spanner145), carrying(bob, spanner146), carrying(bob, spanner147), carrying(bob, spanner148), carrying(bob, spanner149), carrying(bob, spanner150), carrying(bob, spanner151), carrying(bob, spanner152), carrying(bob, spanner153), carrying(bob, spanner154), carrying(bob, spanner155), carrying(bob, spanner156), carrying(bob, spanner157), carrying(bob, spanner158), carrying(bob, spanner159), carrying(bob, spanner160), carrying(bob, spanner161), carrying(bob, spanner162), carrying(bob, spanner163), carrying(bob, spanner164), carrying(bob, spanner165), carrying(bob, spanner166), carrying(bob, spanner167), carrying(bob, spanner168), carrying(bob, spanner169), carrying(bob, spanner170), carrying(bob, spanner171), carrying(bob, spanner172), carrying(bob, spanner173), carrying(bob, spanner174), carrying(bob, spanner175), carrying(bob, spanner176), carrying(bob, spanner177), carrying(bob, spanner178), carrying(bob, spanner179), carrying(bob, spanner180), carrying(bob, spanner181), carrying(bob, spanner182), carrying(bob, spanner183), carrying(bob, spanner184), carrying(bob, spanner185), carrying(bob, spanner186), carrying(bob, spanner187), carrying(bob, spanner188), carrying(bob, spanner189), carrying(bob, spanner190), carrying(bob, spanner191), carrying(bob, spanner192), carrying(bob, spanner193), carrying(bob, spanner194), carrying(bob, spanner195), carrying(bob, spanner196), carrying(bob, spanner197), carrying(bob, spanner198), carrying(bob, spanner199), carrying(bob, spanner200), carrying(bob, spanner201), carrying(bob, spanner202), carrying(bob, spanner203), carrying(bob, spanner204), carrying(bob, spanner205), carrying(bob, spanner206), carrying(bob, spanner207), carrying(bob, spanner208), carrying(bob, spanner209), carrying(bob, spanner210), carrying(bob, spanner211), carrying(bob, spanner212), carrying(bob, spanner213), carrying(bob, spanner214), carrying(bob, spanner215), carrying(bob, spanner216), carrying(bob, spanner217), carrying(bob, spanner218), carrying(bob, spanner219), carrying(bob, spanner220), carrying(bob, spanner221), carrying(bob, spanner222), carrying(bob, spanner223), carrying(bob, spanner224), carrying(bob, spanner225), carrying(bob, spanner226), carrying(bob, spanner227), carrying(bob, spanner228), carrying(bob, spanner229), carrying(bob, spanner230), carrying(bob, spanner231), carrying(bob, spanner232), carrying(bob, spanner233), carrying(bob, spanner234), carrying(bob, spanner235), carrying(bob, spanner236), carrying(bob, spanner237), carrying(bob, spanner238), carrying(bob, spanner239), carrying(bob, spanner240), carrying(bob, spanner241), carrying(bob, spanner242), carrying(bob, spanner243), carrying(bob, spanner244), carrying(bob, spanner245), carrying(bob, spanner246), carrying(bob, spanner247), carrying(bob, spanner248), carrying(bob, spanner249), carrying(bob, spanner250), carrying(bob, spanner251), carrying(bob, spanner252), carrying(bob, spanner253), carrying(bob, spanner254), carrying(bob, spanner255), carrying(bob, spanner256), carrying(bob, spanner257), carrying(bob, spanner258), carrying(bob, spanner259), carrying(bob, spanner260), carrying(bob, spanner261), carrying(bob, spanner262), carrying(bob, spanner263), carrying(bob, spanner264), carrying(bob, spanner265), carrying(bob, spanner266), carrying(bob, spanner267), carrying(bob, spanner268), carrying(bob, spanner269), carrying(bob, spanner270), carrying(bob, spanner271), carrying(bob, spanner272), carrying(bob, spanner273), carrying(bob, spanner274), carrying(bob, spanner275), carrying(bob, spanner276), carrying(bob, spanner277), carrying(bob, spanner278), carrying(bob, spanner279), carrying(bob, spanner280), carrying(bob, spanner281), carrying(bob, spanner282), carrying(bob, spanner283), carrying(bob, spanner284), carrying(bob, spanner285), carrying(bob, spanner286), carrying(bob, spanner287), carrying(bob, spanner288), carrying(bob, spanner289), carrying(bob, spanner290), carrying(bob, spanner291), carrying(bob, spanner292), carrying(bob, spanner293), carrying(bob, spanner294), carrying(bob, spanner295), carrying(bob, spanner296), carrying(bob, spanner297), carrying(bob, spanner298), carrying(bob, spanner299), carrying(bob, spanner300), carrying(bob, spanner301), carrying(bob, spanner302), carrying(bob, spanner303), carrying(bob, spanner304), carrying(bob, spanner305), carrying(bob, spanner306), carrying(bob, spanner307), carrying(bob, spanner308), carrying(bob, spanner309), carrying(bob, spanner310), carrying(bob, spanner311), carrying(bob, spanner312), carrying(bob, spanner313), carrying(bob, spanner314), carrying(bob, spanner315), carrying(bob, spanner316), carrying(bob, spanner317), carrying(bob, spanner318), carrying(bob, spanner319), carrying(bob, spanner320), carrying(bob, spanner321), carrying(bob, spanner322), carrying(bob, spanner323), carrying(bob, spanner324), carrying(bob, spanner325), carrying(bob, spanner326), carrying(bob, spanner327), carrying(bob, spanner328), carrying(bob, spanner329), carrying(bob, spanner330), carrying(bob, spanner331), carrying(bob, spanner332), carrying(bob, spanner333), carrying(bob, spanner334), carrying(bob, spanner335), carrying(bob, spanner336), carrying(bob, spanner337), carrying(bob, spanner338), carrying(bob, spanner339), carrying(bob, spanner340), carrying(bob, spanner341), carrying(bob, spanner342), carrying(bob, spanner343), carrying(bob, spanner344), carrying(bob, spanner345), carrying(bob, spanner346), carrying(bob, spanner347), carrying(bob, spanner348), carrying(bob, spanner349), carrying(bob, spanner350), carrying(bob, spanner351), carrying(bob, spanner352), carrying(bob, spanner353), carrying(bob, spanner354), carrying(bob, spanner355), carrying(bob, spanner356), carrying(bob, spanner357), carrying(bob, spanner358), carrying(bob, spanner359), carrying(bob, spanner360), carrying(bob, spanner361), carrying(bob, spanner362), carrying(bob, spanner363), carrying(bob, spanner364), carrying(bob, spanner365), carrying(bob, spanner366), carrying(bob, spanner367), carrying(bob, spanner368), carrying(bob, spanner369), carrying(bob, spanner370), carrying(bob, spanner371), carrying(bob, spanner372), carrying(bob, spanner373), carrying(bob, spanner374), carrying(bob, spanner375), carrying(bob, spanner376), carrying(bob, spanner377), carrying(bob, spanner378), carrying(bob, spanner379), carrying(bob, spanner380), carrying(bob, spanner381), carrying(bob, spanner382), carrying(bob, spanner383), carrying(bob, spanner384), carrying(bob, spanner385), carrying(bob, spanner386), carrying(bob, spanner387), carrying(bob, spanner388), carrying(bob, spanner389), carrying(bob, spanner390), carrying(bob, spanner391), carrying(bob, spanner392), carrying(bob, spanner393), carrying(bob, spanner394), carrying(bob, spanner395), carrying(bob, spanner396), carrying(bob, spanner397), carrying(bob, spanner398), carrying(bob, spanner399), carrying(bob, spanner400), carrying(bob, spanner401), carrying(bob, spanner402), carrying(bob, spanner403), carrying(bob, spanner404), carrying(bob, spanner405), carrying(bob, spanner406), carrying(bob, spanner407), carrying(bob, spanner408), carrying(bob, spanner409), carrying(bob, spanner410), carrying(bob, spanner411), carrying(bob, spanner412), carrying(bob, spanner413), carrying(bob, spanner414), carrying(bob, spanner415), carrying(bob, spanner416), carrying(bob, spanner417), carrying(bob, spanner418), carrying(bob, spanner419), carrying(bob, spanner420), carrying(bob, spanner421), carrying(bob, spanner422), carrying(bob, spanner423), carrying(bob, spanner424), carrying(bob, spanner425), carrying(bob, spanner426), carrying(bob, spanner427), carrying(bob, spanner428), carrying(bob, spanner429), carrying(bob, spanner430), carrying(bob, spanner431), carrying(bob, spanner432), carrying(bob, spanner433), carrying(bob, spanner434), carrying(bob, spanner435), carrying(bob, spanner436), carrying(bob, spanner437), carrying(bob, spanner438), carrying(bob, spanner439), carrying(bob, spanner440), carrying(bob, spanner441), carrying(bob, spanner442), carrying(bob, spanner443), carrying(bob, spanner444), carrying(bob, spanner445), carrying(bob, spanner446), carrying(bob, spanner447), carrying(bob, spanner448), carrying(bob, spanner449), carrying(bob, spanner450), carrying(bob, spanner451), carrying(bob, spanner452), carrying(bob, spanner453), carrying(bob, spanner454), carrying(bob, spanner455), carrying(bob, spanner456), carrying(bob, spanner457), carrying(bob, spanner458), carrying(bob, spanner459), carrying(bob, spanner460), carrying(bob, spanner461), carrying(bob, spanner462), carrying(bob, spanner463), carrying(bob, spanner464), carrying(bob, spanner465), carrying(bob, spanner466), carrying(bob, spanner467), carrying(bob, spanner468), carrying(bob, spanner469), carrying(bob, spanner470), carrying(bob, spanner471), carrying(bob, spanner472), carrying(bob, spanner473), carrying(bob, spanner474), carrying(bob, spanner475), carrying(bob, spanner476), carrying(bob, spanner477), carrying(bob, spanner478), carrying(bob, spanner479), carrying(bob, spanner480), carrying(bob, spanner481), carrying(bob, spanner482), carrying(bob, spanner483), carrying(bob, spanner484), carrying(bob, spanner485), carrying(bob, spanner486), carrying(bob, spanner487)}
+  {useable(spanner1), useable(spanner2), useable(spanner3), useable(spanner4), useable(spanner5), useable(spanner6), useable(spanner7), useable(spanner8), useable(spanner9), useable(spanner10), useable(spanner11), useable(spanner12), useable(spanner13), useable(spanner14), useable(spanner15), useable(spanner16), useable(spanner17), useable(spanner18), useable(spanner19), useable(spanner20), useable(spanner21), useable(spanner22), useable(spanner23), useable(spanner24), useable(spanner25), useable(spanner26), useable(spanner27), useable(spanner28), useable(spanner29), useable(spanner30), useable(spanner31), useable(spanner32), useable(spanner33), useable(spanner34), useable(spanner35), useable(spanner36), useable(spanner37), useable(spanner38), useable(spanner39), useable(spanner40), useable(spanner41), useable(spanner42), useable(spanner43), useable(spanner44), useable(spanner45), useable(spanner46), useable(spanner47), useable(spanner48), useable(spanner49), useable(spanner50), useable(spanner51), useable(spanner52), useable(spanner53), useable(spanner54), useable(spanner55), useable(spanner56), useable(spanner57), useable(spanner58), useable(spanner59), useable(spanner60), useable(spanner61), useable(spanner62), useable(spanner63), useable(spanner64), useable(spanner65), useable(spanner66), useable(spanner67), useable(spanner68), useable(spanner69), useable(spanner70), useable(spanner71), useable(spanner72), useable(spanner73), useable(spanner74), useable(spanner75), useable(spanner76), useable(spanner77), useable(spanner78), useable(spanner79), useable(spanner80), useable(spanner81), useable(spanner82), useable(spanner83), useable(spanner84), useable(spanner85), useable(spanner86), useable(spanner87), useable(spanner88), useable(spanner89), useable(spanner90), useable(spanner91), useable(spanner92), useable(spanner93), useable(spanner94), useable(spanner95), useable(spanner96), useable(spanner97), useable(spanner98), useable(spanner99), useable(spanner100), useable(spanner101), useable(spanner102), useable(spanner103), useable(spanner104), useable(spanner105), useable(spanner106), useable(spanner107), useable(spanner108), useable(spanner109), useable(spanner110), useable(spanner111), useable(spanner112), useable(spanner113), useable(spanner114), useable(spanner115), useable(spanner116), useable(spanner117), useable(spanner118), useable(spanner119), useable(spanner120), useable(spanner121), useable(spanner122), useable(spanner123), useable(spanner124), useable(spanner125), useable(spanner126), useable(spanner127), useable(spanner128), useable(spanner129), useable(spanner130), useable(spanner131), useable(spanner132), useable(spanner133), useable(spanner134), useable(spanner135), useable(spanner136), useable(spanner137), useable(spanner138), useable(spanner139), useable(spanner140), useable(spanner141), useable(spanner142), useable(spanner143), useable(spanner144), useable(spanner145), useable(spanner146), useable(spanner147), useable(spanner148), useable(spanner149), useable(spanner150), useable(spanner151), useable(spanner152), useable(spanner153), useable(spanner154), useable(spanner155), useable(spanner156), useable(spanner157), useable(spanner158), useable(spanner159), useable(spanner160), useable(spanner161), useable(spanner162), useable(spanner163), useable(spanner164), useable(spanner165), useable(spanner166), useable(spanner167), useable(spanner168), useable(spanner169), useable(spanner170), useable(spanner171), useable(spanner172), useable(spanner173), useable(spanner174), useable(spanner175), useable(spanner176), useable(spanner177), useable(spanner178), useable(spanner179), useable(spanner180), useable(spanner181), useable(spanner182), useable(spanner183), useable(spanner184), useable(spanner185), useable(spanner186), useable(spanner187), useable(spanner188), useable(spanner189), useable(spanner190), useable(spanner191), useable(spanner192), useable(spanner193), useable(spanner194), useable(spanner195), useable(spanner196), useable(spanner197), useable(spanner198), useable(spanner199), useable(spanner200), useable(spanner201), useable(spanner202), useable(spanner203), useable(spanner204), useable(spanner205), useable(spanner206), useable(spanner207), useable(spanner208), useable(spanner209), useable(spanner210), useable(spanner211), useable(spanner212), useable(spanner213), useable(spanner214), useable(spanner215), useable(spanner216), useable(spanner217), useable(spanner218), useable(spanner219), useable(spanner220), useable(spanner221), useable(spanner222), useable(spanner223), useable(spanner224), useable(spanner225), useable(spanner226), useable(spanner227), useable(spanner228), useable(spanner229), useable(spanner230), useable(spanner231), useable(spanner232), useable(spanner233), useable(spanner234), useable(spanner235), useable(spanner236), useable(spanner237), useable(spanner238), useable(spanner239), useable(spanner240), useable(spanner241), useable(spanner242), useable(spanner243), useable(spanner244), useable(spanner245), useable(spanner246), useable(spanner247), useable(spanner248), useable(spanner249), useable(spanner250), useable(spanner251), useable(spanner252), useable(spanner253), useable(spanner254), useable(spanner255), useable(spanner256), useable(spanner257), useable(spanner258), useable(spanner259), useable(spanner260), useable(spanner261), useable(spanner262), useable(spanner263), useable(spanner264), useable(spanner265), useable(spanner266), useable(spanner267), useable(spanner268), useable(spanner269), useable(spanner270), useable(spanner271), useable(spanner272), useable(spanner273), useable(spanner274), useable(spanner275), useable(spanner276), useable(spanner277), useable(spanner278), useable(spanner279), useable(spanner280), useable(spanner281), useable(spanner282), useable(spanner283), useable(spanner284), useable(spanner285), useable(spanner286), useable(spanner287), useable(spanner288), useable(spanner289), useable(spanner290), useable(spanner291), useable(spanner292), useable(spanner293), useable(spanner294), useable(spanner295), useable(spanner296), useable(spanner297), useable(spanner298), useable(spanner299), useable(spanner300), useable(spanner301), useable(spanner302), useable(spanner303), useable(spanner304), useable(spanner305), useable(spanner306), useable(spanner307), useable(spanner308), useable(spanner309), useable(spanner310), useable(spanner311), useable(spanner312), useable(spanner313), useable(spanner314), useable(spanner315), useable(spanner316), useable(spanner317), useable(spanner318), useable(spanner319), useable(spanner320), useable(spanner321), useable(spanner322), useable(spanner323), useable(spanner324), useable(spanner325), useable(spanner326), useable(spanner327), useable(spanner328), useable(spanner329), useable(spanner330), useable(spanner331), useable(spanner332), useable(spanner333), useable(spanner334), useable(spanner335), useable(spanner336), useable(spanner337), useable(spanner338), useable(spanner339), useable(spanner340), useable(spanner341), useable(spanner342), useable(spanner343), useable(spanner344), useable(spanner345), useable(spanner346), useable(spanner347), useable(spanner348), useable(spanner349), useable(spanner350), useable(spanner351), useable(spanner352), useable(spanner353), useable(spanner354), useable(spanner355), useable(spanner356), useable(spanner357), useable(spanner358), useable(spanner359), useable(spanner360), useable(spanner361), useable(spanner362), useable(spanner363), useable(spanner364), useable(spanner365), useable(spanner366), useable(spanner367), useable(spanner368), useable(spanner369), useable(spanner370), useable(spanner371), useable(spanner372), useable(spanner373), useable(spanner374), useable(spanner375), useable(spanner376), useable(spanner377), useable(spanner378), useable(spanner379), useable(spanner380), useable(spanner381), useable(spanner382), useable(spanner383), useable(spanner384), useable(spanner385), useable(spanner386), useable(spanner387), useable(spanner388), useable(spanner389), useable(spanner390), useable(spanner391), useable(spanner392), useable(spanner393), useable(spanner394), useable(spanner395), useable(spanner396), useable(spanner397), useable(spanner398), useable(spanner399), useable(spanner400), useable(spanner401), useable(spanner402), useable(spanner403), useable(spanner404), useable(spanner405), useable(spanner406), useable(spanner407), useable(spanner408), useable(spanner409), useable(spanner410), useable(spanner411), useable(spanner412), useable(spanner413), useable(spanner414), useable(spanner415), useable(spanner416), useable(spanner417), useable(spanner418), useable(spanner419), useable(spanner420), useable(spanner421), useable(spanner422), useable(spanner423), useable(spanner424), useable(spanner425), useable(spanner426), useable(spanner427), useable(spanner428), useable(spanner429), useable(spanner430), useable(spanner431), useable(spanner432), useable(spanner433), useable(spanner434), useable(spanner435), useable(spanner436), useable(spanner437), useable(spanner438), useable(spanner439), useable(spanner440), useable(spanner441), useable(spanner442), useable(spanner443), useable(spanner444), useable(spanner445), useable(spanner446), useable(spanner447), useable(spanner448), useable(spanner449), useable(spanner450), useable(spanner451), useable(spanner452), useable(spanner453), useable(spanner454), useable(spanner455), useable(spanner456), useable(spanner457), useable(spanner458), useable(spanner459), useable(spanner460), useable(spanner461), useable(spanner462), useable(spanner463), useable(spanner464), useable(spanner465), useable(spanner466), useable(spanner467), useable(spanner468), useable(spanner469), useable(spanner470), useable(spanner471), useable(spanner472), useable(spanner473), useable(spanner474), useable(spanner475), useable(spanner476), useable(spanner477), useable(spanner478), useable(spanner479), useable(spanner480), useable(spanner481), useable(spanner482), useable(spanner483), useable(spanner484), useable(spanner485), useable(spanner486), useable(spanner487)}
+records:
+  tightened(nut1) members=[tightened(nut1)] parents=[]
+  tightened(nut2) members=[tightened(nut2)] parents=[]
+  tightened(nut3) members=[tightened(nut3)] parents=[]
+  tightened(nut4) members=[tightened(nut4)] parents=[]
+  tightened(nut5) members=[tightened(nut5)] parents=[]
+  tightened(nut6) members=[tightened(nut6)] parents=[]
+  tightened(nut7) members=[tightened(nut7)] parents=[]
+  tightened(nut8) members=[tightened(nut8)] parents=[]
+  tightened(nut9) members=[tightened(nut9)] parents=[]
+  tightened(nut10) members=[tightened(nut10)] parents=[]
+  tightened(nut11) members=[tightened(nut11)] parents=[]
+  tightened(nut12) members=[tightened(nut12)] parents=[]
+  tightened(nut13) members=[tightened(nut13)] parents=[]
+  tightened(nut14) members=[tightened(nut14)] parents=[]
+  tightened(nut15) members=[tightened(nut15)] parents=[]
+  tightened(nut16) members=[tightened(nut16)] parents=[]
+  tightened(nut17) members=[tightened(nut17)] parents=[]
+  tightened(nut18) members=[tightened(nut18)] parents=[]
+  tightened(nut19) members=[tightened(nut19)] parents=[]
+  tightened(nut20) members=[tightened(nut20)] parents=[]
+  tightened(nut21) members=[tightened(nut21)] parents=[]
+  tightened(nut22) members=[tightened(nut22)] parents=[]
+  tightened(nut23) members=[tightened(nut23)] parents=[]
+  tightened(nut24) members=[tightened(nut24)] parents=[]
+  tightened(nut25) members=[tightened(nut25)] parents=[]
+  tightened(nut26) members=[tightened(nut26)] parents=[]
+  tightened(nut27) members=[tightened(nut27)] parents=[]
+  tightened(nut28) members=[tightened(nut28)] parents=[]
+  tightened(nut29) members=[tightened(nut29)] parents=[]
+  tightened(nut30) members=[tightened(nut30)] parents=[]
+  tightened(nut31) members=[tightened(nut31)] parents=[]
+  tightened(nut32) members=[tightened(nut32)] parents=[]
+  tightened(nut33) members=[tightened(nut33)] parents=[]
+  tightened(nut34) members=[tightened(nut34)] parents=[]
+  tightened(nut35) members=[tightened(nut35)] parents=[]
+  tightened(nut36) members=[tightened(nut36)] parents=[]
+  tightened(nut37) members=[tightened(nut37)] parents=[]
+  tightened(nut38) members=[tightened(nut38)] parents=[]
+  tightened(nut39) members=[tightened(nut39)] parents=[]
+  tightened(nut40) members=[tightened(nut40)] parents=[]
+  tightened(nut41) members=[tightened(nut41)] parents=[]
+  tightened(nut42) members=[tightened(nut42)] parents=[]
+  tightened(nut43) members=[tightened(nut43)] parents=[]
+  tightened(nut44) members=[tightened(nut44)] parents=[]
+  tightened(nut45) members=[tightened(nut45)] parents=[]
+  tightened(nut46) members=[tightened(nut46)] parents=[]
+  tightened(nut47) members=[tightened(nut47)] parents=[]
+  tightened(nut48) members=[tightened(nut48)] parents=[]
+  tightened(nut49) members=[tightened(nut49)] parents=[]
+  tightened(nut50) members=[tightened(nut50)] parents=[]
+  tightened(nut51) members=[tightened(nut51)] parents=[]
+  tightened(nut52) members=[tightened(nut52)] parents=[]
+  tightened(nut53) members=[tightened(nut53)] parents=[]
+  tightened(nut54) members=[tightened(nut54)] parents=[]
+  tightened(nut55) members=[tightened(nut55)] parents=[]
+  tightened(nut56) members=[tightened(nut56)] parents=[]
+  tightened(nut57) members=[tightened(nut57)] parents=[]
+  tightened(nut58) members=[tightened(nut58)] parents=[]
+  tightened(nut59) members=[tightened(nut59)] parents=[]
+  tightened(nut60) members=[tightened(nut60)] parents=[]
+  tightened(nut61) members=[tightened(nut61)] parents=[]
+  tightened(nut62) members=[tightened(nut62)] parents=[]
+  tightened(nut63) members=[tightened(nut63)] parents=[]
+  tightened(nut64) members=[tightened(nut64)] parents=[]
+  tightened(nut65) members=[tightened(nut65)] parents=[]
+  tightened(nut66) members=[tightened(nut66)] parents=[]
+  tightened(nut67) members=[tightened(nut67)] parents=[]
+  tightened(nut68) members=[tightened(nut68)] parents=[]
+  tightened(nut69) members=[tightened(nut69)] parents=[]
+  tightened(nut70) members=[tightened(nut70)] parents=[]
+  tightened(nut71) members=[tightened(nut71)] parents=[]
+  tightened(nut72) members=[tightened(nut72)] parents=[]
+  tightened(nut73) members=[tightened(nut73)] parents=[]
+  tightened(nut74) members=[tightened(nut74)] parents=[]
+  tightened(nut75) members=[tightened(nut75)] parents=[]
+  tightened(nut76) members=[tightened(nut76)] parents=[]
+  tightened(nut77) members=[tightened(nut77)] parents=[]
+  tightened(nut78) members=[tightened(nut78)] parents=[]
+  tightened(nut79) members=[tightened(nut79)] parents=[]
+  tightened(nut80) members=[tightened(nut80)] parents=[]
+  tightened(nut81) members=[tightened(nut81)] parents=[]
+  tightened(nut82) members=[tightened(nut82)] parents=[]
+  tightened(nut83) members=[tightened(nut83)] parents=[]
+  tightened(nut84) members=[tightened(nut84)] parents=[]
+  tightened(nut85) members=[tightened(nut85)] parents=[]
+  tightened(nut86) members=[tightened(nut86)] parents=[]
+  tightened(nut87) members=[tightened(nut87)] parents=[]
+  tightened(nut88) members=[tightened(nut88)] parents=[]
+  tightened(nut89) members=[tightened(nut89)] parents=[]
+  tightened(nut90) members=[tightened(nut90)] parents=[]
+  tightened(nut91) members=[tightened(nut91)] parents=[]
+  tightened(nut92) members=[tightened(nut92)] parents=[]
+  tightened(nut93) members=[tightened(nut93)] parents=[]
+  tightened(nut94) members=[tightened(nut94)] parents=[]
+  tightened(nut95) members=[tightened(nut95)] parents=[]
+  tightened(nut96) members=[tightened(nut96)] parents=[]
+  tightened(nut97) members=[tightened(nut97)] parents=[]
+  tightened(nut98) members=[tightened(nut98)] parents=[]
+  tightened(nut99) members=[tightened(nut99)] parents=[]
+  tightened(nut100) members=[tightened(nut100)] parents=[]
+  tightened(nut101) members=[tightened(nut101)] parents=[]
+  tightened(nut102) members=[tightened(nut102)] parents=[]
+  tightened(nut103) members=[tightened(nut103)] parents=[]
+  tightened(nut104) members=[tightened(nut104)] parents=[]
+  tightened(nut105) members=[tightened(nut105)] parents=[]
+  tightened(nut106) members=[tightened(nut106)] parents=[]
+  tightened(nut107) members=[tightened(nut107)] parents=[]
+  tightened(nut108) members=[tightened(nut108)] parents=[]
+  tightened(nut109) members=[tightened(nut109)] parents=[]
+  tightened(nut110) members=[tightened(nut110)] parents=[]
+  tightened(nut111) members=[tightened(nut111)] parents=[]
+  tightened(nut112) members=[tightened(nut112)] parents=[]
+  tightened(nut113) members=[tightened(nut113)] parents=[]
+  tightened(nut114) members=[tightened(nut114)] parents=[]
+  tightened(nut115) members=[tightened(nut115)] parents=[]
+  tightened(nut116) members=[tightened(nut116)] parents=[]
+  tightened(nut117) members=[tightened(nut117)] parents=[]
+  tightened(nut118) members=[tightened(nut118)] parents=[]
+  tightened(nut119) members=[tightened(nut119)] parents=[]
+  tightened(nut120) members=[tightened(nut120)] parents=[]
+  tightened(nut121) members=[tightened(nut121)] parents=[]
+  tightened(nut122) members=[tightened(nut122)] parents=[]
+  tightened(nut123) members=[tightened(nut123)] parents=[]
+  tightened(nut124) members=[tightened(nut124)] parents=[]
+  tightened(nut125) members=[tightened(nut125)] parents=[]
+  tightened(nut126) members=[tightened(nut126)] parents=[]
+  tightened(nut127) members=[tightened(nut127)] parents=[]
+  tightened(nut128) members=[tightened(nut128)] parents=[]
+  tightened(nut129) members=[tightened(nut129)] parents=[]
+  tightened(nut130) members=[tightened(nut130)] parents=[]
+  tightened(nut131) members=[tightened(nut131)] parents=[]
+  tightened(nut132) members=[tightened(nut132)] parents=[]
+  tightened(nut133) members=[tightened(nut133)] parents=[]
+  tightened(nut134) members=[tightened(nut134)] parents=[]
+  tightened(nut135) members=[tightened(nut135)] parents=[]
+  tightened(nut136) members=[tightened(nut136)] parents=[]
+  tightened(nut137) members=[tightened(nut137)] parents=[]
+  tightened(nut138) members=[tightened(nut138)] parents=[]
+  tightened(nut139) members=[tightened(nut139)] parents=[]
+  tightened(nut140) members=[tightened(nut140)] parents=[]
+  tightened(nut141) members=[tightened(nut141)] parents=[]
+  tightened(nut142) members=[tightened(nut142)] parents=[]
+  tightened(nut143) members=[tightened(nut143)] parents=[]
+  tightened(nut144) members=[tightened(nut144)] parents=[]
+  tightened(nut145) members=[tightened(nut145)] parents=[]
+  tightened(nut146) members=[tightened(nut146)] parents=[]
+  tightened(nut147) members=[tightened(nut147)] parents=[]
+  tightened(nut148) members=[tightened(nut148)] parents=[]
+  tightened(nut149) members=[tightened(nut149)] parents=[]
+  tightened(nut150) members=[tightened(nut150)] parents=[]
+  tightened(nut151) members=[tightened(nut151)] parents=[]
+  tightened(nut152) members=[tightened(nut152)] parents=[]
+  tightened(nut153) members=[tightened(nut153)] parents=[]
+  tightened(nut154) members=[tightened(nut154)] parents=[]
+  tightened(nut155) members=[tightened(nut155)] parents=[]
+  tightened(nut156) members=[tightened(nut156)] parents=[]
+  tightened(nut157) members=[tightened(nut157)] parents=[]
+  tightened(nut158) members=[tightened(nut158)] parents=[]
+  tightened(nut159) members=[tightened(nut159)] parents=[]
+  tightened(nut160) members=[tightened(nut160)] parents=[]
+  tightened(nut161) members=[tightened(nut161)] parents=[]
+  tightened(nut162) members=[tightened(nut162)] parents=[]
+  tightened(nut163) members=[tightened(nut163)] parents=[]
+  tightened(nut164) members=[tightened(nut164)] parents=[]
+  tightened(nut165) members=[tightened(nut165)] parents=[]
+  tightened(nut166) members=[tightened(nut166)] parents=[]
+  tightened(nut167) members=[tightened(nut167)] parents=[]
+  tightened(nut168) members=[tightened(nut168)] parents=[]
+  tightened(nut169) members=[tightened(nut169)] parents=[]
+  tightened(nut170) members=[tightened(nut170)] parents=[]
+  tightened(nut171) members=[tightened(nut171)] parents=[]
+  tightened(nut172) members=[tightened(nut172)] parents=[]
+  tightened(nut173) members=[tightened(nut173)] parents=[]
+  tightened(nut174) members=[tightened(nut174)] parents=[]
+  tightened(nut175) members=[tightened(nut175)] parents=[]
+  tightened(nut176) members=[tightened(nut176)] parents=[]
+  tightened(nut177) members=[tightened(nut177)] parents=[]
+  tightened(nut178) members=[tightened(nut178)] parents=[]
+  tightened(nut179) members=[tightened(nut179)] parents=[]
+  tightened(nut180) members=[tightened(nut180)] parents=[]
+  tightened(nut181) members=[tightened(nut181)] parents=[]
+  tightened(nut182) members=[tightened(nut182)] parents=[]
+  tightened(nut183) members=[tightened(nut183)] parents=[]
+  tightened(nut184) members=[tightened(nut184)] parents=[]
+  tightened(nut185) members=[tightened(nut185)] parents=[]
+  tightened(nut186) members=[tightened(nut186)] parents=[]
+  tightened(nut187) members=[tightened(nut187)] parents=[]
+  tightened(nut188) members=[tightened(nut188)] parents=[]
+  tightened(nut189) members=[tightened(nut189)] parents=[]
+  tightened(nut190) members=[tightened(nut190)] parents=[]
+  tightened(nut191) members=[tightened(nut191)] parents=[]
+  tightened(nut192) members=[tightened(nut192)] parents=[]
+  tightened(nut193) members=[tightened(nut193)] parents=[]
+  tightened(nut194) members=[tightened(nut194)] parents=[]
+  tightened(nut195) members=[tightened(nut195)] parents=[]
+  tightened(nut196) members=[tightened(nut196)] parents=[]
+  tightened(nut197) members=[tightened(nut197)] parents=[]
+  tightened(nut198) members=[tightened(nut198)] parents=[]
+  tightened(nut199) members=[tightened(nut199)] parents=[]
+  tightened(nut200) members=[tightened(nut200)] parents=[]
+  tightened(nut201) members=[tightened(nut201)] parents=[]
+  tightened(nut202) members=[tightened(nut202)] parents=[]
+  tightened(nut203) members=[tightened(nut203)] parents=[]
+  tightened(nut204) members=[tightened(nut204)] parents=[]
+  tightened(nut205) members=[tightened(nut205)] parents=[]
+  tightened(nut206) members=[tightened(nut206)] parents=[]
+  tightened(nut207) members=[tightened(nut207)] parents=[]
+  tightened(nut208) members=[tightened(nut208)] parents=[]
+  tightened(nut209) members=[tightened(nut209)] parents=[]
+  tightened(nut210) members=[tightened(nut210)] parents=[]
+  tightened(nut211) members=[tightened(nut211)] parents=[]
+  tightened(nut212) members=[tightened(nut212)] parents=[]
+  tightened(nut213) members=[tightened(nut213)] parents=[]
+  tightened(nut214) members=[tightened(nut214)] parents=[]
+  tightened(nut215) members=[tightened(nut215)] parents=[]
+  tightened(nut216) members=[tightened(nut216)] parents=[]
+  tightened(nut217) members=[tightened(nut217)] parents=[]
+  tightened(nut218) members=[tightened(nut218)] parents=[]
+  tightened(nut219) members=[tightened(nut219)] parents=[]
+  tightened(nut220) members=[tightened(nut220)] parents=[]
+  tightened(nut221) members=[tightened(nut221)] parents=[]
+  tightened(nut222) members=[tightened(nut222)] parents=[]
+  tightened(nut223) members=[tightened(nut223)] parents=[]
+  tightened(nut224) members=[tightened(nut224)] parents=[]
+  tightened(nut225) members=[tightened(nut225)] parents=[]
+  tightened(nut226) members=[tightened(nut226)] parents=[]
+  tightened(nut227) members=[tightened(nut227)] parents=[]
+  tightened(nut228) members=[tightened(nut228)] parents=[]
+  tightened(nut229) members=[tightened(nut229)] parents=[]
+  tightened(nut230) members=[tightened(nut230)] parents=[]
+  tightened(nut231) members=[tightened(nut231)] parents=[]
+  tightened(nut232) members=[tightened(nut232)] parents=[]
+  tightened(nut233) members=[tightened(nut233)] parents=[]
+  tightened(nut234) members=[tightened(nut234)] parents=[]
+  tightened(nut235) members=[tightened(nut235)] parents=[]
+  tightened(nut236) members=[tightened(nut236)] parents=[]
+  tightened(nut237) members=[tightened(nut237)] parents=[]
+  tightened(nut238) members=[tightened(nut238)] parents=[]
+  tightened(nut239) members=[tightened(nut239)] parents=[]
+  tightened(nut240) members=[tightened(nut240)] parents=[]
+  tightened(nut241) members=[tightened(nut241)] parents=[]
+  tightened(nut242) members=[tightened(nut242)] parents=[]
+  tightened(nut243) members=[tightened(nut243)] parents=[]
+  tightened(nut244) members=[tightened(nut244)] parents=[]
+  at(bob, gate) initially_true members=[at(bob, gate)] parents=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243]
+  at(nut1, gate) initially_true members=[at(nut1, gate)] parents=[0]
+  carrying(bob, ?) initially_true members=[carrying(bob, spanner1), carrying(bob, spanner2), carrying(bob, spanner3), carrying(bob, spanner4), carrying(bob, spanner5), carrying(bob, spanner6), carrying(bob, spanner7), carrying(bob, spanner8), carrying(bob, spanner9), carrying(bob, spanner10), carrying(bob, spanner11), carrying(bob, spanner12), carrying(bob, spanner13), carrying(bob, spanner14), carrying(bob, spanner15), carrying(bob, spanner16), carrying(bob, spanner17), carrying(bob, spanner18), carrying(bob, spanner19), carrying(bob, spanner20), carrying(bob, spanner21), carrying(bob, spanner22), carrying(bob, spanner23), carrying(bob, spanner24), carrying(bob, spanner25), carrying(bob, spanner26), carrying(bob, spanner27), carrying(bob, spanner28), carrying(bob, spanner29), carrying(bob, spanner30), carrying(bob, spanner31), carrying(bob, spanner32), carrying(bob, spanner33), carrying(bob, spanner34), carrying(bob, spanner35), carrying(bob, spanner36), carrying(bob, spanner37), carrying(bob, spanner38), carrying(bob, spanner39), carrying(bob, spanner40), carrying(bob, spanner41), carrying(bob, spanner42), carrying(bob, spanner43), carrying(bob, spanner44), carrying(bob, spanner45), carrying(bob, spanner46), carrying(bob, spanner47), carrying(bob, spanner48), carrying(bob, spanner49), carrying(bob, spanner50), carrying(bob, spanner51), carrying(bob, spanner52), carrying(bob, spanner53), carrying(bob, spanner54), carrying(bob, spanner55), carrying(bob, spanner56), carrying(bob, spanner57), carrying(bob, spanner58), carrying(bob, spanner59), carrying(bob, spanner60), carrying(bob, spanner61), carrying(bob, spanner62), carrying(bob, spanner63), carrying(bob, spanner64), carrying(bob, spanner65), carrying(bob, spanner66), carrying(bob, spanner67), carrying(bob, spanner68), carrying(bob, spanner69), carrying(bob, spanner70), carrying(bob, spanner71), carrying(bob, spanner72), carrying(bob, spanner73), carrying(bob, spanner74), carrying(bob, spanner75), carrying(bob, spanner76), carrying(bob, spanner77), carrying(bob, spanner78), carrying(bob, spanner79), carrying(bob, spanner80), carrying(bob, spanner81), carrying(bob, spanner82), carrying(bob, spanner83), carrying(bob, spanner84), carrying(bob, spanner85), carrying(bob, spanner86), carrying(bob, spanner87), carrying(bob, spanner88), carrying(bob, spanner89), carrying(bob, spanner90), carrying(bob, spanner91), carrying(bob, spanner92), carrying(bob, spanner93), carrying(bob, spanner94), carrying(bob, spanner95), carrying(bob, spanner96), carrying(bob, spanner97), carrying(bob, spanner98), carrying(bob, spanner99), carrying(bob, spanner100), carrying(bob, spanner101), carrying(bob, spanner102), carrying(bob, spanner103), carrying(bob, spanner104), carrying(bob, spanner105), carrying(bob, spanner106), carrying(bob, spanner107), carrying(bob, spanner108), carrying(bob, spanner109), carrying(bob, spanner110), carrying(bob, spanner111), carrying(bob, spanner112), carrying(bob, spanner113), carrying(bob, spanner114), carrying(bob, spanner115), carrying(bob, spanner116), carrying(bob, spanner117), carrying(bob, spanner118), carrying(bob, spanner119), carrying(bob, spanner120), carrying(bob, spanner121), carrying(bob, spanner122), carrying(bob, spanner123), carrying(bob, spanner124), carrying(bob, spanner125), carrying(bob, spanner126), carrying(bob, spanner127), carrying(bob, spanner128), carrying(bob, spanner129), carrying(bob, spanner130), carrying(bob, spanner131), carrying(bob, spanner132), carrying(bob, spanner133), carrying(bob, spanner134), carrying(bob, spanner135), carrying(bob, spanner136), carrying(bob, spanner137), carrying(bob, spanner138), carrying(bob, spanner139), carrying(bob, spanner140), carrying(bob, spanner141), carrying(bob, spanner142), carrying(bob, spanner143), carrying(bob, spanner144), carrying(bob, spanner145), carrying(bob, spanner146), carrying(bob, spanner147), carrying(bob, spanner148), carrying(bob, spanner149), carrying(bob, spanner150), carrying(bob, spanner151), carrying(bob, spanner152), carrying(bob, spanner153), carrying(bob, spanner154), carrying(bob, spanner155), carrying(bob, spanner156), carrying(bob, spanner157), carrying(bob, spanner158), carrying(bob, spanner159), carrying(bob, spanner160), carrying(bob, spanner161), carrying(bob, spanner162), carrying(bob, spanner163), carrying(bob, spanner164), carrying(bob, spanner165), carrying(bob, spanner166), carrying(bob, spanner167), carrying(bob, spanner168), carrying(bob, spanner169), carrying(bob, spanner170), carrying(bob, spanner171), carrying(bob, spanner172), carrying(bob, spanner173), carrying(bob, spanner174), carrying(bob, spanner175), carrying(bob, spanner176), carrying(bob, spanner177), carrying(bob, spanner178), carrying(bob, spanner179), carrying(bob, spanner180), carrying(bob, spanner181), carrying(bob, spanner182), carrying(bob, spanner183), carrying(bob, spanner184), carrying(bob, spanner185), carrying(bob, spanner186), carrying(bob, spanner187), carrying(bob, spanner188), carrying(bob, spanner189), carrying(bob, spanner190), carrying(bob, spanner191), carrying(bob, spanner192), carrying(bob, spanner193), carrying(bob, spanner194), carrying(bob, spanner195), carrying(bob, spanner196), carrying(bob, spanner197), carrying(bob, spanner198), carrying(bob, spanner199), carrying(bob, spanner200), carrying(bob, spanner201), carrying(bob, spanner202), carrying(bob, spanner203), carrying(bob, spanner204), carrying(bob, spanner205), carrying(bob, spanner206), carrying(bob, spanner207), carrying(bob, spanner208), carrying(bob, spanner209), carrying(bob, spanner210), carrying(bob, spanner211), carrying(bob, spanner212), carrying(bob, spanner213), carrying(bob, spanner214), carrying(bob, spanner215), carrying(bob, spanner216), carrying(bob, spanner217), carrying(bob, spanner218), carrying(bob, spanner219), carrying(bob, spanner220), carrying(bob, spanner221), carrying(bob, spanner222), carrying(bob, spanner223), carrying(bob, spanner224), carrying(bob, spanner225), carrying(bob, spanner226), carrying(bob, spanner227), carrying(bob, spanner228), carrying(bob, spanner229), carrying(bob, spanner230), carrying(bob, spanner231), carrying(bob, spanner232), carrying(bob, spanner233), carrying(bob, spanner234), carrying(bob, spanner235), carrying(bob, spanner236), carrying(bob, spanner237), carrying(bob, spanner238), carrying(bob, spanner239), carrying(bob, spanner240), carrying(bob, spanner241), carrying(bob, spanner242), carrying(bob, spanner243), carrying(bob, spanner244), carrying(bob, spanner245), carrying(bob, spanner246), carrying(bob, spanner247), carrying(bob, spanner248), carrying(bob, spanner249), carrying(bob, spanner250), carrying(bob, spanner251), carrying(bob, spanner252), carrying(bob, spanner253), carrying(bob, spanner254), carrying(bob, spanner255), carrying(bob, spanner256), carrying(bob, spanner257), carrying(bob, spanner258), carrying(bob, spanner259), carrying(bob, spanner260), carrying(bob, spanner261), carrying(bob, spanner262), carrying(bob, spanner263), carrying(bob, spanner264), carrying(bob, spanner265), carrying(bob, spanner266), carrying(bob, spanner267), carrying(bob, spanner268), carrying(bob, spanner269), carrying(bob, spanner270), carrying(bob, spanner271), carrying(bob, spanner272), carrying(bob, spanner273), carrying(bob, spanner274), carrying(bob, spanner275), carrying(bob, spanner276), carrying(bob, spanner277), carrying(bob, spanner278), carrying(bob, spanner279), carrying(bob, spanner280), carrying(bob, spanner281), carrying(bob, spanner282), carrying(bob, spanner283), carrying(bob, spanner284), carrying(bob, spanner285), carrying(bob, spanner286), carrying(bob, spanner287), carrying(bob, spanner288), carrying(bob, spanner289), carrying(bob, spanner290), carrying(bob, spanner291), carrying(bob, spanner292), carrying(bob, spanner293), carrying(bob, spanner294), carrying(bob, spanner295), carrying(bob, spanner296), carrying(bob, spanner297), carrying(bob, spanner298), carrying(bob, spanner299), carrying(bob, spanner300), carrying(bob, spanner301), carrying(bob, spanner302), carrying(bob, spanner303), carrying(bob, spanner304), carrying(bob, spanner305), carrying(bob, spanner306), carrying(bob, spanner307), carrying(bob, spanner308), carrying(bob, spanner309), carrying(bob, spanner310), carrying(bob, spanner311), carrying(bob, spanner312), carrying(bob, spanner313), carrying(bob, spanner314), carrying(bob, spanner315), carrying(bob, spanner316), carrying(bob, spanner317), carrying(bob, spanner318), carrying(bob, spanner319), carrying(bob, spanner320), carrying(bob, spanner321), carrying(bob, spanner322), carrying(bob, spanner323), carrying(bob, spanner324), carrying(bob, spanner325), carrying(bob, spanner326), carrying(bob, spanner327), carrying(bob, spanner328), carrying(bob, spanner329), carrying(bob, spanner330), carrying(bob, spanner331), carrying(bob, spanner332), carrying(bob, spanner333), carrying(bob, spanner334), carrying(bob, spanner335), carrying(bob, spanner336), carrying(bob, spanner337), carrying(bob, spanner338), carrying(bob, spanner339), carrying(bob, spanner340), carrying(bob, spanner341), carrying(bob, spanner342), carrying(bob, spanner343), carrying(bob, spanner344), carrying(bob, spanner345), carrying(bob, spanner346), carrying(bob, spanner347), carrying(bob, spanner348), carrying(bob, spanner349), carrying(bob, spanner350), carrying(bob, spanner351), carrying(bob, spanner352), carrying(bob, spanner353), carrying(bob, spanner354), carrying(bob, spanner355), carrying(bob, spanner356), carrying(bob, spanner357), carrying(bob, spanner358), carrying(bob, spanner359), carrying(bob, spanner360), carrying(bob, spanner361), carrying(bob, spanner362), carrying(bob, spanner363), carrying(bob, spanner364), carrying(bob, spanner365), carrying(bob, spanner366), carrying(bob, spanner367), carrying(bob, spanner368), carrying(bob, spanner369), carrying(bob, spanner370), carrying(bob, spanner371), carrying(bob, spanner372), carrying(bob, spanner373), carrying(bob, spanner374), carrying(bob, spanner375), carrying(bob, spanner376), carrying(bob, spanner377), carrying(bob, spanner378), carrying(bob, spanner379), carrying(bob, spanner380), carrying(bob, spanner381), carrying(bob, spanner382), carrying(bob, spanner383), carrying(bob, spanner384), carrying(bob, spanner385), carrying(bob, spanner386), carrying(bob, spanner387), carrying(bob, spanner388), carrying(bob, spanner389), carrying(bob, spanner390), carrying(bob, spanner391), carrying(bob, spanner392), carrying(bob, spanner393), carrying(bob, spanner394), carrying(bob, spanner395), carrying(bob, spanner396), carrying(bob, spanner397), carrying(bob, spanner398), carrying(bob, spanner399), carrying(bob, spanner400), carrying(bob, spanner401), carrying(bob, spanner402), carrying(bob, spanner403), carrying(bob, spanner404), carrying(bob, spanner405), carrying(bob, spanner406), carrying(bob, spanner407), carrying(bob, spanner408), carrying(bob, spanner409), carrying(bob, spanner410), carrying(bob, spanner411), carrying(bob, spanner412), carrying(bob, spanner413), carrying(bob, spanner414), carrying(bob, spanner415), carrying(bob, spanner416), carrying(bob, spanner417), carrying(bob, spanner418), carrying(bob, spanner419), carrying(bob, spanner420), carrying(bob, spanner421), carrying(bob, spanner422), carrying(bob, spanner423), carrying(bob, spanner424), carrying(bob, spanner425), carrying(bob, spanner426), carrying(bob, spanner427), carrying(bob, spanner428), carrying(bob, spanner429), carrying(bob, spanner430), carrying(bob, spanner431), carrying(bob, spanner432), carrying(bob, spanner433), carrying(bob, spanner434), carrying(bob, spanner435), carrying(bob, spanner436), carrying(bob, spanner437), carrying(bob, spanner438), carrying(bob, spanner439), carrying(bob, spanner440), carrying(bob, spanner441), carrying(bob, spanner442), carrying(bob, spanner443), carrying(bob, spanner444), carrying(bob, spanner445), carrying(bob, spanner446), carrying(bob, spanner447), carrying(bob, spanner448), carrying(bob, spanner449), carrying(bob, spanner450), carrying(bob, spanner451), carrying(bob, spanner452), carrying(bob, spanner453), carrying(bob, spanner454), carrying(bob, spanner455), carrying(bob, spanner456), carrying(bob, spanner457), carrying(bob, spanner458), carrying(bob, spanner459), carrying(bob, spanner460), carrying(bob, spanner461), carrying(bob, spanner462), carrying(bob, spanner463), carrying(bob, spanner464), carrying(bob, spanner465), carrying(bob, spanner466), carrying(bob, spanner467), carrying(bob, spanner468), carrying(bob, spanner469), carrying(bob, spanner470), carrying(bob, spanner471), carrying(bob, spanner472), carrying(bob, spanner473), carrying(bob, spanner474), carrying(bob, spanner475), carrying(bob, spanner476), carrying(bob, spanner477), carrying(bob, spanner478), carrying(bob, spanner479), carrying(bob, spanner480), carrying(bob, spanner481), carrying(bob, spanner482), carrying(bob, spanner483), carrying(bob, spanner484), carrying(bob, spanner485), carrying(bob, spanner486), carrying(bob, spanner487)] parents=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243]
+  useable(?) initially_true members=[useable(spanner1), useable(spanner2), useable(spanner3), useable(spanner4), useable(spanner5), useable(spanner6), useable(spanner7), useable(spanner8), useable(spanner9), useable(spanner10), useable(spanner11), useable(spanner12), useable(spanner13), useable(spanner14), useable(spanner15), useable(spanner16), useable(spanner17), useable(spanner18), useable(spanner19), useable(spanner20), useable(spanner21), useable(spanner22), useable(spanner23), useable(spanner24), useable(spanner25), useable(spanner26), useable(spanner27), useable(spanner28), useable(spanner29), useable(spanner30), useable(spanner31), useable(spanner32), useable(spanner33), useable(spanner34), useable(spanner35), useable(spanner36), useable(spanner37), useable(spanner38), useable(spanner39), useable(spanner40), useable(spanner41), useable(spanner42), useable(spanner43), useable(spanner44), useable(spanner45), useable(spanner46), useable(spanner47), useable(spanner48), useable(spanner49), useable(spanner50), useable(spanner51), useable(spanner52), useable(spanner53), useable(spanner54), useable(spanner55), useable(spanner56), useable(spanner57), useable(spanner58), useable(spanner59), useable(spanner60), useable(spanner61), useable(spanner62), useable(spanner63), useable(spanner64), useable(spanner65), useable(spanner66), useable(spanner67), useable(spanner68), useable(spanner69), useable(spanner70), useable(spanner71), useable(spanner72), useable(spanner73), useable(spanner74), useable(spanner75), useable(spanner76), useable(spanner77), useable(spanner78), useable(spanner79), useable(spanner80), useable(spanner81), useable(spanner82), useable(spanner83), useable(spanner84), useable(spanner85), useable(spanner86), useable(spanner87), useable(spanner88), useable(spanner89), useable(spanner90), useable(spanner91), useable(spanner92), useable(spanner93), useable(spanner94), useable(spanner95), useable(spanner96), useable(spanner97), useable(spanner98), useable(spanner99), useable(spanner100), useable(spanner101), useable(spanner102), useable(spanner103), useable(spanner104), useable(spanner105), useable(spanner106), useable(spanner107), useable(spanner108), useable(spanner109), useable(spanner110), useable(spanner111), useable(spanner112), useable(spanner113), useable(spanner114), useable(spanner115), useable(spanner116), useable(spanner117), useable(spanner118), useable(spanner119), useable(spanner120), useable(spanner121), useable(spanner122), useable(spanner123), useable(spanner124), useable(spanner125), useable(spanner126), useable(spanner127), useable(spanner128), useable(spanner129), useable(spanner130), useable(spanner131), useable(spanner132), useable(spanner133), useable(spanner134), useable(spanner135), useable(spanner136), useable(spanner137), useable(spanner138), useable(spanner139), useable(spanner140), useable(spanner141), useable(spanner142), useable(spanner143), useable(spanner144), useable(spanner145), useable(spanner146), useable(spanner147), useable(spanner148), useable(spanner149), useable(spanner150), useable(spanner151), useable(spanner152), useable(spanner153), useable(spanner154), useable(spanner155), useable(spanner156), useable(spanner157), useable(spanner158), useable(spanner159), useable(spanner160), useable(spanner161), useable(spanner162), useable(spanner163), useable(spanner164), useable(spanner165), useable(spanner166), useable(spanner167), useable(spanner168), useable(spanner169), useable(spanner170), useable(spanner171), useable(spanner172), useable(spanner173), useable(spanner174), useable(spanner175), useable(spanner176), useable(spanner177), useable(spanner178), useable(spanner179), useable(spanner180), useable(spanner181), useable(spanner182), useable(spanner183), useable(spanner184), useable(spanner185), useable(spanner186), useable(spanner187), useable(spanner188), useable(spanner189), useable(spanner190), useable(spanner191), useable(spanner192), useable(spanner193), useable(spanner194), useable(spanner195), useable(spanner196), useable(spanner197), useable(spanner198), useable(spanner199), useable(spanner200), useable(spanner201), useable(spanner202), useable(spanner203), useable(spanner204), useable(spanner205), useable(spanner206), useable(spanner207), useable(spanner208), useable(spanner209), useable(spanner210), useable(spanner211), useable(spanner212), useable(spanner213), useable(spanner214), useable(spanner215), useable(spanner216), useable(spanner217), useable(spanner218), useable(spanner219), useable(spanner220), useable(spanner221), useable(spanner222), useable(spanner223), useable(spanner224), useable(spanner225), useable(spanner226), useable(spanner227), useable(spanner228), useable(spanner229), useable(spanner230), useable(spanner231), useable(spanner232), useable(spanner233), useable(spanner234), useable(spanner235), useable(spanner236), useable(spanner237), useable(spanner238), useable(spanner239), useable(spanner240), useable(spanner241), useable(spanner242), useable(spanner243), useable(spanner244), useable(spanner245), useable(spanner246), useable(spanner247), useable(spanner248), useable(spanner249), useable(spanner250), useable(spanner251), useable(spanner252), useable(spanner253), useable(spanner254), useable(spanner255), useable(spanner256), useable(spanner257), useable(spanner258), useable(spanner259), useable(spanner260), useable(spanner261), useable(spanner262), useable(spanner263), useable(spanner264), useable(spanner265), useable(spanner266), useable(spanner267), useable(spanner268), useable(spanner269), useable(spanner270), useable(spanner271), useable(spanner272), useable(spanner273), useable(spanner274), useable(spanner275), useable(spanner276), useable(spanner277), useable(spanner278), useable(spanner279), useable(spanner280), useable(spanner281), useable(spanner282), useable(spanner283), useable(spanner284), useable(spanner285), useable(spanner286), useable(spanner287), useable(spanner288), useable(spanner289), useable(spanner290), useable(spanner291), useable(spanner292), useable(spanner293), useable(spanner294), useable(spanner295), useable(spanner296), useable(spanner297), useable(spanner298), useable(spanner299), useable(spanner300), useable(spanner301), useable(spanner302), useable(spanner303), useable(spanner304), useable(spanner305), useable(spanner306), useable(spanner307), useable(spanner308), useable(spanner309), useable(spanner310), useable(spanner311), useable(spanner312), useable(spanner313), useable(spanner314), useable(spanner315), useable(spanner316), useable(spanner317), useable(spanner318), useable(spanner319), useable(spanner320), useable(spanner321), useable(spanner322), useable(spanner323), useable(spanner324), useable(spanner325), useable(spanner326), useable(spanner327), useable(spanner328), useable(spanner329), useable(spanner330), useable(spanner331), useable(spanner332), useable(spanner333), useable(spanner334), useable(spanner335), useable(spanner336), useable(spanner337), useable(spanner338), useable(spanner339), useable(spanner340), useable(spanner341), useable(spanner342), useable(spanner343), useable(spanner344), useable(spanner345), useable(spanner346), useable(spanner347), useable(spanner348), useable(spanner349), useable(spanner350), useable(spanner351), useable(spanner352), useable(spanner353), useable(spanner354), useable(spanner355), useable(spanner356), useable(spanner357), useable(spanner358), useable(spanner359), useable(spanner360), useable(spanner361), useable(spanner362), useable(spanner363), useable(spanner364), useable(spanner365), useable(spanner366), useable(spanner367), useable(spanner368), useable(spanner369), useable(spanner370), useable(spanner371), useable(spanner372), useable(spanner373), useable(spanner374), useable(spanner375), useable(spanner376), useable(spanner377), useable(spanner378), useable(spanner379), useable(spanner380), useable(spanner381), useable(spanner382), useable(spanner383), useable(spanner384), useable(spanner385), useable(spanner386), useable(spanner387), useable(spanner388), useable(spanner389), useable(spanner390), useable(spanner391), useable(spanner392), useable(spanner393), useable(spanner394), useable(spanner395), useable(spanner396), useable(spanner397), useable(spanner398), useable(spanner399), useable(spanner400), useable(spanner401), useable(spanner402), useable(spanner403), useable(spanner404), useable(spanner405), useable(spanner406), useable(spanner407), useable(spanner408), useable(spanner409), useable(spanner410), useable(spanner411), useable(spanner412), useable(spanner413), useable(spanner414), useable(spanner415), useable(spanner416), useable(spanner417), useable(spanner418), useable(spanner419), useable(spanner420), useable(spanner421), useable(spanner422), useable(spanner423), useable(spanner424), useable(spanner425), useable(spanner426), useable(spanner427), useable(spanner428), useable(spanner429), useable(spanner430), useable(spanner431), useable(spanner432), useable(spanner433), useable(spanner434), useable(spanner435), useable(spanner436), useable(spanner437), useable(spanner438), useable(spanner439), useable(spanner440), useable(spanner441), useable(spanner442), useable(spanner443), useable(spanner444), useable(spanner445), useable(spanner446), useable(spanner447), useable(spanner448), useable(spanner449), useable(spanner450), useable(spanner451), useable(spanner452), useable(spanner453), useable(spanner454), useable(spanner455), useable(spanner456), useable(spanner457), useable(spanner458), useable(spanner459), useable(spanner460), useable(spanner461), useable(spanner462), useable(spanner463), useable(spanner464), useable(spanner465), useable(spanner466), useable(spanner467), useable(spanner468), useable(spanner469), useable(spanner470), useable(spanner471), useable(spanner472), useable(spanner473), useable(spanner474), useable(spanner475), useable(spanner476), useable(spanner477), useable(spanner478), useable(spanner479), useable(spanner480), useable(spanner481), useable(spanner482), useable(spanner483), useable(spanner484), useable(spanner485), useable(spanner486), useable(spanner487)] parents=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243]
+  loose(nut1) initially_true members=[loose(nut1)] parents=[0]
+  at(nut2, gate) initially_true members=[at(nut2, gate)] parents=[1]
+  loose(nut2) initially_true members=[loose(nut2)] parents=[1]
+  at(nut3, gate) initially_true members=[at(nut3, gate)] parents=[2]
+  loose(nut3) initially_true members=[loose(nut3)] parents=[2]
+  at(nut4, gate) initially_true members=[at(nut4, gate)] parents=[3]
+  loose(nut4) initially_true members=[loose(nut4)] parents=[3]
+  at(nut5, gate) initially_true members=[at(nut5, gate)] parents=[4]
+  loose(nut5) initially_true members=[loose(nut5)] parents=[4]
+  at(nut6, gate) initially_true members=[at(nut6, gate)] parents=[5]
+  loose(nut6) initially_true members=[loose(nut6)] parents=[5]
+  at(nut7, gate) initially_true members=[at(nut7, gate)] parents=[6]
+  loose(nut7) initially_true members=[loose(nut7)] parents=[6]
+  at(nut8, gate) initially_true members=[at(nut8, gate)] parents=[7]
+  loose(nut8) initially_true members=[loose(nut8)] parents=[7]
+  at(nut9, gate) initially_true members=[at(nut9, gate)] parents=[8]
+  loose(nut9) initially_true members=[loose(nut9)] parents=[8]
+  at(nut10, gate) initially_true members=[at(nut10, gate)] parents=[9]
+  loose(nut10) initially_true members=[loose(nut10)] parents=[9]
+  at(nut11, gate) initially_true members=[at(nut11, gate)] parents=[10]
+  loose(nut11) initially_true members=[loose(nut11)] parents=[10]
+  at(nut12, gate) initially_true members=[at(nut12, gate)] parents=[11]
+  loose(nut12) initially_true members=[loose(nut12)] parents=[11]
+  at(nut13, gate) initially_true members=[at(nut13, gate)] parents=[12]
+  loose(nut13) initially_true members=[loose(nut13)] parents=[12]
+  at(nut14, gate) initially_true members=[at(nut14, gate)] parents=[13]
+  loose(nut14) initially_true members=[loose(nut14)] parents=[13]
+  at(nut15, gate) initially_true members=[at(nut15, gate)] parents=[14]
+  loose(nut15) initially_true members=[loose(nut15)] parents=[14]
+  at(nut16, gate) initially_true members=[at(nut16, gate)] parents=[15]
+  loose(nut16) initially_true members=[loose(nut16)] parents=[15]
+  at(nut17, gate) initially_true members=[at(nut17, gate)] parents=[16]
+  loose(nut17) initially_true members=[loose(nut17)] parents=[16]
+  at(nut18, gate) initially_true members=[at(nut18, gate)] parents=[17]
+  loose(nut18) initially_true members=[loose(nut18)] parents=[17]
+  at(nut19, gate) initially_true members=[at(nut19, gate)] parents=[18]
+  loose(nut19) initially_true members=[loose(nut19)] parents=[18]
+  at(nut20, gate) initially_true members=[at(nut20, gate)] parents=[19]
+  loose(nut20) initially_true members=[loose(nut20)] parents=[19]
+  at(nut21, gate) initially_true members=[at(nut21, gate)] parents=[20]
+  loose(nut21) initially_true members=[loose(nut21)] parents=[20]
+  at(nut22, gate) initially_true members=[at(nut22, gate)] parents=[21]
+  loose(nut22) initially_true members=[loose(nut22)] parents=[21]
+  at(nut23, gate) initially_true members=[at(nut23, gate)] parents=[22]
+  loose(nut23) initially_true members=[loose(nut23)] parents=[22]
+  at(nut24, gate) initially_true members=[at(nut24, gate)] parents=[23]
+  loose(nut24) initially_true members=[loose(nut24)] parents=[23]
+  at(nut25, gate) initially_true members=[at(nut25, gate)] parents=[24]
+  loose(nut25) initially_true members=[loose(nut25)] parents=[24]
+  at(nut26, gate) initially_true members=[at(nut26, gate)] parents=[25]
+  loose(nut26) initially_true members=[loose(nut26)] parents=[25]
+  at(nut27, gate) initially_true members=[at(nut27, gate)] parents=[26]
+  loose(nut27) initially_true members=[loose(nut27)] parents=[26]
+  at(nut28, gate) initially_true members=[at(nut28, gate)] parents=[27]
+  loose(nut28) initially_true members=[loose(nut28)] parents=[27]
+  at(nut29, gate) initially_true members=[at(nut29, gate)] parents=[28]
+  loose(nut29) initially_true members=[loose(nut29)] parents=[28]
+  at(nut30, gate) initially_true members=[at(nut30, gate)] parents=[29]
+  loose(nut30) initially_true members=[loose(nut30)] parents=[29]
+  at(nut31, gate) initially_true members=[at(nut31, gate)] parents=[30]
+  loose(nut31) initially_true members=[loose(nut31)] parents=[30]
+  at(nut32, gate) initially_true members=[at(nut32, gate)] parents=[31]
+  loose(nut32) initially_true members=[loose(nut32)] parents=[31]
+  at(nut33, gate) initially_true members=[at(nut33, gate)] parents=[32]
+  loose(nut33) initially_true members=[loose(nut33)] parents=[32]
+  at(nut34, gate) initially_true members=[at(nut34, gate)] parents=[33]
+  loose(nut34) initially_true members=[loose(nut34)] parents=[33]
+  at(nut35, gate) initially_true members=[at(nut35, gate)] parents=[34]
+  loose(nut35) initially_true members=[loose(nut35)] parents=[34]
+  at(nut36, gate) initially_true members=[at(nut36, gate)] parents=[35]
+  loose(nut36) initially_true members=[loose(nut36)] parents=[35]
+  at(nut37, gate) initially_true members=[at(nut37, gate)] parents=[36]
+  loose(nut37) initially_true members=[loose(nut37)] parents=[36]
+  at(nut38, gate) initially_true members=[at(nut38, gate)] parents=[37]
+  loose(nut38) initially_true members=[loose(nut38)] parents=[37]
+  at(nut39, gate) initially_true members=[at(nut39, gate)] parents=[38]
+  loose(nut39) initially_true members=[loose(nut39)] parents=[38]
+  at(nut40, gate) initially_true members=[at(nut40, gate)] parents=[39]
+  loose(nut40) initially_true members=[loose(nut40)] parents=[39]
+  at(nut41, gate) initially_true members=[at(nut41, gate)] parents=[40]
+  loose(nut41) initially_true members=[loose(nut41)] parents=[40]
+  at(nut42, gate) initially_true members=[at(nut42, gate)] parents=[41]
+  loose(nut42) initially_true members=[loose(nut42)] parents=[41]
+  at(nut43, gate) initially_true members=[at(nut43, gate)] parents=[42]
+  loose(nut43) initially_true members=[loose(nut43)] parents=[42]
+  at(nut44, gate) initially_true members=[at(nut44, gate)] parents=[43]
+  loose(nut44) initially_true members=[loose(nut44)] parents=[43]
+  at(nut45, gate) initially_true members=[at(nut45, gate)] parents=[44]
+  loose(nut45) initially_true members=[loose(nut45)] parents=[44]
+  at(nut46, gate) initially_true members=[at(nut46, gate)] parents=[45]
+  loose(nut46) initially_true members=[loose(nut46)] parents=[45]
+  at(nut47, gate) initially_true members=[at(nut47, gate)] parents=[46]
+  loose(nut47) initially_true members=[loose(nut47)] parents=[46]
+  at(nut48, gate) initially_true members=[at(nut48, gate)] parents=[47]
+  loose(nut48) initially_true members=[loose(nut48)] parents=[47]
+  at(nut49, gate) initially_true members=[at(nut49, gate)] parents=[48]
+  loose(nut49) initially_true members=[loose(nut49)] parents=[48]
+  at(nut50, gate) initially_true members=[at(nut50, gate)] parents=[49]
+  loose(nut50) initially_true members=[loose(nut50)] parents=[49]
+  at(nut51, gate) initially_true members=[at(nut51, gate)] parents=[50]
+  loose(nut51) initially_true members=[loose(nut51)] parents=[50]
+  at(nut52, gate) initially_true members=[at(nut52, gate)] parents=[51]
+  loose(nut52) initially_true members=[loose(nut52)] parents=[51]
+  at(nut53, gate) initially_true members=[at(nut53, gate)] parents=[52]
+  loose(nut53) initially_true members=[loose(nut53)] parents=[52]
+  at(nut54, gate) initially_true members=[at(nut54, gate)] parents=[53]
+  loose(nut54) initially_true members=[loose(nut54)] parents=[53]
+  at(nut55, gate) initially_true members=[at(nut55, gate)] parents=[54]
+  loose(nut55) initially_true members=[loose(nut55)] parents=[54]
+  at(nut56, gate) initially_true members=[at(nut56, gate)] parents=[55]
+  loose(nut56) initially_true members=[loose(nut56)] parents=[55]
+  at(nut57, gate) initially_true members=[at(nut57, gate)] parents=[56]
+  loose(nut57) initially_true members=[loose(nut57)] parents=[56]
+  at(nut58, gate) initially_true members=[at(nut58, gate)] parents=[57]
+  loose(nut58) initially_true members=[loose(nut58)] parents=[57]
+  at(nut59, gate) initially_true members=[at(nut59, gate)] parents=[58]
+  loose(nut59) initially_true members=[loose(nut59)] parents=[58]
+  at(nut60, gate) initially_true members=[at(nut60, gate)] parents=[59]
+  loose(nut60) initially_true members=[loose(nut60)] parents=[59]
+  at(nut61, gate) initially_true members=[at(nut61, gate)] parents=[60]
+  loose(nut61) initially_true members=[loose(nut61)] parents=[60]
+  at(nut62, gate) initially_true members=[at(nut62, gate)] parents=[61]
+  loose(nut62) initially_true members=[loose(nut62)] parents=[61]
+  at(nut63, gate) initially_true members=[at(nut63, gate)] parents=[62]
+  loose(nut63) initially_true members=[loose(nut63)] parents=[62]
+  at(nut64, gate) initially_true members=[at(nut64, gate)] parents=[63]
+  loose(nut64) initially_true members=[loose(nut64)] parents=[63]
+  at(nut65, gate) initially_true members=[at(nut65, gate)] parents=[64]
+  loose(nut65) initially_true members=[loose(nut65)] parents=[64]
+  at(nut66, gate) initially_true members=[at(nut66, gate)] parents=[65]
+  loose(nut66) initially_true members=[loose(nut66)] parents=[65]
+  at(nut67, gate) initially_true members=[at(nut67, gate)] parents=[66]
+  loose(nut67) initially_true members=[loose(nut67)] parents=[66]
+  at(nut68, gate) initially_true members=[at(nut68, gate)] parents=[67]
+  loose(nut68) initially_true members=[loose(nut68)] parents=[67]
+  at(nut69, gate) initially_true members=[at(nut69, gate)] parents=[68]
+  loose(nut69) initially_true members=[loose(nut69)] parents=[68]
+  at(nut70, gate) initially_true members=[at(nut70, gate)] parents=[69]
+  loose(nut70) initially_true members=[loose(nut70)] parents=[69]
+  at(nut71, gate) initially_true members=[at(nut71, gate)] parents=[70]
+  loose(nut71) initially_true members=[loose(nut71)] parents=[70]
+  at(nut72, gate) initially_true members=[at(nut72, gate)] parents=[71]
+  loose(nut72) initially_true members=[loose(nut72)] parents=[71]
+  at(nut73, gate) initially_true members=[at(nut73, gate)] parents=[72]
+  loose(nut73) initially_true members=[loose(nut73)] parents=[72]
+  at(nut74, gate) initially_true members=[at(nut74, gate)] parents=[73]
+  loose(nut74) initially_true members=[loose(nut74)] parents=[73]
+  at(nut75, gate) initially_true members=[at(nut75, gate)] parents=[74]
+  loose(nut75) initially_true members=[loose(nut75)] parents=[74]
+  at(nut76, gate) initially_true members=[at(nut76, gate)] parents=[75]
+  loose(nut76) initially_true members=[loose(nut76)] parents=[75]
+  at(nut77, gate) initially_true members=[at(nut77, gate)] parents=[76]
+  loose(nut77) initially_true members=[loose(nut77)] parents=[76]
+  at(nut78, gate) initially_true members=[at(nut78, gate)] parents=[77]
+  loose(nut78) initially_true members=[loose(nut78)] parents=[77]
+  at(nut79, gate) initially_true members=[at(nut79, gate)] parents=[78]
+  loose(nut79) initially_true members=[loose(nut79)] parents=[78]
+  at(nut80, gate) initially_true members=[at(nut80, gate)] parents=[79]
+  loose(nut80) initially_true members=[loose(nut80)] parents=[79]
+  at(nut81, gate) initially_true members=[at(nut81, gate)] parents=[80]
+  loose(nut81) initially_true members=[loose(nut81)] parents=[80]
+  at(nut82, gate) initially_true members=[at(nut82, gate)] parents=[81]
+  loose(nut82) initially_true members=[loose(nut82)] parents=[81]
+  at(nut83, gate) initially_true members=[at(nut83, gate)] parents=[82]
+  loose(nut83) initially_true members=[loose(nut83)] parents=[82]
+  at(nut84, gate) initially_true members=[at(nut84, gate)] parents=[83]
+  loose(nut84) initially_true members=[loose(nut84)] parents=[83]
+  at(nut85, gate) initially_true members=[at(nut85, gate)] parents=[84]
+  loose(nut85) initially_true members=[loose(nut85)] parents=[84]
+  at(nut86, gate) initially_true members=[at(nut86, gate)] parents=[85]
+  loose(nut86) initially_true members=[loose(nut86)] parents=[85]
+  at(nut87, gate) initially_true members=[at(nut87, gate)] parents=[86]
+  loose(nut87) initially_true members=[loose(nut87)] parents=[86]
+  at(nut88, gate) initially_true members=[at(nut88, gate)] parents=[87]
+  loose(nut88) initially_true members=[loose(nut88)] parents=[87]
+  at(nut89, gate) initially_true members=[at(nut89, gate)] parents=[88]
+  loose(nut89) initially_true members=[loose(nut89)] parents=[88]
+  at(nut90, gate) initially_true members=[at(nut90, gate)] parents=[89]
+  loose(nut90) initially_true members=[loose(nut90)] parents=[89]
+  at(nut91, gate) initially_true members=[at(nut91, gate)] parents=[90]
+  loose(nut91) initially_true members=[loose(nut91)] parents=[90]
+  at(nut92, gate) initially_true members=[at(nut92, gate)] parents=[91]
+  loose(nut92) initially_true members=[loose(nut92)] parents=[91]
+  at(nut93, gate) initially_true members=[at(nut93, gate)] parents=[92]
+  loose(nut93) initially_true members=[loose(nut93)] parents=[92]
+  at(nut94, gate) initially_true members=[at(nut94, gate)] parents=[93]
+  loose(nut94) initially_true members=[loose(nut94)] parents=[93]
+  at(nut95, gate) initially_true members=[at(nut95, gate)] parents=[94]
+  loose(nut95) initially_true members=[loose(nut95)] parents=[94]
+  at(nut96, gate) initially_true members=[at(nut96, gate)] parents=[95]
+  loose(nut96) initially_true members=[loose(nut96)] parents=[95]
+  at(nut97, gate) initially_true members=[at(nut97, gate)] parents=[96]
+  loose(nut97) initially_true members=[loose(nut97)] parents=[96]
+  at(nut98, gate) initially_true members=[at(nut98, gate)] parents=[97]
+  loose(nut98) initially_true members=[loose(nut98)] parents=[97]
+  at(nut99, gate) initially_true members=[at(nut99, gate)] parents=[98]
+  loose(nut99) initially_true members=[loose(nut99)] parents=[98]
+  at(nut100, gate) initially_true members=[at(nut100, gate)] parents=[99]
+  loose(nut100) initially_true members=[loose(nut100)] parents=[99]
+  at(nut101, gate) initially_true members=[at(nut101, gate)] parents=[100]
+  loose(nut101) initially_true members=[loose(nut101)] parents=[100]
+  at(nut102, gate) initially_true members=[at(nut102, gate)] parents=[101]
+  loose(nut102) initially_true members=[loose(nut102)] parents=[101]
+  at(nut103, gate) initially_true members=[at(nut103, gate)] parents=[102]
+  loose(nut103) initially_true members=[loose(nut103)] parents=[102]
+  at(nut104, gate) initially_true members=[at(nut104, gate)] parents=[103]
+  loose(nut104) initially_true members=[loose(nut104)] parents=[103]
+  at(nut105, gate) initially_true members=[at(nut105, gate)] parents=[104]
+  loose(nut105) initially_true members=[loose(nut105)] parents=[104]
+  at(nut106, gate) initially_true members=[at(nut106, gate)] parents=[105]
+  loose(nut106) initially_true members=[loose(nut106)] parents=[105]
+  at(nut107, gate) initially_true members=[at(nut107, gate)] parents=[106]
+  loose(nut107) initially_true members=[loose(nut107)] parents=[106]
+  at(nut108, gate) initially_true members=[at(nut108, gate)] parents=[107]
+  loose(nut108) initially_true members=[loose(nut108)] parents=[107]
+  at(nut109, gate) initially_true members=[at(nut109, gate)] parents=[108]
+  loose(nut109) initially_true members=[loose(nut109)] parents=[108]
+  at(nut110, gate) initially_true members=[at(nut110, gate)] parents=[109]
+  loose(nut110) initially_true members=[loose(nut110)] parents=[109]
+  at(nut111, gate) initially_true members=[at(nut111, gate)] parents=[110]
+  loose(nut111) initially_true members=[loose(nut111)] parents=[110]
+  at(nut112, gate) initially_true members=[at(nut112, gate)] parents=[111]
+  loose(nut112) initially_true members=[loose(nut112)] parents=[111]
+  at(nut113, gate) initially_true members=[at(nut113, gate)] parents=[112]
+  loose(nut113) initially_true members=[loose(nut113)] parents=[112]
+  at(nut114, gate) initially_true members=[at(nut114, gate)] parents=[113]
+  loose(nut114) initially_true members=[loose(nut114)] parents=[113]
+  at(nut115, gate) initially_true members=[at(nut115, gate)] parents=[114]
+  loose(nut115) initially_true members=[loose(nut115)] parents=[114]
+  at(nut116, gate) initially_true members=[at(nut116, gate)] parents=[115]
+  loose(nut116) initially_true members=[loose(nut116)] parents=[115]
+  at(nut117, gate) initially_true members=[at(nut117, gate)] parents=[116]
+  loose(nut117) initially_true members=[loose(nut117)] parents=[116]
+  at(nut118, gate) initially_true members=[at(nut118, gate)] parents=[117]
+  loose(nut118) initially_true members=[loose(nut118)] parents=[117]
+  at(nut119, gate) initially_true members=[at(nut119, gate)] parents=[118]
+  loose(nut119) initially_true members=[loose(nut119)] parents=[118]
+  at(nut120, gate) initially_true members=[at(nut120, gate)] parents=[119]
+  loose(nut120) initially_true members=[loose(nut120)] parents=[119]
+  at(nut121, gate) initially_true members=[at(nut121, gate)] parents=[120]
+  loose(nut121) initially_true members=[loose(nut121)] parents=[120]
+  at(nut122, gate) initially_true members=[at(nut122, gate)] parents=[121]
+  loose(nut122) initially_true members=[loose(nut122)] parents=[121]
+  at(nut123, gate) initially_true members=[at(nut123, gate)] parents=[122]
+  loose(nut123) initially_true members=[loose(nut123)] parents=[122]
+  at(nut124, gate) initially_true members=[at(nut124, gate)] parents=[123]
+  loose(nut124) initially_true members=[loose(nut124)] parents=[123]
+  at(nut125, gate) initially_true members=[at(nut125, gate)] parents=[124]
+  loose(nut125) initially_true members=[loose(nut125)] parents=[124]
+  at(nut126, gate) initially_true members=[at(nut126, gate)] parents=[125]
+  loose(nut126) initially_true members=[loose(nut126)] parents=[125]
+  at(nut127, gate) initially_true members=[at(nut127, gate)] parents=[126]
+  loose(nut127) initially_true members=[loose(nut127)] parents=[126]
+  at(nut128, gate) initially_true members=[at(nut128, gate)] parents=[127]
+  loose(nut128) initially_true members=[loose(nut128)] parents=[127]
+  at(nut129, gate) initially_true members=[at(nut129, gate)] parents=[128]
+  loose(nut129) initially_true members=[loose(nut129)] parents=[128]
+  at(nut130, gate) initially_true members=[at(nut130, gate)] parents=[129]
+  loose(nut130) initially_true members=[loose(nut130)] parents=[129]
+  at(nut131, gate) initially_true members=[at(nut131, gate)] parents=[130]
+  loose(nut131) initially_true members=[loose(nut131)] parents=[130]
+  at(nut132, gate) initially_true members=[at(nut132, gate)] parents=[131]
+  loose(nut132) initially_true members=[loose(nut132)] parents=[131]
+  at(nut133, gate) initially_true members=[at(nut133, gate)] parents=[132]
+  loose(nut133) initially_true members=[loose(nut133)] parents=[132]
+  at(nut134, gate) initially_true members=[at(nut134, gate)] parents=[133]
+  loose(nut134) initially_true members=[loose(nut134)] parents=[133]
+  at(nut135, gate) initially_true members=[at(nut135, gate)] parents=[134]
+  loose(nut135) initially_true members=[loose(nut135)] parents=[134]
+  at(nut136, gate) initially_true members=[at(nut136, gate)] parents=[135]
+  loose(nut136) initially_true members=[loose(nut136)] parents=[135]
+  at(nut137, gate) initially_true members=[at(nut137, gate)] parents=[136]
+  loose(nut137) initially_true members=[loose(nut137)] parents=[136]
+  at(nut138, gate) initially_true members=[at(nut138, gate)] parents=[137]
+  loose(nut138) initially_true members=[loose(nut138)] parents=[137]
+  at(nut139, gate) initially_true members=[at(nut139, gate)] parents=[138]
+  loose(nut139) initially_true members=[loose(nut139)] parents=[138]
+  at(nut140, gate) initially_true members=[at(nut140, gate)] parents=[139]
+  loose(nut140) initially_true members=[loose(nut140)] parents=[139]
+  at(nut141, gate) initially_true members=[at(nut141, gate)] parents=[140]
+  loose(nut141) initially_true members=[loose(nut141)] parents=[140]
+  at(nut142, gate) initially_true members=[at(nut142, gate)] parents=[141]
+  loose(nut142) initially_true members=[loose(nut142)] parents=[141]
+  at(nut143, gate) initially_true members=[at(nut143, gate)] parents=[142]
+  loose(nut143) initially_true members=[loose(nut143)] parents=[142]
+  at(nut144, gate) initially_true members=[at(nut144, gate)] parents=[143]
+  loose(nut144) initially_true members=[loose(nut144)] parents=[143]
+  at(nut145, gate) initially_true members=[at(nut145, gate)] parents=[144]
+  loose(nut145) initially_true members=[loose(nut145)] parents=[144]
+  at(nut146, gate) initially_true members=[at(nut146, gate)] parents=[145]
+  loose(nut146) initially_true members=[loose(nut146)] parents=[145]
+  at(nut147, gate) initially_true members=[at(nut147, gate)] parents=[146]
+  loose(nut147) initially_true members=[loose(nut147)] parents=[146]
+  at(nut148, gate) initially_true members=[at(nut148, gate)] parents=[147]
+  loose(nut148) initially_true members=[loose(nut148)] parents=[147]
+  at(nut149, gate) initially_true members=[at(nut149, gate)] parents=[148]
+  loose(nut149) initially_true members=[loose(nut149)] parents=[148]
+  at(nut150, gate) initially_true members=[at(nut150, gate)] parents=[149]
+  loose(nut150) initially_true members=[loose(nut150)] parents=[149]
+  at(nut151, gate) initially_true members=[at(nut151, gate)] parents=[150]
+  loose(nut151) initially_true members=[loose(nut151)] parents=[150]
+  at(nut152, gate) initially_true members=[at(nut152, gate)] parents=[151]
+  loose(nut152) initially_true members=[loose(nut152)] parents=[151]
+  at(nut153, gate) initially_true members=[at(nut153, gate)] parents=[152]
+  loose(nut153) initially_true members=[loose(nut153)] parents=[152]
+  at(nut154, gate) initially_true members=[at(nut154, gate)] parents=[153]
+  loose(nut154) initially_true members=[loose(nut154)] parents=[153]
+  at(nut155, gate) initially_true members=[at(nut155, gate)] parents=[154]
+  loose(nut155) initially_true members=[loose(nut155)] parents=[154]
+  at(nut156, gate) initially_true members=[at(nut156, gate)] parents=[155]
+  loose(nut156) initially_true members=[loose(nut156)] parents=[155]
+  at(nut157, gate) initially_true members=[at(nut157, gate)] parents=[156]
+  loose(nut157) initially_true members=[loose(nut157)] parents=[156]
+  at(nut158, gate) initially_true members=[at(nut158, gate)] parents=[157]
+  loose(nut158) initially_true members=[loose(nut158)] parents=[157]
+  at(nut159, gate) initially_true members=[at(nut159, gate)] parents=[158]
+  loose(nut159) initially_true members=[loose(nut159)] parents=[158]
+  at(nut160, gate) initially_true members=[at(nut160, gate)] parents=[159]
+  loose(nut160) initially_true members=[loose(nut160)] parents=[159]
+  at(nut161, gate) initially_true members=[at(nut161, gate)] parents=[160]
+  loose(nut161) initially_true members=[loose(nut161)] parents=[160]
+  at(nut162, gate) initially_true members=[at(nut162, gate)] parents=[161]
+  loose(nut162) initially_true members=[loose(nut162)] parents=[161]
+  at(nut163, gate) initially_true members=[at(nut163, gate)] parents=[162]
+  loose(nut163) initially_true members=[loose(nut163)] parents=[162]
+  at(nut164, gate) initially_true members=[at(nut164, gate)] parents=[163]
+  loose(nut164) initially_true members=[loose(nut164)] parents=[163]
+  at(nut165, gate) initially_true members=[at(nut165, gate)] parents=[164]
+  loose(nut165) initially_true members=[loose(nut165)] parents=[164]
+  at(nut166, gate) initially_true members=[at(nut166, gate)] parents=[165]
+  loose(nut166) initially_true members=[loose(nut166)] parents=[165]
+  at(nut167, gate) initially_true members=[at(nut167, gate)] parents=[166]
+  loose(nut167) initially_true members=[loose(nut167)] parents=[166]
+  at(nut168, gate) initially_true members=[at(nut168, gate)] parents=[167]
+  loose(nut168) initially_true members=[loose(nut168)] parents=[167]
+  at(nut169, gate) initially_true members=[at(nut169, gate)] parents=[168]
+  loose(nut169) initially_true members=[loose(nut169)] parents=[168]
+  at(nut170, gate) initially_true members=[at(nut170, gate)] parents=[169]
+  loose(nut170) initially_true members=[loose(nut170)] parents=[169]
+  at(nut171, gate) initially_true members=[at(nut171, gate)] parents=[170]
+  loose(nut171) initially_true members=[loose(nut171)] parents=[170]
+  at(nut172, gate) initially_true members=[at(nut172, gate)] parents=[171]
+  loose(nut172) initially_true members=[loose(nut172)] parents=[171]
+  at(nut173, gate) initially_true members=[at(nut173, gate)] parents=[172]
+  loose(nut173) initially_true members=[loose(nut173)] parents=[172]
+  at(nut174, gate) initially_true members=[at(nut174, gate)] parents=[173]
+  loose(nut174) initially_true members=[loose(nut174)] parents=[173]
+  at(nut175, gate) initially_true members=[at(nut175, gate)] parents=[174]
+  loose(nut175) initially_true members=[loose(nut175)] parents=[174]
+  at(nut176, gate) initially_true members=[at(nut176, gate)] parents=[175]
+  loose(nut176) initially_true members=[loose(nut176)] parents=[175]
+  at(nut177, gate) initially_true members=[at(nut177, gate)] parents=[176]
+  loose(nut177) initially_true members=[loose(nut177)] parents=[176]
+  at(nut178, gate) initially_true members=[at(nut178, gate)] parents=[177]
+  loose(nut178) initially_true members=[loose(nut178)] parents=[177]
+  at(nut179, gate) initially_true members=[at(nut179, gate)] parents=[178]
+  loose(nut179) initially_true members=[loose(nut179)] parents=[178]
+  at(nut180, gate) initially_true members=[at(nut180, gate)] parents=[179]
+  loose(nut180) initially_true members=[loose(nut180)] parents=[179]
+  at(nut181, gate) initially_true members=[at(nut181, gate)] parents=[180]
+  loose(nut181) initially_true members=[loose(nut181)] parents=[180]
+  at(nut182, gate) initially_true members=[at(nut182, gate)] parents=[181]
+  loose(nut182) initially_true members=[loose(nut182)] parents=[181]
+  at(nut183, gate) initially_true members=[at(nut183, gate)] parents=[182]
+  loose(nut183) initially_true members=[loose(nut183)] parents=[182]
+  at(nut184, gate) initially_true members=[at(nut184, gate)] parents=[183]
+  loose(nut184) initially_true members=[loose(nut184)] parents=[183]
+  at(nut185, gate) initially_true members=[at(nut185, gate)] parents=[184]
+  loose(nut185) initially_true members=[loose(nut185)] parents=[184]
+  at(nut186, gate) initially_true members=[at(nut186, gate)] parents=[185]
+  loose(nut186) initially_true members=[loose(nut186)] parents=[185]
+  at(nut187, gate) initially_true members=[at(nut187, gate)] parents=[186]
+  loose(nut187) initially_true members=[loose(nut187)] parents=[186]
+  at(nut188, gate) initially_true members=[at(nut188, gate)] parents=[187]
+  loose(nut188) initially_true members=[loose(nut188)] parents=[187]
+  at(nut189, gate) initially_true members=[at(nut189, gate)] parents=[188]
+  loose(nut189) initially_true members=[loose(nut189)] parents=[188]
+  at(nut190, gate) initially_true members=[at(nut190, gate)] parents=[189]
+  loose(nut190) initially_true members=[loose(nut190)] parents=[189]
+  at(nut191, gate) initially_true members=[at(nut191, gate)] parents=[190]
+  loose(nut191) initially_true members=[loose(nut191)] parents=[190]
+  at(nut192, gate) initially_true members=[at(nut192, gate)] parents=[191]
+  loose(nut192) initially_true members=[loose(nut192)] parents=[191]
+  at(nut193, gate) initially_true members=[at(nut193, gate)] parents=[192]
+  loose(nut193) initially_true members=[loose(nut193)] parents=[192]
+  at(nut194, gate) initially_true members=[at(nut194, gate)] parents=[193]
+  loose(nut194) initially_true members=[loose(nut194)] parents=[193]
+  at(nut195, gate) initially_true members=[at(nut195, gate)] parents=[194]
+  loose(nut195) initially_true members=[loose(nut195)] parents=[194]
+  at(nut196, gate) initially_true members=[at(nut196, gate)] parents=[195]
+  loose(nut196) initially_true members=[loose(nut196)] parents=[195]
+  at(nut197, gate) initially_true members=[at(nut197, gate)] parents=[196]
+  loose(nut197) initially_true members=[loose(nut197)] parents=[196]
+  at(nut198, gate) initially_true members=[at(nut198, gate)] parents=[197]
+  loose(nut198) initially_true members=[loose(nut198)] parents=[197]
+  at(nut199, gate) initially_true members=[at(nut199, gate)] parents=[198]
+  loose(nut199) initially_true members=[loose(nut199)] parents=[198]
+  at(nut200, gate) initially_true members=[at(nut200, gate)] parents=[199]
+  loose(nut200) initially_true members=[loose(nut200)] parents=[199]
+  at(nut201, gate) initially_true members=[at(nut201, gate)] parents=[200]
+  loose(nut201) initially_true members=[loose(nut201)] parents=[200]
+  at(nut202, gate) initially_true members=[at(nut202, gate)] parents=[201]
+  loose(nut202) initially_true members=[loose(nut202)] parents=[201]
+  at(nut203, gate) initially_true members=[at(nut203, gate)] parents=[202]
+  loose(nut203) initially_true members=[loose(nut203)] parents=[202]
+  at(nut204, gate) initially_true members=[at(nut204, gate)] parents=[203]
+  loose(nut204) initially_true members=[loose(nut204)] parents=[203]
+  at(nut205, gate) initially_true members=[at(nut205, gate)] parents=[204]
+  loose(nut205) initially_true members=[loose(nut205)] parents=[204]
+  at(nut206, gate) initially_true members=[at(nut206, gate)] parents=[205]
+  loose(nut206) initially_true members=[loose(nut206)] parents=[205]
+  at(nut207, gate) initially_true members=[at(nut207, gate)] parents=[206]
+  loose(nut207) initially_true members=[loose(nut207)] parents=[206]
+  at(nut208, gate) initially_true members=[at(nut208, gate)] parents=[207]
+  loose(nut208) initially_true members=[loose(nut208)] parents=[207]
+  at(nut209, gate) initially_true members=[at(nut209, gate)] parents=[208]
+  loose(nut209) initially_true members=[loose(nut209)] parents=[208]
+  at(nut210, gate) initially_true members=[at(nut210, gate)] parents=[209]
+  loose(nut210) initially_true members=[loose(nut210)] parents=[209]
+  at(nut211, gate) initially_true members=[at(nut211, gate)] parents=[210]
+  loose(nut211) initially_true members=[loose(nut211)] parents=[210]
+  at(nut212, gate) initially_true members=[at(nut212, gate)] parents=[211]
+  loose(nut212) initially_true members=[loose(nut212)] parents=[211]
+  at(nut213, gate) initially_true members=[at(nut213, gate)] parents=[212]
+  loose(nut213) initially_true members=[loose(nut213)] parents=[212]
+  at(nut214, gate) initially_true members=[at(nut214, gate)] parents=[213]
+  loose(nut214) initially_true members=[loose(nut214)] parents=[213]
+  at(nut215, gate) initially_true members=[at(nut215, gate)] parents=[214]
+  loose(nut215) initially_true members=[loose(nut215)] parents=[214]
+  at(nut216, gate) initially_true members=[at(nut216, gate)] parents=[215]
+  loose(nut216) initially_true members=[loose(nut216)] parents=[215]
+  at(nut217, gate) initially_true members=[at(nut217, gate)] parents=[216]
+  loose(nut217) initially_true members=[loose(nut217)] parents=[216]
+  at(nut218, gate) initially_true members=[at(nut218, gate)] parents=[217]
+  loose(nut218) initially_true members=[loose(nut218)] parents=[217]
+  at(nut219, gate) initially_true members=[at(nut219, gate)] parents=[218]
+  loose(nut219) initially_true members=[loose(nut219)] parents=[218]
+  at(nut220, gate) initially_true members=[at(nut220, gate)] parents=[219]
+  loose(nut220) initially_true members=[loose(nut220)] parents=[219]
+  at(nut221, gate) initially_true members=[at(nut221, gate)] parents=[220]
+  loose(nut221) initially_true members=[loose(nut221)] parents=[220]
+  at(nut222, gate) initially_true members=[at(nut222, gate)] parents=[221]
+  loose(nut222) initially_true members=[loose(nut222)] parents=[221]
+  at(nut223, gate) initially_true members=[at(nut223, gate)] parents=[222]
+  loose(nut223) initially_true members=[loose(nut223)] parents=[222]
+  at(nut224, gate) initially_true members=[at(nut224, gate)] parents=[223]
+  loose(nut224) initially_true members=[loose(nut224)] parents=[223]
+  at(nut225, gate) initially_true members=[at(nut225, gate)] parents=[224]
+  loose(nut225) initially_true members=[loose(nut225)] parents=[224]
+  at(nut226, gate) initially_true members=[at(nut226, gate)] parents=[225]
+  loose(nut226) initially_true members=[loose(nut226)] parents=[225]
+  at(nut227, gate) initially_true members=[at(nut227, gate)] parents=[226]
+  loose(nut227) initially_true members=[loose(nut227)] parents=[226]
+  at(nut228, gate) initially_true members=[at(nut228, gate)] parents=[227]
+  loose(nut228) initially_true members=[loose(nut228)] parents=[227]
+  at(nut229, gate) initially_true members=[at(nut229, gate)] parents=[228]
+  loose(nut229) initially_true members=[loose(nut229)] parents=[228]
+  at(nut230, gate) initially_true members=[at(nut230, gate)] parents=[229]
+  loose(nut230) initially_true members=[loose(nut230)] parents=[229]
+  at(nut231, gate) initially_true members=[at(nut231, gate)] parents=[230]
+  loose(nut231) initially_true members=[loose(nut231)] parents=[230]
+  at(nut232, gate) initially_true members=[at(nut232, gate)] parents=[231]
+  loose(nut232) initially_true members=[loose(nut232)] parents=[231]
+  at(nut233, gate) initially_true members=[at(nut233, gate)] parents=[232]
+  loose(nut233) initially_true members=[loose(nut233)] parents=[232]
+  at(nut234, gate) initially_true members=[at(nut234, gate)] parents=[233]
+  loose(nut234) initially_true members=[loose(nut234)] parents=[233]
+  at(nut235, gate) initially_true members=[at(nut235, gate)] parents=[234]
+  loose(nut235) initially_true members=[loose(nut235)] parents=[234]
+  at(nut236, gate) initially_true members=[at(nut236, gate)] parents=[235]
+  loose(nut236) initially_true members=[loose(nut236)] parents=[235]
+  at(nut237, gate) initially_true members=[at(nut237, gate)] parents=[236]
+  loose(nut237) initially_true members=[loose(nut237)] parents=[236]
+  at(nut238, gate) initially_true members=[at(nut238, gate)] parents=[237]
+  loose(nut238) initially_true members=[loose(nut238)] parents=[237]
+  at(nut239, gate) initially_true members=[at(nut239, gate)] parents=[238]
+  loose(nut239) initially_true members=[loose(nut239)] parents=[238]
+  at(nut240, gate) initially_true members=[at(nut240, gate)] parents=[239]
+  loose(nut240) initially_true members=[loose(nut240)] parents=[239]
+  at(nut241, gate) initially_true members=[at(nut241, gate)] parents=[240]
+  loose(nut241) initially_true members=[loose(nut241)] parents=[240]
+  at(nut242, gate) initially_true members=[at(nut242, gate)] parents=[241]
+  loose(nut242) initially_true members=[loose(nut242)] parents=[241]
+  at(nut243, gate) initially_true members=[at(nut243, gate)] parents=[242]
+  loose(nut243) initially_true members=[loose(nut243)] parents=[242]
+  at(nut244, gate) initially_true members=[at(nut244, gate)] parents=[243]
+  loose(nut244) initially_true members=[loose(nut244)] parents=[243]

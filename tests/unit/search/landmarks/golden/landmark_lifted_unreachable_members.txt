@@ -1,0 +1,9 @@
+facts:
+  goal()
+sets:
+  {need(t1), need(t2), need(t3)}
+  {marked(t1), marked(t2)}
+records:
+  goal() members=[goal()] parents=[]
+  need(?) members=[need(t1), need(t2), need(t3)] parents=[0]
+  marked(?) members=[marked(t1), marked(t2)] parents=[0]

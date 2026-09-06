@@ -42,7 +42,11 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cstdlib>
+#include <fstream>
 #include <iostream>
+#include <iterator>
+#include <tuple>
 #include <set>
 #include <string>
 #include <unordered_set>
@@ -911,6 +915,93 @@ TEST(MimirTests, SearchLandmarksLiftedGraphContractTest)
     const auto ready_record = find_lifted(promoted, "ready(t1)");
     ASSERT_NE(ready_record, nullptr);
     EXPECT_TRUE(ready_record->fact_atom_index.has_value());
+}
+
+/**
+ * §9.6: with every reachability option off, the generator must be byte-identical to what pymimir
+ * 0.16.0 released (`e3acfad18`).
+ *
+ * This is the regression test for every option §9 adds, and it is worth a golden file rather than a
+ * property: each option below narrows what the extractor keeps, and "narrowed something it should
+ * not have" is invisible to any assertion that does not know the previous answer. The goldens were
+ * generated from `e3acfad18` and are regenerated with
+ * `MIMIR_WRITE_LANDMARK_GOLDEN=1 ./search_landmarks_lifted_fact_landmarks_test --gtest_filter=*AllOptionsOff*`
+ * -- which should only ever be run when a change to the *released* behaviour is intended.
+ */
+
+/// @brief Every option off: the pre-0.17 generator exactly.
+LiftedFactLandmarkGeneratorOptions all_reachability_options_off()
+{
+    auto options = LiftedFactLandmarkGeneratorOptions {};
+    options.reachability_filter_members = false;
+    options.reachability_disambiguation = ReachabilityDisambiguation::OFF;
+    options.first_achievers_restricted = false;
+    options.verify_pi_plus = false;
+    options.complete_fact_landmarks = CompleteFactLandmarks::OFF;
+    return options;
+}
+
+namespace
+{
+
+/// @brief `(directory, problem file, golden name)` for every tracked instance the harness covers.
+const std::vector<std::tuple<std::string, std::string, std::string>>& golden_instances()
+{
+    static const auto instances = []
+    {
+        auto result = std::vector<std::tuple<std::string, std::string, std::string>> {
+            { "blocks_4", "test_problem.pddl", "blocks_4" },
+            { "gripper", "test_problem.pddl", "gripper" },
+            { "delivery", "test_problem.pddl", "delivery" },
+            { "childsnack", "test_problem.pddl", "childsnack" },
+            { "ferry", "test_problem.pddl", "ferry" },
+            { "miconic", "test_problem.pddl", "miconic" },
+            { "logistics", "test_problem.pddl", "logistics" },
+            { "spanner", "p30-hard.pddl", "spanner_p30_hard" },
+            { "landmark_cond_effect_dedup", "test_problem.pddl", "landmark_cond_effect_dedup" },
+            { "landmark_lifted_static", "test_problem.pddl", "landmark_lifted_static" },
+            { "landmark_lifted_occurrences", "test_problem.pddl", "landmark_lifted_occurrences" },
+            { "landmark_lifted_cond_effect", "test_problem.pddl", "landmark_lifted_cond_effect" },
+            { "landmark_lifted_unreachable_members", "test_problem.pddl", "landmark_lifted_unreachable_members" },
+            { "landmark_lifted_sdp_gate", "test_problem.pddl", "landmark_lifted_sdp_gate" },
+            { "landmark_lifted_sdp_gate", "test_problem_closed.pddl", "landmark_lifted_sdp_gate_closed" },
+            { "landmark_ipc_smallest/miconic-ipc-hard", "p30-hard.pddl", "miconic_ipc_p30_hard" },
+        };
+        for (const auto& domain : ipc_domains())
+        {
+            result.emplace_back("landmark_ipc_smallest/" + domain, "p69.pddl", domain + "_p69");
+        }
+        return result;
+    }();
+    return instances;
+}
+
+fs::path golden_path(const std::string& name) { return fs::path(std::string(DATA_DIR) + "../tests/unit/search/landmarks/golden/" + name + ".txt"); }
+
+}
+
+TEST(MimirTests, SearchLandmarksLiftedAllOptionsOffMatchesTheReleasedOutputTest)
+{
+    const auto write_goldens = (std::getenv("MIMIR_WRITE_LANDMARK_GOLDEN") != nullptr);
+
+    for (const auto& [domain, instance, name] : golden_instances())
+    {
+        const auto rendered = render_graph(LiftedFactLandmarkGenerator::create(parse(domain, instance), all_reachability_options_off()));
+        const auto path = golden_path(name);
+
+        if (write_goldens)
+        {
+            auto out = std::ofstream(path);
+            ASSERT_TRUE(out.good()) << path;
+            out << rendered;
+            continue;
+        }
+
+        auto in = std::ifstream(path);
+        ASSERT_TRUE(in.good()) << "missing golden " << path << " -- regenerate with MIMIR_WRITE_LANDMARK_GOLDEN=1";
+        const auto expected = std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+        EXPECT_EQ(rendered, expected) << domain << "/" << instance << " no longer matches the 0.16.0 output";
+    }
 }
 
 /**

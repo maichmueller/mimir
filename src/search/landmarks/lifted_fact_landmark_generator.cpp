@@ -34,6 +34,7 @@
 #include "mimir/formalism/type.hpp"
 #include "mimir/formalism/variable.hpp"
 #include "mimir/search/landmarks/fact_landmark_graph.hpp"
+#include "mimir/search/relaxed_reachability.hpp"
 
 #include <algorithm>
 #include <deque>
@@ -1062,6 +1063,14 @@ private:
 
 FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, const LiftedFactLandmarkGeneratorOptions& options)
 {
+    /* One engine per extraction, built from the same `Problem` and never from a grounder: the whole
+       point is that no ground action is instantiated anywhere on this path. It hands out object
+       tuples rather than interning atoms, so the "interns nothing beyond the grounder's universe"
+       parity still holds. Built only when some option needs it, so an all-off run does not pay for
+       a fixpoint it will not read. */
+    const auto relaxed = needs_relaxed_reachability(options) ? RelaxedReachability::create(problem) : nullptr;
+    (void) relaxed;
+
     const auto index = ProblemIndex(problem);
     const auto schemas = collect_schema_effects(problem);
     const auto adders_by_predicate = collect_adders_by_predicate(schemas);

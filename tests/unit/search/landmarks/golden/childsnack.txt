@@ -1,0 +1,19 @@
+facts:
+  served(child1)
+  ontray(sandw1, tray1)
+  at(tray1, table1)
+  at_kitchen_sandwich(sandw1)
+  at(tray1, kitchen)
+  at_kitchen_bread(bread1)
+  at_kitchen_content(content1)
+  notexist(sandw1)
+sets:
+records:
+  served(child1) members=[served(child1)] parents=[]
+  ontray(sandw1, tray1) members=[ontray(sandw1, tray1)] parents=[0]
+  at(tray1, table1) members=[at(tray1, table1)] parents=[0]
+  at_kitchen_sandwich(sandw1) members=[at_kitchen_sandwich(sandw1)] parents=[1]
+  at(tray1, kitchen) initially_true members=[at(tray1, kitchen)] parents=[1]
+  at_kitchen_bread(bread1) initially_true members=[at_kitchen_bread(bread1)] parents=[3]
+  at_kitchen_content(content1) initially_true members=[at_kitchen_content(content1)] parents=[3]
+  notexist(sandw1) initially_true members=[notexist(sandw1)] parents=[3]

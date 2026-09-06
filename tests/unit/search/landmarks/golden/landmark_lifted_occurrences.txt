@@ -1,0 +1,9 @@
+facts:
+  goal()
+sets:
+  {q(a, a), q(a, b), q(a, c)}
+  {q(a, b), q(b, b), q(c, b)}
+records:
+  goal() members=[goal()] parents=[]
+  q(a, ?) members=[q(a, a), q(a, b), q(a, c)] parents=[0]
+  q(?, b) members=[q(a, b), q(b, b), q(c, b)] parents=[0]

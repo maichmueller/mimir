@@ -1,0 +1,65 @@
+facts:
+  served(p1)
+  served(p2)
+  served(p3)
+  served(p4)
+  served(p5)
+  served(p6)
+  served(p7)
+  boarded(p1)
+  lift-at(f12)
+  boarded(p2)
+  lift-at(f4)
+  boarded(p3)
+  lift-at(f7)
+  boarded(p4)
+  lift-at(f1)
+  boarded(p5)
+  boarded(p6)
+  lift-at(f8)
+  boarded(p7)
+  lift-at(f6)
+  origin(p1, f6)
+  origin(p2, f7)
+  origin(p3, f2)
+  lift-at(f2)
+  origin(p4, f13)
+  lift-at(f13)
+  origin(p5, f12)
+  origin(p6, f3)
+  lift-at(f3)
+  origin(p7, f11)
+  lift-at(f11)
+sets:
+records:
+  served(p1) members=[served(p1)] parents=[]
+  served(p2) members=[served(p2)] parents=[]
+  served(p3) members=[served(p3)] parents=[]
+  served(p4) members=[served(p4)] parents=[]
+  served(p5) members=[served(p5)] parents=[]
+  served(p6) members=[served(p6)] parents=[]
+  served(p7) members=[served(p7)] parents=[]
+  boarded(p1) members=[boarded(p1)] parents=[0]
+  lift-at(f12) members=[lift-at(f12)] parents=[0,15]
+  boarded(p2) members=[boarded(p2)] parents=[1]
+  lift-at(f4) members=[lift-at(f4)] parents=[1]
+  boarded(p3) members=[boarded(p3)] parents=[2]
+  lift-at(f7) members=[lift-at(f7)] parents=[2,9]
+  boarded(p4) members=[boarded(p4)] parents=[3]
+  lift-at(f1) members=[lift-at(f1)] parents=[3,4]
+  boarded(p5) members=[boarded(p5)] parents=[4]
+  boarded(p6) members=[boarded(p6)] parents=[5]
+  lift-at(f8) members=[lift-at(f8)] parents=[5]
+  boarded(p7) members=[boarded(p7)] parents=[6]
+  lift-at(f6) initially_true members=[lift-at(f6)] parents=[6,7]
+  origin(p1, f6) initially_true members=[origin(p1, f6)] parents=[7]
+  origin(p2, f7) initially_true members=[origin(p2, f7)] parents=[9]
+  origin(p3, f2) initially_true members=[origin(p3, f2)] parents=[11]
+  lift-at(f2) members=[lift-at(f2)] parents=[11]
+  origin(p4, f13) initially_true members=[origin(p4, f13)] parents=[13]
+  lift-at(f13) members=[lift-at(f13)] parents=[13]
+  origin(p5, f12) initially_true members=[origin(p5, f12)] parents=[15]
+  origin(p6, f3) initially_true members=[origin(p6, f3)] parents=[16]
+  lift-at(f3) members=[lift-at(f3)] parents=[16]
+  origin(p7, f11) initially_true members=[origin(p7, f11)] parents=[18]
+  lift-at(f11) members=[lift-at(f11)] parents=[18]
