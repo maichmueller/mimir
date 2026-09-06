@@ -1942,6 +1942,85 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
         sort_unique(edges);
     }
 
+    /**
+     * §9.5: the complete Π⁺ characterisation. An atom outside `I` is a landmark exactly when the
+     * goal is unreachable once nothing can produce it, so a candidate that passes is promoted to a
+     * fact -- and a set that was a landmark only through one of its members collapses onto that
+     * fact, because the graph drops any set containing a fact landmark.
+     *
+     * One restricted fixpoint per candidate, and no witness shortcut for the same reason as §9.4:
+     * this needs the goal BLOCKED, which a witness cannot show. `MEMBERS` is bounded by the member
+     * sets; `ALL` is |R \ I| fixpoints and is opt-in.
+     */
+    if (relaxed && options.complete_fact_landmarks != CompleteFactLandmarks::OFF && relaxed->is_goal_reachable())
+    {
+        auto already_a_fact = std::unordered_set<Index> {};
+        for (const auto atom_index : landmark_atom_indices)
+        {
+            already_a_fact.insert(atom_index);
+        }
+
+        auto candidates = IndexList {};
+        auto seen = std::unordered_set<Index> {};
+        const auto consider = [&](Index atom_index)
+        {
+            if (!already_a_fact.count(atom_index) && !index.is_initially_true(IndexList { atom_index }) && seen.insert(atom_index).second)
+            {
+                candidates.push_back(atom_index);
+            }
+        };
+
+        if (options.complete_fact_landmarks == CompleteFactLandmarks::MEMBERS)
+        {
+            for (const auto& record : records)
+            {
+                if (!record.fact_atom_index.has_value())
+                {
+                    for (const auto member : record.member_atom_indices)
+                    {
+                        consider(member);
+                    }
+                }
+            }
+        }
+        else
+        {
+            /* Every reachable non-initial atom. Deterministic order: predicates by index, tuples in
+               the engine's own order, which is itself deterministic. */
+            auto fluent_predicates = problem->get_domain()->get_predicates<FluentTag>();
+            std::sort(fluent_predicates.begin(),
+                      fluent_predicates.end(),
+                      [](Predicate<FluentTag> lhs, Predicate<FluentTag> rhs) { return lhs->get_index() < rhs->get_index(); });
+            for (const auto fluent_predicate : fluent_predicates)
+            {
+                const auto tuples = relaxed->get_reachable_tuples(fluent_predicate);
+                for (size_t i = 0; i < tuples.size(); ++i)
+                {
+                    consider(problem->get_or_create_ground_atom<FluentTag>(fluent_predicate, tuples[i])->get_index());
+                }
+            }
+        }
+
+        for (const auto atom_index : candidates)
+        {
+            const auto atom = problem->get_repositories().get_ground_atom<FluentTag>(atom_index);
+            if (relaxed->is_goal_reachable_without(GroundAtomList<FluentTag> { atom }))
+            {
+                continue;  // a plan can avoid it, so it is not a landmark
+            }
+            landmark_atom_indices.push_back(atom_index);
+            auto record = LiftedLandmark {};
+            record.predicate = atom->get_predicate();
+            record.binding = atom->get_objects();
+            record.member_atom_indices = IndexList { atom_index };
+            record.fact_atom_index = atom_index;
+            // No achiever chain was walked to get here, so there is no ordering to record and
+            // nothing derived it: `parent_positions` stays empty and the flag stays false.
+            record.initially_true = false;
+            records.push_back(std::move(record));
+        }
+    }
+
     auto graph = FactLandmarkGraphImpl::create(problem,
                                               std::move(landmark_atom_indices),
                                               std::move(disjunctive_landmarks),

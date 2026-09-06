@@ -1,0 +1,5 @@
+(define (problem landmark-lifted-complete-member-1)
+  (:domain landmark-lifted-complete-member)
+  (:objects t2 - thing)
+  (:init (base t1) (base t2))
+  (:goal (and (goal))))

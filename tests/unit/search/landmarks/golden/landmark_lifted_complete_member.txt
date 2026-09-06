@@ -1,0 +1,11 @@
+facts:
+  goal()
+  need1()
+  need2()
+sets:
+  {a(t1), a(t2)}
+records:
+  goal() members=[goal()] parents=[]
+  need1() members=[need1()] parents=[0]
+  need2() members=[need2()] parents=[0]
+  a(?) members=[a(t1), a(t2)] parents=[1]

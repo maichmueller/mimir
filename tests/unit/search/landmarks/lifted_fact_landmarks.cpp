@@ -970,6 +970,7 @@ const std::vector<std::tuple<std::string, std::string, std::string>>& golden_ins
             { "landmark_lifted_sdp_gate", "test_problem_closed.pddl", "landmark_lifted_sdp_gate_closed" },
             { "landmark_lifted_cross_city", "test_problem.pddl", "landmark_lifted_cross_city" },
             { "landmark_lifted_first_achiever_chain", "test_problem.pddl", "landmark_lifted_first_achiever_chain" },
+            { "landmark_lifted_complete_member", "test_problem.pddl", "landmark_lifted_complete_member" },
             { "landmark_ipc_smallest/miconic-ipc-hard", "p30-hard.pddl", "miconic_ipc_p30_hard" },
         };
         for (const auto& domain : ipc_domains())
@@ -1176,6 +1177,77 @@ TEST(MimirTests, SearchLandmarksLiftedVerifyPiPlusTest)
         problem, IndexList(problem->get_goal_condition()->get_precondition<PositiveTag, FluentTag>().begin(),
                            problem->get_goal_condition()->get_precondition<PositiveTag, FluentTag>().end()), {});
     EXPECT_NO_THROW(verify_pi_plus_fact_landmarks(problem, goal_only));
+}
+
+/**
+ * §9.5: the complete Π⁺ characterisation, promoting members that are landmarks in their own right.
+ */
+
+TEST(MimirTests, SearchLandmarksLiftedCompleteFactLandmarksTest)
+{
+    auto without = LiftedFactLandmarkGeneratorOptions {};
+    without.complete_fact_landmarks = CompleteFactLandmarks::OFF;
+
+    const auto problem = parse("landmark_lifted_complete_member");
+    const auto off = LiftedFactLandmarkGenerator::create(problem, without);
+    const auto members = LiftedFactLandmarkGenerator::create(parse("landmark_lifted_complete_member"));
+
+    /* Without it, `a(?)` stays a two-member set: neither member is necessary for `need1`, and
+       `need2`'s two achievers share no predicate at all, so §2.4 has nothing to intersect and that
+       chain dies one step above the atom both of its routes run through. */
+    const auto set_before = find_lifted(off, "a(?)");
+    ASSERT_NE(set_before, nullptr);
+    EXPECT_EQ(set_before->member_atom_indices.size(), 2u);
+    EXPECT_EQ(find_landmark(off, "a", { "t1" }), nullptr);
+    ASSERT_EQ(sets_over_predicate(off, "a").size(), 1u);
+
+    // With it, `a(t1)` is a fact and the set it was in is gone -- subsumed by the member it holds.
+    const auto promoted = find_landmark(members, "a", { "t1" });
+    ASSERT_NE(promoted, nullptr);
+    EXPECT_TRUE(sets_over_predicate(members, "a").empty());
+    EXPECT_EQ(find_landmark(members, "a", { "t2" }), nullptr) << "t2 is avoidable and must not be promoted";
+
+    // The promoted record carries no derivation, because none was walked to reach it.
+    const auto record = find_lifted(members, "a(t1)");
+    ASSERT_NE(record, nullptr);
+    EXPECT_TRUE(record->fact_atom_index.has_value());
+    EXPECT_TRUE(record->parent_positions.empty());
+    EXPECT_FALSE(record->initially_true);
+
+    // And it is a landmark, which §9.4 re-checks over the whole graph anyway.
+    const auto engine = RelaxedReachability::create(members->get_problem());
+    EXPECT_FALSE(engine->is_goal_reachable_without(GroundAtomList<FluentTag> { resolve_atom(members, promoted->get_index()) }));
+    EXPECT_NO_THROW(verify_pi_plus_fact_landmarks(members->get_problem(), members));
+}
+
+TEST(MimirTests, SearchLandmarksLiftedCompleteFactLandmarksAllTest)
+{
+    /* `ALL` tests every reachable non-initial atom rather than only the members, so on this fixture
+       it must find at least what `MEMBERS` finds. It is opt-in because the candidate count is
+       |R \ I| -- 638,945 restricted fixpoints on sokoban `test/p30-hard` -- and here that is six. */
+    auto all = LiftedFactLandmarkGeneratorOptions {};
+    all.complete_fact_landmarks = CompleteFactLandmarks::ALL;
+
+    const auto members = LiftedFactLandmarkGenerator::create(parse("landmark_lifted_complete_member"));
+    const auto everything = LiftedFactLandmarkGenerator::create(parse("landmark_lifted_complete_member"), all);
+
+    auto member_facts = std::set<std::string> {};
+    for (const auto atom : members->get_landmark_atoms())
+    {
+        member_facts.insert(atom_signature(atom));
+    }
+    auto all_facts = std::set<std::string> {};
+    for (const auto atom : everything->get_landmark_atoms())
+    {
+        all_facts.insert(atom_signature(atom));
+    }
+    EXPECT_TRUE(std::includes(all_facts.begin(), all_facts.end(), member_facts.begin(), member_facts.end()));
+    EXPECT_TRUE(all_facts.count("a(t1)") > 0);
+
+    // `r1`/`r2` are each avoidable (the other route works), so completeness must not invent them.
+    EXPECT_EQ(all_facts.count("r1()"), 0u);
+    EXPECT_EQ(all_facts.count("r2()"), 0u);
+    EXPECT_NO_THROW(verify_pi_plus_fact_landmarks(everything->get_problem(), everything));
 }
 
 /**
