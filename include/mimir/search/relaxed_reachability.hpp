@@ -260,6 +260,10 @@ public:
     /// join is never materialised. Plans are cached on the problem by query *shape* (the predicates and the
     /// variable pattern), with the objects passed in as a constant table, because the generator asks the same
     /// shape once per achiever per expansion with different bindings. Not thread-safe: the cache is shared.
+    ///
+    /// Throws `std::invalid_argument` when a term uses a variable index at or past `num_variables`. That is a
+    /// malformed query, and absorbing it would turn a caller's off-by-one -- numbering variables by parameter
+    /// slot while sizing `num_variables` by how many are free -- into a plausible wrong answer.
     std::vector<formalism::ObjectList> project(const ConjunctiveQuery& query) const;
 
     /* Witnesses. */
@@ -335,7 +339,8 @@ public:
     size_t get_num_reachable_atoms() const;
     bool is_goal_reachable() const;
 
-    /// @brief The unrestricted table, for callers that want to hold on to it.
+    /// @brief The unrestricted table. It is owned by this object -- unlike the self-sufficient table a
+    /// restricted query returns -- so a caller keeping the reference must keep the `shared_ptr` alive too.
     const ReachabilityTable& get_table() const;
 
     /* Restricted reachability (Richter-Helmert-Westphal "possible first achievers"). */

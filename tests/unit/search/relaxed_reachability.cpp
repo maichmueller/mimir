@@ -1192,6 +1192,221 @@ TEST(MimirTests, SearchRelaxedReachabilityProjectTest)
     EXPECT_GT(num_queries, 60u);
 }
 
+
+/**
+ * A (adversarial). The cached-plan path: same shape, different constants, different tables, interleaved.
+ *
+ * A plan is cached by query shape and instantiated with a per-call constant table, and a query database
+ * resolves its base relations through whichever table it was opened on. Both of those are places where state
+ * from an earlier call could leak into a later one, and neither shows up on a first call. These tests drive
+ * the sequences the generator actually produces.
+ */
+
+namespace
+{
+
+/// @brief The `unstack` precondition conjunction with `?underob` pinned -- exactly what the generator asks
+/// when it disambiguates that achiever, static type literals included.
+ConjunctiveQuery unstack_query(const Problem& problem, Object pinned)
+{
+    for (const auto action : problem->get_domain()->get_actions())
+    {
+        if (action->get_name() != "unstack")
+        {
+            continue;
+        }
+        auto binding = ObjectList(action->get_arity(), nullptr);
+        if (pinned != nullptr)
+        {
+            binding.at(1) = pinned;
+        }
+        return query_of_schema(action, action->get_conditional_effects().front(), binding);
+    }
+    return ConjunctiveQuery {};
+}
+
+/// @brief The same conjunction, but pinning `?underob` through an equality instead of by substituting the
+/// object into the terms. Same predicates, different variable pattern, and a different path through the
+/// planner: the variable keeps a slot of the constant table rather than disappearing from the rule.
+ConjunctiveQuery unstack_query_pinned_by_equality(const Problem& problem, Object pinned)
+{
+    auto query = unstack_query(problem, nullptr);
+    query.equalities.emplace_back(QueryTerm::of_variable(1), QueryTerm::of_object(pinned));
+    return query;
+}
+
+/// @brief `unstack` with the FIRST parameter pinned: the same predicates as `unstack_query`, a different
+/// variable pattern, so the two must not share a cached plan.
+ConjunctiveQuery unstack_query_pin_first(const Problem& problem, Object pinned)
+{
+    for (const auto action : problem->get_domain()->get_actions())
+    {
+        if (action->get_name() != "unstack")
+        {
+            continue;
+        }
+        auto binding = ObjectList(action->get_arity(), nullptr);
+        binding.at(0) = pinned;
+        return query_of_schema(action, action->get_conditional_effects().front(), binding);
+    }
+    return ConjunctiveQuery {};
+}
+
+/// @brief The `stack` conjunction with `?underob` pinned: a different shape, to interleave with.
+ConjunctiveQuery stack_query(const Problem& problem, Object pinned)
+{
+    for (const auto action : problem->get_domain()->get_actions())
+    {
+        if (action->get_name() != "stack")
+        {
+            continue;
+        }
+        auto binding = ObjectList(action->get_arity(), nullptr);
+        binding.at(1) = pinned;
+        return query_of_schema(action, action->get_conditional_effects().front(), binding);
+    }
+    return ConjunctiveQuery {};
+}
+
+std::vector<std::string> names(const ObjectList& objects)
+{
+    auto result = std::vector<std::string> {};
+    for (const auto object : objects)
+    {
+        result.push_back(object->get_name());
+    }
+    std::sort(result.begin(), result.end());
+    return result;
+}
+
+}
+
+TEST(MimirTests, SearchRelaxedReachabilityProjectCachedPlanSequenceTest)
+{
+    const auto problem = parse_fixture("blocks_4", "test_problem.pddl");
+    const auto object = [&](const std::string& name) { return problem->get_problem_or_domain_object(name); };
+    const auto reachability = RelaxedReachability::create(problem);
+    const auto& unrestricted = reachability->get_table();
+    const auto& fluent = problem->get_domain()->get_name_to_predicate<FluentTag>();
+
+    auto num_calls = size_t(0);
+    const auto check = [&](const ReachabilityTable& table, const TupleSource& source, const ConjunctiveQuery& query, const std::string& label)
+        -> std::vector<ObjectList>
+    {
+        auto reference = BruteForceProjection(problem, source, query, 300000);
+        EXPECT_FALSE(reference.exceeded_budget()) << label;
+        const auto expected = reference.get();
+        const auto actual = table.project(query);
+        EXPECT_EQ(actual.size(), expected.size()) << label;
+        for (size_t variable = 0; variable < std::min(actual.size(), expected.size()); ++variable)
+        {
+            EXPECT_EQ(names(actual[variable]), names(expected[variable])) << label << " variable " << variable;
+        }
+        ++num_calls;
+        return actual;
+    };
+
+    /* 1. Same shape, different constants, in a row on one table. Includes the same object pinned twice in a
+          row, and two objects of different index pinned in both orders. */
+    {
+        const auto source = TupleSource(problem, unrestricted);
+        for (const auto& name : { "b1", "b1", "b3", "b1", "b3", "b2", "b3", "b2", "b1" })
+        {
+            check(unrestricted, source, unstack_query(problem, object(name)), std::string("R / unstack ?underob=") + name);
+        }
+    }
+
+    /* 2. The same shape across three tables, alternating, with the plan cached from the first. Nothing of the
+          first table -- relation ids, `$all_objects`, the stability of a right-hand side, a tuple count -- may
+          survive into the next. */
+    {
+        const auto clear_b3 = problem->get_or_create_ground_atom<FluentTag>(fluent.at("clear"), { object("b3") });
+        const auto on_b1_b3 = problem->get_or_create_ground_atom<FluentTag>(fluent.at("on"), { object("b1"), object("b3") });
+        const auto without_clear_b3 = reachability->compute_restricted(GroundAtomList<FluentTag> { clear_b3 });
+        const auto without_on_b1_b3 = reachability->compute_restricted(GroundAtomList<FluentTag> { on_b1_b3 });
+
+        const auto sources = std::vector<TupleSource> { TupleSource(problem, unrestricted),
+                                                        TupleSource(problem, without_clear_b3),
+                                                        TupleSource(problem, without_on_b1_b3) };
+        const auto tables = std::vector<const ReachabilityTable*> { &unrestricted, &without_clear_b3, &without_on_b1_b3 };
+        const auto labels = std::vector<std::string> { "R", "R-clear(b3)", "R-on(b1,b3)" };
+
+        for (const auto& name : { "b3", "b1", "b2", "b3" })
+        {
+            for (size_t index = 0; index < tables.size(); ++index)
+            {
+                check(*tables[index], sources[index], unstack_query(problem, object(name)), labels[index] + " / unstack ?underob=" + name);
+            }
+        }
+    }
+
+    /* 3. Interleaved shapes A, B, A', B' on the restricted table, with the pinned atom itself forbidden. */
+    {
+        const auto clear_b3 = problem->get_or_create_ground_atom<FluentTag>(fluent.at("clear"), { object("b3") });
+        const auto restricted = reachability->compute_restricted(GroundAtomList<FluentTag> { clear_b3 });
+        const auto source = TupleSource(problem, restricted);
+
+        check(restricted, source, unstack_query(problem, object("b1")), "A  unstack ?underob=b1");
+        check(restricted, source, stack_query(problem, object("b1")), "B  stack ?underob=b1");
+        const auto a_prime = check(restricted, source, unstack_query(problem, object("b3")), "A' unstack ?underob=b3");
+        check(restricted, source, stack_query(problem, object("b2")), "B' stack ?underob=b2");
+
+        /* The generator's case, spelled out: with `clear(b3)` forbidden, nothing can be stacked onto b3, so
+           `on(?ob, b3)` is only the initial `on(b1, b3)` and the answer for `?ob` is exactly {b1}. */
+        ASSERT_FALSE(a_prime.empty());
+        EXPECT_EQ(names(a_prime[0]), (std::vector<std::string> { "b1" })) << "A' after A, B on the same cached shape";
+
+        /* And asking it once more, after two other shapes have run, must not change it. */
+        check(restricted, source, stack_query(problem, object("b3")), "B'' stack ?underob=b3");
+        const auto again = check(restricted, source, unstack_query(problem, object("b3")), "A'' unstack ?underob=b3");
+        EXPECT_EQ(names(again[0]), (std::vector<std::string> { "b1" })) << "A'' after further interleaving";
+
+        /* 3b. The same conjunction pinned through an equality rather than by substitution: same predicates,
+               a different variable pattern, and the path where a variable keeps a constant-table slot. */
+        for (const auto& name : { "b1", "b3", "b3", "b2", "b3" })
+        {
+            const auto answers =
+                check(restricted, source, unstack_query_pinned_by_equality(problem, object(name)), std::string("EQ unstack ?underob=") + name);
+            if (std::string(name) == "b3")
+            {
+                EXPECT_EQ(names(answers[0]), (std::vector<std::string> { "b1" })) << "equality-pinned A' for ?ob";
+                EXPECT_EQ(names(answers[1]), (std::vector<std::string> { "b3" })) << "equality-pinned A' for ?underob";
+            }
+        }
+
+        /* 3c. Same predicates, other position pinned. Two shapes that differ only in which term is a constant
+               must not collide in the plan cache. */
+        for (const auto& name : { "b1", "b3", "b2", "b1" })
+        {
+            check(restricted, source, unstack_query_pin_first(problem, object(name)), std::string("PIN-FIRST unstack ?ob=") + name);
+            check(restricted, source, unstack_query(problem, object(name)), std::string("PIN-SECOND unstack ?underob=") + name);
+        }
+    }
+
+    /* 4. A malformed query is refused, not absorbed. Until this check existed, a variable index at or past
+          `num_variables` was resolved to *constant slot 0* -- the first constant the query happened to carry.
+          A caller that numbers its variables by parameter slot but sizes `num_variables` by how many are free
+          (natural when the rest are pinned) hits exactly that whenever the free parameter is not the first
+          one, and gets a plausible wrong answer that changes with the constants. It is now a named error. */
+    {
+        auto malformed = unstack_query(problem, nullptr);  ///< uses variables 0 and 1
+        malformed.num_variables = 1;
+        EXPECT_THROW((void) unrestricted.project(malformed), std::invalid_argument);
+
+        auto malformed_pin_first = unstack_query_pin_first(problem, object("b3"));  ///< the free variable is 1
+        malformed_pin_first.num_variables = 1;
+        EXPECT_THROW((void) unrestricted.project(malformed_pin_first), std::invalid_argument);
+
+        auto malformed_equality = unstack_query(problem, nullptr);
+        malformed_equality.equalities.emplace_back(QueryTerm::of_variable(7), QueryTerm::of_object(object("b3")));
+        EXPECT_THROW((void) unrestricted.project(malformed_equality), std::invalid_argument);
+    }
+
+    std::cout << "[relaxed-reachability] cached-plan sequence: " << num_calls << " project calls, each against the brute-force join"
+              << std::endl;
+    EXPECT_GT(num_calls, 20u);
+}
+
 /**
  * B. Witness derivations.
  */
