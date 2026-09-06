@@ -35,7 +35,13 @@ namespace relaxed_reachability
 class Relation;
 class Program;
 class Database;
+class WitnessMemo;
 }
+
+/// @brief A ground atom to forbid, as predicate plus objects, so a caller can name an atom that has never
+/// been interned into the problem's repositories.
+using ForbiddenAtom = std::pair<formalism::Predicate<formalism::FluentTag>, formalism::ObjectList>;
+using ForbiddenAtomList = std::vector<ForbiddenAtom>;
 
 /**
  * Options
@@ -54,6 +60,15 @@ struct RelaxedReachabilityOptions
     /// to explain any difference between the two reachable sets.
     bool enforce_negative_static_conditions = true;
 
+    /// @brief Record, for every derived atom and every intermediate tuple, the plan step and the two body
+    /// tuples of its FIRST derivation.
+    ///
+    /// This buys `ReachabilityTable::witness_query`, a cheap sufficient test for "reachable without these
+    /// atoms" that needs no fixpoint at all: if the stored derivation tree of an atom touches no forbidden
+    /// atom at any node, that same derivation survives in the restricted program. It costs one
+    /// `(step, left, right)` triple per derived tuple -- 12 bytes; ~20 MB on sokoban `p30-hard`, whose
+    /// fixpoint materialises 1.7 M tuples -- and a push_back per insert.
+    bool record_witnesses = true;
 };
 
 /**
@@ -105,6 +120,96 @@ public:
 };
 
 /**
+ * Conjunctive queries
+ */
+
+/// @brief A term of a conjunctive query: either a bound object or one of the query's variables.
+class QueryTerm
+{
+private:
+    formalism::Object m_object = nullptr;
+    uint32_t m_variable = 0;
+
+public:
+    QueryTerm() = default;
+
+    static QueryTerm of_object(formalism::Object object);
+    static QueryTerm of_variable(uint32_t index);
+
+    bool is_variable() const { return m_object == nullptr; }
+    formalism::Object get_object() const { return m_object; }
+    uint32_t get_variable() const { return m_variable; }
+};
+
+struct QueryLiteral
+{
+    formalism::PredicateVariant predicate;
+    std::vector<QueryTerm> terms;
+    /// @brief `false` is only meaningful for a static predicate, and only when the table's engine enforces
+    /// negative static conditions; a negative fluent or derived literal is ignored, as it is in a rule.
+    bool polarity = true;
+};
+
+/// @brief A conjunction of positive literals over static, fluent and derived predicates, plus `=` and `!=`
+/// between terms, plus negative static literals.
+///
+/// This is what the lifted landmark generator's joint disambiguation asks: an achiever's precondition
+/// conjunction under a partial substitution, once per achiever per expansion.
+struct ConjunctiveQuery
+{
+    size_t num_variables = 0;
+    std::vector<QueryLiteral> literals;
+    std::vector<std::pair<QueryTerm, QueryTerm>> equalities;
+    std::vector<std::pair<QueryTerm, QueryTerm>> disequalities;
+};
+
+/**
+ * WitnessQuery
+ */
+
+enum class WitnessVerdict
+{
+    /// @brief The atom has a derivation from the initial state that touches none of the forbidden atoms, so
+    /// it is reachable in the restricted program. Sound: this is what a caller may act on.
+    REACHABLE_WITHOUT,
+    /// @brief Nothing is known. Either the atom is not reachable at all, or its one recorded derivation runs
+    /// through a forbidden atom -- another derivation may well exist. Never read this as "unreachable".
+    UNKNOWN
+};
+
+/// @brief Answers "is this atom reachable without the forbidden set?" from the recorded derivations alone.
+///
+/// The generator asks thousands of atoms against the same forbidden set, so the verdicts are memoised per
+/// query and shared across the derivation trees: the total work over all atoms of one query is linear in the
+/// number of derived tuples, against one full fixpoint per atom for `compute_restricted`.
+///
+/// Holds a pointer into the table it came from; the table must outlive it.
+class WitnessQuery
+{
+private:
+    const relaxed_reachability::Program* m_program;
+    const relaxed_reachability::Database* m_database;
+    std::unique_ptr<relaxed_reachability::WitnessMemo> m_memo;
+
+public:
+    WitnessQuery(const relaxed_reachability::Program& program, const relaxed_reachability::Database& database, const ForbiddenAtomList& forbidden);
+    ~WitnessQuery();
+
+    WitnessQuery(const WitnessQuery& other) = delete;
+    WitnessQuery& operator=(const WitnessQuery& other) = delete;
+    WitnessQuery(WitnessQuery&& other) noexcept;
+    WitnessQuery& operator=(WitnessQuery&& other) noexcept;
+
+    WitnessVerdict avoids(formalism::Predicate<formalism::FluentTag> predicate, const formalism::ObjectList& objects) const;
+    WitnessVerdict avoids(formalism::Predicate<formalism::DerivedTag> predicate, const formalism::ObjectList& objects) const;
+    WitnessVerdict avoids(formalism::GroundAtom<formalism::FluentTag> atom) const;
+    WitnessVerdict avoids(formalism::GroundAtom<formalism::DerivedTag> atom) const;
+
+    /// @brief How many tuples the memo has decided so far, for diagnostics.
+    size_t get_num_memoised() const;
+};
+
+/**
  * ReachabilityTable
  */
 
@@ -144,6 +249,29 @@ public:
     bool is_goal_reachable() const;
 
     size_t get_num_fixpoint_rounds() const;
+
+    /* Conjunctive queries. */
+
+    /// @brief For each query variable, the objects it can take in some satisfying assignment of the whole
+    /// conjunction over this table's relations. One sorted, duplicate-free list per variable.
+    ///
+    /// Evaluated with the same split-rule join machinery as the fixpoint -- one unary head per variable, each
+    /// with its own chain of projecting binary joins, prefixes shared where the plans coincide -- so the full
+    /// join is never materialised. Plans are cached on the problem by query *shape* (the predicates and the
+    /// variable pattern), with the objects passed in as a constant table, because the generator asks the same
+    /// shape once per achiever per expansion with different bindings. Not thread-safe: the cache is shared.
+    std::vector<formalism::ObjectList> project(const ConjunctiveQuery& query) const;
+
+    /* Witnesses. */
+
+    /// @brief Did the fixpoint that produced this table record its derivations?
+    bool has_witnesses() const;
+
+    /// @brief Open a memoised witness query against `forbidden`. Throws `std::logic_error` without witnesses.
+    WitnessQuery witness_query(const ForbiddenAtomList& forbidden) const;
+    WitnessQuery witness_query(const formalism::GroundAtomList<formalism::FluentTag>& forbidden) const;
+
+    size_t get_num_witnesses() const;
 };
 
 /**
@@ -172,10 +300,8 @@ public:
 class RelaxedReachability
 {
 public:
-    /// @brief A ground atom to forbid, as predicate plus objects, so a caller can name an atom that has
-    /// never been interned into the problem's repositories.
-    using ForbiddenAtom = std::pair<formalism::Predicate<formalism::FluentTag>, formalism::ObjectList>;
-    using ForbiddenAtomList = std::vector<ForbiddenAtom>;
+    using ForbiddenAtom = mimir::search::ForbiddenAtom;
+    using ForbiddenAtomList = mimir::search::ForbiddenAtomList;
 
 private:
     formalism::Problem m_problem;

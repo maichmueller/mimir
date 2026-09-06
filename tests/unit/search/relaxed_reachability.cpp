@@ -44,6 +44,9 @@
 #include <iostream>
 #include <random>
 #include <set>
+#include <stdexcept>
+#include <type_traits>
+#include <variant>
 #include <sstream>
 #include <string>
 #include <unordered_set>
@@ -797,6 +800,612 @@ TEST(MimirTests, SearchRelaxedReachabilityNegativeStaticConditionTest)
     EXPECT_GT(over->get_num_reachable_atoms(), exact->get_num_reachable_atoms());
 }
 
+
+/**
+ * A. Projected conjunctive queries.
+ */
+
+namespace
+{
+
+/// @brief The tuples of one predicate as the table sees them: reachable atoms for a fluent or derived
+/// predicate, the initial atoms for a static one.
+class TupleSource
+{
+public:
+    TupleSource(const Problem& problem, const ReachabilityTable& table) : m_problem(problem)
+    {
+        for (const auto atom : problem->get_static_initial_atoms())
+        {
+            m_static[atom->get_predicate()].push_back(atom->get_objects());
+        }
+        for (const auto predicate : problem->get_domain()->get_predicates<FluentTag>())
+        {
+            const auto tuples = table.get_reachable_tuples(predicate);
+            for (size_t i = 0; i < tuples.size(); ++i)
+            {
+                m_fluent[predicate].push_back(tuples[i]);
+            }
+        }
+        for (const auto predicate : problem->get_problem_and_domain_derived_predicates())
+        {
+            const auto tuples = table.get_reachable_tuples(predicate);
+            for (size_t i = 0; i < tuples.size(); ++i)
+            {
+                m_derived[predicate].push_back(tuples[i]);
+            }
+        }
+    }
+
+    const std::vector<ObjectList>& get(const PredicateVariant& predicate) const
+    {
+        static const auto empty = std::vector<ObjectList> {};
+        return std::visit(
+            [&](auto concrete) -> const std::vector<ObjectList>&
+            {
+                using P = typename std::remove_pointer_t<decltype(concrete)>::Type;
+                if constexpr (std::is_same_v<P, StaticTag>)
+                {
+                    const auto it = m_static.find(concrete);
+                    return (it == m_static.end()) ? empty : it->second;
+                }
+                else if constexpr (std::is_same_v<P, FluentTag>)
+                {
+                    const auto it = m_fluent.find(concrete);
+                    return (it == m_fluent.end()) ? empty : it->second;
+                }
+                else
+                {
+                    const auto it = m_derived.find(concrete);
+                    return (it == m_derived.end()) ? empty : it->second;
+                }
+            },
+            predicate);
+    }
+
+private:
+    Problem m_problem;
+    std::unordered_map<Predicate<StaticTag>, std::vector<ObjectList>> m_static;
+    std::unordered_map<Predicate<FluentTag>, std::vector<ObjectList>> m_fluent;
+    std::unordered_map<Predicate<DerivedTag>, std::vector<ObjectList>> m_derived;
+};
+
+/// @brief The reference: a plain backtracking join over the whole conjunction, collecting the objects each
+/// variable takes in a satisfying assignment. This is the thing `project` must never do at scale.
+class BruteForceProjection
+{
+public:
+    BruteForceProjection(const Problem& problem, const TupleSource& source, const ConjunctiveQuery& query, size_t node_budget) :
+        m_problem(problem),
+        m_source(source),
+        m_query(query),
+        m_budget(node_budget),
+        m_binding(query.num_variables, nullptr),
+        m_answers(query.num_variables)
+    {
+        m_positive.reserve(query.literals.size());
+        for (const auto& literal : query.literals)
+        {
+            (literal.polarity ? m_positive : m_negative).push_back(&literal);
+        }
+        m_exceeded = !search(0);
+    }
+
+    bool exceeded_budget() const { return m_exceeded; }
+
+    std::vector<ObjectList> get() const
+    {
+        auto result = std::vector<ObjectList>(m_query.num_variables);
+        for (size_t variable = 0; variable < m_query.num_variables; ++variable)
+        {
+            auto objects = ObjectList(m_answers[variable].begin(), m_answers[variable].end());
+            std::sort(objects.begin(), objects.end(), [](Object lhs, Object rhs) { return lhs->get_index() < rhs->get_index(); });
+            result[variable] = std::move(objects);
+        }
+        return result;
+    }
+
+private:
+    bool matches(const QueryTerm& term, Object object)
+    {
+        if (!term.is_variable())
+        {
+            return term.get_object() == object;
+        }
+        auto& slot = m_binding[term.get_variable()];
+        if (slot == nullptr)
+        {
+            slot = object;
+            m_trail.push_back(term.get_variable());
+            return true;
+        }
+        return slot == object;
+    }
+
+    Object resolve(const QueryTerm& term) const { return term.is_variable() ? m_binding[term.get_variable()] : term.get_object(); }
+
+    bool constraints_hold()
+    {
+        for (const auto& [lhs, rhs] : m_query.equalities)
+        {
+            if (resolve(lhs) != resolve(rhs))
+            {
+                return false;
+            }
+        }
+        for (const auto& [lhs, rhs] : m_query.disequalities)
+        {
+            if (resolve(lhs) == resolve(rhs))
+            {
+                return false;
+            }
+        }
+        for (const auto* literal : m_negative)
+        {
+            // A negative fluent or derived literal is what the delete relaxation drops, on both sides.
+            if (!std::holds_alternative<Predicate<StaticTag>>(literal->predicate))
+            {
+                continue;
+            }
+            auto objects = ObjectList {};
+            for (const auto& term : literal->terms)
+            {
+                objects.push_back(resolve(term));
+            }
+            for (const auto& tuple : m_source.get(literal->predicate))
+            {
+                ++m_nodes;
+                if (tuple == objects)
+                {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /// @brief Returns false when the node budget ran out.
+    bool search(size_t index)
+    {
+        if (m_nodes > m_budget)
+        {
+            return false;
+        }
+        if (index == m_positive.size())
+        {
+            if (constraints_hold())
+            {
+                for (size_t variable = 0; variable < m_query.num_variables; ++variable)
+                {
+                    if (m_binding[variable] != nullptr)
+                    {
+                        m_answers[variable].insert(m_binding[variable]);
+                    }
+                    else
+                    {
+                        // A variable no literal binds ranges over every object.
+                        for (const auto object : m_problem->get_problem_and_domain_objects())
+                        {
+                            m_answers[variable].insert(object);
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        const auto* literal = m_positive[index];
+        for (const auto& tuple : m_source.get(literal->predicate))
+        {
+            if (m_nodes++ > m_budget)
+            {
+                return false;
+            }
+            if (tuple.size() != literal->terms.size())
+            {
+                continue;
+            }
+            const auto mark = m_trail.size();
+            auto consistent = true;
+            for (size_t position = 0; position < tuple.size(); ++position)
+            {
+                if (!matches(literal->terms[position], tuple[position]))
+                {
+                    consistent = false;
+                    break;
+                }
+            }
+            if (consistent && !search(index + 1))
+            {
+                return false;
+            }
+            while (m_trail.size() > mark)
+            {
+                m_binding[m_trail.back()] = nullptr;
+                m_trail.pop_back();
+            }
+        }
+        return true;
+    }
+
+    Problem m_problem;
+    const TupleSource& m_source;
+    const ConjunctiveQuery& m_query;
+    size_t m_budget;
+    size_t m_nodes = 0;
+    bool m_exceeded = false;
+    std::vector<const QueryLiteral*> m_positive;
+    std::vector<const QueryLiteral*> m_negative;
+    ObjectList m_binding;
+    std::vector<uint32_t> m_trail;
+    std::vector<std::set<Object>> m_answers;
+};
+
+/// @brief The query the lifted generator's joint disambiguation asks: an action schema's precondition
+/// conjunction, with the schema's parameters as the query variables.
+ConjunctiveQuery query_of_schema(Action action, ConditionalEffect effect, const ObjectList& partial_binding)
+{
+    auto query = ConjunctiveQuery {};
+    auto num_slots = size_t(0);
+    const auto note = [&](const ParameterList& parameters)
+    {
+        for (const auto parameter : parameters)
+        {
+            num_slots = std::max(num_slots, size_t(parameter->get_variable()->get_parameter_index()) + 1);
+        }
+    };
+    note(action->get_conjunctive_condition()->get_parameters());
+    note(effect->get_conjunctive_condition()->get_parameters());
+    query.num_variables = num_slots;
+
+    const auto to_term = [&](Term term)
+    {
+        const auto& variant = term->get_variant();
+        if (std::holds_alternative<Object>(variant))
+        {
+            return QueryTerm::of_object(std::get<Object>(variant));
+        }
+        const auto slot = size_t(std::get<Variable>(variant)->get_parameter_index());
+        if (slot < partial_binding.size() && partial_binding[slot] != nullptr)
+        {
+            return QueryTerm::of_object(partial_binding[slot]);
+        }
+        return QueryTerm::of_variable(uint32_t(slot));
+    };
+
+    for (const auto condition : { action->get_conjunctive_condition(), effect->get_conjunctive_condition() })
+    {
+        const auto collect = [&](auto&& literals)
+        {
+            for (const auto literal : literals)
+            {
+                auto entry = QueryLiteral {};
+                entry.predicate = literal->get_atom()->get_predicate();
+                entry.polarity = literal->get_polarity();
+                for (const auto term : literal->get_atom()->get_terms())
+                {
+                    entry.terms.push_back(to_term(term));
+                }
+                // mimir keeps PDDL equality as a static predicate whose atoms it does not always materialise,
+                // so it is stated as a constraint rather than as a literal -- the same reading the engine has.
+                if (entry.predicate.index() == 0 && std::get<Predicate<StaticTag>>(entry.predicate)->get_name() == "=" && entry.terms.size() == 2)
+                {
+                    (entry.polarity ? query.equalities : query.disequalities).emplace_back(entry.terms[0], entry.terms[1]);
+                    continue;
+                }
+                query.literals.push_back(std::move(entry));
+            }
+        };
+        collect(condition->get_literals<StaticTag>());
+        collect(condition->get_literals<FluentTag>());
+        collect(condition->get_literals<DerivedTag>());
+    }
+    return query;
+}
+
+}
+
+TEST(MimirTests, SearchRelaxedReachabilityProjectTest)
+{
+    static const auto instances = std::vector<std::pair<std::string, std::string>> {
+        { "blocks_4", "test_problem.pddl" },   { "gripper", "test_problem.pddl" },     { "delivery", "test_problem.pddl" },
+        { "childsnack", "test_problem.pddl" }, { "miconic", "test_problem.pddl" },     { "spanner", "test_problem.pddl" },
+        { "logistics", "test_problem.pddl" },  { "rovers", "test_problem.pddl" },      { "satellite", "test_problem.pddl" },
+        { "ferry", "test_problem.pddl" },      { "transport", "test_problem.pddl" },   { "barman", "test_problem.pddl" },
+        { "philosophers", "test_problem.pddl" },
+        { "relaxed_reachability_axiom", "test_problem.pddl" },
+        { "relaxed_reachability_chain", "test_problem.pddl" },
+        { "relaxed_reachability_negative_static", "test_problem.pddl" },
+    };
+
+    auto num_queries = size_t(0);
+    auto num_skipped = size_t(0);
+    auto rng = std::mt19937(20260906u);
+
+    /* A handful of IPC instances on top of the fixtures, when the benchmark data is available. */
+    auto parsed = std::vector<std::pair<std::string, Problem>> {};
+    for (const auto& [domain_name, problem_filename] : instances)
+    {
+        parsed.emplace_back(domain_name + "/" + problem_filename, parse_fixture(domain_name, problem_filename));
+    }
+    if (const auto* root_env = std::getenv("MIMIR_RELAXED_REACHABILITY_BENCH_DIR"))
+    {
+        const auto root = fs::path(root_env);
+        for (const auto& domain_name : { "childsnack-ipc", "ferry-ipc", "blocksworld-ipc-enhanced", "sokoban-ipc", "rovers-ipc" })
+        {
+            const auto directory = root / domain_name / "test";
+            const auto domain_file = fs::exists(directory / "domain.pddl") ? directory / "domain.pddl" : root / domain_name / "domain.pddl";
+            const auto problem_file = directory / "p01-easy.pddl";
+            if (fs::exists(domain_file) && fs::exists(problem_file))
+            {
+                parsed.emplace_back(std::string(domain_name) + "/p01-easy.pddl", ProblemImpl::create(domain_file, problem_file, loki::ParserOptions {}));
+            }
+        }
+    }
+
+    for (const auto& [label, problem] : parsed)
+    {
+        const auto reachability = RelaxedReachability::create(problem);
+        const auto& table = reachability->get_table();
+        const auto source = TupleSource(problem, table);
+        const auto& objects = problem->get_problem_and_domain_objects();
+
+        for (const auto action : problem->get_domain()->get_actions())
+        {
+            for (const auto effect : action->get_conditional_effects())
+            {
+                /* Unbound, then with one parameter pinned -- the two shapes the generator asks, and the second
+                   exercises the constant table on a plan compiled for the first. */
+                for (auto trial = 0; trial < 3; ++trial)
+                {
+                    auto binding = ObjectList {};
+                    if (trial > 0 && !objects.empty())
+                    {
+                        binding.assign(action->get_arity(), nullptr);
+                        if (!binding.empty())
+                        {
+                            binding[std::uniform_int_distribution<size_t>(0, binding.size() - 1)(rng)] =
+                                objects[std::uniform_int_distribution<size_t>(0, objects.size() - 1)(rng)];
+                        }
+                    }
+                    const auto query = query_of_schema(action, effect, binding);
+                    if (query.num_variables == 0)
+                    {
+                        continue;
+                    }
+
+                    auto reference = BruteForceProjection(problem, source, query, 300000);
+                    if (reference.exceeded_budget())
+                    {
+                        ++num_skipped;
+                        continue;
+                    }
+                    ++num_queries;
+                    EXPECT_EQ(table.project(query), reference.get()) << label << " / " << action->get_name() << " trial " << trial;
+                }
+            }
+        }
+    }
+
+    std::cout << "[relaxed-reachability] project: " << num_queries << " queries checked against the brute-force join, " << num_skipped
+              << " skipped on budget" << std::endl;
+    EXPECT_GT(num_queries, 60u);
+}
+
+/**
+ * B. Witness derivations.
+ */
+
+TEST(MimirTests, SearchRelaxedReachabilityWitnessTest)
+{
+    static const auto instances = std::vector<std::pair<std::string, std::string>> {
+        { "blocks_4", "test_problem.pddl" },   { "gripper", "test_problem.pddl" },   { "delivery", "test_problem.pddl" },
+        { "childsnack", "test_problem.pddl" }, { "miconic", "test_problem.pddl" },   { "spanner", "test_problem.pddl" },
+        { "logistics", "test_problem.pddl" },  { "rovers", "test_problem.pddl" },    { "satellite", "test_problem.pddl" },
+        { "ferry", "test_problem.pddl" },      { "transport", "test_problem.pddl" }, { "philosophers", "test_problem.pddl" },
+        { "relaxed_reachability_axiom", "test_problem.pddl" },
+        { "relaxed_reachability_chain", "test_problem.pddl" },
+    };
+
+    auto rng = std::mt19937(20260906u);
+    auto num_checked = size_t(0);
+    auto num_reachable_without = size_t(0);
+    auto num_pairs = size_t(0);
+
+    for (const auto& [domain_name, problem_filename] : instances)
+    {
+        const auto problem = parse_fixture(domain_name, problem_filename);
+        const auto label = domain_name + "/" + problem_filename;
+        const auto reachability = RelaxedReachability::create(problem);
+        const auto& table = reachability->get_table();
+        ASSERT_TRUE(table.has_witnesses()) << label;
+
+        auto atoms = std::vector<std::pair<Predicate<FluentTag>, ObjectList>> {};
+        for (const auto predicate : problem->get_domain()->get_predicates<FluentTag>())
+        {
+            const auto tuples = table.get_reachable_tuples(predicate);
+            for (size_t i = 0; i < tuples.size(); ++i)
+            {
+                atoms.emplace_back(predicate, tuples[i]);
+            }
+        }
+        ASSERT_FALSE(atoms.empty()) << label;
+
+        /* Every atom against every single-atom forbidden set the fixture affords, plus random sets. */
+        auto forbidden_sets = std::vector<RelaxedReachability::ForbiddenAtomList> {};
+        for (const auto& atom : atoms)
+        {
+            forbidden_sets.push_back({ atom });
+        }
+        for (auto trial = 0; trial < 20; ++trial)
+        {
+            auto set = RelaxedReachability::ForbiddenAtomList {};
+            const auto size = std::uniform_int_distribution<size_t>(1, std::min<size_t>(4, atoms.size()))(rng);
+            for (size_t i = 0; i < size; ++i)
+            {
+                set.push_back(atoms[std::uniform_int_distribution<size_t>(0, atoms.size() - 1)(rng)]);
+            }
+            forbidden_sets.push_back(std::move(set));
+        }
+
+        for (const auto& forbidden : forbidden_sets)
+        {
+            const auto restricted = reachability->compute_restricted(forbidden);
+            const auto witnesses = table.witness_query(forbidden);
+            for (const auto& [predicate, tuple] : atoms)
+            {
+                const auto verdict = witnesses.avoids(predicate, tuple);
+                ++num_checked;
+                if (verdict == WitnessVerdict::REACHABLE_WITHOUT)
+                {
+                    ++num_reachable_without;
+                    // The soundness the caller relies on: a yes must really be reachable without the set.
+                    EXPECT_TRUE(restricted.is_reachable(predicate, tuple)) << label << ": witness claimed an unreachable atom";
+                }
+            }
+            ++num_pairs;
+        }
+    }
+
+    std::cout << "[relaxed-reachability] witnesses: " << num_checked << " (atom, forbidden set) verdicts over " << num_pairs
+              << " forbidden sets; " << num_reachable_without << " REACHABLE_WITHOUT ("
+              << (100.0 * double(num_reachable_without) / double(std::max<size_t>(1, num_checked))) << "%), all confirmed by compute_restricted"
+              << std::endl;
+    EXPECT_GT(num_checked, 5000u);
+
+    /* Without recording, the query is refused rather than silently answering UNKNOWN to everything. */
+    const auto problem = parse_fixture("gripper", "test_problem.pddl");
+    auto options = RelaxedReachabilityOptions {};
+    options.record_witnesses = false;
+    const auto without = RelaxedReachability::create(problem, options);
+    EXPECT_FALSE(without->get_table().has_witnesses());
+    EXPECT_THROW((void) without->get_table().witness_query(RelaxedReachability::ForbiddenAtomList {}), std::logic_error);
+}
+
+
+/**
+ * B (at scale). Witness soundness on IPC instances, and the coverage the generator would see.
+ *
+ * Env-gated on `MIMIR_RELAXED_REACHABILITY_BENCH_DIR` because the instances live outside the repo.
+ */
+
+TEST(MimirTests, SearchRelaxedReachabilityWitnessScaleTest)
+{
+    const auto* root_env = std::getenv("MIMIR_RELAXED_REACHABILITY_BENCH_DIR");
+    if (root_env == nullptr)
+    {
+        GTEST_SKIP() << "set MIMIR_RELAXED_REACHABILITY_BENCH_DIR to hierarchical/data/pddl to run the witness scale test";
+    }
+    const auto root = fs::path(root_env);
+
+    auto rng = std::mt19937(20260906u);
+
+    for (const auto& domain_name : { "ferry-ipc", "blocksworld-ipc-enhanced" })
+    {
+        const auto directory = root / domain_name / "test";
+        const auto domain_file = fs::exists(directory / "domain.pddl") ? directory / "domain.pddl" : root / domain_name / "domain.pddl";
+        const auto problem_file = directory / "p30-hard.pddl";
+        if (!fs::exists(domain_file) || !fs::exists(problem_file))
+        {
+            std::cout << "[relaxed-reachability] skipping witness scale on " << domain_name << std::endl;
+            continue;
+        }
+
+        const auto problem = ProblemImpl::create(domain_file, problem_file, loki::ParserOptions {});
+        const auto reachability = RelaxedReachability::create(problem);
+        const auto& table = reachability->get_table();
+        ASSERT_TRUE(table.has_witnesses()) << domain_name;
+
+        /* Every reachable atom, grouped by predicate. */
+        auto atoms_by_predicate = std::vector<std::pair<Predicate<FluentTag>, std::vector<ObjectList>>> {};
+        auto all_atoms = std::vector<std::pair<Predicate<FluentTag>, ObjectList>> {};
+        for (const auto predicate : problem->get_domain()->get_predicates<FluentTag>())
+        {
+            auto tuples = std::vector<ObjectList> {};
+            const auto view = table.get_reachable_tuples(predicate);
+            for (size_t i = 0; i < view.size(); ++i)
+            {
+                tuples.push_back(view[i]);
+                all_atoms.emplace_back(predicate, tuples.back());
+            }
+            if (!tuples.empty())
+            {
+                atoms_by_predicate.emplace_back(predicate, std::move(tuples));
+            }
+        }
+        ASSERT_FALSE(all_atoms.empty()) << domain_name;
+
+        /* (a) 200 random (atom, forbidden set) pairs: a yes must survive `compute_restricted`. */
+        auto num_pairs = size_t(0);
+        auto num_sound_yes = size_t(0);
+        for (auto trial = 0; trial < 200; ++trial)
+        {
+            auto forbidden = RelaxedReachability::ForbiddenAtomList {};
+            const auto size = std::uniform_int_distribution<size_t>(1, 3)(rng);
+            for (size_t i = 0; i < size; ++i)
+            {
+                forbidden.push_back(all_atoms[std::uniform_int_distribution<size_t>(0, all_atoms.size() - 1)(rng)]);
+            }
+            const auto& [predicate, objects] = all_atoms[std::uniform_int_distribution<size_t>(0, all_atoms.size() - 1)(rng)];
+
+            const auto witnesses = table.witness_query(forbidden);
+            ++num_pairs;
+            if (witnesses.avoids(predicate, objects) == WitnessVerdict::REACHABLE_WITHOUT)
+            {
+                ++num_sound_yes;
+                const auto restricted = reachability->compute_restricted(forbidden);
+                EXPECT_TRUE(restricted.is_reachable(predicate, objects)) << domain_name << ": witness claimed an unreachable atom";
+            }
+        }
+
+        /* (b) The coverage the generator would see. The ask set is approximated as: for every fact landmark
+               atom the lifted generator produces, forbid that one atom and ask every reachable atom of the
+               same predicate -- the "same predicate family" variant the brief allows. Both are capped. */
+        const auto landmarks = landmarks::LiftedFactLandmarkGenerator::create(problem, {});
+        auto landmark_atoms = std::vector<GroundAtom<FluentTag>> {};
+        for (const auto atom_index : landmarks->get_landmark_atom_indices())
+        {
+            landmark_atoms.push_back(problem->get_repositories().get_ground_atom<FluentTag>(atom_index));
+        }
+        const auto max_landmarks = std::min<size_t>(100, landmark_atoms.size());
+        const auto max_atoms_per_landmark = size_t(2000);
+
+        auto num_asks = size_t(0);
+        auto num_yes = size_t(0);
+        const auto start = std::chrono::high_resolution_clock::now();
+        for (size_t index = 0; index < max_landmarks; ++index)
+        {
+            const auto landmark = landmark_atoms[index];
+            const auto forbidden = RelaxedReachability::ForbiddenAtomList { { landmark->get_predicate(), landmark->get_objects() } };
+            const auto witnesses = table.witness_query(forbidden);
+
+            for (const auto& [predicate, tuples] : atoms_by_predicate)
+            {
+                if (predicate != landmark->get_predicate())
+                {
+                    continue;
+                }
+                const auto limit = std::min(max_atoms_per_landmark, tuples.size());
+                for (size_t i = 0; i < limit; ++i)
+                {
+                    ++num_asks;
+                    if (witnesses.avoids(predicate, tuples[i]) == WitnessVerdict::REACHABLE_WITHOUT)
+                    {
+                        ++num_yes;
+                    }
+                }
+            }
+        }
+        const auto elapsed = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - start).count();
+
+        std::cout << "[relaxed-reachability] witness scale " << domain_name << "/p30-hard: " << num_pairs << " random pairs ("
+                  << num_sound_yes << " REACHABLE_WITHOUT, all confirmed); " << landmark_atoms.size() << " fact landmarks, "
+                  << max_landmarks << " sampled; " << num_asks << " asks in " << elapsed << " ms, " << num_yes << " REACHABLE_WITHOUT ("
+                  << (100.0 * double(num_yes) / double(std::max<size_t>(1, num_asks))) << "%)" << std::endl;
+        EXPECT_GT(num_asks, 0u);
+    }
+}
+
 /**
  * 5. Determinism.
  */
@@ -892,6 +1501,7 @@ TEST(MimirTests, SearchRelaxedReachabilityPerformanceTest)
         size_t num_rules = 0;
         size_t num_steps = 0;
         size_t num_aux_tuples = 0;
+        size_t num_witnesses = 0;
         double restricted_mean_ms = 0;
         double restricted_max_ms = 0;
         double goal_query_mean_ms = 0;
@@ -929,6 +1539,11 @@ TEST(MimirTests, SearchRelaxedReachabilityPerformanceTest)
        peak RSS that is only about that instance. */
     const auto* only_env = std::getenv("MIMIR_RELAXED_REACHABILITY_BENCH_ONLY");
     const auto only = std::string(only_env ? only_env : "");
+
+    /* `MIMIR_RELAXED_REACHABILITY_BENCH_NO_WITNESS=1` runs the table with derivation recording off, which is
+       how the cost of `record_witnesses` was measured. */
+    auto options = RelaxedReachabilityOptions {};
+    options.record_witnesses = (std::getenv("MIMIR_RELAXED_REACHABILITY_BENCH_NO_WITNESS") == nullptr);
 
     auto rows = std::vector<Row> {};
 
@@ -1000,7 +1615,7 @@ TEST(MimirTests, SearchRelaxedReachabilityPerformanceTest)
         const auto rss_after_parse = current_resident_bytes();
         row.parse_rss_mb = double(rss_after_parse > rss_before ? rss_after_parse - rss_before : 0) / (1024.0 * 1024.0);
 
-        const auto reachability = RelaxedReachability::create(problem);
+        const auto reachability = RelaxedReachability::create(problem, options);
         const auto& statistics = reachability->get_statistics();
         row.compile_ms = statistics.compile_time_ms;
         row.fixpoint_ms = statistics.fixpoint_time_ms;
@@ -1008,6 +1623,7 @@ TEST(MimirTests, SearchRelaxedReachabilityPerformanceTest)
         row.num_rules = statistics.num_rules;
         row.num_steps = statistics.num_join_steps;
         row.num_aux_tuples = statistics.num_auxiliary_tuples;
+        row.num_witnesses = reachability->get_table().get_num_witnesses();
 
         /* 20 restricted queries, each forbidding one random reachable atom. */
         auto candidates = std::vector<std::pair<Predicate<FluentTag>, ObjectList>> {};
@@ -1052,10 +1668,10 @@ TEST(MimirTests, SearchRelaxedReachabilityPerformanceTest)
 
     std::cout << "\n=== relaxed reachability performance ===\n";
     std::cout << "instance                                       objs   parse(ms) compile(ms) fixpoint(ms)   atoms  rules "
-                 "steps  aux-tuples  restr-mean(ms) restr-max(ms) goal-mean(ms) parseRSS(MB) engineRSS(MB) peakRSS(MB)\n";
+                 "steps  aux-tuples   witnesses  restr-mean(ms) restr-max(ms) goal-mean(ms) parseRSS(MB) engineRSS(MB) peakRSS(MB)\n";
     for (const auto& row : rows)
     {
-        printf("%-44s %6zu %11.2f %11.2f %12.2f %7zu %6zu %6zu %11zu %15.3f %13.3f %13.3f %12.1f %13.1f %11.1f\n",
+        printf("%-44s %6zu %11.2f %11.2f %12.2f %7zu %6zu %6zu %11zu %11zu %15.3f %13.3f %13.3f %12.1f %13.1f %11.1f\n",
                row.label.c_str(),
                row.num_objects,
                row.parse_ms,
@@ -1065,6 +1681,7 @@ TEST(MimirTests, SearchRelaxedReachabilityPerformanceTest)
                row.num_rules,
                row.num_steps,
                row.num_aux_tuples,
+               row.num_witnesses,
                row.restricted_mean_ms,
                row.restricted_max_ms,
                row.goal_query_mean_ms,

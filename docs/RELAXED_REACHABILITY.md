@@ -207,6 +207,68 @@ and not conversely. Both directions are sound for declaring a landmark; the atom
 reading is the more complete of the two. The test suite asserts the implication
 on every query and reports how often the two verdicts differ (§5).
 
+## 4b. Projected conjunctive queries
+
+`ReachabilityTable::project(const ConjunctiveQuery&)` answers, for each query variable, the objects it can
+take in *some* satisfying assignment of the whole conjunction over that table's relations. A query is a
+conjunction of positive literals over static, fluent and derived predicates, plus `=` and `!=` between terms,
+plus negative static literals where the engine enforces them for rules; terms are objects or variable indices.
+This backs the lifted generator's `reachability_disambiguation = JOINT`: the query is an achiever's
+precondition conjunction under a partial substitution, asked once per achiever per expansion.
+
+It is evaluated with the same machinery as the fixpoint and never materialises the join. One unary head
+relation is reserved per variable, each is planned as its own rule over the shared body -- so each chain
+projects away everything its own head does not need -- and the prefix memo shares steps between two variables
+wherever their chains still need the same variables. The query's auxiliaries live in a relation id space that
+continues past the problem's, and a query database resolves an id below the problem's relation count through
+the table it was opened on and above it through its own vector, so nothing is copied and the `Program` is
+never mutated.
+
+**Plans are cached by query shape.** The shape key records the predicates, the polarities and, per term,
+whether it is a variable (and which) or *a* constant -- never which object. The objects travel separately in a
+constant table that the plan indexes into, which is why `Slot`'s third side and `Step::const_rhs_columns`
+carry slot indices rather than object ids. Asking the same achiever with a different binding is therefore a
+hash lookup and a fresh constant vector, not a recompilation. Two things the shape cannot decide -- whether
+two constants are equal, and whether a variable pinned twice was pinned to the same object -- are recorded as
+checks against the call's constant table and evaluated before the plan runs.
+
+Query variables that no positive literal binds range over every object, through an `$all_objects` relation
+built once per problem, exactly as an action parameter occurring only in a negative precondition ranges over
+its declared type.
+
+Not thread-safe: the plan cache is shared and mutated on a miss.
+
+## 4c. Witness derivations
+
+With `RelaxedReachabilityOptions::record_witnesses` (default true) the unrestricted fixpoint records, for
+every derived atom and every intermediate tuple, the plan step and the two body tuple positions of its
+**first** derivation -- one `(step, left, right)` triple, 12 bytes, appended on the insert that created the
+tuple. `ReachabilityTable::witness_query(forbidden)` then answers, per atom:
+
+- `REACHABLE_WITHOUT` -- the stored derivation tree of the atom contains no forbidden atom at any node,
+  initial atoms included. Since a derivation from `I` that never uses a forbidden atom as a body atom is still
+  a derivation once those atoms are forbidden, the atom really is reachable in the restricted program. This is
+  the half a caller may act on.
+- `UNKNOWN` -- carries no information. Either the atom is not reachable at all, or the one derivation that was
+  recorded runs through a forbidden atom and another may well exist.
+
+Verdicts are memoised per query and shared across the trees, so the cost of asking *every* atom against one
+forbidden set is linear in the number of derived tuples rather than one fixpoint per atom. The traversal is
+iterative: a derivation chain is as deep as the atom's h-max layer, and sokoban's `at-robot` spreads one grid
+cell per layer over an 8000-cell grid. A cycle would be a contradiction -- a body tuple always exists before
+the head it produces -- so re-entering a node still on the stack is treated as "not certified" rather than
+trusted.
+
+Measured on the two instances the brief names (`witness_query` per landmark, then one `avoids` per reachable
+atom of that landmark's own predicate):
+
+| instance | fact landmarks | sampled | asks | time | REACHABLE_WITHOUT |
+|---|---|---|---|---|---|
+| ferry-ipc p30-hard | 2369 | 100 | 200,000 | 30.8 ms | 200,000 (**100%**) |
+| blocksworld-ipc-enhanced p30-hard | 1462 | 100 | 165,224 | 16.6 ms | 165,097 (**99.92%**) |
+
+The same 200,000 questions through `compute_restricted` would be 200,000 x 26 ms, about 1.4 hours.
+
 ## 5. Correctness
 
 `tests/unit/search/relaxed_reachability.cpp`, target
@@ -301,6 +363,12 @@ and 0.039 → 0.245 ms per restricted query from `p05` to `p30`), which is the
 shape the splitting was built for — the atom count grows 986 → 6597 and the cost
 tracks it.
 
+**What witnesses cost.** Memory, measurably: +27 MB on sokoban `p30-hard` (1,673,688 witnesses), +14 MB on
+ferry (954,524), and under 1 MB wherever the fixpoint stays small. Time, not measurably: the fixpoint
+difference between recording and not was inside this machine's run-to-run variance, which for sokoban
+`p30-hard` is 135-192 ms over five runs of the *same* configuration. Restricted queries are unaffected, since
+only the unrestricted fixpoint records.
+
 **The refinement pass that was removed.** With the seeded planner and measured
 column domains in place, compiling a second plan from measured IDB sizes and
 running a second fixpoint changed nothing outside noise (sokoban fixpoint
@@ -353,7 +421,23 @@ requires. Numeric constraints are ignored by both.
 ```cpp
 namespace mimir::search {
 
-struct RelaxedReachabilityOptions { bool enforce_negative_static_conditions = true; };
+struct RelaxedReachabilityOptions {
+    bool enforce_negative_static_conditions = true;
+    bool record_witnesses = true;
+};
+
+enum class WitnessVerdict { REACHABLE_WITHOUT, UNKNOWN };
+
+class QueryTerm {                       // QueryTerm::of_object(o) / QueryTerm::of_variable(k)
+public:
+    bool is_variable() const; Object get_object() const; uint32_t get_variable() const;
+};
+struct QueryLiteral    { PredicateVariant predicate; std::vector<QueryTerm> terms; bool polarity = true; };
+struct ConjunctiveQuery {
+    size_t num_variables = 0;
+    std::vector<QueryLiteral> literals;
+    std::vector<std::pair<QueryTerm, QueryTerm>> equalities, disequalities;
+};
 
 class RelaxedReachability {
 public:
@@ -383,6 +467,24 @@ public:
     const Problem&                        get_problem() const;
     const RelaxedReachabilityOptions&     get_options() const;
     const RelaxedReachabilityStatistics&  get_statistics() const;
+};
+
+/* On a table, in addition to the read-only half of the above: */
+class ReachabilityTable {
+public:
+    std::vector<ObjectList> project(const ConjunctiveQuery&) const;
+
+    bool         has_witnesses() const;
+    size_t       get_num_witnesses() const;
+    WitnessQuery witness_query(const ForbiddenAtomList&) const;          // throws without witnesses
+    WitnessQuery witness_query(const GroundAtomList<FluentTag>&) const;
+};
+
+class WitnessQuery {
+public:
+    WitnessVerdict avoids(Predicate<FluentTag>,  const ObjectList&) const;  // also DerivedTag,
+    WitnessVerdict avoids(GroundAtom<FluentTag>) const;                     // also GroundAtom<DerivedTag>
+    size_t get_num_memoised() const;
 };
 
 }

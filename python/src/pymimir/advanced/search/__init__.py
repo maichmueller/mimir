@@ -54,6 +54,11 @@ from pymimir.pymimir.advanced.search import (
     ReachableTuples,
     ReachabilityTable,
     RelaxedReachability,
+    QueryTerm,
+    QueryLiteral,
+    ConjunctiveQuery,
+    WitnessVerdict,
+    WitnessQuery,
 )
 
 # Landmarks

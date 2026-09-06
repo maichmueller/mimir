@@ -37,8 +37,10 @@
 
 #include <algorithm>
 #include <chrono>
+#include <functional>
 #include <cstring>
 #include <limits>
+#include <stdexcept>
 #include <map>
 #include <sstream>
 #include <unordered_map>
@@ -154,6 +156,33 @@ public:
         m_data.insert(m_data.end(), values, values + m_arity);
         ++m_size;
         return true;
+    }
+
+    /// @brief The position of `values`, or `NPOS` when absent. `contains` is this without the position.
+    static constexpr size_t NPOS = std::numeric_limits<size_t>::max();
+
+    size_t find(const ObjectId* values) const
+    {
+        if (m_arity == 0)
+        {
+            return (m_size != 0) ? size_t(0) : NPOS;
+        }
+        if (m_buckets.empty())
+        {
+            return NPOS;
+        }
+        const auto mask = m_buckets.size() - 1;
+        auto slot = size_t(hash(values, m_arity) & mask);
+        while (m_buckets[slot] != 0)
+        {
+            const auto position = size_t(m_buckets[slot] - 1);
+            if (std::memcmp(m_data.data() + position * m_arity, values, m_arity * sizeof(ObjectId)) == 0)
+            {
+                return position;
+            }
+            slot = (slot + 1) & mask;
+        }
+        return NPOS;
     }
 
     bool contains(const ObjectId* values) const
@@ -373,9 +402,15 @@ enum class RelationKind : uint8_t
 
 /// @brief Where one value of a join step comes from: a column of the left input, a column of the right
 /// input, or a constant.
+/// @brief Where one value of a join step comes from: a column of the left input, a column of the right
+/// input, or a slot of the plan's constant table.
+///
+/// Constants are indirected through a table rather than embedded so that a plan can be reused with different
+/// constants. That is what lets a conjunctive query be cached by its *shape* -- predicates and variable
+/// pattern -- while the objects it is asked about change on every call.
 struct Slot
 {
-    uint8_t side;  ///< 0 = left, 1 = right, 2 = constant
+    uint8_t side;   ///< 0 = left, 1 = right, 2 = constant slot
     uint32_t value;
 };
 
@@ -397,11 +432,12 @@ struct Step
     RelationId out = NO_RELATION;
     RelationId lhs = NO_RELATION;
     RelationId rhs = NO_RELATION;  ///< NO_RELATION for the projection-only step of a body-less rule
-    bool rhs_is_edb = false;
+    bool rhs_is_edb = false;       ///< read the index from the program's prebuilt, shared EDB index vector
+    bool rhs_is_stable = true;     ///< the right side cannot grow while this plan runs, so Part B is empty
 
     std::vector<uint32_t> join_lhs_columns;  ///< left columns carrying the join key
     std::vector<uint32_t> join_rhs_columns;  ///< the right columns they are matched against
-    std::vector<std::pair<uint32_t, ObjectId>> const_rhs_columns;
+    std::vector<std::pair<uint32_t, uint32_t>> const_rhs_columns;  ///< (column, constant slot)
     std::vector<std::pair<uint32_t, uint32_t>> self_eq_rhs_columns;  ///< (later occurrence, first occurrence)
 
     std::vector<Guard> guards;
@@ -409,6 +445,41 @@ struct Step
 
     uint32_t rhs_index = NO_INDEX;  ///< index over `join_rhs_columns ++ const columns`; EDB or IDB by `rhs_is_edb`
     uint32_t lhs_index = NO_INDEX;  ///< index over `join_lhs_columns`, only when the right side can still grow
+};
+
+constexpr uint32_t NO_STEP = std::numeric_limits<uint32_t>::max();
+constexpr uint32_t NO_TUPLE = std::numeric_limits<uint32_t>::max();
+
+/// @brief How a tuple was first derived: the plan step that produced it and the positions of the two body
+/// tuples it was built from.
+///
+/// Only the FIRST derivation is kept. That is enough for the yes-half of the landmark question: a derivation
+/// from the initial state that uses no forbidden atom at any node is still a derivation once those atoms are
+/// forbidden, so the atom is reachable without them. A derivation that does touch a forbidden atom says
+/// nothing -- another derivation may exist that this record did not keep -- hence `UNKNOWN` rather than "no".
+struct Witness
+{
+    uint32_t step = NO_STEP;    ///< NO_STEP marks an initial atom: a leaf of every derivation tree
+    uint32_t left = NO_TUPLE;
+    uint32_t right = NO_TUPLE;  ///< NO_TUPLE for a projection-only step
+};
+
+/// @brief A compiled conjunctive query: auxiliaries and one unary head per query variable, in a relation id
+/// space that continues past the problem's. Cached by query shape and instantiated with a constant table.
+struct QueryPlan
+{
+    size_t base_count = 0;
+    std::vector<uint32_t> auxiliary_arity;
+    size_t num_idb_index_slots = 0;
+    std::vector<Step> steps;
+    std::vector<RelationId> variable_head;  ///< per query variable, the unary relation collecting its answers
+    size_t num_constant_slots = 0;
+
+    /* Checks the shape can state but not decide, because they compare constants the shape does not know.
+       Evaluated against the call's constant table before the plan runs. */
+    std::vector<std::pair<uint32_t, uint32_t>> equal_slot_checks;
+    std::vector<std::pair<uint32_t, uint32_t>> distinct_slot_checks;
+    bool unsatisfiable = false;  ///< the shape alone rules the query out
 };
 
 /// @brief One ground atom named without interning it: the relation plus the object tuple.
@@ -438,6 +509,11 @@ public:
     std::unordered_map<const void*, RelationId> relation_by_predicate;
 
     RelationId true_relation = NO_RELATION;
+    RelationId universal_domain_relation = NO_RELATION;  ///< every object, to make an unconstrained query variable safe
+
+    /// @brief Compiled conjunctive-query plans, keyed by query shape. Mutable because a query is a read of the
+    /// table; the cache is shared, so `project` is not thread-safe.
+    mutable std::unordered_map<std::string, std::unique_ptr<QueryPlan>> query_plan_cache;
 
     /* EDB, shared by every query: filled once, never modified again. */
     std::vector<Relation> edb;                ///< indexed by relation id; only EDB slots are populated
@@ -449,7 +525,8 @@ public:
 
     /* Plan */
     std::vector<Step> steps;
-    std::unordered_map<std::string, RelationId> shared_auxiliary_steps;  ///< identical prefixes are computed once
+    std::vector<ObjectId> plan_constants;
+    std::unordered_map<ObjectId, uint32_t> constant_slot_by_object;
     std::vector<size_t> relation_capacity_hint;                          ///< sizes the unrestricted fixpoint measured
     size_t num_idb_index_slots = 0;
     size_t num_auxiliary_relations = 0;
@@ -466,6 +543,21 @@ public:
     {
         const auto it = id_by_object.find(object);
         return (it == id_by_object.end()) ? NO_OBJECT : it->second;
+    }
+
+    /// @brief The constant table slot of `object`, interning it on first use. Equal objects share a slot, so
+    /// two steps that differ only in which occurrence of the same constant they read still deduplicate.
+    uint32_t intern_constant(ObjectId object)
+    {
+        const auto it = constant_slot_by_object.find(object);
+        if (it != constant_slot_by_object.end())
+        {
+            return it->second;
+        }
+        const auto slot = uint32_t(plan_constants.size());
+        plan_constants.push_back(object);
+        constant_slot_by_object.emplace(object, slot);
+        return slot;
     }
 
     RelationId get_relation_id(const void* predicate) const
@@ -494,12 +586,25 @@ private:
     };
 
     const Program* m_program;
+    const std::vector<ObjectId>* m_constants;
+    const std::vector<Step>* m_steps;
+
+    /* A query database derives only its own relations and reads every base relation from the table it was
+       opened on, so the two share one relation id space with the query's own ids continuing past the base. */
+    const Database* m_base = nullptr;
+    size_t m_local_offset = 0;
+    std::vector<Relation> m_local;
+
     std::vector<Relation> m_idb;
     std::vector<JoinIndex> m_indexes;
     std::vector<StepState> m_step_state;
     std::vector<const Relation*> m_forbidden;  ///< per relation, the atoms a restricted query removed
     std::vector<Relation> m_forbidden_storage;
     size_t m_num_rounds = 0;
+
+    /* Witnesses, parallel to each IDB relation's tuple vector. Empty unless recording was asked for. */
+    bool m_record_witnesses = false;
+    std::vector<std::vector<Witness>> m_witnesses;
 
     /* Reusable scratch, so a join never allocates. */
     std::vector<ObjectId> m_probe_key;
@@ -509,6 +614,8 @@ private:
 public:
     explicit Database(const Program& program) :
         m_program(&program),
+        m_constants(&program.plan_constants),
+        m_steps(&program.steps),
         m_idb(program.relation_kind.size()),
         m_indexes(program.num_idb_index_slots),
         m_step_state(program.steps.size()),
@@ -545,15 +652,89 @@ public:
         }
     }
 
+    /// @brief A database for one conjunctive query over `base`, owning only the query's own relations.
+    Database(const Program& program, const QueryPlan& plan, const Database& base, const std::vector<ObjectId>& constants) :
+        m_program(&program),
+        m_constants(&constants),
+        m_steps(&plan.steps),
+        m_base(&base),
+        m_local_offset(plan.base_count),
+        m_local(),
+        m_idb(),
+        m_indexes(plan.num_idb_index_slots),
+        m_step_state(plan.steps.size()),
+        m_forbidden(),
+        m_forbidden_storage()
+    {
+        m_local.reserve(plan.auxiliary_arity.size());
+        for (const auto arity : plan.auxiliary_arity)
+        {
+            m_local.emplace_back(arity);
+        }
+        for (const auto& step : plan.steps)
+        {
+            if (step.rhs_index != NO_INDEX)
+            {
+                auto columns = step.join_rhs_columns;
+                for (const auto& [column, slot] : step.const_rhs_columns)
+                {
+                    columns.push_back(column);
+                }
+                m_indexes[step.rhs_index].set_columns(std::move(columns));
+            }
+            if (step.lhs_index != NO_INDEX)
+            {
+                m_indexes[step.lhs_index].set_columns(step.join_lhs_columns);
+            }
+        }
+    }
+
     const Program& get_program() const { return *m_program; }
 
     const Relation& get_relation(RelationId id) const
     {
+        if (m_base != nullptr)
+        {
+            return (id >= m_local_offset) ? m_local[id - m_local_offset] : m_base->get_relation(id);
+        }
         const auto kind = m_program->relation_kind[id];
         return (kind == RelationKind::Static || kind == RelationKind::TypeDomain || kind == RelationKind::True) ? m_program->edb[id] : m_idb[id];
     }
 
     size_t get_num_rounds() const { return m_num_rounds; }
+
+    bool has_witnesses() const { return m_record_witnesses; }
+
+    /// @brief The recorded first derivation of tuple `position` of relation `id`, or a leaf witness for a
+    /// relation that has none (the static EDB and the truth relation are always leaves).
+    Witness get_witness(RelationId id, size_t position) const
+    {
+        if (id >= m_witnesses.size() || position >= m_witnesses[id].size())
+        {
+            return Witness {};
+        }
+        return m_witnesses[id][position];
+    }
+
+    size_t get_num_witnesses() const
+    {
+        auto total = size_t(0);
+        for (const auto& witnesses : m_witnesses)
+        {
+            total += witnesses.size();
+        }
+        return total;
+    }
+
+    size_t get_witness_memory_bytes() const
+    {
+        auto total = size_t(0);
+        for (const auto& witnesses : m_witnesses)
+        {
+            total += witnesses.capacity() * sizeof(Witness);
+        }
+        return total;
+    }
 
     void set_forbidden(const std::vector<RelationTuple>& forbidden)
     {
@@ -569,8 +750,14 @@ public:
         }
     }
 
+    Relation& mutable_relation(RelationId id) { return (m_base != nullptr) ? m_local[id - m_local_offset] : m_idb[id]; }
+
     bool is_forbidden(RelationId id, const ObjectId* values) const
     {
+        if (m_forbidden.empty())
+        {
+            return false;
+        }
         const auto* forbidden = m_forbidden[id];
         return forbidden != nullptr && forbidden->contains(values);
     }
@@ -580,9 +767,9 @@ public:
     {
         for (const auto& atom : m_program->initial_fluent_atoms)
         {
-            if (!is_forbidden(atom.relation, atom.values.data()))
+            if (!is_forbidden(atom.relation, atom.values.data()) && m_idb[atom.relation].insert(atom.values.data()) && m_record_witnesses)
             {
-                m_idb[atom.relation].insert(atom.values.data());
+                m_witnesses[atom.relation].push_back(Witness {});  ///< a leaf: it came from I, not from a rule
             }
         }
     }
@@ -604,9 +791,17 @@ public:
     }
 
     /// @brief Run the semi-naive fixpoint. Stops early once the goal is reached when `stop_at_goal`.
-    void run(bool stop_at_goal)
+    void run(bool stop_at_goal, bool record_witnesses = false)
     {
-        seed_initial_atoms();
+        m_record_witnesses = record_witnesses;
+        if (record_witnesses)
+        {
+            m_witnesses.assign(m_program->relation_kind.size(), {});
+        }
+        if (m_base == nullptr)
+        {
+            seed_initial_atoms();
+        }
 
         if (stop_at_goal && is_goal_reached())
         {
@@ -619,9 +814,9 @@ public:
             changed = false;
             ++m_num_rounds;
 
-            for (size_t index = 0; index < m_program->steps.size(); ++index)
+            for (size_t index = 0; index < m_steps->size(); ++index)
             {
-                changed |= run_step(m_program->steps[index], m_step_state[index]);
+                changed |= run_step((*m_steps)[index], uint32_t(index), m_step_state[index]);
             }
 
             if (stop_at_goal && is_goal_reached())
@@ -665,7 +860,7 @@ private:
         {
             case 0: return lhs_tuple[slot.value];
             case 1: return rhs_tuple[slot.value];
-            default: return ObjectId(slot.value);
+            default: return (*m_constants)[slot.value];
         }
     }
 
@@ -696,7 +891,7 @@ private:
         return true;
     }
 
-    bool emit(const Step& step, const ObjectId* lhs_tuple, const ObjectId* rhs_tuple)
+    bool emit(const Step& step, uint32_t step_index, size_t lhs_position, const ObjectId* lhs_tuple, size_t rhs_position, const ObjectId* rhs_tuple)
     {
         if (!guards_hold(step, lhs_tuple, rhs_tuple))
         {
@@ -711,18 +906,22 @@ private:
         {
             return false;
         }
-        return m_idb[step.out].insert(m_out_tuple.data());
+        if (!mutable_relation(step.out).insert(m_out_tuple.data()))
+        {
+            return false;
+        }
+        if (m_record_witnesses)
+        {
+            // The insert succeeded, so this is the first derivation of the tuple, and its position is the one
+            // the tuple vector just grew into.
+            m_witnesses[step.out].push_back(Witness { step_index, uint32_t(lhs_position), uint32_t(rhs_position) });
+        }
+        return true;
     }
 
-    bool rhs_tuple_matches_filters(const Step& step, const ObjectId* rhs_tuple) const
+    /// @brief The within-literal equalities a repeated variable imposes, e.g. `on(?x, ?x)`.
+    static bool rhs_self_equalities_hold(const Step& step, const ObjectId* rhs_tuple)
     {
-        for (const auto& [column, value] : step.const_rhs_columns)
-        {
-            if (rhs_tuple[column] != value)
-            {
-                return false;
-            }
-        }
         for (const auto& [later, first] : step.self_eq_rhs_columns)
         {
             if (rhs_tuple[later] != rhs_tuple[first])
@@ -733,7 +932,22 @@ private:
         return true;
     }
 
-    bool run_step(const Step& step, StepState& state)
+    /// @brief The constant columns as well. Only the right-delta half needs this: the other half probes an
+    /// index whose key already carries the constants, and a step without constants has no index at all, so
+    /// re-reading the constant table there was pure cost in the hottest loop of the fixpoint.
+    bool rhs_tuple_matches_filters(const Step& step, const ObjectId* rhs_tuple) const
+    {
+        for (const auto& [column, constant_slot] : step.const_rhs_columns)
+        {
+            if (rhs_tuple[column] != (*m_constants)[constant_slot])
+            {
+                return false;
+            }
+        }
+        return rhs_self_equalities_hold(step, rhs_tuple);
+    }
+
+    bool run_step(const Step& step, uint32_t step_index, StepState& state)
     {
         const auto& lhs = get_relation(step.lhs);
         const auto previous_lhs_size = state.seen_lhs;
@@ -746,7 +960,7 @@ private:
             auto changed = false;
             for (auto position = previous_lhs_size; position < lhs_size; ++position)
             {
-                changed |= emit(step, lhs.get_tuple(position), nullptr);
+                changed |= emit(step, step_index, position, lhs.get_tuple(position), NO_TUPLE, nullptr);
             }
             state.seen_lhs = lhs_size;
             return changed;
@@ -779,7 +993,7 @@ private:
                 m_probe_key.resize(step.join_rhs_columns.size() + step.const_rhs_columns.size());
                 for (size_t i = 0; i < step.const_rhs_columns.size(); ++i)
                 {
-                    m_probe_key[step.join_rhs_columns.size() + i] = step.const_rhs_columns[i].second;
+                    m_probe_key[step.join_rhs_columns.size() + i] = (*m_constants)[step.const_rhs_columns[i].second];
                 }
                 for (auto position = previous_lhs_size; position < lhs_size; ++position)
                 {
@@ -793,9 +1007,9 @@ private:
                                           [&](size_t rhs_position)
                                           {
                                               const auto* rhs_tuple = rhs.get_tuple(rhs_position);
-                                              if (rhs_tuple_matches_filters(step, rhs_tuple))
+                                              if (rhs_self_equalities_hold(step, rhs_tuple))
                                               {
-                                                  changed |= emit(step, lhs_tuple, rhs_tuple);
+                                                  changed |= emit(step, step_index, position, lhs_tuple, rhs_position, rhs_tuple);
                                               }
                                           });
                 }
@@ -808,19 +1022,19 @@ private:
                     for (size_t rhs_position = 0; rhs_position < rhs_size; ++rhs_position)
                     {
                         const auto* rhs_tuple = rhs.get_tuple(rhs_position);
-                        if (rhs_tuple_matches_filters(step, rhs_tuple))
+                        if (rhs_self_equalities_hold(step, rhs_tuple))
                         {
-                            changed |= emit(step, lhs_tuple, rhs_tuple);
+                            changed |= emit(step, step_index, position, lhs_tuple, rhs_position, rhs_tuple);
                         }
                     }
                 }
             }
         }
 
-        /* Part B: the right tuples this step has not seen yet, against the left tuples it already has. An EDB
+        /* Part B: the right tuples this step has not seen yet, against the left tuples it already has. A stable
            right side never grows, so this half costs nothing there. The right tuple is re-read inside the loop
            because a recursive rule may append to the very relation being scanned. */
-        if (previous_rhs_size < rhs_size && previous_lhs_size > 0)
+        if (!step.rhs_is_stable && previous_rhs_size < rhs_size && previous_lhs_size > 0)
         {
             if (step.lhs_index != NO_INDEX)
             {
@@ -843,7 +1057,12 @@ private:
                                          {
                                              if (lhs_position < previous_lhs_size)
                                              {
-                                                 changed |= emit(step, lhs.get_tuple(lhs_position), rhs.get_tuple(rhs_position));
+                                                 changed |= emit(step,
+                                                                 step_index,
+                                                                 lhs_position,
+                                                                 lhs.get_tuple(lhs_position),
+                                                                 rhs_position,
+                                                                 rhs.get_tuple(rhs_position));
                                              }
                                          });
                 }
@@ -858,7 +1077,7 @@ private:
                     }
                     for (size_t position = 0; position < previous_lhs_size; ++position)
                     {
-                        changed |= emit(step, lhs.get_tuple(position), rhs.get_tuple(rhs_position));
+                        changed |= emit(step, step_index, position, lhs.get_tuple(position), rhs_position, rhs.get_tuple(rhs_position));
                     }
                 }
             }
@@ -869,13 +1088,35 @@ private:
 };
 
 /**
+ * Witness traversal
+ */
+
+/// @brief The per-query state of a `WitnessQuery`: the forbidden atoms, and one verdict cell per tuple.
+class WitnessMemo
+{
+public:
+    enum State : uint8_t
+    {
+        UNSEEN = 0,
+        PENDING = 1,  ///< on the traversal stack; only a cycle can see this from below, and none should exist
+        YES = 2,
+        NO = 3
+    };
+
+    std::vector<Relation> forbidden_storage;
+    std::vector<const Relation*> forbidden;
+    std::vector<std::vector<uint8_t>> state;
+    size_t num_memoised = 0;
+};
+
+/**
  * Rule construction
  */
 
 struct RuleTerm
 {
     bool is_variable = false;
-    uint32_t value = 0;  ///< variable id or object id
+    uint32_t value = 0;  ///< variable id, or a slot of the plan's constant table
 };
 
 struct RuleAtom
@@ -981,6 +1222,64 @@ static void collect_variables(const std::vector<RuleTerm>& terms, std::vector<ch
     }
 }
 
+/// @brief Where a plan under construction lives.
+///
+/// The problem's own plan and a conjunctive query's plan are compiled by the same code, but a query must not
+/// touch the `Program`: it is shared, `const`, and every live `Database` holds references into its relation
+/// vectors. So the planner writes its auxiliaries here instead, in a relation id space that continues past
+/// the problem's, and the problem's plan absorbs them afterwards while a query's stay separate.
+class PlanContext
+{
+public:
+    const Program& base;
+    size_t base_count;      ///< relation ids below this belong to the problem
+    bool query_mode;        ///< a query reads every base relation read-only and owns all of its own indexes
+
+    std::vector<uint32_t> auxiliary_arity;
+    std::vector<double> auxiliary_estimate;
+    std::unordered_map<std::string, RelationId> shared_steps;
+    size_t num_edb_index_slots = 0;
+    size_t num_idb_index_slots = 0;
+    std::vector<Step> steps;
+
+    PlanContext(const Program& program, size_t relation_count, bool is_query) : base(program), base_count(relation_count), query_mode(is_query) {}
+
+    RelationKind kind_of(RelationId id) const { return (id < base_count) ? base.relation_kind[id] : RelationKind::Auxiliary; }
+
+    double estimate_of(RelationId id) const { return (id < base_count) ? base.relation_size_estimate[id] : auxiliary_estimate[id - base_count]; }
+
+    /// @brief Only a base relation is ever a body literal, so an auxiliary never needs column domains.
+    const std::vector<double>& position_domain_of(RelationId id) const
+    {
+        static const auto empty = std::vector<double> {};
+        return (id < base_count) ? base.relation_position_domain[id] : empty;
+    }
+
+    /// @brief Does the right side of a step over `id` grow while this plan runs?
+    bool is_stable(RelationId id) const
+    {
+        if (query_mode)
+        {
+            return id < base_count;  ///< a query derives only its own relations
+        }
+        const auto kind = base.relation_kind[id];
+        return kind == RelationKind::Static || kind == RelationKind::TypeDomain || kind == RelationKind::True;
+    }
+
+    /// @brief Does a step over `id` read the program's prebuilt, shared EDB index?
+    bool uses_shared_edb_index(RelationId id) const { return !query_mode && is_stable(id); }
+
+    RelationId add_auxiliary(uint32_t arity, double estimate)
+    {
+        const auto id = RelationId(base_count + auxiliary_arity.size());
+        auxiliary_arity.push_back(arity);
+        auxiliary_estimate.push_back(estimate);
+        return id;
+    }
+
+    size_t num_auxiliary_relations() const { return auxiliary_arity.size(); }
+};
+
 /// @brief A canonical description of one auxiliary-producing step, so that an identical step of another rule
 /// can reuse the relation it computes.
 static std::string describe_step(const Step& step, const std::vector<VariableId>& out_variables)
@@ -1023,7 +1322,7 @@ static std::string describe_step(const Step& step, const std::vector<VariableId>
 /// |breads| x |contents| x |sandwiches| into their sum: `?b` occurs only in `at_kitchen_bread(?b)` and in the
 /// type literal `bread-portion(?b)`, so after those two are joined `?b` is dead and the accumulator drops
 /// back to the empty tuple.
-static double compile_rule(Program& program, const Rule& rule, std::vector<Step>& out_steps, size_t seed_literal, bool dry_run)
+static double compile_rule(PlanContext& plan, const Rule& rule, std::vector<Step>& out_steps, size_t seed_literal, bool dry_run)
 {
     const auto num_variables = rule.num_variables;
     auto total_cost = double(0);
@@ -1053,7 +1352,7 @@ static double compile_rule(Program& program, const Rule& rule, std::vector<Step>
     auto variable_domain = rule.variable_domain;
     for (const auto& literal : rule.body)
     {
-        const auto& position_domain = program.relation_position_domain[literal.relation];
+        const auto& position_domain = plan.position_domain_of(literal.relation);
         for (size_t position = 0; position < literal.args.size(); ++position)
         {
             const auto& term = literal.args[position];
@@ -1064,7 +1363,7 @@ static double compile_rule(Program& program, const Rule& rule, std::vector<Step>
         }
     }
 
-    auto accumulator_relation = program.true_relation;
+    auto accumulator_relation = plan.base.true_relation;
     auto accumulator_variables = std::vector<VariableId> {};  ///< in column order
     auto accumulator_column = std::vector<uint32_t>(num_variables, NO_INDEX);
     auto accumulator_estimate = double(1);
@@ -1121,7 +1420,7 @@ static double compile_rule(Program& program, const Rule& rule, std::vector<Step>
 
             const auto& literal = rule.body[remaining[slot]];
             const auto relation = literal.relation;
-            const auto& position_domain = program.relation_position_domain[relation];
+            const auto& position_domain = plan.position_domain_of(relation);
 
             auto selectivity = double(1);
             auto key_domain = double(1);
@@ -1155,7 +1454,7 @@ static double compile_rule(Program& program, const Rule& rule, std::vector<Step>
                 }
             }
 
-            const auto effective = std::max(1.0, program.relation_size_estimate[relation] * selectivity);
+            const auto effective = std::max(1.0, plan.estimate_of(relation) * selectivity);
             const auto fanout = (num_key_columns == 0) ? effective : std::max(1.0, effective / std::max(1.0, key_domain));
             const auto pairs = accumulator_estimate * fanout;
 
@@ -1232,8 +1531,8 @@ static double compile_rule(Program& program, const Rule& rule, std::vector<Step>
         auto step = Step {};
         step.lhs = accumulator_relation;
         step.rhs = literal.relation;
-        const auto rhs_kind = program.relation_kind[literal.relation];
-        step.rhs_is_edb = (rhs_kind == RelationKind::Static || rhs_kind == RelationKind::TypeDomain || rhs_kind == RelationKind::True);
+        step.rhs_is_edb = plan.uses_shared_edb_index(literal.relation);
+        step.rhs_is_stable = plan.is_stable(literal.relation);
 
         auto rhs_column = std::vector<uint32_t>(num_variables, NO_INDEX);
         for (uint32_t position = 0; position < literal.args.size(); ++position)
@@ -1241,7 +1540,7 @@ static double compile_rule(Program& program, const Rule& rule, std::vector<Step>
             const auto& term = literal.args[position];
             if (!term.is_variable)
             {
-                step.const_rhs_columns.emplace_back(position, ObjectId(term.value));
+                step.const_rhs_columns.emplace_back(position, term.value);
             }
             else if (rhs_column[term.value] != NO_INDEX)
             {
@@ -1357,32 +1656,23 @@ static double compile_rule(Program& program, const Rule& rule, std::vector<Step>
             auto next_estimate = best_output;
             if (dry_run)
             {
-                accumulator_relation = program.true_relation;  ///< a trial plan allocates nothing
+                accumulator_relation = plan.base.true_relation;  ///< a trial plan allocates nothing
             }
             else
             {
                 const auto key = describe_step(step, out_variables);
-                const auto it = program.shared_auxiliary_steps.find(key);
-                if (it != program.shared_auxiliary_steps.end())
+                const auto it = plan.shared_steps.find(key);
+                if (it != plan.shared_steps.end())
                 {
                     accumulator_relation = it->second;
-                    next_estimate = program.relation_size_estimate[accumulator_relation];
+                    next_estimate = plan.estimate_of(accumulator_relation);
                     emit_this_step = false;
                 }
                 else
                 {
-                    const auto id = RelationId(program.relation_kind.size());
-                    program.relation_kind.push_back(RelationKind::Auxiliary);
-                    program.relation_arity.push_back(uint32_t(out_variables.size()));
-                    program.relation_predicate.push_back(nullptr);
-                    program.relation_name.push_back("$aux_" + std::to_string(program.num_auxiliary_relations));
-                    program.relation_position_domain.push_back(std::vector<double>(out_variables.size(), 0.0));
-                    program.relation_size_estimate.push_back(best_output);
-                    program.edb.emplace_back();
-                    ++program.num_auxiliary_relations;
-                    step.out = id;
-                    program.shared_auxiliary_steps.emplace(key, id);
-                    accumulator_relation = id;
+                    accumulator_relation = plan.add_auxiliary(uint32_t(out_variables.size()), best_output);
+                    step.out = accumulator_relation;
+                    plan.shared_steps.emplace(key, accumulator_relation);
                 }
             }
 
@@ -1406,16 +1696,16 @@ static double compile_rule(Program& program, const Rule& rule, std::vector<Step>
         {
             if (step.rhs_is_edb)
             {
-                step.rhs_index = uint32_t(program.num_edb_index_slots++);
+                step.rhs_index = uint32_t(plan.num_edb_index_slots++);
             }
             else
             {
-                step.rhs_index = uint32_t(program.num_idb_index_slots++);
+                step.rhs_index = uint32_t(plan.num_idb_index_slots++);
             }
         }
-        if (!step.rhs_is_edb && !step.join_lhs_columns.empty())
+        if (!step.rhs_is_stable && !step.join_lhs_columns.empty())
         {
-            step.lhs_index = uint32_t(program.num_idb_index_slots++);
+            step.lhs_index = uint32_t(plan.num_idb_index_slots++);
         }
 
         out_steps.push_back(std::move(step));
@@ -1429,7 +1719,7 @@ static double compile_rule(Program& program, const Rule& rule, std::vector<Step>
 /// A trial plan allocates nothing, so this costs |body| passes of an O(|body|^2) loop per rule and no memory.
 /// Measured on the thirteen largest test instances it never added more than a few milliseconds to the
 /// compilation, and it is what stops one unlucky opening literal from turning a linear chain into a product.
-static void compile_rule_with_best_seed(Program& program, const Rule& rule, std::vector<Step>& out_steps)
+static void compile_rule_with_best_seed(PlanContext& plan, const Rule& rule, std::vector<Step>& out_steps)
 {
     auto best_seed = std::numeric_limits<size_t>::max();
     auto best_cost = std::numeric_limits<double>::infinity();
@@ -1437,14 +1727,14 @@ static void compile_rule_with_best_seed(Program& program, const Rule& rule, std:
     for (size_t seed = 0; seed < rule.body.size(); ++seed)
     {
         scratch.clear();
-        const auto cost = compile_rule(program, rule, scratch, seed, true);
+        const auto cost = compile_rule(plan, rule, scratch, seed, true);
         if (cost < best_cost)
         {
             best_cost = cost;
             best_seed = seed;
         }
     }
-    compile_rule(program, rule, out_steps, best_seed, false);
+    compile_rule(plan, rule, out_steps, best_seed, false);
 }
 
 /**
@@ -1563,12 +1853,12 @@ public:
             const auto& variant = term->get_variant();
             if (std::holds_alternative<Object>(variant))
             {
-                return RuleTerm { false, m_program.get_object_id(std::get<Object>(variant)) };
+                return RuleTerm { false, m_program.intern_constant(m_program.get_object_id(std::get<Object>(variant))) };
             }
             const auto root = find(parent, VariableId(std::get<Variable>(variant)->get_parameter_index()));
             if (constant_of_slot[root] != NO_OBJECT)
             {
-                return RuleTerm { false, constant_of_slot[root] };
+                return RuleTerm { false, m_program.intern_constant(constant_of_slot[root]) };
             }
             if (variable_of_root[root] == NO_VARIABLE)
             {
@@ -1849,6 +2139,43 @@ static std::vector<Rule> build_rules(Program& program, Compiler& compiler)
     return rules;
 }
 
+/// @brief Drop a unary static literal that holds every object, unless it is the only thing binding its
+/// variable.
+///
+/// mimir compiles the type hierarchy into unary static predicates and puts every one of them into the
+/// action's condition, so a rule over five parameters carries five `(object ?x)` literals on top of the five
+/// type literals that actually restrict anything. A relation holding every object filters nothing, so joining
+/// it is pure cost -- except where it is what makes the rule safe.
+static void drop_universal_unary_literals(const Program& program, Rule& rule)
+{
+    auto occurrences = std::vector<size_t>(rule.num_variables, 0);
+    for (const auto& atom : rule.body)
+    {
+        for (const auto& term : atom.args)
+        {
+            if (term.is_variable)
+            {
+                ++occurrences[term.value];
+            }
+        }
+    }
+    auto kept = std::vector<RuleAtom> {};
+    for (auto& atom : rule.body)
+    {
+        const auto kind = program.relation_kind[atom.relation];
+        const auto is_universal = (kind == RelationKind::Static || kind == RelationKind::TypeDomain)  //
+                                  && atom.args.size() == 1 && atom.args[0].is_variable                //
+                                  && program.edb[atom.relation].size() == program.object_by_id.size();
+        if (is_universal && occurrences[atom.args[0].value] > 1)
+        {
+            --occurrences[atom.args[0].value];
+            continue;
+        }
+        kept.push_back(std::move(atom));
+    }
+    rule.body = std::move(kept);
+}
+
 /// @brief Drop rules whose fully ground static literals already decide the question, and rewrite the rest so
 /// that only literals the fixpoint has to look at survive.
 static bool simplify_static_literals(const Program& program, Rule& rule)
@@ -1870,7 +2197,7 @@ static bool simplify_static_literals(const Program& program, Rule& rule)
         auto values = std::vector<ObjectId> {};
         for (const auto& term : atom.args)
         {
-            values.push_back(term.value);
+            values.push_back(program.plan_constants[term.value]);
         }
         if (!program.edb[atom.relation].contains(values.data()))
         {
@@ -1891,7 +2218,7 @@ static bool simplify_static_literals(const Program& program, Rule& rule)
         auto values = std::vector<ObjectId> {};
         for (const auto& term : atom.args)
         {
-            values.push_back(term.value);
+            values.push_back(program.plan_constants[term.value]);
         }
         if (program.edb[atom.relation].contains(values.data()))
         {
@@ -1900,39 +2227,7 @@ static bool simplify_static_literals(const Program& program, Rule& rule)
     }
     rule.negative_static = std::move(negative);
 
-    /* mimir compiles the type hierarchy into unary static predicates and puts every one of them into the
-       action's condition, so a rule over five parameters carries five `(object ?x)` literals on top of the
-       five type literals that actually restrict anything. A unary static relation that holds every object
-       filters nothing, so joining it is pure cost -- drop it, unless it is the only thing binding its
-       variable, in which case it is what makes the rule safe. */
-    {
-        auto occurrences = std::vector<size_t>(rule.num_variables, 0);
-        for (const auto& atom : rule.body)
-        {
-            for (const auto& term : atom.args)
-            {
-                if (term.is_variable)
-                {
-                    ++occurrences[term.value];
-                }
-            }
-        }
-        auto kept = std::vector<RuleAtom> {};
-        for (auto& atom : rule.body)
-        {
-            const auto kind = program.relation_kind[atom.relation];
-            const auto is_universal = (kind == RelationKind::Static || kind == RelationKind::TypeDomain)  //
-                                      && atom.args.size() == 1 && atom.args[0].is_variable                //
-                                      && program.edb[atom.relation].size() == program.object_by_id.size();
-            if (is_universal && occurrences[atom.args[0].value] > 1)
-            {
-                --occurrences[atom.args[0].value];
-                continue;
-            }
-            kept.push_back(std::move(atom));
-        }
-        rule.body = std::move(kept);
-    }
+    drop_universal_unary_literals(program, rule);
 
     auto disequalities = std::vector<std::pair<RuleTerm, RuleTerm>> {};
     for (const auto& [lhs, rhs] : rule.disequalities)
@@ -1969,12 +2264,28 @@ static void compile_plan(Program& program, const std::vector<Rule>& rules)
     program.num_edb_index_slots = 0;
     program.num_idb_index_slots = 0;
     program.steps.clear();
-    program.shared_auxiliary_steps.clear();
 
+    auto plan = PlanContext(program, num_kept, false);
     for (const auto& rule : rules)
     {
-        compile_rule_with_best_seed(program, rule, program.steps);
+        compile_rule_with_best_seed(plan, rule, plan.steps);
     }
+
+    /* Absorb the plan's auxiliaries, so that a `Database` sees one flat relation id space. */
+    for (size_t i = 0; i < plan.num_auxiliary_relations(); ++i)
+    {
+        program.relation_kind.push_back(RelationKind::Auxiliary);
+        program.relation_arity.push_back(plan.auxiliary_arity[i]);
+        program.relation_predicate.push_back(nullptr);
+        program.relation_name.push_back("$aux_" + std::to_string(i));
+        program.relation_position_domain.push_back(std::vector<double>(plan.auxiliary_arity[i], 0.0));
+        program.relation_size_estimate.push_back(plan.auxiliary_estimate[i]);
+        program.edb.emplace_back();
+    }
+    program.num_auxiliary_relations = plan.num_auxiliary_relations();
+    program.num_edb_index_slots = plan.num_edb_index_slots;
+    program.num_idb_index_slots = plan.num_idb_index_slots;
+    program.steps = std::move(plan.steps);
 
     /* The EDB indexes are built once and shared by every query, because a static relation never changes. */
     program.edb_indexes.assign(program.num_edb_index_slots, JoinIndex {});
@@ -1993,12 +2304,319 @@ static void compile_plan(Program& program, const std::vector<Rule>& rules)
     }
 }
 
+
+/**
+ * Conjunctive queries
+ */
+
+constexpr uint32_t NO_SLOT = std::numeric_limits<uint32_t>::max();
+
+/// @brief One pass over a query: every constant occurrence gets a slot of the call's constant table, every
+/// term becomes a `RuleTerm`, and the shape key is built from the pattern alone.
+///
+/// The key deliberately records only *that* a term is a constant, never which object it is, so that the
+/// generator's "same achiever, different binding" asks hit the same compiled plan.
+struct QueryScan
+{
+    std::string shape_key;
+    std::vector<ObjectId> constants;
+    std::vector<std::vector<RuleTerm>> literal_terms;
+    std::vector<RelationId> literal_relation;
+    std::vector<char> literal_polarity;
+    std::vector<std::pair<RuleTerm, RuleTerm>> equalities;
+    std::vector<std::pair<RuleTerm, RuleTerm>> disequalities;
+    bool valid = true;  ///< false when the query names an object this problem does not have
+};
+
+static QueryScan scan_query(const Program& program, const ConjunctiveQuery& query)
+{
+    auto scan = QueryScan {};
+    auto stream = std::ostringstream {};
+    stream << 'q' << query.num_variables << '|';
+
+    const auto term_of = [&](const QueryTerm& term) -> RuleTerm
+    {
+        if (term.is_variable())
+        {
+            stream << 'v' << term.get_variable() << ',';
+            return RuleTerm { true, term.get_variable() };
+        }
+        stream << "c,";
+        const auto id = program.get_object_id(term.get_object());
+        if (id == NO_OBJECT)
+        {
+            scan.valid = false;
+        }
+        const auto slot = uint32_t(scan.constants.size());
+        scan.constants.push_back(id);
+        return RuleTerm { false, slot };
+    };
+
+    for (const auto& literal : query.literals)
+    {
+        const auto* predicate_pointer = std::visit([](auto predicate) { return static_cast<const void*>(predicate); }, literal.predicate);
+        const auto relation = program.get_relation_id(predicate_pointer);
+
+        // A caller that spells equality as a literal rather than putting it in `equalities` means the same
+        // thing; `=` has no relation because the engine evaluates it on object identity.
+        const auto is_equality = std::holds_alternative<Predicate<StaticTag>>(literal.predicate)
+                                 && is_equality_predicate(std::get<Predicate<StaticTag>>(literal.predicate));
+        if (is_equality && literal.terms.size() == 2)
+        {
+            stream << (literal.polarity ? "EQ:" : "NE:");
+            const auto lhs = term_of(literal.terms[0]);
+            const auto rhs = term_of(literal.terms[1]);
+            (literal.polarity ? scan.equalities : scan.disequalities).emplace_back(lhs, rhs);
+            stream << ';';
+            continue;
+        }
+
+        stream << 'L' << relation << ':' << (literal.polarity ? '+' : '-') << ':';
+        scan.literal_relation.push_back(relation);
+        scan.literal_polarity.push_back(literal.polarity ? char(1) : char(0));
+        auto terms = std::vector<RuleTerm> {};
+        terms.reserve(literal.terms.size());
+        for (const auto& term : literal.terms)
+        {
+            terms.push_back(term_of(term));
+        }
+        scan.literal_terms.push_back(std::move(terms));
+        stream << ';';
+    }
+
+    stream << 'E';
+    for (const auto& [lhs, rhs] : query.equalities)
+    {
+        const auto a = term_of(lhs);
+        const auto b = term_of(rhs);
+        scan.equalities.emplace_back(a, b);
+        stream << ';';
+    }
+    stream << 'D';
+    for (const auto& [lhs, rhs] : query.disequalities)
+    {
+        const auto a = term_of(lhs);
+        const auto b = term_of(rhs);
+        scan.disequalities.emplace_back(a, b);
+        stream << ';';
+    }
+
+    scan.shape_key = stream.str();
+    return scan;
+}
+
+/// @brief Compile one head per query variable over the shared body, sharing prefixes wherever the two chains
+/// still need the same variables.
+static std::unique_ptr<QueryPlan> compile_query_plan(const Program& program, const QueryScan& scan, size_t num_query_variables)
+{
+    auto plan = std::make_unique<QueryPlan>();
+    plan->base_count = program.relation_kind.size();
+    plan->num_constant_slots = scan.constants.size();
+    plan->variable_head.assign(num_query_variables, NO_RELATION);
+
+    /* Merge variables joined by a positive `=`, then pin the merged classes a `=` ties to a constant. */
+    auto parent = std::vector<uint32_t>(num_query_variables);
+    for (uint32_t variable = 0; variable < num_query_variables; ++variable)
+    {
+        parent[variable] = variable;
+    }
+    const std::function<uint32_t(uint32_t)> find = [&](uint32_t variable)
+    {
+        while (parent[variable] != variable)
+        {
+            parent[variable] = parent[parent[variable]];
+            variable = parent[variable];
+        }
+        return variable;
+    };
+
+    for (const auto& [lhs, rhs] : scan.equalities)
+    {
+        if (lhs.is_variable && rhs.is_variable && lhs.value < num_query_variables && rhs.value < num_query_variables)
+        {
+            parent[find(lhs.value)] = find(rhs.value);
+        }
+    }
+
+    auto pinned_slot = std::vector<uint32_t>(num_query_variables, NO_SLOT);
+    for (const auto& [lhs, rhs] : scan.equalities)
+    {
+        const auto pin = [&](const RuleTerm& variable_term, const RuleTerm& constant_term)
+        {
+            if (variable_term.value >= num_query_variables)
+            {
+                return;
+            }
+            const auto root = find(variable_term.value);
+            if (pinned_slot[root] == NO_SLOT)
+            {
+                pinned_slot[root] = constant_term.value;
+            }
+            else
+            {
+                // Two constants pinned to the same class: whether they agree depends on the objects, which the
+                // shape does not know, so it becomes a check against the call's constant table.
+                plan->equal_slot_checks.emplace_back(pinned_slot[root], constant_term.value);
+            }
+        };
+        if (lhs.is_variable && !rhs.is_variable)
+        {
+            pin(lhs, rhs);
+        }
+        else if (!lhs.is_variable && rhs.is_variable)
+        {
+            pin(rhs, lhs);
+        }
+        else if (!lhs.is_variable && !rhs.is_variable)
+        {
+            plan->equal_slot_checks.emplace_back(lhs.value, rhs.value);
+        }
+    }
+
+    auto shared_disequalities = std::vector<std::pair<RuleTerm, RuleTerm>> {};
+    for (const auto& [lhs, rhs] : scan.disequalities)
+    {
+        if (!lhs.is_variable && !rhs.is_variable)
+        {
+            plan->distinct_slot_checks.emplace_back(lhs.value, rhs.value);
+        }
+        else
+        {
+            shared_disequalities.emplace_back(lhs, rhs);
+        }
+    }
+
+    /* Dense ids for the classes that stayed variables. */
+    auto dense_of_root = std::vector<uint32_t>(num_query_variables, NO_VARIABLE);
+    auto num_dense = uint32_t(0);
+    const auto resolve = [&](const RuleTerm& term) -> RuleTerm
+    {
+        if (!term.is_variable || term.value >= num_query_variables)
+        {
+            return term.is_variable ? RuleTerm { false, 0 } : term;
+        }
+        const auto root = find(term.value);
+        if (pinned_slot[root] != NO_SLOT)
+        {
+            return RuleTerm { false, pinned_slot[root] };
+        }
+        if (dense_of_root[root] == NO_VARIABLE)
+        {
+            dense_of_root[root] = num_dense++;
+        }
+        return RuleTerm { true, dense_of_root[root] };
+    };
+
+    /* The body every head shares. */
+    auto body = std::vector<RuleAtom> {};
+    auto negative_static = std::vector<RuleAtom> {};
+    for (size_t index = 0; index < scan.literal_relation.size(); ++index)
+    {
+        const auto relation = scan.literal_relation[index];
+        if (relation == NO_RELATION)
+        {
+            // A predicate this problem does not have holds of nothing, so the whole conjunction is empty.
+            plan->unsatisfiable = true;
+            return plan;
+        }
+        auto atom = RuleAtom {};
+        atom.relation = relation;
+        for (const auto& term : scan.literal_terms[index])
+        {
+            atom.args.push_back(resolve(term));
+        }
+        if (scan.literal_polarity[index] != 0)
+        {
+            body.push_back(std::move(atom));
+        }
+        else if (program.options.enforce_negative_static_conditions && program.relation_kind[relation] == RelationKind::Static)
+        {
+            negative_static.push_back(std::move(atom));
+        }
+        // A negative fluent or derived literal is dropped, exactly as it is in a rule.
+    }
+    for (auto& [lhs, rhs] : shared_disequalities)
+    {
+        lhs = resolve(lhs);
+        rhs = resolve(rhs);
+    }
+
+    /* Resolve every variable's head term now, so that a variable the body never mentions -- a parameter the
+       caller left free while pinning the rest -- gets its dense id before any rule is sized by `num_dense`. */
+    auto head_terms = std::vector<RuleTerm>(num_query_variables);
+    for (size_t variable = 0; variable < num_query_variables; ++variable)
+    {
+        head_terms[variable] = resolve(RuleTerm { true, uint32_t(variable) });
+    }
+
+    auto context = PlanContext(program, plan->base_count, true);
+
+    /* Reserve one unary head per query variable before planning, so the last join of each chain can write it
+       directly. */
+    for (size_t variable = 0; variable < num_query_variables; ++variable)
+    {
+        plan->variable_head[variable] = context.add_auxiliary(1, double(program.object_by_id.size()));
+    }
+
+    for (size_t variable = 0; variable < num_query_variables; ++variable)
+    {
+        auto rule = Rule {};
+        rule.provenance = "query";
+        rule.num_variables = num_dense;
+        rule.variable_domain.assign(num_dense, double(program.object_by_id.size()));
+        rule.head.relation = plan->variable_head[variable];
+        rule.head.args.push_back(head_terms[variable]);
+        rule.body = body;
+        rule.negative_static = negative_static;
+        rule.disequalities = shared_disequalities;
+
+        /* Safety: a variable no positive literal binds ranges over every object. */
+        auto bound = std::vector<char>(num_dense, 0);
+        for (const auto& atom : rule.body)
+        {
+            collect_variables(atom.args, bound);
+        }
+        const auto require_bound = [&](const std::vector<RuleTerm>& terms)
+        {
+            for (const auto& term : terms)
+            {
+                if (term.is_variable && !bound[term.value])
+                {
+                    auto atom = RuleAtom {};
+                    atom.relation = program.universal_domain_relation;
+                    atom.args.push_back(term);
+                    rule.body.push_back(std::move(atom));
+                    bound[term.value] = 1;
+                }
+            }
+        };
+        require_bound(rule.head.args);
+        for (const auto& atom : rule.negative_static)
+        {
+            require_bound(atom.args);
+        }
+        for (const auto& [lhs, rhs] : rule.disequalities)
+        {
+            require_bound({ lhs, rhs });
+        }
+
+        drop_universal_unary_literals(program, rule);
+        compile_rule_with_best_seed(context, rule, context.steps);
+    }
+
+    plan->auxiliary_arity = std::move(context.auxiliary_arity);
+    plan->num_idb_index_slots = context.num_idb_index_slots;
+    plan->steps = std::move(context.steps);
+    return plan;
+}
 }
 
 namespace mimir::search
 {
 
 using namespace mimir::search::relaxed_reachability;
+
+static std::vector<RelationTuple> to_relation_tuples(const Program& program, const ForbiddenAtomList& forbidden);
 
 /**
  * ReachableTuples
@@ -2108,6 +2726,292 @@ ReachableTuples ReachabilityTable::get_reachable_tuples(formalism::Predicate<for
     return ReachableTuples(relation_id == NO_RELATION ? nullptr : &m_database->get_relation(relation_id), &m_program->object_by_id);
 }
 
+/**
+ * Conjunctive queries
+ */
+
+QueryTerm QueryTerm::of_object(formalism::Object object)
+{
+    auto term = QueryTerm {};
+    term.m_object = object;
+    return term;
+}
+
+QueryTerm QueryTerm::of_variable(uint32_t index)
+{
+    auto term = QueryTerm {};
+    term.m_object = nullptr;
+    term.m_variable = index;
+    return term;
+}
+
+std::vector<formalism::ObjectList> ReachabilityTable::project(const ConjunctiveQuery& query) const
+{
+    auto result = std::vector<ObjectList>(query.num_variables);
+
+    const auto scan = scan_query(*m_program, query);
+    if (!scan.valid)
+    {
+        return result;  ///< the query names an object of another problem, so nothing satisfies it
+    }
+
+    auto& cache = m_program->query_plan_cache;
+    auto it = cache.find(scan.shape_key);
+    if (it == cache.end())
+    {
+        it = cache.emplace(scan.shape_key, compile_query_plan(*m_program, scan, query.num_variables)).first;
+    }
+    const auto& plan = *it->second;
+
+    if (plan.unsatisfiable)
+    {
+        return result;
+    }
+    /* The checks the shape could state but not decide. */
+    for (const auto& [lhs, rhs] : plan.equal_slot_checks)
+    {
+        if (scan.constants[lhs] != scan.constants[rhs])
+        {
+            return result;
+        }
+    }
+    for (const auto& [lhs, rhs] : plan.distinct_slot_checks)
+    {
+        if (scan.constants[lhs] == scan.constants[rhs])
+        {
+            return result;
+        }
+    }
+
+    auto database = Database(*m_program, plan, *m_database, scan.constants);
+    database.run(false);
+
+    auto ids = std::vector<ObjectId> {};
+    for (size_t variable = 0; variable < query.num_variables; ++variable)
+    {
+        const auto& relation = database.get_relation(plan.variable_head[variable]);
+        ids.clear();
+        for (size_t position = 0; position < relation.size(); ++position)
+        {
+            ids.push_back(relation.get_tuple(position)[0]);
+        }
+        std::sort(ids.begin(), ids.end());
+        ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+        result[variable].reserve(ids.size());
+        for (const auto id : ids)
+        {
+            result[variable].push_back(m_program->object_by_id[id]);
+        }
+    }
+    return result;
+}
+
+/**
+ * WitnessQuery
+ */
+
+WitnessQuery::WitnessQuery(const relaxed_reachability::Program& program,
+                           const relaxed_reachability::Database& database,
+                           const ForbiddenAtomList& forbidden) :
+    m_program(&program),
+    m_database(&database),
+    m_memo(std::make_unique<WitnessMemo>())
+{
+    m_memo->forbidden_storage.resize(program.relation_kind.size());
+    m_memo->forbidden.assign(program.relation_kind.size(), nullptr);
+    m_memo->state.assign(program.relation_kind.size(), {});
+
+    for (const auto& atom : to_relation_tuples(program, forbidden))
+    {
+        auto& storage = m_memo->forbidden_storage[atom.relation];
+        if (m_memo->forbidden[atom.relation] == nullptr)
+        {
+            storage.reset(program.relation_arity[atom.relation]);
+            m_memo->forbidden[atom.relation] = &storage;
+        }
+        storage.insert(atom.values.data());
+    }
+}
+
+WitnessQuery::~WitnessQuery() = default;
+
+WitnessQuery::WitnessQuery(WitnessQuery&& other) noexcept = default;
+
+WitnessQuery& WitnessQuery::operator=(WitnessQuery&& other) noexcept = default;
+
+size_t WitnessQuery::get_num_memoised() const { return m_memo->num_memoised; }
+
+namespace
+{
+struct WitnessFrame
+{
+    RelationId relation;
+    uint32_t position;
+    uint8_t phase;
+};
+}
+
+/// @brief Walk the recorded derivation tree of one tuple, memoising every node on the way.
+///
+/// Iterative rather than recursive on purpose: a derivation chain is as deep as the atom's h-max layer, and
+/// sokoban's `at-robot` spreads one grid cell per layer over an 8000-cell grid.
+static bool decide_witness(const Program& program, const Database& database, WitnessMemo& memo, RelationId root_relation, size_t root_position)
+{
+    const auto cell = [&](RelationId relation, size_t position) -> uint8_t&
+    {
+        auto& states = memo.state[relation];
+        if (states.size() <= position)
+        {
+            states.resize(std::max(position + 1, database.get_relation(relation).size()), WitnessMemo::UNSEEN);
+        }
+        return states[position];
+    };
+    const auto is_forbidden = [&](RelationId relation, size_t position)
+    {
+        const auto* forbidden = memo.forbidden[relation];
+        return forbidden != nullptr && forbidden->contains(database.get_relation(relation).get_tuple(position));
+    };
+
+    auto stack = std::vector<WitnessFrame> { WitnessFrame { root_relation, uint32_t(root_position), 0 } };
+    while (!stack.empty())
+    {
+        const auto frame = stack.back();
+        auto& own = cell(frame.relation, frame.position);
+        if (own == WitnessMemo::YES || own == WitnessMemo::NO)
+        {
+            stack.pop_back();
+            continue;
+        }
+        if (own == WitnessMemo::PENDING && frame.phase == 0)
+        {
+            // Re-entering a node that is still on the stack would be a cyclic derivation. The insertion order
+            // rules that out -- a body tuple always exists before the head it produces -- so this is a guard,
+            // not a case: leave the ancestor's cell alone and let it read "not YES" from this child.
+            stack.pop_back();
+            continue;
+        }
+
+        const auto witness = database.get_witness(frame.relation, frame.position);
+
+        if (frame.phase == 0)
+        {
+            if (is_forbidden(frame.relation, frame.position))
+            {
+                own = WitnessMemo::NO;
+                ++memo.num_memoised;
+                stack.pop_back();
+                continue;
+            }
+            if (witness.step == NO_STEP)
+            {
+                // A leaf: an initial atom, or a tuple of the static EDB, which no query can forbid.
+                own = WitnessMemo::YES;
+                ++memo.num_memoised;
+                stack.pop_back();
+                continue;
+            }
+            own = WitnessMemo::PENDING;
+            stack.back().phase = 1;
+            const auto& step = program.steps[witness.step];
+            stack.push_back(WitnessFrame { step.lhs, witness.left, 0 });
+            continue;
+        }
+
+        const auto& step = program.steps[witness.step];
+        if (frame.phase == 1)
+        {
+            if (cell(step.lhs, witness.left) != WitnessMemo::YES)
+            {
+                own = WitnessMemo::NO;
+                ++memo.num_memoised;
+                stack.pop_back();
+                continue;
+            }
+            if (step.rhs == NO_RELATION)
+            {
+                own = WitnessMemo::YES;
+                ++memo.num_memoised;
+                stack.pop_back();
+                continue;
+            }
+            stack.back().phase = 2;
+            stack.push_back(WitnessFrame { step.rhs, witness.right, 0 });
+            continue;
+        }
+
+        own = (cell(step.rhs, witness.right) == WitnessMemo::YES) ? uint8_t(WitnessMemo::YES) : uint8_t(WitnessMemo::NO);
+        ++memo.num_memoised;
+        stack.pop_back();
+    }
+
+    return memo.state[root_relation][root_position] == WitnessMemo::YES;
+}
+
+template<IsStaticOrFluentOrDerivedTag P>
+static WitnessVerdict witness_avoids(const Program& program, const Database& database, WitnessMemo& memo, Predicate<P> predicate, const ObjectList& objects)
+{
+    const auto relation_id = program.get_relation_id(predicate);
+    if (relation_id == NO_RELATION || objects.size() != program.relation_arity[relation_id])
+    {
+        return WitnessVerdict::UNKNOWN;
+    }
+    auto values = std::vector<ObjectId> {};
+    values.reserve(objects.size());
+    for (const auto object : objects)
+    {
+        const auto id = program.get_object_id(object);
+        if (id == NO_OBJECT)
+        {
+            return WitnessVerdict::UNKNOWN;
+        }
+        values.push_back(id);
+    }
+    const auto position = database.get_relation(relation_id).find(values.data());
+    if (position == Relation::NPOS)
+    {
+        return WitnessVerdict::UNKNOWN;  ///< not reachable even unrestricted
+    }
+    return decide_witness(program, database, memo, relation_id, position) ? WitnessVerdict::REACHABLE_WITHOUT : WitnessVerdict::UNKNOWN;
+}
+
+WitnessVerdict WitnessQuery::avoids(formalism::Predicate<formalism::FluentTag> predicate, const formalism::ObjectList& objects) const
+{
+    return witness_avoids(*m_program, *m_database, *m_memo, predicate, objects);
+}
+
+WitnessVerdict WitnessQuery::avoids(formalism::Predicate<formalism::DerivedTag> predicate, const formalism::ObjectList& objects) const
+{
+    return witness_avoids(*m_program, *m_database, *m_memo, predicate, objects);
+}
+
+WitnessVerdict WitnessQuery::avoids(formalism::GroundAtom<formalism::FluentTag> atom) const { return avoids(atom->get_predicate(), atom->get_objects()); }
+
+WitnessVerdict WitnessQuery::avoids(formalism::GroundAtom<formalism::DerivedTag> atom) const { return avoids(atom->get_predicate(), atom->get_objects()); }
+
+bool ReachabilityTable::has_witnesses() const { return m_database->has_witnesses(); }
+
+size_t ReachabilityTable::get_num_witnesses() const { return m_database->get_num_witnesses(); }
+
+WitnessQuery ReachabilityTable::witness_query(const ForbiddenAtomList& forbidden) const
+{
+    if (!m_database->has_witnesses())
+    {
+        throw std::logic_error("relaxed reachability table carries no witnesses (built with record_witnesses = false)");
+    }
+    return WitnessQuery(*m_program, *m_database, forbidden);
+}
+
+WitnessQuery ReachabilityTable::witness_query(const formalism::GroundAtomList<formalism::FluentTag>& forbidden) const
+{
+    auto atoms = ForbiddenAtomList {};
+    atoms.reserve(forbidden.size());
+    for (const auto atom : forbidden)
+    {
+        atoms.emplace_back(atom->get_predicate(), atom->get_objects());
+    }
+    return witness_query(atoms);
+}
+
 size_t ReachabilityTable::get_num_reachable_fluent_atoms() const { return m_database->get_num_tuples(RelationKind::Fluent); }
 
 size_t ReachabilityTable::get_num_reachable_derived_atoms() const { return m_database->get_num_tuples(RelationKind::Derived); }
@@ -2155,6 +3059,17 @@ std::shared_ptr<const RelaxedReachability> RelaxedReachability::create(const for
     /* Relation 0 is the truth value every rule's first join starts from. */
     program->true_relation = register_relation(*program, RelationKind::True, 0, nullptr, "$true");
     program->edb[program->true_relation].insert(nullptr);
+
+    // Every object, so that a query variable no positive literal binds is still safe: its answer is then the
+    // whole universe, exactly as an action parameter occurring only in a negative precondition ranges over
+    // its declared type.
+    program->universal_domain_relation = register_relation(*program, RelationKind::TypeDomain, 1, nullptr, "$all_objects");
+    for (ObjectId object_id = 0; object_id < program->object_by_id.size(); ++object_id)
+    {
+        program->edb[program->universal_domain_relation].insert(&object_id);
+    }
+    program->relation_size_estimate[program->universal_domain_relation] = double(program->object_by_id.size());
+    program->relation_position_domain[program->universal_domain_relation][0] = double(program->object_by_id.size());
 
     register_predicates(*program, compiler, problem->get_domain()->get_predicates<StaticTag>(), RelationKind::Static);
     register_predicates(*program, compiler, problem->get_domain()->get_predicates<FluentTag>(), RelationKind::Fluent);
@@ -2249,7 +3164,7 @@ std::shared_ptr<const RelaxedReachability> RelaxedReachability::create(const for
     /* The unrestricted fixpoint. */
     const auto fixpoint_start = std::chrono::high_resolution_clock::now();
     auto database = std::make_unique<Database>(*program);
-    database->run(false);
+    database->run(false, options.record_witnesses);
     const auto fixpoint_ms = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - fixpoint_start).count();
 
     auto& statistics = result->m_statistics;
@@ -2312,7 +3227,7 @@ const ReachabilityTable& RelaxedReachability::get_table() const { return *m_tabl
 
 /// @brief Translate the caller's ground atoms into relation tuples, dropping any that name an object or a
 /// predicate this problem does not have (such an atom can never be derived, so forbidding it is a no-op).
-static std::vector<RelationTuple> to_relation_tuples(const Program& program, const RelaxedReachability::ForbiddenAtomList& forbidden)
+static std::vector<RelationTuple> to_relation_tuples(const Program& program, const ForbiddenAtomList& forbidden)
 {
     auto result = std::vector<RelationTuple> {};
     result.reserve(forbidden.size());
