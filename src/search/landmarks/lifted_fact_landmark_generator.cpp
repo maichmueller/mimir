@@ -1420,6 +1420,8 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
 
     /// Insert `predicate(binding)`, or merge into the record already holding that identity, and
     /// return its position; `nullopt` when a more specific landmark already subsumes it.
+    const auto member_set_identity = bool(relaxed) && options.first_achievers_restricted;
+
     const auto insert = [&](Predicate<FluentTag> predicate, const ObjectList& binding, IndexList members, std::optional<size_t> parent_position)
         -> std::optional<size_t>
     {
@@ -1431,7 +1433,18 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
         }
         sort_unique(members);
 
-        const auto identity = make_identity(predicate->get_index(), binding);
+        /* §9.3 record identity. With first achievers restricted, the MEMBER SET is what carries the
+           information -- it is what `R_{¬M}` is computed from -- and identifying a record by its
+           pattern alone throws that away. sokoban `train/p11` is the witness: the corridor
+           `at(box1, goal) -> at(box1, {one cell}) -> at(box1, {the next}) -> ...` is one pattern
+           with a different singleton member set at every step, and under pattern identity the goal
+           record subsumes the first of them and the rest merge into each other. Four Pi+ landmarks
+           went missing that way. RHW does not have the problem because its nodes ARE the sets. */
+        auto identity = make_identity(predicate->get_index(), binding);
+        if (member_set_identity && !bound)
+        {
+            identity.insert(identity.end(), members.begin(), members.end());
+        }
         const auto existing = position_by_identity.find(identity);
         if (existing != position_by_identity.end())
         {
@@ -1456,7 +1469,24 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
         {
             for (const auto& other : records)
             {
-                if (other.predicate != predicate || other.binding.size() != binding.size())
+                if (other.predicate != predicate)
+                {
+                    continue;
+                }
+                if (member_set_identity)
+                {
+                    /* Subset dedupe over the sets. An existing set contained in this one says
+                       strictly more -- "some member of the smaller holds" implies "some member of
+                       the larger holds" -- so this derivation adds nothing. A set contained in an
+                       existing one, or incomparable with every existing one, is new information and
+                       gets its own record to expand. */
+                    if (std::includes(members.begin(), members.end(), other.member_atom_indices.begin(), other.member_atom_indices.end()))
+                    {
+                        return std::nullopt;
+                    }
+                    continue;
+                }
+                if (other.binding.size() != binding.size())
                 {
                     continue;
                 }
@@ -1931,6 +1961,32 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
             continue;
         }
         disjunctive_landmarks.push_back(record.member_atom_indices);
+    }
+
+    /* §9.3: with member-set identity a pattern can contribute several sets, and a set that strictly
+       contains another says less than it -- every plan making a member of the smaller true makes a
+       member of the larger true. Keeping both would only widen LIW's rank set. The records keep
+       their derivation edges either way; this is about the vocabulary the graph publishes. */
+    if (member_set_identity)
+    {
+        auto kept = std::vector<IndexList> {};
+        for (const auto& members : disjunctive_landmarks)
+        {
+            const auto strictly_contains_another = std::any_of(disjunctive_landmarks.begin(),
+                                                               disjunctive_landmarks.end(),
+                                                               [&](const IndexList& other) {
+                                                                   return other.size() < members.size()
+                                                                          && std::includes(members.begin(),
+                                                                                           members.end(),
+                                                                                           other.begin(),
+                                                                                           other.end());
+                                                               });
+            if (!strictly_contains_another)
+            {
+                kept.push_back(members);
+            }
+        }
+        disjunctive_landmarks = std::move(kept);
     }
 
     for (auto& edges : predecessors_by_atom)
