@@ -376,11 +376,12 @@ def test_the_reachability_options_are_on_the_python_surface():
     assert options.verify_pi_plus is True
     assert options.complete_fact_landmarks == search.CompleteFactLandmarks.MEMBERS
 
-    # JOINT is on the enum and refused by the generator until the engine can project a query, so a
-    # caller that asks for it is told rather than quietly given the weaker rule.
+    # JOINT is implemented and selectable, but not the default: it currently drops achievers it
+    # should keep (see the option's own documentation). Selecting it must still produce a graph
+    # rather than raise, so that the discrepancy can be measured.
     options.reachability_disambiguation = search.ReachabilityDisambiguation.JOINT
-    with pytest.raises(Exception):
-        search.LiftedFactLandmarkGenerator.create(_parse("blocks_4"), options)
+    joint = search.LiftedFactLandmarkGenerator.create(_parse("blocks_4"), options)
+    assert joint.get_landmark_atom_indices()
 
 
 def test_first_achievers_restricted_closes_the_cross_city_chain():
