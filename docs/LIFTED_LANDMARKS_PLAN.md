@@ -672,6 +672,55 @@ Drop the achiever if any domain becomes empty. Sound: the first achiever of a
 member is applicable in a reachable state, so all its preconditions are in `R`
 jointly. Members derived from a narrowed achiever (§2.5) shrink accordingly.
 
+#### 9.2 as built
+
+`joint` is the default and calls `ReachabilityTable::project(ConjunctiveQuery)`.
+The query is assembled per achiever, and five details of the assembly are
+load-bearing:
+
+1. **Only free slots that OCCUR in a literal become query variables**, and they
+   are renumbered densely `0..k-1` with `num_variables == k`; a slot `σ` fixed
+   is a query *constant*, which is what lets the engine cache a plan by shape
+   and reuse it across expansions that differ only in their objects. Declaring a
+   variable that occurs in no literal is not harmless: the engine projects an
+   empty list for it (it cannot enumerate the universe), and the intersection
+   below would read that as "no admissible value" and drop a perfectly good
+   achiever.
+2. Dense renumbering is also what kept this caller clear of the engine defect
+   fixed in `1d7a15029`: a term whose variable index was at or past
+   `num_variables` used to resolve to the query's *constant slot 0*. The
+   triggering pattern is numbering variables by parameter slot while sizing
+   `num_variables` by how many are free. This generator has renumbered densely
+   since the first `joint` commit, and merging the engine fix left every
+   extracted landmark on twelve instances byte-identical, so that defect never
+   fired here. The engine now throws `std::invalid_argument` instead.
+3. `=` static literals become the query's builtin `equalities` / `disequalities`
+   rather than relations to look up.
+4. Negative fluent preconditions are dropped: they are meaningless under the
+   delete relaxation.
+5. The engine returns each projection sorted by its **own** object ids, which
+   are not this file's `get_index()` order. `std::set_intersection` over two
+   differently ordered ranges silently returns nonsense, so each projection is
+   re-sorted by object index before being intersected with the achiever's
+   candidate domain.
+
+**An achiever with no free occurring slot still has to be checked.** Returning
+early there — nothing to narrow, so keep it — is what made `joint` keep
+achievers `per_literal` correctly dropped, and it was the whole of the
+`joint`-vs-`per_literal` discrepancy on blocksworld: with `?ob` pinned,
+`putdown(b3)` has no free slot, it needs `holding(b3)`, no state of
+`R_{¬clear(b3)}` holds it, and once it survives, the §2.4 intersection over it
+and `unstack` is empty and the entire chain below `clear(b3)` disappears. A
+ground conjunction needs no join: each precondition instance is tested against
+the table directly.
+
+Cost, and the reason the two levels are still both offered: under option 3
+`project` runs a join **against a table**, and a witness store cannot
+enumerate, so every `joint` expansion pays one real restricted fixpoint.
+`per_literal` asks only membership questions and can take the shortcut of
+§9.3, which on most instances removes nearly all of them. Path consistency over
+arc consistency is what that buys.
+
 ### 9.3 `first_achievers_restricted` (option 3): RHW possible first achievers
 
 When expanding a landmark with member set `M` (a fact is `M = {f}`), compute
@@ -712,6 +761,62 @@ Cost model: one restricted fixpoint per landmark expansion (facts and sets
 alike). This is the term the ladder must measure; do not cache across
 expansions unless the cache is exact (a restricted fixpoint for `M` is not
 reusable for `M' ≠ M`).
+
+#### 9.3 as built: member-set identity, and the witness shortcut
+
+**Record identity.** Once first achievers are restricted, the member set is what
+carries the information — it is what `R_{¬M}` is computed from — so under option
+3 (and only then, so an all-off run stays byte-identical to 0.16.0) a partial
+record is identified by `(pattern, member set)`, with subset dedupe over records
+of the same predicate. This was diagnosed on sokoban `train/p11`, where four
+Π⁺-certified landmarks were missing, and it had **two** causes, the second
+visible only once the first was removed:
+
+1. §2.4 **pattern subsumption** — the dominant one. The goal record
+   `at(box1, loc_4_2)` is more specific than the derived `at(box1, ?)`, so the
+   partial record was dropped and the corridor chain died at its first step.
+   Disabling that check alone recovers two of the four atoms.
+2. The **union-merge on (predicate, binding)**. The remaining steps are the same
+   pattern with a different singleton member set each time, so the second
+   derivation merged into the first record and was never expanded again.
+
+Both are the same mistake at different sites: pattern identity throws the member
+set away. RHW does not have the problem because its nodes *are* the sets. p11
+goes from 4 facts / 0 sets / 5 records to 13 / 9 / 35.
+
+**The witness shortcut (`per_literal` only).** `R_{¬M} ⊆ R`, so a restricted
+membership test may enumerate its candidates from the unrestricted table and
+filter each one: the filter is exact, so the answer is identical, and the
+enumeration never needs the restricted table. The filter itself is answered by
+the witness store first.
+
+The witness store is a **property of `R`, not a cache of restricted results**.
+It is built once, by the unrestricted fixpoint, and records a derivation for
+each derived atom; `avoids(atom, M)` reports `REACHABLE_WITHOUT` when that atom
+has a derivation touching no member of `M`, which is a proof that the atom is in
+`R_{¬M}`. Nothing about any particular `M` went into building it, so it is
+equally valid for every `M`, and the §9.2 warning about not reusing a restricted
+fixpoint across expansions is untouched: no restricted fixpoint is being reused.
+A `REACHABLE_WITHOUT` verdict is sound and exact; the store never answers
+"unreachable", only "proved reachable without `M`" or "unknown".
+
+On the first genuinely unknown atom of an expansion — the recorded derivations
+all touch `M`, which is *not* a proof of unreachability — the real
+`compute_restricted(M)` is computed, at most once per expansion, and answers
+that question and every later one of that expansion. The extracted landmarks are
+therefore identical to always computing the fixpoint; only the count of
+fixpoints changes. `MIMIR_LANDMARK_STATS=1` prints expansions, real restricted
+fixpoints and records, which is how the two levels are compared.
+
+Option 4a cannot use the shortcut either: it asks a reachability question about
+a *different* forbidden set per fact, and it needs a decision, not a positive
+proof, so it stays one fixpoint per fact.
+
+**Lifetime.** `RelaxedReachability::get_table()` returns a reference the engine
+owns, unlike the self-sufficient table `compute_restricted` hands back. The
+unrestricted index built over it, and every witness query taken from it, must
+not outlive the engine; in the generator both live in
+`extract_lifted_fact_landmarks`, with the engine declared first.
 
 ### 9.4 `verify_pi_plus` (option 4a): certify every extracted fact
 

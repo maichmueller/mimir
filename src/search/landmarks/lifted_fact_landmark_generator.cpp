@@ -1007,6 +1007,10 @@ bool apply_self_dependent_precondition_rule(Achiever& achiever,
 class ReachableIndex
 {
 public:
+    /* Holds the table by reference and does not own it. `RelaxedReachability::get_table()` returns a
+       reference the engine owns -- unlike the self-sufficient table `compute_restricted` hands back
+       -- so an index built over it must not outlive its engine. Here both live in
+       `extract_lifted_fact_landmarks`, the engine declared first. */
     explicit ReachableIndex(const ReachabilityTable& table) : m_table(table) {}
 
     /// @brief Tuples of `predicate` that can match `pattern`, smallest selecting bucket first.
