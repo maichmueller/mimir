@@ -36,6 +36,7 @@
 #include "mimir/formalism/variable.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <chrono>
 #include <functional>
 #include <cstring>
@@ -2491,10 +2492,12 @@ static std::unique_ptr<QueryPlan> compile_query_plan(const Program& program, con
     auto num_dense = uint32_t(0);
     const auto resolve = [&](const RuleTerm& term) -> RuleTerm
     {
-        if (!term.is_variable || term.value >= num_query_variables)
+        if (!term.is_variable)
         {
-            return term.is_variable ? RuleTerm { false, 0 } : term;
+            return term;
         }
+        // `project` rejects an out-of-range variable index before compiling, so this holds.
+        assert(term.value < num_query_variables);
         const auto root = find(term.value);
         if (pinned_slot[root] != NO_SLOT)
         {
@@ -2747,6 +2750,35 @@ QueryTerm QueryTerm::of_variable(uint32_t index)
 
 std::vector<formalism::ObjectList> ReachabilityTable::project(const ConjunctiveQuery& query) const
 {
+    /* A variable index past `num_variables` is a malformed query, and it has to be said out loud rather than
+       absorbed. Silently treating it as anything else -- an unconstrained variable, or worse, a slot of the
+       constant table -- turns a caller's off-by-one in `num_variables` into a plausible wrong answer that
+       depends on which constants the call happened to carry, which is the hardest kind of bug to find from
+       the outside. */
+    const auto check_term = [&](const QueryTerm& term)
+    {
+        if (term.is_variable() && term.get_variable() >= query.num_variables)
+        {
+            throw std::invalid_argument("conjunctive query uses variable index " + std::to_string(term.get_variable()) + " but declares only "
+                                        + std::to_string(query.num_variables) + " variables");
+        }
+    };
+    for (const auto& literal : query.literals)
+    {
+        for (const auto& term : literal.terms)
+        {
+            check_term(term);
+        }
+    }
+    for (const auto& pairs : { std::cref(query.equalities), std::cref(query.disequalities) })
+    {
+        for (const auto& [lhs, rhs] : pairs.get())
+        {
+            check_term(lhs);
+            check_term(rhs);
+        }
+    }
+
     auto result = std::vector<ObjectList>(query.num_variables);
 
     const auto scan = scan_query(*m_program, query);

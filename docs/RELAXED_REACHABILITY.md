@@ -236,6 +236,12 @@ Query variables that no positive literal binds range over every object, through 
 built once per problem, exactly as an action parameter occurring only in a negative precondition ranges over
 its declared type.
 
+A term using a variable index at or past `num_variables` throws `std::invalid_argument`. It used to resolve
+to *constant slot 0* -- the first constant the query happened to carry -- which turns a caller's off-by-one
+(numbering variables by parameter slot while sizing `num_variables` by how many are free, natural when the
+rest are pinned, and wrong whenever the free one is not the first) into a plausible wrong answer that changes
+with the constants and only in a sequence. It is a named error now.
+
 Not thread-safe: the plan cache is shared and mutated on a miss.
 
 ## 4c. Witness derivations
@@ -303,6 +309,27 @@ The same 200,000 questions through `compute_restricted` would be 200,000 x 26 ms
   tables *in the same tuple order*, and identical statistics, and so do two
   restricted queries. The engine iterates only vectors, never a hash map, so its
   output order is a function of its input.
+- **Projected queries.** Every action schema of 16 instances -- the 13 small `data/` domains plus the three
+  fixtures -- becomes a query from its precondition conjunction with the schema's parameters as variables,
+  once unbound and twice with one parameter pinned to a random object (which exercises the constant table on a
+  plan compiled for the unpinned shape). With the benchmark data present, five IPC `p01-easy` instances are
+  added. Each is compared variable by variable against a plain backtracking join over the same table.
+  **286 queries, all equal; 5 skipped because the backtracking join exceeded its 300,000-tuple-touch budget.**
+- **The cached-plan path, adversarially.** On blocks_4: the same shape with nine different constants in a row
+  on one table (including the same object twice running and two objects of different index in both orders);
+  the same shape alternating across three tables (unrestricted, `-clear(b3)`, `-on(b1,b3)`) with the plan
+  cached from the first; shapes interleaved A, B, A', B'; the same conjunction pinned through an equality
+  instead of by substitution; and two shapes differing only in *which* position is a constant, alternating.
+  **40 calls, every one equal to the brute-force join over that table**, and the generator's own case pinned:
+  `unstack`'s conjunction with `?underob = b3` over the table that forbids `clear(b3)` gives `?ob = {b1}`,
+  after A and B and again after further interleaving. Plus the malformed-query cases above.
+- **Witnesses.** On 14 instances, every reachable atom is asked against every single-atom forbidden set the
+  instance affords plus 20 random sets of up to four atoms, and every `REACHABLE_WITHOUT` is confirmed against
+  `compute_restricted`. **8260 verdicts over 470 forbidden sets, 5657 of them `REACHABLE_WITHOUT` (68.5%),
+  none contradicted.** At scale, 200 random (atom, forbidden set) pairs on each of ferry and
+  blocksworld-ipc-enhanced `p30-hard`: 200/200 `REACHABLE_WITHOUT`, all confirmed. A table built with
+  `record_witnesses = false` refuses `witness_query` with `std::logic_error` rather than answering `UNKNOWN`
+  to everything.
 
 ## 6. Measured
 
