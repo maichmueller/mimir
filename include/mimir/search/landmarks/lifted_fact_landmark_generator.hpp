@@ -32,6 +32,8 @@ enum class ReachabilityDisambiguation
     OFF,          ///< No narrowing beyond the static filter.
     PER_LITERAL,  ///< Each precondition literal narrows its own variables against the reachable set.
     JOINT,        ///< The projection of the whole precondition conjunction, never materialised.
+                  ///< NOT IMPLEMENTED YET: it needs a projected-query entry point on the engine
+                  ///< (§9.2), and `create` throws rather than quietly doing `PER_LITERAL`.
 };
 
 /// @brief §9.5: which atoms are tested against the complete Π⁺ fact-landmark characterisation.
@@ -100,7 +102,10 @@ struct LiftedFactLandmarkGeneratorOptions
     bool reachability_filter_members = true;
 
     /// @brief §9.2: narrow an achiever's free variables to what the reachable set can supply.
-    ReachabilityDisambiguation reachability_disambiguation = ReachabilityDisambiguation::JOINT;
+    ///
+    /// Defaults to `PER_LITERAL` until `JOINT` exists, so that the default configuration is one the
+    /// generator can actually run.
+    ReachabilityDisambiguation reachability_disambiguation = ReachabilityDisambiguation::PER_LITERAL;
 
     /// @brief §9.3: restrict achievers to those that can be the FIRST to add a member.
     ///

@@ -38,6 +38,7 @@
 
 #include <algorithm>
 #include <deque>
+#include <stdexcept>
 #include <limits>
 #include <unordered_map>
 #include <unordered_set>
@@ -125,6 +126,7 @@ struct Achiever
     const SchemaEffect* schema;
     ObjectList sigma;                    ///< `nullptr` marks an unbound slot.
     std::vector<ObjectList> candidates;  ///< Per slot, ascending by object index; unused when bound.
+    Literal<FluentTag> effect_literal = nullptr;  ///< The add literal that unified with the pattern (§9.3).
 };
 
 /// @brief Everything about the problem the extraction rule reads, indexed once.
@@ -662,7 +664,7 @@ std::optional<Achiever> try_build_achiever(const SchemaEffect& schema,
                                            const ProblemIndex& index,
                                            bool apply_filter)
 {
-    auto achiever = Achiever { &schema, ObjectList(schema.num_slots, nullptr), {} };
+    auto achiever = Achiever { &schema, ObjectList(schema.num_slots, nullptr), {}, effect_literal };
 
     const auto& terms = effect_literal->get_atom()->get_terms();
     if (terms.size() != binding.size())
@@ -989,6 +991,273 @@ bool apply_self_dependent_precondition_rule(Achiever& achiever,
     return true;
 }
 
+/// @brief A bucketed view of one reachability fixpoint's tuples.
+///
+/// The engine hands out tuples per predicate; a narrowing asks "which tuples of `Q` match this
+/// partially bound pattern", which is the same question the static filter asks of the initial state
+/// and needs the same answer shape. Buckets are built per predicate on first use and keyed by
+/// (position, object), so a pattern with a bound position scans a handful of tuples instead of the
+/// predicate's whole reachable set -- the lesson phase 5's 1.25-billion-atom scan taught.
+class ReachableIndex
+{
+public:
+    explicit ReachableIndex(const ReachabilityTable& table) : m_table(table) {}
+
+    /// @brief Tuples of `predicate` that can match `pattern`, smallest selecting bucket first.
+    const std::vector<const ObjectList*>& get_candidates(Predicate<FluentTag> predicate, const ObjectList& pattern) const
+    {
+        static const auto empty = std::vector<const ObjectList*> {};
+        const auto& all = materialise(predicate);
+        if (all.empty())
+        {
+            return empty;
+        }
+
+        const std::vector<const ObjectList*>* best = nullptr;
+        for (size_t position = 0; position < pattern.size(); ++position)
+        {
+            if (!pattern[position])
+            {
+                continue;
+            }
+            const auto it = m_buckets.find(Identity { predicate->get_index(), Index(position), pattern[position]->get_index() });
+            if (it == m_buckets.end())
+            {
+                return empty;  // no reachable tuple has this object here
+            }
+            if (!best || it->second.size() < best->size())
+            {
+                best = &it->second;
+            }
+        }
+        return best ? *best : m_all_pointers.at(predicate->get_index());
+    }
+
+private:
+    const std::vector<ObjectList>& materialise(Predicate<FluentTag> predicate) const
+    {
+        const auto predicate_index = predicate->get_index();
+        const auto cached = m_tuples.find(predicate_index);
+        if (cached != m_tuples.end())
+        {
+            return cached->second;
+        }
+
+        auto tuples = std::vector<ObjectList> {};
+        const auto reachable = m_table.get_reachable_tuples(predicate);
+        tuples.reserve(reachable.size());
+        for (size_t i = 0; i < reachable.size(); ++i)
+        {
+            tuples.push_back(reachable[i]);
+        }
+        auto& stored = m_tuples.emplace(predicate_index, std::move(tuples)).first->second;
+
+        auto& pointers = m_all_pointers[predicate_index];
+        pointers.reserve(stored.size());
+        for (const auto& tuple : stored)
+        {
+            pointers.push_back(&tuple);
+            for (size_t position = 0; position < tuple.size(); ++position)
+            {
+                m_buckets[Identity { predicate_index, Index(position), tuple[position]->get_index() }].push_back(&tuple);
+            }
+        }
+        return stored;
+    }
+
+    const ReachabilityTable& m_table;
+    mutable std::unordered_map<Index, std::vector<ObjectList>> m_tuples;
+    mutable std::unordered_map<Index, std::vector<const ObjectList*>> m_all_pointers;
+    mutable std::unordered_map<Identity, std::vector<const ObjectList*>, IdentityHash> m_buckets;
+};
+
+/// @brief §9.2 `per_literal` for one positive fluent precondition: a free variable may only take
+/// the objects that appear at its position in some *reachable* instance of the literal.
+///
+/// Returns false when the literal has no reachable instance consistent with the achiever at all,
+/// which means the achiever has no applicable ground instance in the fixpoint and cannot be the
+/// first achiever of anything.
+bool narrow_by_reachable_literal(Literal<FluentTag> literal,
+                                 const ReachableIndex& reachable,
+                                 const ObjectList& sigma,
+                                 std::vector<ObjectList>& candidates,
+                                 bool& changed)
+{
+    const auto& terms = literal->get_atom()->get_terms();
+    const auto predicate = literal->get_atom()->get_predicate();
+
+    auto pattern = ObjectList {};
+    pattern.reserve(terms.size());
+    for (const auto term : terms)
+    {
+        pattern.push_back(resolve_term(term, sigma));
+    }
+
+    static thread_local auto local_object = ObjectList {};
+    static thread_local auto local_slots = std::vector<Index> {};
+    static thread_local auto narrowed = std::vector<ObjectList> {};
+    static thread_local auto narrowed_slots = std::vector<Index> {};
+
+    local_object.assign(candidates.size(), nullptr);
+    narrowed.resize(candidates.size());
+    for (const auto slot : narrowed_slots)
+    {
+        narrowed[slot].clear();
+    }
+    narrowed_slots.clear();
+
+    auto any_match = false;
+    for (const auto* tuple : reachable.get_candidates(predicate, pattern))
+    {
+        const auto& objects = *tuple;
+        if (objects.size() != terms.size())
+        {
+            continue;
+        }
+        local_slots.clear();
+        auto consistent = true;
+        for (size_t i = 0; consistent && i < terms.size(); ++i)
+        {
+            if (pattern[i])
+            {
+                consistent = (pattern[i] == objects[i]);
+                continue;
+            }
+            const auto slot = term_slot(terms[i]);
+            if (slot == FREE_POSITION || slot >= candidates.size())
+            {
+                continue;
+            }
+            const auto& domain = candidates[slot];
+            if (!std::binary_search(domain.begin(), domain.end(), objects[i], by_object_index))
+            {
+                consistent = false;
+                break;
+            }
+            if (local_object[slot])
+            {
+                consistent = (local_object[slot] == objects[i]);
+            }
+            else
+            {
+                local_object[slot] = objects[i];
+                local_slots.push_back(slot);
+            }
+        }
+
+        if (consistent)
+        {
+            any_match = true;
+            for (const auto slot : local_slots)
+            {
+                if (narrowed[slot].empty())
+                {
+                    narrowed_slots.push_back(slot);
+                }
+                narrowed[slot].push_back(local_object[slot]);
+            }
+        }
+        for (const auto slot : local_slots)
+        {
+            local_object[slot] = nullptr;
+        }
+    }
+
+    if (!any_match)
+    {
+        return false;
+    }
+
+    for (const auto slot : narrowed_slots)
+    {
+        auto& objects = narrowed[slot];
+        std::sort(objects.begin(), objects.end(), by_object_index);
+        objects.erase(std::unique(objects.begin(), objects.end()), objects.end());
+        if (objects.empty())
+        {
+            return false;
+        }
+        changed |= (objects.size() < candidates[slot].size());
+        candidates[slot] = objects;
+    }
+    return true;
+}
+
+/// @brief §9.2 over every positive fluent precondition. Returns false to drop the achiever.
+bool apply_reachability_narrowing(Achiever& achiever, const ReachableIndex& reachable, bool& changed)
+{
+    for (const auto literal : achiever.schema->positive_fluent_preconditions)
+    {
+        if (!narrow_by_reachable_literal(literal, reachable, achiever.sigma, achiever.candidates, changed))
+        {
+            return false;
+        }
+    }
+    for (size_t slot = 0; slot < achiever.candidates.size(); ++slot)
+    {
+        if (!achiever.sigma[slot] && achiever.candidates[slot].size() == 1)
+        {
+            achiever.sigma[slot] = achiever.candidates[slot].front();
+            changed = true;
+        }
+    }
+    return true;
+}
+
+/// @brief §9.3's first step: an achiever that is to be the first to add a MEMBER must bind its
+/// pattern positions to something a member actually has there.
+///
+/// Position-wise, which over-approximates "adds a member" (a tuple of per-position values need not
+/// be a member) and is sound for exactly that reason: it is a superset of the bindings that do.
+bool narrow_to_member_projection(Achiever& achiever,
+                                 Literal<FluentTag> effect_literal,
+                                 const std::vector<ObjectList>& member_objects,
+                                 bool& changed)
+{
+    const auto& terms = effect_literal->get_atom()->get_terms();
+    for (size_t position = 0; position < terms.size(); ++position)
+    {
+        const auto slot = term_slot(terms[position]);
+        if (slot == FREE_POSITION || slot >= achiever.sigma.size() || achiever.sigma[slot])
+        {
+            continue;  // a constant, or already bound by the unification with the pattern
+        }
+        auto projection = ObjectList {};
+        for (const auto& member : member_objects)
+        {
+            if (position < member.size())
+            {
+                projection.push_back(member[position]);
+            }
+        }
+        std::sort(projection.begin(), projection.end(), by_object_index);
+        projection.erase(std::unique(projection.begin(), projection.end()), projection.end());
+
+        auto intersected = ObjectList {};
+        std::set_intersection(achiever.candidates[slot].begin(),
+                              achiever.candidates[slot].end(),
+                              projection.begin(),
+                              projection.end(),
+                              std::back_inserter(intersected),
+                              by_object_index);
+        if (intersected.empty())
+        {
+            return false;
+        }
+        changed |= (intersected.size() < achiever.candidates[slot].size());
+        achiever.candidates[slot] = std::move(intersected);
+    }
+    for (size_t slot = 0; slot < achiever.candidates.size(); ++slot)
+    {
+        if (!achiever.sigma[slot] && achiever.candidates[slot].size() == 1)
+        {
+            achiever.sigma[slot] = achiever.candidates[slot].front();
+            changed = true;
+        }
+    }
+    return true;
+}
+
 /// @brief §2.5's reachability test for one candidate member, memoized by identity.
 ///
 /// A ground atom that is not a fluent initial atom and that no statically consistent,
@@ -1068,6 +1337,11 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
        tuples rather than interning atoms, so the "interns nothing beyond the grounder's universe"
        parity still holds. Built only when some option needs it, so an all-off run does not pay for
        a fixpoint it will not read. */
+    if (options.reachability_disambiguation == ReachabilityDisambiguation::JOINT)
+    {
+        throw std::logic_error("reachability_disambiguation=JOINT is not implemented yet (it needs a projected-query "
+                               "entry point on RelaxedReachability); use PER_LITERAL");
+    }
     const auto relaxed = needs_relaxed_reachability(options) ? RelaxedReachability::create(problem) : nullptr;
 
     const auto index = ProblemIndex(problem);
@@ -1242,6 +1516,7 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
     auto member_objects = ObjectList {};
     auto sdp_decisions = std::unordered_map<Identity, bool, IdentityHash> {};
     auto adder_cache = AdderSigmaCache {};
+    auto unrestricted_index = std::optional<ReachableIndex> {};
 
     while (!worklist.empty())
     {
@@ -1284,13 +1559,91 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
         }
 
         /**
+         * §9.3: restrict the achievers to those that can be the FIRST to add a member of this
+         * landmark, and §9.2: narrow their free variables by what reachability can supply.
+         *
+         * `R_{¬M}` is the fixpoint that never derives a member. Every state before the first
+         * member-producing action holds only atoms of `R_{¬M}`, so that action's preconditions are
+         * in it and its binding survives the narrowing below. §2.1 guarantees `M ∩ I = ∅`, which is
+         * what makes the restricted fixpoint well defined here.
+         */
+        auto restricted = std::optional<ReachabilityTable> {};
+        auto restricted_index = std::optional<ReachableIndex> {};
+        const ReachableIndex* narrowing = nullptr;
+
+        if (relaxed && options.first_achievers_restricted)
+        {
+            auto forbidden = GroundAtomList<FluentTag> {};
+            forbidden.reserve(records[position].member_atom_indices.size());
+            for (const auto member : records[position].member_atom_indices)
+            {
+                forbidden.push_back(problem->get_repositories().get_ground_atom<FluentTag>(member));
+            }
+            restricted.emplace(relaxed->compute_restricted(forbidden));
+            restricted_index.emplace(*restricted);
+            narrowing = &*restricted_index;
+
+            auto member_objects_by_position = std::vector<ObjectList> {};
+            member_objects_by_position.reserve(forbidden.size());
+            for (const auto atom : forbidden)
+            {
+                member_objects_by_position.push_back(atom->get_objects());
+            }
+
+            auto surviving = std::vector<Achiever> {};
+            for (auto& achiever : achievers)
+            {
+                auto keep = true;
+                for (auto changed = true; keep && changed;)
+                {
+                    changed = false;
+                    keep = narrow_to_member_projection(achiever, achiever.effect_literal, member_objects_by_position, changed)
+                           && apply_reachability_narrowing(achiever, *narrowing, changed);
+                    if (keep && changed)
+                    {
+                        keep = apply_static_filter(achiever, index);
+                    }
+                }
+                if (keep)
+                {
+                    surviving.push_back(std::move(achiever));
+                }
+            }
+            achievers = std::move(surviving);
+        }
+        else if (relaxed && options.reachability_disambiguation != ReachabilityDisambiguation::OFF)
+        {
+            unrestricted_index.emplace(relaxed->get_table());
+            narrowing = &*unrestricted_index;
+            auto surviving = std::vector<Achiever> {};
+            for (auto& achiever : achievers)
+            {
+                auto keep = true;
+                for (auto changed = true; keep && changed;)
+                {
+                    changed = false;
+                    keep = apply_reachability_narrowing(achiever, *narrowing, changed);
+                    if (keep && changed)
+                    {
+                        keep = apply_static_filter(achiever, index);
+                    }
+                }
+                if (keep)
+                {
+                    surviving.push_back(std::move(achiever));
+                }
+            }
+            achievers = std::move(surviving);
+        }
+
+        /**
          * §2.7: drop the achievers that cannot be the *first* one, and narrow those that can.
          *
          * Gated on the pattern, not on the members: the argument needs "no instance of `P(u)` is
          * true before the first achiever fires", and a non-member instance holding at `I` breaks
          * it while leaving §2.1's member-level stop untouched.
          */
-        if (!index.has_initial_pattern_instance(predicate->get_index(), binding))
+        if (!(relaxed && options.first_achievers_restricted) && !index.has_initial_pattern_instance(predicate->get_index(), binding))
         {
             sdp_decisions.clear();
             auto surviving = std::vector<Achiever> {};
@@ -1470,7 +1823,11 @@ FactLandmarkGraph LiftedFactLandmarkGenerator::create(const Problem& problem, co
                                    because it answers most candidates without touching the engine. */
                                 if (reachability.can_ever_hold(precondition_predicate, member_objects)
                                     && (!relaxed || !options.reachability_filter_members
-                                        || relaxed->is_reachable(precondition_predicate, member_objects)))
+                                        || relaxed->is_reachable(precondition_predicate, member_objects))
+                                    /* §9.3: a derived member has to hold in a state the first
+                                       achiever of the PARENT could have been applicable in, which is
+                                       a state of `R_{¬M}`. */
+                                    && (!restricted || restricted->is_reachable(precondition_predicate, member_objects)))
                                 {
                                     members.push_back(
                                         problem->get_or_create_ground_atom<FluentTag>(precondition_predicate, member_objects)->get_index());

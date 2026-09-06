@@ -47,6 +47,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <map>
 #include <tuple>
 #include <set>
 #include <string>
@@ -967,6 +968,7 @@ const std::vector<std::tuple<std::string, std::string, std::string>>& golden_ins
             { "landmark_lifted_sdp_gate", "test_problem.pddl", "landmark_lifted_sdp_gate" },
             { "landmark_lifted_sdp_gate", "test_problem_closed.pddl", "landmark_lifted_sdp_gate_closed" },
             { "landmark_lifted_cross_city", "test_problem.pddl", "landmark_lifted_cross_city" },
+            { "landmark_lifted_first_achiever_chain", "test_problem.pddl", "landmark_lifted_first_achiever_chain" },
             { "landmark_ipc_smallest/miconic-ipc-hard", "p30-hard.pddl", "miconic_ipc_p30_hard" },
         };
         for (const auto& domain : ipc_domains())
@@ -1064,6 +1066,77 @@ TEST(MimirTests, SearchLandmarksLiftedReachabilityFilterMembersTest)
 }
 
 /**
+ * §9.3: restrict the achievers to those that can be the FIRST to add a member.
+ *
+ * Richter-Helmert-Westphal's possible-first-achiever test, computed as one restricted fixpoint per
+ * expansion instead of on an RPG. It subsumes §2.7 and strictly extends it: §2.7 argues about the
+ * first producer of the *pattern* and therefore has to gate on pattern instances in `I`, while this
+ * argues about the first producer of a *member*, which is what Proposition 1 actually needs.
+ */
+
+TEST(MimirTests, SearchLandmarksLiftedFirstAchieversRestrictedTest)
+{
+    /* The five-step cross-city chain. Every step is forced, and §2.7 finds only the first of them:
+       once `p0` has left `l2-1` the argument it can make is about the pattern `at(p0, ?)`, which has
+       an instance in `I`, so its gate closes. `R_{¬M}` has no such difficulty -- a package that was
+       never in a vehicle cannot have moved. */
+    const auto problem = parse("landmark_lifted_first_achiever_chain");
+
+    const auto without = LiftedFactLandmarkGenerator::create(problem, all_reachability_options_off());
+    const auto with = LiftedFactLandmarkGenerator::create(parse("landmark_lifted_first_achiever_chain"));
+
+    // Without it the chain dies at the package's own starting location.
+    EXPECT_EQ(find_landmark(without, "at", { "p0", "l1-0" }), nullptr);
+    EXPECT_EQ(find_landmark(without, "at", { "t1", "l1-3" }), nullptr);
+
+    // With it, every step of the route is a fact landmark.
+    for (const auto& [predicate_name, object_names] : std::vector<std::pair<std::string, std::vector<std::string>>> {
+             { "at", { "p0", "l2-1" } }, { "in", { "p0", "t2" } },   { "at", { "p0", "l2-0" } }, { "in", { "p0", "a" } },
+             { "at", { "p0", "l1-0" } }, { "in", { "p0", "t1" } },   { "at", { "p0", "l1-3" } }, { "at", { "t1", "l1-3" } },
+             { "at", { "t2", "l2-0" } }, { "at", { "a", "l1-0" } } })
+    {
+        EXPECT_NE(find_landmark(with, predicate_name, object_names), nullptr) << predicate_name << object_names.front();
+    }
+    EXPECT_GT(with->get_landmark_atom_indices().size(), without->get_landmark_atom_indices().size());
+
+    /* Every fact it adds must survive the Π⁺ test, which is the only thing that makes the extra
+       landmarks worth having rather than merely more numerous. */
+    const auto engine = RelaxedReachability::create(with->get_problem());
+    auto initial = std::set<Index> {};
+    for (const auto atom : with->get_problem()->get_fluent_initial_atoms())
+    {
+        initial.insert(atom->get_index());
+    }
+    const auto goal_atoms = std::set<Index>(with->get_problem()->get_goal_condition()->get_precondition<PositiveTag, FluentTag>().begin(),
+                                            with->get_problem()->get_goal_condition()->get_precondition<PositiveTag, FluentTag>().end());
+    for (const auto atom_index : with->get_landmark_atom_indices())
+    {
+        if (initial.count(atom_index) || goal_atoms.count(atom_index))
+        {
+            continue;
+        }
+        const auto atom = resolve_atom(with, atom_index);
+        EXPECT_FALSE(engine->is_goal_reachable_without(GroundAtomList<FluentTag> { atom }))
+            << atom_signature(atom) << " is not a Π⁺ landmark";
+    }
+}
+
+TEST(MimirTests, SearchLandmarksLiftedFirstAchieversSubsumeTheSyntacticRuleTest)
+{
+    /* §2.7 is skipped when §9.3 is on, so the four domains §2.7 was built for must still come out
+       right -- through the stronger rule rather than the weaker one. */
+    for (const auto& [domain, predicate_name, object_names] :
+         std::vector<std::tuple<std::string, std::string, std::vector<std::string>>> { { "ferry", "at-ferry", { "loc3" } },
+                                                                                       { "miconic", "lift-at", { "f0" } },
+                                                                                       { "blocks_4", "on", { "b1", "b3" } },
+                                                                                       { "blocks_4", "on-table", { "b2" } } })
+    {
+        const auto landmarks = LiftedFactLandmarkGenerator::create(parse(domain));
+        EXPECT_NE(find_landmark(landmarks, predicate_name, object_names), nullptr) << domain << " " << predicate_name;
+    }
+}
+
+/**
  * §2.5 reachability. An atom no schema can produce is in no reachable state, so it is not one of
  * the members a plan could have made true and dropping it leaves the landmark property intact.
  *
@@ -1095,7 +1168,7 @@ TEST(MimirTests, SearchLandmarksLiftedUnaddablePredicateTest)
     ASSERT_FALSE(ground_actions.empty());
     const auto atoms_after_grounding = num_fluent_atoms(problem);
 
-    const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+    const auto landmarks = LiftedFactLandmarkGenerator::create(problem, all_reachability_options_off());
 
     // No `origin` set survives, and any `origin` landmark that does is one of the initial atoms.
     EXPECT_TRUE(sets_over_predicate(landmarks, "origin").empty());
@@ -1128,7 +1201,7 @@ TEST(MimirTests, SearchLandmarksLiftedTypeGatedAdderTest)
        `at(spanner1, l)` and `at(nut1, l)` are unreachable for exactly the same reason, caught by
        the type check inside the unification rather than by "no adder at all". */
     const auto problem = parse("spanner", "p30-hard.pddl");
-    const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+    const auto landmarks = LiftedFactLandmarkGenerator::create(problem, all_reachability_options_off());
 
     const auto is_a = [](Object object, const std::string& type_name)
     {
@@ -1175,7 +1248,9 @@ TEST(MimirTests, SearchLandmarksLiftedStaticallyGatedAdderTest)
 {
     // The general case: `marked` is added only under a static condition `t3` fails.
     const auto problem = parse("landmark_lifted_unreachable_members");
-    const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+    // §2.5's own configuration: §9.3 subsumes it and would narrow `need` further, which is a
+    // different rule's result and belongs to that rule's test.
+    const auto landmarks = LiftedFactLandmarkGenerator::create(problem, all_reachability_options_off());
 
     const auto marked_sets = sets_over_predicate(landmarks, "marked");
     ASSERT_EQ(marked_sets.size(), 1u);
@@ -1201,7 +1276,8 @@ TEST(MimirTests, SearchLandmarksLiftedSelfDependentPreconditionFerryTest)
     // `on(car)` is achieved only by `board(car, ?loc)`, whose `at(car, ?loc)` has one adder,
     // `debark`, which needs `on(car)` itself -- so the car boards where the instance put it.
     const auto problem = parse("ferry");
-    const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+    // §2.7's own configuration -- §9.3 replaces it and is tested separately.
+    const auto landmarks = LiftedFactLandmarkGenerator::create(problem, all_reachability_options_off());
 
     const auto on_car1 = find_landmark(landmarks, "on", { "car1" });
     ASSERT_NE(on_car1, nullptr);
@@ -1217,7 +1293,7 @@ TEST(MimirTests, SearchLandmarksLiftedSelfDependentPreconditionMiconicTest)
     // The vacuous case: nothing adds `origin`, so `origin(p, ?f)` must be initial and the floor the
     // lift has to visit for `boarded(p)` is fixed.
     const auto problem = parse("miconic");
-    const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+    const auto landmarks = LiftedFactLandmarkGenerator::create(problem, all_reachability_options_off());
 
     const auto boarded_p0 = find_landmark(landmarks, "boarded", { "p0" });
     ASSERT_NE(boarded_p0, nullptr);
@@ -1234,7 +1310,7 @@ TEST(MimirTests, SearchLandmarksLiftedSelfDependentPreconditionLogisticsTest)
        not a truck or an airplane -- and both need `in(p0, ?)`. So the load happens at p0's initial
        location, and the vehicle stays a disjunction over whatever can be there. */
     const auto problem = parse("logistics");
-    const auto landmarks = LiftedFactLandmarkGenerator::create(problem);
+    const auto landmarks = LiftedFactLandmarkGenerator::create(problem, all_reachability_options_off());
 
     const auto in_p0 = find_lifted(landmarks, "in(p0, ?)");
     ASSERT_NE(in_p0, nullptr);
@@ -1265,8 +1341,9 @@ TEST(MimirTests, SearchLandmarksLiftedSelfDependentPreconditionGateTest)
        argument. The fixture puts exactly such an atom in `I` -- `held(t2)`, excluded from the
        members because t2 is not `usable` -- and the only difference between the two problems is
        whether it is there. */
-    const auto open_gate = LiftedFactLandmarkGenerator::create(parse("landmark_lifted_sdp_gate"));
-    const auto closed_gate = LiftedFactLandmarkGenerator::create(parse("landmark_lifted_sdp_gate", "test_problem_closed.pddl"));
+    const auto open_gate = LiftedFactLandmarkGenerator::create(parse("landmark_lifted_sdp_gate"), all_reachability_options_off());
+    const auto closed_gate =
+        LiftedFactLandmarkGenerator::create(parse("landmark_lifted_sdp_gate", "test_problem_closed.pddl"), all_reachability_options_off());
 
     // Same landmark either way: `held(?)` over the two usable things.
     for (const auto& landmarks : { open_gate, closed_gate })
@@ -1357,13 +1434,38 @@ TEST(MimirTests, SearchLandmarksLiftedSoundnessOracleTest)
     }
 
     auto grounded_totals = OracleResult {};
+    auto lifted_totals = std::map<std::string, OracleResult> {};
     for (const auto& [domain, instance] : instances)
     {
         const auto problem = parse(domain, instance);
         ASSERT_TRUE(problem->get_problem_and_domain_axioms().empty()) << domain << ": the oracle does not model axioms";
 
         const auto grounder = LiftedGrounder(problem);
-        const auto lifted = LiftedFactLandmarkGenerator::create(problem);
+        /* Every configuration the ladder will use, §9.8.6. They are separate graphs over separate
+           parses because each interns its own members. */
+        auto configurations = std::vector<std::pair<std::string, LiftedFactLandmarkGeneratorOptions>> {};
+        configurations.emplace_back("default", LiftedFactLandmarkGeneratorOptions {});
+        {
+            auto without_first_achievers = LiftedFactLandmarkGeneratorOptions {};
+            without_first_achievers.first_achievers_restricted = false;
+            configurations.emplace_back("-3", without_first_achievers);
+        }
+        {
+            auto without_member_filter = LiftedFactLandmarkGeneratorOptions {};
+            without_member_filter.reachability_filter_members = false;
+            configurations.emplace_back("-1", without_member_filter);
+        }
+        configurations.emplace_back("all-off", all_reachability_options_off());
+
+        /* Every graph is built on the SAME problem, before the relaxed task: the oracle compares
+           atom INDICES, and two parses of one file hand out different ones. Interning is
+           append-only and by identity, so a later configuration sees a larger repository and
+           derives exactly what it would have derived alone. */
+        auto graphs = std::vector<std::pair<std::string, FactLandmarkGraph>> {};
+        for (const auto& [label, configuration] : configurations)
+        {
+            graphs.emplace_back(label, LiftedFactLandmarkGenerator::create(problem, configuration));
+        }
 
         auto grounded_options = FactLandmarkGeneratorOptions {};
         grounded_options.max_disjunctive_landmark_size = size_t(1) << 30;  // uncapped, the §6 "G" configuration
@@ -1373,16 +1475,27 @@ TEST(MimirTests, SearchLandmarksLiftedSoundnessOracleTest)
         const auto task = RelaxedTask(problem, grounder.create_ground_actions());
         ASSERT_TRUE(task.goal_reachable_without({})) << domain << "/" << instance << ": unsolvable even relaxed, the oracle would be vacuous";
 
-        const auto lifted_result = run_oracle(lifted, task, domain + "/" + instance + " [lifted]", true);
         const auto grounded_result = run_oracle(grounded, task, domain + "/" + instance + " [grounded]", false);
         grounded_totals.num_tested += grounded_result.num_tested;
         grounded_totals.num_failed += grounded_result.num_failed;
 
-        std::cout << "oracle " << domain << "/" << instance << ": lifted " << lifted_result.num_failed << "/" << lifted_result.num_tested
-                  << " refuted, grounded " << grounded_result.num_failed << "/" << grounded_result.num_tested << " refuted\n";
+        std::cout << "oracle " << domain << "/" << instance << ": grounded " << grounded_result.num_failed << "/" << grounded_result.num_tested
+                  << " refuted";
+        for (const auto& [label, graph] : graphs)
+        {
+            const auto result = run_oracle(graph, task, domain + "/" + instance + " [lifted " + label + "]", true);
+            lifted_totals[label].num_tested += result.num_tested;
+            lifted_totals[label].num_failed += result.num_failed;
+            std::cout << ", " << label << " " << result.num_failed << "/" << result.num_tested;
+        }
+        std::cout << "\n";
     }
 
     std::cout << "oracle TOTAL grounded: " << grounded_totals.num_failed << "/" << grounded_totals.num_tested << " refuted\n";
+    for (const auto& [label, totals] : lifted_totals)
+    {
+        std::cout << "oracle TOTAL lifted " << label << ": " << totals.num_failed << "/" << totals.num_tested << " refuted\n";
+    }
 }
 
 /**
