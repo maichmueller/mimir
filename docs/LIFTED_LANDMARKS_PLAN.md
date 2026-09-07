@@ -619,7 +619,7 @@ singletons).
   kept in `LiftedLandmark.parent_positions` only.
 - Making the grounded generator sound (HPS verification) — a different change;
   the lifted generator supersedes it where grounding is the wall.
-## 9. Phase 6: relaxed reachability inside the lifted generator (pymimir 0.17.0)
+## 9. Phase 6: relaxed reachability inside the lifted generator (pymimir 0.16.1)
 
 Every add-on below is its own option on `LiftedFactLandmarkGeneratorOptions`,
 **on by default** (the one exception is §9.5's `all` level, whose cost is
@@ -874,7 +874,7 @@ sets. Worth building only if the ladder shows `all` recovers landmarks that
 ### 9.7 Bindings, version, hierarchical
 
 - All options on `LiftedFactLandmarkGeneratorOptions` in pymimir, with the
-  enums exposed; `setup.py` `__version__ = "0.17.0"`; `docs/VERSIONING.md` row.
+  enums exposed; `setup.py` `__version__ = "0.16.1"`; `docs/VERSIONING.md` row (released as 0.16.1 by the user's decision, although the MINOR rule would say 0.17.0).
 - hierarchical: every option reachable from the CLI (`train_args.py`,
   `plan.py` override, `config_report.py`, W&B config), defaults equal to the
   generator defaults; `LandmarkRepository` forwards them; the parity and
