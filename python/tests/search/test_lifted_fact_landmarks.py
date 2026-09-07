@@ -371,17 +371,17 @@ def test_the_reachability_options_are_on_the_python_surface():
     """ §9.7: every option reachable from Python, with the generator's own defaults. """
     options = search.LiftedFactLandmarkGeneratorOptions()
     assert options.reachability_filter_members is True
-    assert options.reachability_disambiguation == search.ReachabilityDisambiguation.PER_LITERAL
+    assert options.reachability_disambiguation == search.ReachabilityDisambiguation.JOINT
     assert options.first_achievers_restricted is True
     assert options.verify_pi_plus is True
     assert options.complete_fact_landmarks == search.CompleteFactLandmarks.MEMBERS
 
-    # JOINT is implemented and selectable, but not the default: it currently drops achievers it
-    # should keep (see the option's own documentation). Selecting it must still produce a graph
-    # rather than raise, so that the discrepancy can be measured.
-    options.reachability_disambiguation = search.ReachabilityDisambiguation.JOINT
-    joint = search.LiftedFactLandmarkGenerator.create(_parse("blocks_4"), options)
-    assert joint.get_landmark_atom_indices()
+    # PER_LITERAL (arc consistency) stays selectable next to the JOINT default (path consistency);
+    # on sokoban the two differ, elsewhere they agree. Selecting it must produce a graph rather
+    # than raise.
+    options.reachability_disambiguation = search.ReachabilityDisambiguation.PER_LITERAL
+    per_literal = search.LiftedFactLandmarkGenerator.create(_parse("blocks_4"), options)
+    assert per_literal.get_landmark_atom_indices()
 
 
 def test_first_achievers_restricted_closes_the_cross_city_chain():
