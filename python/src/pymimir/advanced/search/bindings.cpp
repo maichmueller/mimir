@@ -9,6 +9,39 @@ using namespace mimir::formalism;
 namespace mimir::search
 {
 
+/// @brief A Python-owned cancellation flag for a search that is running with the GIL released.
+///
+/// `iw::Options::control` stays unexposed on purpose: it is a raw pointer to state shared with
+/// other native searches, so Python neither has anything to do with the coordination fields nor
+/// anything keeping the pointee alive. This handle owns the `SearchControl` instead, which makes
+/// its lifetime the Python object's, and `find_solution_iw_nogil` writes the address onto a copy
+/// of the options that exists only for the duration of one call. No raw pointer ever crosses the
+/// binding.
+///
+/// `request_cancel` is a relaxed atomic store and `is_canceled` a relaxed load, which is what lets
+/// the searching thread poll the flag once per node expansion without ever touching the
+/// interpreter, and lets another Python thread raise it while the search holds no GIL.
+class SearchCancellation
+{
+public:
+    SearchCancellation() = default;
+
+    // Mirrors `SearchControl`, which is neither copyable nor movable because participants hold its
+    // address.
+    SearchCancellation(const SearchCancellation&) = delete;
+    SearchCancellation& operator=(const SearchCancellation&) = delete;
+
+    void request_cancel() { m_control.request_cancel(); }
+
+    bool is_canceled() const { return m_control.is_canceled(); }
+
+    /// @brief The owned control. Only ever written onto a *local copy* of a search's options.
+    SearchControl& get_control() { return m_control; }
+
+private:
+    SearchControl m_control;
+};
+
 namespace
 {
 std::vector<size_t> compute_transition_novel_fluent_atom_indices_read_only(const IPruningStrategy& pruning_strategy,
@@ -41,6 +74,148 @@ void reject_python_strategy(const GoalStrategy& strategy, const char* option_nam
     throw std::invalid_argument(std::string(option_name)
                                 + " must be a native goal strategy (ProblemGoalStrategy or ProblemMultiGoalStrategy). This entry point releases the GIL "
                                   "for the whole search and runs it on worker threads, so it cannot call back into Python.");
+}
+
+/// @brief Whether `object`'s dynamic type is one of `Allowed...`.
+///
+/// The folds below this are allowlists rather than denylists on purpose. The failure they guard
+/// against is a Python object reached from a thread that holds no GIL, which is a crash and not an
+/// exception, so a type nobody has looked at has to be refused rather than assumed harmless -- a
+/// pure-C++ implementation an embedder added included, since nothing here can tell it apart from a
+/// trampoline.
+template<typename... Allowed, typename Interface>
+bool is_any_of(const std::shared_ptr<Interface>& object)
+{
+    return (... || static_cast<bool>(std::dynamic_pointer_cast<Allowed>(object)));
+}
+
+[[noreturn]] void reject_non_native_option(const char* option_name, const char* allowed)
+{
+    throw std::invalid_argument(std::string(option_name) + " must be one of the native implementations (" + allowed
+                                + "). find_solution_iw_nogil releases the GIL for the whole search, so an object that dispatches back into Python "
+                                  "would be a crash rather than an exception.");
+}
+
+/// @brief Throw unless `handler` is native or absent, admitting a composite only through its
+/// children.
+///
+/// `brfs::IEventHandler` is the one option here that genuinely can be Python: it is bound with the
+/// `IPyBrFSEventHandler` trampoline, so a subclass is constructible, and the search would call it
+/// once per generated state. A composite holding one Python child is exactly as unsafe as a bare
+/// Python handler, which is why it is recursed into rather than admitted by its own type.
+void reject_python_brfs_event_handler(const brfs::EventHandler& handler, const char* option_name)
+{
+    if (!handler)
+    {
+        return;
+    }
+
+    if (const auto composite = std::dynamic_pointer_cast<brfs::CompositeEventHandlerImpl>(handler))
+    {
+        for (const auto& child : composite->get_handlers())
+        {
+            reject_python_brfs_event_handler(child, option_name);
+        }
+        return;
+    }
+
+    if (is_any_of<brfs::DefaultEventHandlerImpl, brfs::DebugEventHandlerImpl, brfs::ObservationEventHandlerImpl>(handler))
+    {
+        return;
+    }
+
+    reject_non_native_option(option_name,
+                             "DefaultBrFSEventHandler, DebugBrFSEventHandler, ObservationBrFSEventHandler, or a CompositeBrFSEventHandler over those");
+}
+
+/// @brief Throw unless `strategy` is native or absent.
+///
+/// `ILayerOrderingStrategy` carries the `IPyLayerOrderingStrategy` trampoline, and an ordered layer
+/// calls `score_state` once per state it ranks.
+void reject_python_layer_ordering_strategy(const LayerOrderingStrategy& strategy, const char* option_name)
+{
+    if (!strategy
+        || is_any_of<InOrderLayerOrderingStrategyImpl,
+                     ReverseOrderLayerOrderingStrategyImpl,
+                     RandomizedLayerOrderingStrategyImpl,
+                     GoalCountLayerOrderingStrategyImpl>(strategy))
+    {
+        return;
+    }
+
+    reject_non_native_option(
+        option_name,
+        "InOrderLayerOrderingStrategy, ReverseOrderLayerOrderingStrategy, RandomizedLayerOrderingStrategy, or GoalCountLayerOrderingStrategy");
+}
+
+/// @brief Throw unless `handler` is native or absent.
+///
+/// `iw::IEventHandler` is bound without a trampoline today, so no Python subclass of it can be
+/// built at all -- and this check is what keeps that safe to rely on. Adding a trampoline later
+/// would otherwise silently turn this entry point into a crash; with the check it turns into a
+/// ValueError naming the option instead.
+void reject_python_iw_event_handler(const iw::EventHandler& handler, const char* option_name)
+{
+    if (!handler || is_any_of<iw::DefaultEventHandlerImpl, iw::ObservationEventHandlerImpl>(handler))
+    {
+        return;
+    }
+
+    reject_non_native_option(option_name, "DefaultIWEventHandler or ObservationIWEventHandler");
+}
+
+/// @brief Refuse every `iw::Options` member that could dispatch into Python during the search.
+///
+/// Runs on the calling thread while the GIL is still held, which is the only place an offending
+/// object can still be turned into an exception.
+void reject_python_iw_options(const iw::Options& options)
+{
+    reject_python_strategy(options.goal_strategy, "IWOptions.goal_strategy");
+    reject_python_brfs_event_handler(options.brfs_event_handler, "IWOptions.brfs_event_handler");
+    reject_python_layer_ordering_strategy(options.layer_ordering_strategy, "IWOptions.layer_ordering_strategy");
+    reject_python_iw_event_handler(options.iw_event_handler, "IWOptions.iw_event_handler");
+}
+
+/// @brief Refuse a cancellation request the native search could not honor.
+///
+/// `brfs.cpp` rejects `Options::control` outright on any path that does not expand a g-layer
+/// exhaustively -- a beam, a capped next layer, a layer ordering, a deferred-novelty transition
+/// ordering -- because `SearchControl::completed_depth` is a claim about proof and those paths drop
+/// candidates. That rejection is right, but left to itself it arrives from deep inside a search
+/// this entry point has already released the GIL for, and it names BrFS options the caller never
+/// set. Catching the same conditions here makes it an error at the call site that names the IW
+/// option responsible.
+///
+/// Note which accelerators are deliberately absent: `iw1_precheck_add_effect_novelty` and
+/// `iw1_incremental_first_applicability` both stay on the plain queued path and work with a
+/// control, so adding them here would refuse a combination the search supports.
+void reject_unsatisfiable_cancellation(const iw::Options& options, bool has_transition_ordering)
+{
+    const char* cause = nullptr;
+    if (options.beam_width < std::numeric_limits<uint32_t>::max())
+    {
+        cause = "IWOptions.beam_width";
+    }
+    else if (options.max_next_layer_states < std::numeric_limits<uint32_t>::max())
+    {
+        cause = "IWOptions.max_next_layer_states";
+    }
+    else if (options.layer_ordering_strategy)
+    {
+        cause = "IWOptions.layer_ordering_strategy";
+    }
+    else if (has_transition_ordering)
+    {
+        cause = "the transition_ordering_strategy overload";
+    }
+
+    if (cause)
+    {
+        throw std::invalid_argument(std::string("A cancellation handle cannot be combined with ") + cause
+                                    + ": that path does not expand each g-layer exhaustively, so the search refuses the shared control it would "
+                                      "have to poll. The same search runs without a cancellation handle, bounded by IWOptions.max_time_in_ms and "
+                                      "IWOptions.max_num_states.");
+    }
 }
 }  // namespace
 
@@ -2026,6 +2201,71 @@ void bind_module_definitions(nb::module_& m)
           "search_context"_a,
           "options"_a,
           "transition_ordering_strategy"_a);
+
+    /* The GIL-releasing variant of the pair above, plus the handle that can stop it.
+
+       `find_solution_iw` keeps the GIL because its event handlers may be Python objects. A caller
+       that runs IW in a `threading.Thread` beside other Python work needs the opposite, and needs
+       the thread that finishes first to be able to stop the other one. Both follow from refusing
+       the Python-backed objects here, on the calling thread, while the GIL is still held -- the
+       same shape `find_solution_rollout_iw` already uses. */
+
+    nb::class_<SearchCancellation>(m, "SearchCancellation")  //
+        .def(nb::init<>())
+        // Safe to call from any thread, including while the search it cancels holds no GIL: both
+        // are relaxed atomics on a flag the search polls once per node expansion.
+        .def("request_cancel", &SearchCancellation::request_cancel)
+        .def("is_canceled", &SearchCancellation::is_canceled);
+
+    m.def(
+        "find_solution_iw_nogil",
+        [](const SearchContext& search_context, const iw::Options& options, const std::shared_ptr<SearchCancellation>& cancellation)
+        {
+            reject_python_iw_options(options);
+            if (cancellation)
+            {
+                reject_unsatisfiable_cancellation(options, false);
+            }
+
+            /* The control address goes onto a copy that lives exactly as long as this call, so the
+               raw pointer never becomes reachable from Python, and the handle cannot be collected
+               underneath the search: the nanobind argument holds a reference for the whole call. */
+            auto local_options = options;
+            local_options.control = cancellation ? &cancellation->get_control() : nullptr;
+
+            nb::gil_scoped_release release;
+            return iw::find_solution(search_context, local_options);
+        },
+        "search_context"_a,
+        "options"_a,
+        "cancellation"_a.none() = nb::none());
+
+    // The ordering argument needs no check of its own: `LandmarkTransitionOrderingStrategy` is a
+    // concrete compiled class, bound without an interface and without a trampoline, so there is no
+    // Python subclass of it to refuse (see the binding above for why that is deliberate).
+    m.def(
+        "find_solution_iw_nogil",
+        [](const SearchContext& search_context,
+           const iw::Options& options,
+           const LandmarkTransitionOrderingStrategy& transition_ordering_strategy,
+           const std::shared_ptr<SearchCancellation>& cancellation)
+        {
+            reject_python_iw_options(options);
+            if (cancellation)
+            {
+                reject_unsatisfiable_cancellation(options, true);
+            }
+
+            auto local_options = options;
+            local_options.control = cancellation ? &cancellation->get_control() : nullptr;
+
+            nb::gil_scoped_release release;
+            return iw::find_solution(search_context, local_options, transition_ordering_strategy);
+        },
+        "search_context"_a,
+        "options"_a,
+        "transition_ordering_strategy"_a,
+        "cancellation"_a.none() = nb::none());
 
     /* Batched parallel IW rollouts. See docs/PARALLEL_IW_ROLLOUTS.md. */
 

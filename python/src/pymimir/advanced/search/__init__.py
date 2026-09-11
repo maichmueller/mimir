@@ -192,6 +192,8 @@ from pymimir.pymimir.advanced.search import (
     LandmarkNoveltyTableOptions,
     IWOptions,
     find_solution_iw,
+    SearchCancellation,
+    find_solution_iw_nogil,
     IWParallelRolloutOptions,
     IWRolloutResult,
     IWLandingState,

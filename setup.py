@@ -22,7 +22,15 @@ from setuptools.command.build_ext import build_ext
 #   a downstream needs to express that as a resolvable floor rather than discover
 #   it as a TypeError at the first cross-module cast.
 # 0.15.1: native all-private landmark novelty grouping for disjunctive LIW.
-__version__ = "0.16.1"
+# 0.16.2: the GIL-releasing IW entry point `find_solution_iw_nogil` and its
+#   `SearchCancellation` handle. PATCH rather than the MINOR that
+#   docs/VERSIONING.md asks for when the Python surface grows: the consuming
+#   deploy pins wheels by filename, so all it needs is a version distinguishable
+#   from 0.16.1, and the 0.17 slot is already occupied by a wheel installed in
+#   that environment. The price is the one the versioning doc names -- a
+#   downstream cannot express a floor for these two names and has to probe with
+#   `hasattr` instead.
+__version__ = "0.16.2"
 HERE = Path(__file__).resolve().parent
 
 
