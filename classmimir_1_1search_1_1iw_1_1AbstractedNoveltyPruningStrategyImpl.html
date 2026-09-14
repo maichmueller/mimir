@@ -99,14 +99,17 @@ Inheritance diagram for mimir::search::iw::AbstractedNoveltyPruningStrategyImpl:
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:ab37e9e8591028919f42f0ca9dcf41bc2"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#ab37e9e8591028919f42f0ca9dcf41bc2">AbstractedNoveltyPruningStrategyImpl</a> (<a class="el" href="namespacemimir_1_1formalism.html#a18a62fffd7784a50a9304da9b0a2a7d1">formalism::Problem</a> problem, size_t width=1, bool base_abstracted=false, bool preserve_goal_atoms=true, bool keep_depth_one_novel=false, <a class="el" href="namespacemimir_1_1search_1_1landmarks.html#ae245e836c71077a6ede2fdf0f302bfa6">landmarks::FactLandmarkGraph</a> landmarks=nullptr, LandmarkGrouping grouping={})</td></tr>
-<tr class="separator:ab37e9e8591028919f42f0ca9dcf41bc2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac62743a043756e938a6fccb145420b2a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#ac62743a043756e938a6fccb145420b2a">AbstractedNoveltyPruningStrategyImpl</a> (<a class="el" href="namespacemimir_1_1formalism.html#a18a62fffd7784a50a9304da9b0a2a7d1">formalism::Problem</a> problem, size_t width=1, bool base_abstracted=false, bool preserve_goal_atoms=true, bool keep_depth_one_novel=false, <a class="el" href="namespacemimir_1_1search_1_1landmarks.html#ae245e836c71077a6ede2fdf0f302bfa6">landmarks::FactLandmarkGraph</a> landmarks=nullptr, LandmarkGrouping grouping={}, bool preserve_landmark_atoms=true)</td></tr>
+<tr class="separator:ac62743a043756e938a6fccb145420b2a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4b72446c243269143430e21ed7ba67bb"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#a4b72446c243269143430e21ed7ba67bb">is_landmark_restricted</a> () const</td></tr>
 <tr class="memdesc:a4b72446c243269143430e21ed7ba67bb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether this instance pairs abstracted tuples with a landmark coordinate.  <br /></td></tr>
 <tr class="separator:a4b72446c243269143430e21ed7ba67bb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5643ff570588a8acbd15d6455a3ada03"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#a5643ff570588a8acbd15d6455a3ada03">get_num_landmark_ranks</a> () const</td></tr>
 <tr class="memdesc:a5643ff570588a8acbd15d6455a3ada03"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of landmark ranks, i.e. 1 without a landmark graph.  <br /></td></tr>
 <tr class="separator:a5643ff570588a8acbd15d6455a3ada03"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1ccb092403188272344b0e128f7db739"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#a1ccb092403188272344b0e128f7db739">get_num_preserved_landmark_atoms</a> () const</td></tr>
+<tr class="memdesc:a1ccb092403188272344b0e128f7db739"><td class="mdescLeft">&#160;</td><td class="mdescRight">How many atoms the landmark exemption keeps at full identity: 0 when it is off or no landmark graph is attached.  <br /></td></tr>
+<tr class="separator:a1ccb092403188272344b0e128f7db739"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5ffb09bc79167b7603c150decf231031"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#a5ffb09bc79167b7603c150decf231031">test_prune_initial_state</a> (const State &amp;state) override</td></tr>
 <tr class="separator:a5ffb09bc79167b7603c150decf231031"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1d01f37dd01a0ad24364b7203aced5a3"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#a1d01f37dd01a0ad24364b7203aced5a3">test_prune_successor_state</a> (const State &amp;state, const State &amp;succ_state, bool is_new_succ) override</td></tr>
@@ -201,8 +204,8 @@ Public Member Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
-<tr class="memitem:a9543ddf5a5512b731976220d14100ec6"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="namespacemimir_1_1search.html#a4a361738fff5acc4d7091c245f79ccf1">PruningStrategy</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#a9543ddf5a5512b731976220d14100ec6">create</a> (<a class="el" href="namespacemimir_1_1formalism.html#a18a62fffd7784a50a9304da9b0a2a7d1">formalism::Problem</a> problem, size_t width=1, bool base_abstracted=false, bool preserve_goal_atoms=true, bool keep_depth_one_novel=false, <a class="el" href="namespacemimir_1_1search_1_1landmarks.html#ae245e836c71077a6ede2fdf0f302bfa6">landmarks::FactLandmarkGraph</a> landmarks=nullptr, LandmarkGrouping grouping={})</td></tr>
-<tr class="separator:a9543ddf5a5512b731976220d14100ec6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a55686b44bcd8152cdb56070ffe50950e"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="namespacemimir_1_1search.html#a4a361738fff5acc4d7091c245f79ccf1">PruningStrategy</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1iw_1_1AbstractedNoveltyPruningStrategyImpl.html#a55686b44bcd8152cdb56070ffe50950e">create</a> (<a class="el" href="namespacemimir_1_1formalism.html#a18a62fffd7784a50a9304da9b0a2a7d1">formalism::Problem</a> problem, size_t width=1, bool base_abstracted=false, bool preserve_goal_atoms=true, bool keep_depth_one_novel=false, <a class="el" href="namespacemimir_1_1search_1_1landmarks.html#ae245e836c71077a6ede2fdf0f302bfa6">landmarks::FactLandmarkGraph</a> landmarks=nullptr, LandmarkGrouping grouping={}, bool preserve_landmark_atoms=true)</td></tr>
+<tr class="separator:a55686b44bcd8152cdb56070ffe50950e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
 Friends</h2></td></tr>
@@ -212,11 +215,12 @@ Friends</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Abstracted IW(k), optionally <em>landmark-restricted</em>: abstracted LIW(k). </p>
 <p>Passing a landmark graph pairs every abstracted feature tuple with a landmark coordinate, exactly as <code><a class="el" href="classmimir_1_1search_1_1iw_1_1LandmarkNoveltyPruningStrategyImpl.html" title="LandmarkNoveltyPruningStrategyImpl prunes with landmark-restricted novelty: a state is admitted when ...">LandmarkNoveltyPruningStrategyImpl</a></code> pairs a free atom tuple with one. The two widenings are orthogonal and compose: abstraction changes what a <em>tuple</em> is (object identities in non-preserved slots become type signatures), while the landmark coordinate changes what a tuple is <em>indexed by</em>. Their combination expresses what neither can alone &ndash; a conjunction that is width 2 over identities and still width 2 over abstracted features becomes width 1 once an intermediate landmark ranks it.</p>
+<p><code>preserve_landmark_atoms</code> (on by default) exempts the graph's landmark atoms from abstraction on the <em>tuple</em> side, the way <code>preserve_goal_atoms</code> exempts the goal atoms: each such atom contributes a full-identity feature on top of its per-position abstracted ones. The coordinate half was always concrete &ndash; <code>LandmarkCoordinates</code> is keyed by ground atom index &ndash; so this is about the other half, where a landmark fact otherwise keeps no identity at all: two landmarks sharing a predicate and a type signature collapse onto the same feature, and no tuple can tell them apart even though their ranks do. Exempting only ever adds features to an atom &ndash; below arity two it swaps the single abstracted feature for the full one, which is the same partition of atoms under a different key &ndash; so it can only hand a transition more chances to be novel. That is a statement about the feature family, not about a replayed search: once the two families disagree they fill their tables differently, so an individual transition the coarser one admits can lose its witness under the finer one.</p>
 <p>Implemented as one novelty table per landmark rank, so with no graph there is exactly one table and every path below is the pre-landmark one. The split a transition induces is LIW's, and for LIW's reason (see <code>LandmarkCoordinates::collect_transition</code>): a rank that flipped on pairs with EVERY tuple of the successor, a rank that was already true only with tuples containing an added atom.</p>
 <p>Beam novelty modes are unsupported while a landmark graph is attached. Their staged entry points are handed a raw successor bitset rather than a <code>State</code>, and a landmark coordinate over a staged bitset is a different query than the one <code>LandmarkCoordinates</code> answers; claiming support would silently score the beam under the wrong feature family. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
-<a id="ab37e9e8591028919f42f0ca9dcf41bc2" name="ab37e9e8591028919f42f0ca9dcf41bc2"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab37e9e8591028919f42f0ca9dcf41bc2">&#9670;&#160;</a></span>AbstractedNoveltyPruningStrategyImpl()</h2>
+<a id="ac62743a043756e938a6fccb145420b2a" name="ac62743a043756e938a6fccb145420b2a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac62743a043756e938a6fccb145420b2a">&#9670;&#160;</a></span>AbstractedNoveltyPruningStrategyImpl()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -264,7 +268,13 @@ Friends</h2></td></tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">LandmarkGrouping&#160;</td>
-          <td class="paramname"><em>grouping</em> = <code>{}</code>&#160;</td>
+          <td class="paramname"><em>grouping</em> = <code>{}</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>preserve_landmark_atoms</em> = <code>true</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -282,6 +292,7 @@ Friends</h2></td></tr>
   <table class="params">
     <tr><td class="paramname">landmarks</td><td>attach to run abstracted LIW(k) instead of abstracted IW(k); null (the default) keeps one novelty table and the pre-landmark behaviour exactly. </td></tr>
     <tr><td class="paramname">grouping</td><td>which landmark atoms share a novelty row; see <code>LandmarkGrouping</code>. Ignored without <code>landmarks</code>. </td></tr>
+    <tr><td class="paramname">preserve_landmark_atoms</td><td>keep the landmark atoms at full identity in the tuples too, as <code>preserve_goal_atoms</code> does for the goal atoms. On by default. Ignored without <code>landmarks</code>, where there is no landmark atom to exempt. It trails the landmark parameters rather than sitting beside <code>preserve_goal_atoms</code> so that positional callers keep meaning what they meant. </td></tr>
   </table>
   </dd>
 </dl>
@@ -361,8 +372,8 @@ Friends</h2></td></tr>
 
 </div>
 </div>
-<a id="a9543ddf5a5512b731976220d14100ec6" name="a9543ddf5a5512b731976220d14100ec6"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9543ddf5a5512b731976220d14100ec6">&#9670;&#160;</a></span>create()</h2>
+<a id="a55686b44bcd8152cdb56070ffe50950e" name="a55686b44bcd8152cdb56070ffe50950e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a55686b44bcd8152cdb56070ffe50950e">&#9670;&#160;</a></span>create()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -410,7 +421,13 @@ Friends</h2></td></tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">LandmarkGrouping&#160;</td>
-          <td class="paramname"><em>grouping</em> = <code>{}</code>&#160;</td>
+          <td class="paramname"><em>grouping</em> = <code>{}</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>preserve_landmark_atoms</em> = <code>true</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -451,6 +468,33 @@ Friends</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Number of landmark ranks, i.e. 1 without a landmark graph. </p>
+
+</div>
+</div>
+<a id="a1ccb092403188272344b0e128f7db739" name="a1ccb092403188272344b0e128f7db739"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1ccb092403188272344b0e128f7db739">&#9670;&#160;</a></span>get_num_preserved_landmark_atoms()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">size_t mimir::search::iw::AbstractedNoveltyPruningStrategyImpl::get_num_preserved_landmark_atoms </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>How many atoms the landmark exemption keeps at full identity: 0 when it is off or no landmark graph is attached. </p>
 
 </div>
 </div>
