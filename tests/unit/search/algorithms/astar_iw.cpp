@@ -373,4 +373,56 @@ TEST(MimirTests, SearchAlgorithmsMinimumGNoveltyWidensRanksBeyondEightBits)
     EXPECT_FALSE(table.test_novelty_and_update_table(start_state, ContinuousCost(1)));
 }
 
+TEST(MimirTests, SearchAlgorithmsAStarIWPreserveLandmarkAtomsIsIgnoredWhereItHasNothingToDo)
+{
+    /* The two documented ignores of `preserve_landmark_atoms`, both byte-identical rather than
+       merely similar: `CLASSICAL` abstracts nothing, so there is no abstraction to exempt an atom
+       from, and without a landmark graph there is no landmark atom to exempt. Either of them
+       quietly changing the search would mean the flag is reaching a feature family it has no
+       business in. */
+    auto fixture = Fixture {};
+    const auto landmarks = landmarks::ApproximateFactLandmarkGenerator::create(fixture.grounder);
+    ASSERT_GT(landmarks->get_landmark_atom_indices().size(), 0u);
+
+    const auto run = [&](astar_iw::NoveltyFeatureMode mode, bool with_landmarks, bool preserve)
+    {
+        auto handler = astar_iw::DefaultEventHandlerImpl::create(fixture.problem, true);
+        auto options = astar_iw::Options {};
+        options.width = 1;
+        options.novelty_feature_mode = mode;
+        options.preserve_landmark_atoms = preserve;
+        options.event_handler = handler;
+        if (with_landmarks)
+        {
+            options.landmark_novelty_graph = landmarks;
+        }
+        const auto result = astar_iw::find_solution(fixture.context, fixture.heuristic, options);
+        return std::make_pair(result.status, handler->get_statistics().get_num_expanded());
+    };
+
+    EXPECT_EQ(run(astar_iw::NoveltyFeatureMode::CLASSICAL, true, true), run(astar_iw::NoveltyFeatureMode::CLASSICAL, true, false));
+    EXPECT_EQ(run(astar_iw::NoveltyFeatureMode::ABSTRACTED, false, true), run(astar_iw::NoveltyFeatureMode::ABSTRACTED, false, false));
+}
+
+TEST(MimirTests, SearchAlgorithmsAStarIWPreserveLandmarkAtomsSolvesInEveryAbstractedMode)
+{
+    // The exemption adds features rather than removing them, so it cannot cost the search a plan.
+    for (const auto mode : { astar_iw::NoveltyFeatureMode::ABSTRACTED, astar_iw::NoveltyFeatureMode::BASE_ABSTRACTED })
+    {
+        for (const auto preserve : { true, false })
+        {
+            auto fixture = Fixture {};
+            auto options = astar_iw::Options {};
+            options.width = 1;
+            options.novelty_feature_mode = mode;
+            options.landmark_novelty_graph = landmarks::ApproximateFactLandmarkGenerator::create(fixture.grounder);
+            options.preserve_landmark_atoms = preserve;
+            options.event_handler = astar_iw::DefaultEventHandlerImpl::create(fixture.problem, true);
+
+            const auto result = astar_iw::find_solution(fixture.context, fixture.heuristic, options);
+            EXPECT_EQ(result.status, SearchStatus::SOLVED) << "mode " << static_cast<int>(mode) << " preserve " << preserve;
+        }
+    }
+}
+
 }

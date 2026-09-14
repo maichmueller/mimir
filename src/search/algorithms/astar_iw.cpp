@@ -136,7 +136,8 @@ SearchResult find_solution(const SearchContext& context, const Heuristic& heuris
                                           options.novelty_feature_mode,
                                           options.width,
                                           options.preserve_goal_atoms,
-                                          options.landmark_novelty_graph);
+                                          options.landmark_novelty_graph,
+                                          options.preserve_landmark_atoms);
     novelty.initialize(start_state, start_g_value);
 
     auto& start_node = get_or_create_search_node(start_state.get_index(), search_nodes);

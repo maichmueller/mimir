@@ -876,16 +876,19 @@ AbstractedNoveltyPruningStrategyImpl::AbstractedNoveltyPruningStrategyImpl(forma
                                                                            bool preserve_goal_atoms,
                                                                            bool keep_depth_one_novel,
                                                                            landmarks::FactLandmarkGraph landmarks,
-                                                                           LandmarkGrouping grouping) :
+                                                                           LandmarkGrouping grouping,
+                                                                           bool preserve_landmark_atoms) :
     m_problem(std::move(problem)),
     m_width(width),
     m_base_abstracted(base_abstracted),
     m_preserve_goal_atoms(preserve_goal_atoms),
+    m_preserve_landmark_atoms(preserve_landmark_atoms),
     m_keep_depth_one_novel(keep_depth_one_novel),
     m_root_state_index(std::nullopt),
     m_feature_ids(),
     m_features_by_atom_index(),
     m_goal_fluent_atom_indices(),
+    m_landmark_fluent_atom_indices(),
     m_skip_depth_one_expansion_state_indices(),
     m_skip_depth_one_expansion_fluent_atom_indices_fallback(),
     m_tables_by_rank(),
@@ -922,6 +925,7 @@ AbstractedNoveltyPruningStrategyImpl::AbstractedNoveltyPruningStrategyImpl(forma
     m_active_tables = &m_tables_by_rank.front();
 
     precompute_goal_atom_indices();
+    precompute_landmark_atom_indices();
     precompute_atom_features();
 }
 
@@ -957,7 +961,8 @@ PruningStrategy AbstractedNoveltyPruningStrategyImpl::create(formalism::Problem 
                                                              bool preserve_goal_atoms,
                                                              bool keep_depth_one_novel,
                                                              landmarks::FactLandmarkGraph landmarks,
-                                                             LandmarkGrouping grouping)
+                                                             LandmarkGrouping grouping,
+                                                             bool preserve_landmark_atoms)
 {
     return std::make_shared<AbstractedNoveltyPruningStrategyImpl>(std::move(problem),
                                                                   width,
@@ -965,7 +970,8 @@ PruningStrategy AbstractedNoveltyPruningStrategyImpl::create(formalism::Problem 
                                                                   preserve_goal_atoms,
                                                                   keep_depth_one_novel,
                                                                   std::move(landmarks),
-                                                                  std::move(grouping));
+                                                                  std::move(grouping),
+                                                                  preserve_landmark_atoms);
 }
 
 void AbstractedNoveltyPruningStrategyImpl::precompute_goal_atom_indices()
@@ -980,6 +986,33 @@ void AbstractedNoveltyPruningStrategyImpl::precompute_goal_atom_indices()
     {
         m_goal_fluent_atom_indices.emplace(atom->get_index());
     }
+}
+
+void AbstractedNoveltyPruningStrategyImpl::precompute_landmark_atom_indices()
+{
+    if (!m_preserve_landmark_atoms || !m_landmark_coordinates)
+    {
+        return;
+    }
+    /* The coordinates' own atom list rather than the graph's: it is the deduplicated union of fact
+       landmarks and ranked disjunctive members, i.e. exactly the atoms that carry a rank. An atom
+       whose identity steers the coordinate is the one whose identity the tuples must keep. */
+    const auto& landmark_atom_indices = m_landmark_coordinates->get_landmark_atom_indices();
+    m_landmark_fluent_atom_indices.reserve(landmark_atom_indices.size());
+    m_landmark_fluent_atom_indices.insert(landmark_atom_indices.begin(), landmark_atom_indices.end());
+}
+
+void AbstractedNoveltyPruningStrategyImpl::set_preserved_landmark_atom_indices(const AtomIndexList& atom_indices)
+{
+    m_landmark_fluent_atom_indices.clear();
+    m_landmark_fluent_atom_indices.reserve(atom_indices.size());
+    m_landmark_fluent_atom_indices.insert(atom_indices.begin(), atom_indices.end());
+    /* Every feature id interned so far encodes the previous exemption set, so the interning table
+       and the per-atom cache are rebuilt rather than extended -- ids must stay dense and
+       contiguous for the dense singleton rows `precompute_atom_features` reserves. */
+    m_feature_ids.clear();
+    m_features_by_atom_index.clear();
+    precompute_atom_features();
 }
 
 void AbstractedNoveltyPruningStrategyImpl::precompute_atom_features()
@@ -1040,8 +1073,14 @@ AbstractedNoveltyPruningStrategyImpl::compute_features_for_atom(formalism::Groun
 {
     const auto& objects = atom->get_objects();
 
+    /* Goal atoms and landmark atoms are exempted by the same rule and for the same reason: the
+       identity of a fact the search steers by has to survive into the tuple, not only into the
+       landmark coordinate. `m_landmark_fluent_atom_indices` is empty unless the exemption is on
+       and there are landmark atoms, so the second probe costs nothing otherwise. */
     auto features = std::vector<FeatureId> {};
-    if (m_preserve_goal_atoms && m_goal_fluent_atom_indices.contains(atom->get_index()))
+    const auto is_preserved = (m_preserve_goal_atoms && m_goal_fluent_atom_indices.contains(atom->get_index()))
+                              || m_landmark_fluent_atom_indices.contains(atom->get_index());
+    if (is_preserved)
     {
         features.push_back(intern_feature(make_full_atom_key(atom)));
         if (objects.size() <= 1)

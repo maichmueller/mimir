@@ -1445,7 +1445,7 @@ void bind_module_definitions(nb::module_& m)
 
 
     nb::class_<iw::AbstractedNoveltyPruningStrategyImpl, IPruningStrategy>(m, "AbstractedNoveltyPruningStrategy")  //
-        .def(nb::init<Problem, size_t, bool, bool, bool, landmarks::FactLandmarkGraph, iw::LandmarkGrouping>(),
+        .def(nb::init<Problem, size_t, bool, bool, bool, landmarks::FactLandmarkGraph, iw::LandmarkGrouping, bool>(),
              "problem"_a,
              "width"_a = 1,
              "base_abstracted"_a = false,
@@ -1461,7 +1461,8 @@ void bind_module_definitions(nb::module_& m)
              // function arguments". The bare-`nullptr` spelling used elsewhere in
              // this file is unaffected: that operator= sets the none flag itself.
              "landmarks"_a.none() = landmarks::FactLandmarkGraph(nullptr),
-             "grouping"_a = iw::LandmarkGrouping())
+             "grouping"_a = iw::LandmarkGrouping(),
+             "preserve_landmark_atoms"_a = true)
         .def_static("create",
                     &iw::AbstractedNoveltyPruningStrategyImpl::create,
                     "problem"_a,
@@ -1471,10 +1472,13 @@ void bind_module_definitions(nb::module_& m)
                     "keep_depth_one_novel"_a = false,
                     // Same null-shared_ptr default as the constructor above.
                     "landmarks"_a.none() = landmarks::FactLandmarkGraph(nullptr),
-                    "grouping"_a = iw::LandmarkGrouping())
+                    "grouping"_a = iw::LandmarkGrouping(),
+                    "preserve_landmark_atoms"_a = true)
         // Abstracted LIW(k) rather than abstracted IW(k), and how many landmark ranks it carries.
         .def_prop_ro("is_landmark_restricted", &iw::AbstractedNoveltyPruningStrategyImpl::is_landmark_restricted)
-        .def_prop_ro("num_landmark_ranks", &iw::AbstractedNoveltyPruningStrategyImpl::get_num_landmark_ranks);
+        .def_prop_ro("num_landmark_ranks", &iw::AbstractedNoveltyPruningStrategyImpl::get_num_landmark_ranks)
+        // How many atoms the landmark exemption keeps unabstracted, i.e. 0 when it is off.
+        .def_prop_ro("num_preserved_landmark_atoms", &iw::AbstractedNoveltyPruningStrategyImpl::get_num_preserved_landmark_atoms);
 
     // TransitionOrderingStrategy
     //
@@ -1595,6 +1599,7 @@ void bind_module_definitions(nb::module_& m)
         // Restricts novelty to (landmark atom, free tuple) pairs; CLASSICAL mode only.
         .def_rw("landmark_novelty_graph", &astar_iw::Options::landmark_novelty_graph)
         .def_rw("preserve_goal_atoms", &astar_iw::Options::preserve_goal_atoms)
+        .def_rw("preserve_landmark_atoms", &astar_iw::Options::preserve_landmark_atoms)
         .def_rw("heuristic_weight", &astar_iw::Options::heuristic_weight)
         .def_rw("allow_non_novel_root_goal", &astar_iw::Options::allow_non_novel_root_goal)
         // Skips the heuristic on successors novelty would reject; off is only worth it when the

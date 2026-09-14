@@ -44,6 +44,7 @@
 #include "mimir/search/search_context.hpp"
 #include "mimir/search/state_repository.hpp"
 
+#include <algorithm>
 #include <deque>
 #include <gtest/gtest.h>
 #include <string>
@@ -150,10 +151,17 @@ std::vector<Transition> collect_transitions(Instance& instance, size_t max_trans
 
 using Strategy = iw::AbstractedNoveltyPruningStrategyImpl;
 
-std::unique_ptr<Strategy> make_strategy(const Instance& instance, size_t width, FactLandmarkGraph landmarks, iw::LandmarkGrouping grouping = {})
+std::unique_ptr<Strategy> make_strategy(const Instance& instance,
+                                        size_t width,
+                                        FactLandmarkGraph landmarks,
+                                        iw::LandmarkGrouping grouping = {},
+                                        bool preserve_landmark_atoms = true)
 {
-    return std::make_unique<Strategy>(instance.problem, width, false, true, false, std::move(landmarks), std::move(grouping));
+    return std::make_unique<Strategy>(instance.problem, width, false, true, false, std::move(landmarks), std::move(grouping), preserve_landmark_atoms);
 }
+
+/// @brief How many of `verdicts` are admissions.
+size_t count_admitted(const std::vector<bool>& verdicts) { return static_cast<size_t>(std::count(verdicts.begin(), verdicts.end(), true)); }
 
 /// @brief Which transitions of `transitions` the strategy admits, in order.
 std::vector<bool> admitted(Strategy& strategy, const std::vector<Transition>& transitions)
@@ -379,4 +387,86 @@ TEST(MimirTests, SearchAlgorithmsAbstractedLandmarkNoveltyAllPrivateMatchesExpli
     EXPECT_EQ(admitted(*explicit_strategy, transitions), admitted(*all_private_strategy, transitions));
 }
 
+
+TEST(MimirTests, SearchAlgorithmsAbstractedLandmarkNoveltyPreservesLandmarkAtomsByDefault)
+{
+    /* The exemption is on unless asked otherwise, and it covers exactly the atoms that carry a
+       rank -- the set the coordinate itself is built from. */
+    auto instance = Instance {};
+    ASSERT_FALSE(instance.landmarks->get_landmark_atom_indices().empty());
+
+    const auto on = make_strategy(instance, 1, instance.landmarks);
+    EXPECT_EQ(on->get_num_preserved_landmark_atoms(), instance.landmarks->get_landmark_atom_indices().size());
+
+    const auto off = make_strategy(instance, 1, instance.landmarks, {}, false);
+    EXPECT_EQ(off->get_num_preserved_landmark_atoms(), 0u);
+}
+
+TEST(MimirTests, SearchAlgorithmsAbstractedLandmarkNoveltyPreservationNeedsLandmarksToDoAnything)
+{
+    /* Nothing to exempt without landmark atoms, so abstracted IW(k) stays byte-identical whatever
+       the flag says -- the same collapse the coordinate itself guarantees. */
+    auto instance = Instance {};
+    const auto transitions = collect_transitions(instance, 400);
+    ASSERT_FALSE(transitions.empty());
+
+    for (const auto& landmarks : { FactLandmarkGraph(nullptr), instance.empty_landmarks })
+    {
+        const auto on = make_strategy(instance, 1, landmarks);
+        EXPECT_EQ(on->get_num_preserved_landmark_atoms(), 0u);
+
+        for (const auto width : { size_t(1), size_t(2) })
+        {
+            auto preserved = make_strategy(instance, width, landmarks);
+            auto unpreserved = make_strategy(instance, width, landmarks, {}, false);
+            EXPECT_EQ(admitted(*preserved, transitions), admitted(*unpreserved, transitions)) << "width " << width;
+        }
+    }
+}
+
+TEST(MimirTests, SearchAlgorithmsAbstractedLandmarkNoveltyPreservationIsNotInert)
+{
+    /* The point of the option. `transport`'s landmark set reaches well past its goal facts, and its
+       landmark atoms are the kind abstraction folds together -- same predicate, same type signature,
+       different objects -- so exempting them moves the admitted sequence.
+       One named instance rather than a sweep: the exemption only bites where every abstracted
+       feature of an atom is already seen at that atom's rank while the atom itself is not, and most
+       small instances never get there. */
+    auto instance = Instance { "transport" };
+    ASSERT_FALSE(instance.landmarks->get_landmark_atom_indices().empty());
+    const auto transitions = collect_transitions(instance, 1000);
+    ASSERT_FALSE(transitions.empty());
+
+    auto preserved = make_strategy(instance, 2, instance.landmarks);
+    auto unpreserved = make_strategy(instance, 2, instance.landmarks, {}, false);
+
+    const auto preserved_verdicts = admitted(*preserved, transitions);
+    const auto unpreserved_verdicts = admitted(*unpreserved, transitions);
+    EXPECT_NE(preserved_verdicts, unpreserved_verdicts) << "the exemption changed nothing, so it is not reaching the features";
+    EXPECT_GT(count_admitted(preserved_verdicts), count_admitted(unpreserved_verdicts));
+}
+
+TEST(MimirTests, SearchAlgorithmsAbstractedLandmarkNoveltyPreservationNeverAdmitsLess)
+{
+    /* Exempting an atom only ever adds a feature to it -- below arity two it swaps the one
+       abstracted feature for the full one, the same partition of atoms under a different key -- so
+       it can only hand transitions more chances to be novel.
+       Totals rather than a per-transition inclusion: once the two families disagree they fill their
+       tables differently, so an individual transition the coarser one admits can lose its witness
+       under the finer one. The totals are the invariant a regression would break. */
+    for (const auto* domain : { "blocks_3", "delivery", "gripper", "ferry", "transport" })
+    {
+        auto instance = Instance { domain };
+        const auto transitions = collect_transitions(instance, 1000);
+        ASSERT_FALSE(transitions.empty()) << domain;
+
+        for (const auto width : { size_t(1), size_t(2) })
+        {
+            auto preserved = make_strategy(instance, width, instance.landmarks);
+            auto unpreserved = make_strategy(instance, width, instance.landmarks, {}, false);
+            EXPECT_GE(count_admitted(admitted(*preserved, transitions)), count_admitted(admitted(*unpreserved, transitions)))
+                << domain << " width " << width;
+        }
+    }
+}
 }

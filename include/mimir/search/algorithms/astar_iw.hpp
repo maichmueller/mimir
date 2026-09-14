@@ -37,6 +37,15 @@ struct Options
     /// landmark rank, and only the free coordinates are abstracted in the abstracted modes.
     landmarks::FactLandmarkGraph landmark_novelty_graph = nullptr;
     bool preserve_goal_atoms = true;
+
+    /// @brief Also keep the landmark atoms at full identity in the free coordinates, as
+    /// `preserve_goal_atoms` does for the goal atoms. On by default.
+    ///
+    /// Ignored without `landmark_novelty_graph`, and under `NoveltyFeatureMode::CLASSICAL`, where
+    /// nothing is abstracted to begin with. Off means a landmark fact keeps its identity only as
+    /// the coordinate, so two landmarks sharing a predicate and a type signature are one feature to
+    /// every tuple that mentions them.
+    bool preserve_landmark_atoms = true;
     ContinuousCost heuristic_weight = 1.0;
     bool allow_non_novel_root_goal = true;
 

@@ -238,6 +238,19 @@ public:
 /// is width 2 over identities and still width 2 over abstracted features becomes width 1 once an
 /// intermediate landmark ranks it.
 ///
+/// `preserve_landmark_atoms` (on by default) exempts the graph's landmark atoms from abstraction on
+/// the *tuple* side, the way `preserve_goal_atoms` exempts the goal atoms: each such atom
+/// contributes a full-identity feature on top of its per-position abstracted ones. The coordinate
+/// half was always concrete -- `LandmarkCoordinates` is keyed by ground atom index -- so this is
+/// about the other half, where a landmark fact otherwise keeps no identity at all: two landmarks
+/// sharing a predicate and a type signature collapse onto the same feature, and no tuple can tell
+/// them apart even though their ranks do. Exempting only ever adds features to an atom -- below
+/// arity two it swaps the single abstracted feature for the full one, which is the same partition
+/// of atoms under a different key -- so it can only hand a transition more chances to be novel.
+/// That is a statement about the feature family, not about a replayed search: once the two
+/// families disagree they fill their tables differently, so an individual transition the coarser
+/// one admits can lose its witness under the finer one.
+///
 /// Implemented as one novelty table per landmark rank, so with no graph there is exactly one table
 /// and every path below is the pre-landmark one. The split a transition induces is LIW's, and for
 /// LIW's reason (see `LandmarkCoordinates::collect_transition`): a rank that flipped on pairs with
@@ -363,11 +376,16 @@ private:
     size_t m_width;
     bool m_base_abstracted;
     bool m_preserve_goal_atoms;
+    bool m_preserve_landmark_atoms;
     bool m_keep_depth_one_novel;
     std::optional<Index> m_root_state_index;
     mutable absl::flat_hash_map<FeatureKey, FeatureId, FeatureKeyHash> m_feature_ids;
     mutable std::vector<std::vector<FeatureId>> m_features_by_atom_index;
     absl::flat_hash_set<AtomIndex> m_goal_fluent_atom_indices;
+    /* The atoms kept at full identity on top of the goal atoms: the landmark ones, under
+       `m_preserve_landmark_atoms`. Empty without a landmark graph whatever the flag says, which is
+       what keeps abstracted IW(k) byte-identical. */
+    absl::flat_hash_set<AtomIndex> m_landmark_fluent_atom_indices;
     absl::flat_hash_set<Index> m_skip_depth_one_expansion_state_indices;
     absl::flat_hash_set<AtomIndexList, AtomIndexListHash> m_skip_depth_one_expansion_fluent_atom_indices_fallback;
 
@@ -440,6 +458,14 @@ private:
     bool test_landmark_transition_width_one(const State& state, const State& succ_state, bool update);
 
     void precompute_goal_atom_indices();
+    void precompute_landmark_atom_indices();
+    /// @brief Exempt `atom_indices` from abstraction, for a caller holding the landmark atoms with
+    /// no graph to attach -- `AbstractedMinimumGNoveltyTable`, which keeps its own coordinates and
+    /// uses this class purely as a feature factory.
+    ///
+    /// Re-interns every feature, so it must run before the first query: it renumbers feature ids
+    /// and re-reserves the dense singleton row, either of which invalidates a populated table.
+    void set_preserved_landmark_atom_indices(const AtomIndexList& atom_indices);
     void precompute_atom_features();
     void ensure_atom_feature_capacity(AtomIndex atom_index) const;
     const std::vector<FeatureId>& get_atom_features(AtomIndex atom_index) const;
@@ -483,13 +509,19 @@ public:
     /// default) keeps one novelty table and the pre-landmark behaviour exactly.
     /// @param grouping which landmark atoms share a novelty row; see `LandmarkGrouping`. Ignored
     /// without `landmarks`.
+    /// @param preserve_landmark_atoms keep the landmark atoms at full identity in the tuples too,
+    /// as `preserve_goal_atoms` does for the goal atoms. On by default. Ignored without
+    /// `landmarks`, where there is no landmark atom to exempt. It trails the landmark parameters
+    /// rather than sitting beside `preserve_goal_atoms` so that positional callers keep meaning
+    /// what they meant.
     explicit AbstractedNoveltyPruningStrategyImpl(formalism::Problem problem,
                                                   size_t width = 1,
                                                   bool base_abstracted = false,
                                                   bool preserve_goal_atoms = true,
                                                   bool keep_depth_one_novel = false,
                                                   landmarks::FactLandmarkGraph landmarks = nullptr,
-                                                  LandmarkGrouping grouping = {});
+                                                  LandmarkGrouping grouping = {},
+                                                  bool preserve_landmark_atoms = true);
 
     static PruningStrategy create(formalism::Problem problem,
                                   size_t width = 1,
@@ -497,12 +529,16 @@ public:
                                   bool preserve_goal_atoms = true,
                                   bool keep_depth_one_novel = false,
                                   landmarks::FactLandmarkGraph landmarks = nullptr,
-                                  LandmarkGrouping grouping = {});
+                                  LandmarkGrouping grouping = {},
+                                  bool preserve_landmark_atoms = true);
 
     /// @brief Whether this instance pairs abstracted tuples with a landmark coordinate.
     bool is_landmark_restricted() const { return m_landmark_coordinates.has_value(); }
     /// @brief Number of landmark ranks, i.e. 1 without a landmark graph.
     size_t get_num_landmark_ranks() const { return m_tables_by_rank.size(); }
+    /// @brief How many atoms the landmark exemption keeps at full identity: 0 when it is off or no
+    /// landmark graph is attached.
+    size_t get_num_preserved_landmark_atoms() const { return m_landmark_fluent_atom_indices.size(); }
 
     bool test_prune_initial_state(const State& state) override;
     bool test_prune_successor_state(const State& state, const State& succ_state, bool is_new_succ) override;

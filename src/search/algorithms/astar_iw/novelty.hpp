@@ -31,6 +31,11 @@ namespace mimir::search::iw::astar_iw_friend
 /// abstracted. Abstracting the landmark too would erase exactly the identity that makes the
 /// coordinate discriminating, collapsing landmarks of the same predicate and type signature onto
 /// one another.
+///
+/// `preserve_landmark_atoms` carries that reasoning into the free coordinates: on by default, it
+/// exempts the landmark atoms from abstraction there as well, so a landmark fact keeps its identity
+/// inside the tuples and not only as the rank selecting them -- exactly what `preserve_goal_atoms`
+/// does for the goal atoms.
 class AbstractedMinimumGNoveltyTable
 {
 private:
@@ -198,10 +203,19 @@ public:
                                    size_t width,
                                    bool base_abstracted,
                                    bool preserve_goal_atoms,
-                                   AtomIndexList landmark_atom_indices = {}) :
+                                   AtomIndexList landmark_atom_indices = {},
+                                   bool preserve_landmark_atoms = true) :
         m_feature_generator(std::move(problem), width, base_abstracted, preserve_goal_atoms, false),
         m_coordinates(std::move(landmark_atom_indices))
     {
+        /* The generator is deliberately built without a graph -- this class holds the coordinates
+           and uses the generator purely as a feature factory -- so the exemption is handed over
+           directly rather than derived from a graph the generator does not have. In the body, hence
+           before any query, which is what the setter requires. */
+        if (preserve_landmark_atoms && !m_coordinates.get_landmark_atom_indices().empty())
+        {
+            m_feature_generator.set_preserved_landmark_atom_indices(m_coordinates.get_landmark_atom_indices());
+        }
     }
 
     bool initialize(const State& state, ContinuousCost g_value)
@@ -277,7 +291,8 @@ public:
                            NoveltyFeatureMode mode,
                            size_t width,
                            bool preserve_goal_atoms,
-                           const landmarks::FactLandmarkGraph& landmark_novelty_graph) :
+                           const landmarks::FactLandmarkGraph& landmark_novelty_graph,
+                           bool preserve_landmark_atoms = true) :
         m_table(
             [&]() -> Table
             {
@@ -300,7 +315,8 @@ public:
                                                                                              width,
                                                                                              mode == NoveltyFeatureMode::BASE_ABSTRACTED,
                                                                                              preserve_goal_atoms,
-                                                                                             std::move(landmark_atom_indices));
+                                                                                             std::move(landmark_atom_indices),
+                                                                                             preserve_landmark_atoms);
             }())
     {
     }
