@@ -749,7 +749,12 @@ void bind_module_definitions(nb::module_& m)
         .def(nb::init<Action, Problem>(), "action"_a, "problem"_a)
         .def(
             "generate_ground_conjunctions",
-            [](ConjunctiveConditionSatisficingBindingGenerator& self, const State& state, size_t max_num_groundings)
+            // The self type has to be this class, not `ConjunctiveConditionSatisficingBindingGenerator`:
+            // the satisficing binding generators are CRTP siblings, not a hierarchy, so a lambda typed
+            // against the wrong one compiles and then refuses every call at run time -- nanobind cannot
+            // cast the instance to an unrelated type, and reports it as arguments that do not match a
+            // signature they appear to match.
+            [](ActionSatisficingBindingGenerator& self, const State& state, size_t max_num_groundings)
             {
                 auto result = std::vector<
                     std::pair<ObjectList, std::tuple<GroundLiteralList<StaticTag>, GroundLiteralList<FluentTag>, GroundLiteralList<DerivedTag>>>> {};
@@ -773,7 +778,8 @@ void bind_module_definitions(nb::module_& m)
         .def(nb::init<Axiom, Problem>(), "axiom"_a, "problem"_a)
         .def(
             "generate_ground_conjunctions",
-            [](ConjunctiveConditionSatisficingBindingGenerator& self, const State& state, size_t max_num_groundings)
+            // See `ActionSatisficingBindingGenerator` above for why the self type must be this class.
+            [](AxiomSatisficingBindingGenerator& self, const State& state, size_t max_num_groundings)
             {
                 auto result = std::vector<
                     std::pair<ObjectList, std::tuple<GroundLiteralList<StaticTag>, GroundLiteralList<FluentTag>, GroundLiteralList<DerivedTag>>>> {};
