@@ -2557,6 +2557,57 @@ class State:
             self._applicable_actions = result
         return result
 
+    def iter_applicable_actions(self) -> 'Iterator[GroundAction]':
+        """
+        Iterates lazily over the applicable ground actions in the state.
+
+        Nothing beyond the actions actually consumed is enumerated or grounded, so a caller that
+        stops early -- after the first action, or after finding the one it was looking for -- pays
+        for that much and no more. `generate_applicable_actions` builds the whole list instead, and
+        on states with millions of applicable ground actions that difference is tens of seconds and
+        tens of gigabytes of interned actions.
+
+        Unlike `generate_applicable_actions`, the actions arrive in generation order rather than
+        sorted by index, and the result is neither cached nor read from the cache: sorting and
+        caching both require the full set, which is the cost this method exists to avoid. If a
+        cached list is already what you want, call `generate_applicable_actions`.
+
+        Do not keep two of these alive over the same problem at once, and do not advance one from
+        several threads: the underlying lifted generator carries per-instance scratch state.
+
+        :return: An iterator over the applicable ground actions in the state.
+        :rtype: Iterator[GroundAction]
+        """
+        aag = self._problem._search_context.get_applicable_action_generator()
+        for advanced_action in aag.create_applicable_action_generator(self._advanced_state):
+            yield GroundAction(advanced_action, self._problem)
+
+    def has_applicable_actions(self) -> 'bool':
+        """
+        Checks whether any ground action is applicable in the state.
+
+        This is the dead-end test, and it costs the first applicable action rather than all of them.
+        Prefer it over `len(state.generate_applicable_actions()) == 0`, which answers the same
+        question by materializing the entire applicable set -- worst exactly where the answer is
+        least obvious.
+
+        :return: True if at least one ground action is applicable, False if the state is a dead end.
+        :rtype: bool
+        """
+        if hasattr(self, '_applicable_actions'):
+            return len(self._applicable_actions) > 0
+        aag = self._problem._search_context.get_applicable_action_generator()
+        return aag.has_applicable_action(self._advanced_state)
+
+    def is_dead_end(self) -> 'bool':
+        """
+        Checks whether no ground action is applicable in the state.
+
+        :return: True if no ground action is applicable, False otherwise.
+        :rtype: bool
+        """
+        return not self.has_applicable_actions()
+
     def __str__(self) -> 'str':
         """
         Returns a string representation of the state.

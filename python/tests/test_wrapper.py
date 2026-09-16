@@ -582,6 +582,48 @@ class TestState(unittest.TestCase):
         for action in actions:
             assert action.get_precondition().holds(initial_state)
 
+    def test_iter_applicable_actions_matches_the_list(self):
+        for mode in ("lifted", "grounded"):
+            problem = _make_problem("blocks_4", mode=mode)
+            initial_state = problem.get_initial_state()
+            # `generate_applicable_actions` sorts by index and caches; the lazy iterator does
+            # neither, because both need the whole set -- which is the cost it exists to avoid.
+            eager = sorted(x.get_index() for x in initial_state.generate_applicable_actions())
+            lazy = sorted(x.get_index() for x in initial_state.iter_applicable_actions())
+            assert lazy == eager, mode
+            assert len(lazy) > 0
+
+    def test_iter_applicable_actions_can_stop_early(self):
+        for mode in ("lifted", "grounded"):
+            problem = _make_problem("blocks_4", mode=mode)
+            initial_state = problem.get_initial_state()
+            iterator = initial_state.iter_applicable_actions()
+            first = next(iterator)
+            iterator.close()
+            assert first.get_precondition().holds(initial_state), mode
+
+    def test_has_applicable_actions_on_a_live_state(self):
+        for mode in ("lifted", "grounded"):
+            problem = _make_problem("blocks_4", mode=mode)
+            initial_state = problem.get_initial_state()
+            assert initial_state.has_applicable_actions() is True, mode
+            assert initial_state.is_dead_end() is False, mode
+
+    def test_has_applicable_actions_on_a_dead_end(self):
+        for mode in ("lifted", "grounded"):
+            domain = Domain(DATA_DIR / "deadend" / "domain.pddl")
+            problem = Problem(domain, DATA_DIR / "deadend" / "test_problem.pddl", mode=mode)
+            initial_state = problem.get_initial_state()
+            assert initial_state.has_applicable_actions() is False, mode
+            assert initial_state.is_dead_end() is True, mode
+            assert len(initial_state.generate_applicable_actions()) == 0, mode
+
+    def test_has_applicable_actions_reads_the_cache_when_there_is_one(self):
+        problem = _make_problem("blocks_4")
+        initial_state = problem.get_initial_state()
+        initial_state.generate_applicable_actions()  # populates the cache
+        assert initial_state.has_applicable_actions() is True
+
     def test_generate_applicable_actions(self):
         domain_path = DATA_DIR / "blocks_4" / "domain.pddl"
         problem_path = DATA_DIR / "blocks_4" / "test_problem.pddl"

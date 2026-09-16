@@ -42,6 +42,124 @@ private:
     SearchControl m_control;
 };
 
+/// @brief A lazy Python iterator over the applicable ground actions of one state.
+///
+/// `IApplicableActionGenerator.generate_applicable_actions` returns a list, so it always pays for
+/// the whole applicable set. That is the wrong price for the commonest question asked of it --
+/// "is this state a dead end?" -- which needs only the first element, and on states with millions
+/// of applicable ground actions the difference is tens of seconds and tens of gigabytes of interned
+/// actions. This object exposes the underlying C++ generator as it actually is: one action per
+/// `__next__`, nothing enumerated past where the caller stops.
+///
+/// Two lifetimes have to be pinned for that to be sound. The coroutine frame holds its `State`
+/// argument *by reference*, so the state is stored here and the generator is constructed from that
+/// member -- which is also why this class is neither copyable nor movable, and why it is created
+/// only as a heap-allocated Python object. The generator borrows the
+/// `IApplicableActionGenerator` itself, which `nb::keep_alive` ties to this object on the binding.
+///
+/// The GIL is deliberately held across `__next__`. The lifted generators keep per-instance
+/// assignment-set scratch state that a second thread advancing the same generator would corrupt,
+/// and unlike a whole search (see `find_solution_iw_nogil`) a single step is short. A
+/// GIL-releasing variant would have to be a separate, explicitly named entry point.
+///
+/// That same scratch state is why the iterator registers itself as live for the duration: on a
+/// generator that does not support concurrent enumerations, starting a second one underneath a
+/// suspended first would change what the first goes on to yield, and a wrong applicable set is
+/// exactly the failure a caller cannot see. `refuse_if_lazy_iterator_is_live` turns it into an
+/// exception instead. Registration is a plain map because every path that touches it holds the GIL.
+class ApplicableActionIterator
+{
+public:
+    ApplicableActionIterator(IApplicableActionGenerator& action_generator, State state) :
+        m_action_generator(&action_generator),
+        m_state(std::move(state)),
+        m_generator(action_generator.create_applicable_action_generator(m_state)),
+        m_iterator {},
+        m_started(false),
+        m_exhausted(false)
+    {
+        ++live_lazy_iterators()[m_action_generator];
+    }
+
+    ~ApplicableActionIterator()
+    {
+        const auto it = live_lazy_iterators().find(m_action_generator);
+        if (it != live_lazy_iterators().end() && --it->second == 0)
+        {
+            live_lazy_iterators().erase(it);
+        }
+    }
+
+    /// @brief Live lazy iterators per generator. Keyed by address, and every entry is erased when
+    /// its last iterator dies, so this never holds a dangling key or grows without bound.
+    static std::unordered_map<const IApplicableActionGenerator*, size_t>& live_lazy_iterators()
+    {
+        static auto live = std::unordered_map<const IApplicableActionGenerator*, size_t> {};
+        return live;
+    }
+
+    // The coroutine frame holds `m_state` by reference and `m_iterator` refers into the frame.
+    ApplicableActionIterator(const ApplicableActionIterator&) = delete;
+    ApplicableActionIterator& operator=(const ApplicableActionIterator&) = delete;
+    ApplicableActionIterator(ApplicableActionIterator&&) = delete;
+    ApplicableActionIterator& operator=(ApplicableActionIterator&&) = delete;
+
+    GroundAction next()
+    {
+        if (m_exhausted)
+        {
+            throw nanobind::stop_iteration();
+        }
+
+        if (!m_started)
+        {
+            m_iterator = m_generator.begin();
+            m_started = true;
+        }
+        else
+        {
+            ++m_iterator;
+        }
+
+        if (m_iterator == m_generator.end())
+        {
+            m_exhausted = true;
+            throw nanobind::stop_iteration();
+        }
+
+        return *m_iterator;
+    }
+
+private:
+    const IApplicableActionGenerator* m_action_generator;
+    State m_state;
+    mimir::generator<GroundAction> m_generator;
+    mimir::generator<GroundAction>::iterator m_iterator;
+    bool m_started;
+    bool m_exhausted;
+};
+
+/// @brief Throw unless starting another enumeration over `action_generator` is safe right now.
+void refuse_if_lazy_iterator_is_live(const IApplicableActionGenerator& action_generator, const char* what)
+{
+    if (action_generator.supports_concurrent_applicable_action_generators())
+    {
+        return;
+    }
+
+    const auto& live = ApplicableActionIterator::live_lazy_iterators();
+    if (live.find(&action_generator) == live.end())
+    {
+        return;
+    }
+
+    throw std::runtime_error(std::string(what)
+                             + ": a lazy applicable-action iterator over this generator is still alive. This generator re-initializes shared scratch "
+                               "state at the start of every enumeration, so the second one would silently change what the first goes on to yield. "
+                               "Finish or drop the iterator first, or use a grounded applicable action generator, which supports concurrent "
+                               "enumerations.");
+}
+
 namespace
 {
 std::vector<size_t> compute_transition_novel_fluent_atom_indices_read_only(const IPruningStrategy& pruning_strategy,
@@ -807,12 +925,23 @@ void bind_module_definitions(nb::module_& m)
           "state"_a,
           "successor_state"_a);
 
+    nb::class_<ApplicableActionIterator>(m, "ApplicableActionIterator")  //
+        .def("__iter__", [](nb::object self) { return self; })
+        // `reference`, not the default: a `GroundAction` is a raw pointer, and for those
+        // `rv_policy::automatic` means *take ownership*. The actions are interned in the problem's
+        // repository and outlive any iterator, so letting Python delete one corrupts that hash set
+        // -- silently, until the problem is torn down. (`generate_applicable_actions` escapes this
+        // only because nanobind hands nested elements of a returned list `automatic_reference`.)
+        .def("__next__", &ApplicableActionIterator::next, nb::rv_policy::reference);
+
     nb::class_<IApplicableActionGenerator>(m, "IApplicableActionGenerator")
         .def("get_problem", &IApplicableActionGenerator::get_problem)
+        .def("supports_concurrent_applicable_action_generators", &IApplicableActionGenerator::supports_concurrent_applicable_action_generators)
         .def(
             "generate_applicable_actions",
             [](IApplicableActionGenerator& self, const State& state)
             {
+                refuse_if_lazy_iterator_is_live(self, "generate_applicable_actions");
                 auto actions = GroundActionList();
                 for (const auto& action : self.create_applicable_action_generator(state))
                 {
@@ -821,7 +950,43 @@ void bind_module_definitions(nb::module_& m)
                 return actions;
             },
             nb::keep_alive<0, 1>(),
-            "state"_a);
+            "state"_a)
+        .def(
+            "create_applicable_action_generator",
+            [](IApplicableActionGenerator& self, const State& state)
+            {
+                refuse_if_lazy_iterator_is_live(self, "create_applicable_action_generator");
+                return new ApplicableActionIterator(self, state);
+            },
+            nb::keep_alive<0, 1>(),
+            "state"_a,
+            R"doc(Return a lazy iterator over the applicable ground actions in `state`.
+
+Unlike `generate_applicable_actions`, which returns the whole list, nothing beyond the
+actions actually consumed is enumerated or grounded. Abandoning the iterator stops the
+underlying search for bindings where it stands.
+
+The iterator borrows this generator and holds the state alive for as long as it lives.
+
+On a generator whose `supports_concurrent_applicable_action_generators()` is False -- the
+lifted ones, which re-initialize shared scratch state per enumeration -- starting a second
+enumeration while this iterator is still alive raises `RuntimeError` rather than quietly
+changing what this one yields. Do not advance an iterator from several threads.)doc")
+        .def(
+            "has_applicable_action",
+            [](IApplicableActionGenerator& self, const State& state)
+            {
+                refuse_if_lazy_iterator_is_live(self, "has_applicable_action");
+                return self.has_applicable_action(state);
+            },
+            "state"_a,
+            R"doc(Return whether at least one action is applicable in `state`.
+
+This is the dead-end test, and it costs the first applicable action rather than all of them:
+the grounded generator stops its match-tree walk at the first hit, and the lifted generators
+stop at the first satisfying binding. `len(generate_applicable_actions(state)) == 0` answers
+the same question by materializing millions of ground actions on the states where the answer
+is least obvious.)doc");
 
     // Lifted Exhaustive
     nb::class_<ExhaustiveLiftedApplicableActionGeneratorImpl::IEventHandler>(m,

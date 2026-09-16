@@ -15,6 +15,7 @@ from pymimir.pymimir.advanced.search import (
 from pymimir.pymimir.advanced.search import (
     is_applicable,
     compute_transition_novel_fluent_atom_indices_read_only,
+    ApplicableActionIterator,
     IApplicableActionGenerator,
     IAxiomEvaluator,
     Plan,

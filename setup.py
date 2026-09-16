@@ -30,7 +30,15 @@ from setuptools.command.build_ext import build_ext
 #   that environment. The price is the one the versioning doc names -- a
 #   downstream cannot express a floor for these two names and has to probe with
 #   `hasattr` instead.
-__version__ = "0.16.2"
+# 0.16.3: lazy applicable-action generation --
+#   `IApplicableActionGenerator.create_applicable_action_generator` and
+#   `.has_applicable_action`, the `ApplicableActionIterator` type they return, and
+#   `State.iter_applicable_actions` / `.has_applicable_actions` / `.is_dead_end` on
+#   the wrapper. PATCH rather than the MINOR docs/VERSIONING.md asks for, on the
+#   same grounds as 0.16.2 and at the same price: the consuming deploy pins wheels
+#   by filename and the 0.17 slot is taken, so a downstream cannot express a floor
+#   for these names and has to probe with `hasattr`.
+__version__ = "0.16.3"
 HERE = Path(__file__).resolve().parent
 
 
