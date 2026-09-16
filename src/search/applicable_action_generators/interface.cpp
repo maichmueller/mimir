@@ -7,6 +7,21 @@
 namespace mimir::search
 {
 
+bool IApplicableActionGenerator::has_applicable_action(const State& state)
+{
+    auto action_generator = create_applicable_action_generator(state);
+
+    /* Returning out of the loop destroys the suspended coroutine frame, which is exactly the point:
+       no further binding is enumerated and no further ground action is interned. */
+    for (const auto& action : action_generator)
+    {
+        (void) action;
+        return true;
+    }
+
+    return false;
+}
+
 std::vector<formalism::GroundAction> IApplicableActionGenerator::create_applicable_action_list_parallel(const State&, BS::thread_pool&)
 {
     throw std::logic_error(

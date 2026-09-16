@@ -59,15 +59,24 @@ bool GroundedApplicableActionGeneratorImpl::supports_parallel_beam() const { ret
 
 mimir::generator<GroundAction> GroundedApplicableActionGeneratorImpl::create_applicable_action_generator(const State& state)
 {
-    auto ground_actions = GroundActionList {};
-    m_match_tree->generate_applicable_elements_iteratively(state.get_unpacked_state(), ground_actions);
+    /* The match tree is walked lazily rather than drained into a list first, so that a caller who
+       stops after the first action -- a dead-end test, most of all -- pays for the nodes it reached
+       and no more. Exhaustive consumers see the same actions in the same order. */
+    auto element_generator = m_match_tree->create_applicable_elements_generator(state.get_unpacked_state());
 
-    for (const auto& ground_action : ground_actions)
+    for (const auto& ground_action : element_generator)
     {
         assert(is_applicable(ground_action, state));
         co_yield ground_action;
     }
 }
+
+bool GroundedApplicableActionGeneratorImpl::has_applicable_action(const State& state)
+{
+    return m_match_tree->has_applicable_element(state.get_unpacked_state());
+}
+
+bool GroundedApplicableActionGeneratorImpl::supports_concurrent_applicable_action_generators() const { return true; }
 
 const Problem& GroundedApplicableActionGeneratorImpl::get_problem() const { return m_problem; }
 

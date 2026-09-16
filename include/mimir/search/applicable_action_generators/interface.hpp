@@ -93,6 +93,26 @@ public:
     /// @brief Generate all applicable actions for a given state.
     virtual mimir::generator<formalism::GroundAction> create_applicable_action_generator(const State& state) = 0;
 
+    /// @brief Return whether two applicable-action generators over this object may be alive at the
+    /// same time.
+    ///
+    /// Exhaustive consumers never ask: they create a generator, drain it, and drop it. A *lazy*
+    /// consumer suspends one mid-enumeration, and then this matters. The lifted generators
+    /// re-initialize shared per-instance scratch -- the dynamic assignment sets, and the condition
+    /// grounders the binding search runs on -- at the start of every enumeration, so a second one
+    /// started underneath a suspended first silently changes what the first goes on to yield. The
+    /// grounded generator keeps no such state once its lazy walk owns its traversal stack.
+    virtual bool supports_concurrent_applicable_action_generators() const { return false; }
+
+    /// @brief Return whether at least one action is applicable in the state.
+    ///
+    /// The question a dead-end test actually asks is one bit, and on states with millions of
+    /// applicable ground actions the difference between that bit and the set is the difference
+    /// between microseconds and tens of seconds plus tens of gigabytes of interned actions. The
+    /// default implementation abandons `create_applicable_action_generator` after the first yield;
+    /// a generator that can answer more cheaply overrides it.
+    virtual bool has_applicable_action(const State& state);
+
     /// @brief Return whether this generator can complete a partially bound lifted action
     /// into fully applicable ground actions in the given state.
     virtual bool supports_partial_binding_completion() const { return false; }

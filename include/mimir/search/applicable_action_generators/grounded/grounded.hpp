@@ -74,6 +74,12 @@ public:
     bool supports_parallel_beam() const override;
     mimir::generator<formalism::GroundAction> create_applicable_action_generator(const State& state) override;
 
+    /// @brief Stop the match-tree walk at the first applicable action instead of walking it out.
+    bool has_applicable_action(const State& state) override;
+
+    /// @brief True: each lazy walk owns its traversal stack and the tree itself is immutable.
+    bool supports_concurrent_applicable_action_generators() const override;
+
     void on_finish_search_layer() override;
     void on_end_search() override;
 
