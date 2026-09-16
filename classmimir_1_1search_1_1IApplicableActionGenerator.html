@@ -98,6 +98,12 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a9940e682ebf25a1b0f14afaef494c2e1"><td class="memItemLeft" align="right" valign="top">virtual mimir::generator&lt; <a class="el" href="namespacemimir_1_1formalism.html#aa73d5d8148329ca337aa8114b0ca16dc">formalism::GroundAction</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#a9940e682ebf25a1b0f14afaef494c2e1">create_applicable_action_generator</a> (const State &amp;state)=0</td></tr>
 <tr class="memdesc:a9940e682ebf25a1b0f14afaef494c2e1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generate all applicable actions for a given state.  <br /></td></tr>
 <tr class="separator:a9940e682ebf25a1b0f14afaef494c2e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa56b3f42db6bcddafd370ddd82132ddf"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#aa56b3f42db6bcddafd370ddd82132ddf">supports_concurrent_applicable_action_generators</a> () const</td></tr>
+<tr class="memdesc:aa56b3f42db6bcddafd370ddd82132ddf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Return whether two applicable-action generators over this object may be alive at the same time.  <br /></td></tr>
+<tr class="separator:aa56b3f42db6bcddafd370ddd82132ddf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6b2eaa804a298aa4543a7957269a2d72"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#a6b2eaa804a298aa4543a7957269a2d72">has_applicable_action</a> (const State &amp;state)</td></tr>
+<tr class="memdesc:a6b2eaa804a298aa4543a7957269a2d72"><td class="mdescLeft">&#160;</td><td class="mdescRight">Return whether at least one action is applicable in the state.  <br /></td></tr>
+<tr class="separator:a6b2eaa804a298aa4543a7957269a2d72"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aad0b7bb2f3104f4912476ebb290e4b36"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classmimir_1_1search_1_1IApplicableActionGenerator.html#aad0b7bb2f3104f4912476ebb290e4b36">supports_partial_binding_completion</a> () const</td></tr>
 <tr class="memdesc:aad0b7bb2f3104f4912476ebb290e4b36"><td class="mdescLeft">&#160;</td><td class="mdescRight">Return whether this generator can complete a partially bound lifted action into fully applicable ground actions in the given state.  <br /></td></tr>
 <tr class="separator:aad0b7bb2f3104f4912476ebb290e4b36"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -414,6 +420,35 @@ Public Member Functions</h2></td></tr>
 
 </div>
 </div>
+<a id="a6b2eaa804a298aa4543a7957269a2d72" name="a6b2eaa804a298aa4543a7957269a2d72"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6b2eaa804a298aa4543a7957269a2d72">&#9670;&#160;</a></span>has_applicable_action()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IApplicableActionGenerator::has_applicable_action </td>
+          <td>(</td>
+          <td class="paramtype">const State &amp;&#160;</td>
+          <td class="paramname"><em>state</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Return whether at least one action is applicable in the state. </p>
+<p>The question a dead-end test actually asks is one bit, and on states with millions of applicable ground actions the difference between that bit and the set is the difference between microseconds and tens of seconds plus tens of gigabytes of interned actions. The default implementation abandons <code>create_applicable_action_generator</code> after the first yield; a generator that can answer more cheaply overrides it. </p>
+
+</div>
+</div>
 <a id="a684556830308101df7723d547eccd65d" name="a684556830308101df7723d547eccd65d"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a684556830308101df7723d547eccd65d">&#9670;&#160;</a></span>on_end_search()</h2>
 
@@ -491,6 +526,34 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Release optional parallel worker memory retained across searches. If clear_shared_caches is true, also drop shared immutable parallel lookup tables so they will be rebuilt on the next parallel search. </p>
+
+</div>
+</div>
+<a id="aa56b3f42db6bcddafd370ddd82132ddf" name="aa56b3f42db6bcddafd370ddd82132ddf"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa56b3f42db6bcddafd370ddd82132ddf">&#9670;&#160;</a></span>supports_concurrent_applicable_action_generators()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool mimir::search::IApplicableActionGenerator::supports_concurrent_applicable_action_generators </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Return whether two applicable-action generators over this object may be alive at the same time. </p>
+<p>Exhaustive consumers never ask: they create a generator, drain it, and drop it. A <em>lazy</em> consumer suspends one mid-enumeration, and then this matters. The lifted generators re-initialize shared per-instance scratch &ndash; the dynamic assignment sets, and the condition grounders the binding search runs on &ndash; at the start of every enumeration, so a second one started underneath a suspended first silently changes what the first goes on to yield. The grounded generator keeps no such state once its lazy walk owns its traversal stack. </p>
 
 </div>
 </div>
