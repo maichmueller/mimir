@@ -49,7 +49,10 @@ StaticNodeSplitter<E>::StaticNodeSplitter(const Repositories& pddl_repositories,
         split_and_score_list.push_back(SplitAndScore { split, compute_score(split, options.split_metric) });
     }
 
-    std::sort(split_and_score_list.begin(), split_and_score_list.end(), [](auto&& lhs, auto&& rhs) { return lhs.score > rhs.score; });
+    std::sort(split_and_score_list.begin(),
+              split_and_score_list.end(),
+              [](auto&& lhs, auto&& rhs)
+              { return lhs.score > rhs.score || (lhs.score == rhs.score && stable_split_key(lhs.split) < stable_split_key(rhs.split)); });
 
     std::cout << "[MatchTree] Static split ordering determined with " << to_string(this->m_options.split_metric) << " score: " << std::endl;
     for (size_t i = 0; i < splits.size(); ++i)

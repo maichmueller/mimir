@@ -45,7 +45,15 @@ from setuptools.command.build_ext import build_ext
 #   `IApplicableActionGenerator` rather than appended, so every later vtable slot
 #   moved. Everything sharing NB_DOMAIN=pymimir_abi_domain -- hierarchical._core,
 #   mifrost -- must be rebuilt against this version, not merely relinked.
-__version__ = "0.16.3"
+# 0.16.4: a grounded parse yields each state's applicable actions in one order in
+#   every process. The match tree's dynamic splitter settled tied splits by the
+#   GroundAtom's heap address, so the tree, and the successor order it yields,
+#   changed from process to process with ASLR; ties now go to the split's kind
+#   and index. A PATCH: no Python name and no ABI changes against 0.16.3, and the
+#   set of applicable actions is unchanged. Grounded search results that depend
+#   on generation order (IW, BrFS, tie-breaking) move once and are repeatable
+#   from here on.
+__version__ = "0.16.4"
 HERE = Path(__file__).resolve().parent
 
 

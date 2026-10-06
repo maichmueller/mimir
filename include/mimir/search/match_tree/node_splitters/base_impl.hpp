@@ -44,6 +44,16 @@ template<formalism::IsFluentOrDerivedTag P>
 using AtomDistributions = std::unordered_map<formalism::GroundAtom<P>, AtomSplitDistribution>;
 using NumericConstraintDistributions = std::unordered_map<formalism::GroundNumericConstraint, NumericConstraintSplitDistribution>;
 
+/// @brief Order splits by kind (fluent atom, derived atom, numeric constraint), then by their feature's index.
+///
+/// The candidate splits are collected in containers hashed on their feature's address, so the order in which
+/// they are visited changes from one process to the next. Settling a tied score by this key instead builds the
+/// same tree in every process, and the tree's shape is the order in which it yields applicable elements.
+inline std::pair<size_t, Index> stable_split_key(const Split& split)
+{
+    return { split.index(), std::visit([](auto&& arg) { return arg.feature->get_index(); }, split) };
+}
+
 template<typename Derived_, formalism::HasConjunctiveCondition E>
 NodeSplitterBase<Derived_, E>::NodeSplitterBase(const formalism::Repositories& pddl_repositories, const Options& options) :
     m_pddl_repositories(pddl_repositories),
@@ -146,7 +156,8 @@ std::optional<SplitScoreAndUselessSplits> NodeSplitterBase<Derived_, E>::compute
 
             // std::cout << "Evaluate split: " << split << " " << score << " " << best_score << std::endl;
 
-            if (better_score(score, best_score, m_options.optimization_direction))
+            if (better_score(score, best_score, m_options.optimization_direction)
+                || (score == best_score && best_split && stable_split_key(split) < stable_split_key(best_split.value())))
             {
                 best_split = split;
                 best_score = score;
